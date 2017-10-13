@@ -1,0 +1,18 @@
+---
+#SBATCH configuration
+slurm_header:
+  project: "microbial"
+  type: "core"
+  threads: "10"
+  time: "01:00:00"
+  qos: "normal"
+  job_name: "MLST_test"
+
+#Default file folders
+folders:
+  indata: "/home/isak.sylvin/MWGS/indata"
+  results: "/home/isak.sylvin/MWGS/results"
+  references: "/home/isak.sylvin/MWGS/references/definitions"
+
+#lowercase bound by underscore
+organism: klebsiella_pneumoniae
