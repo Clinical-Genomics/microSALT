@@ -13,13 +13,16 @@ except IOError:
 setup(
     name="locioser",
     version=version,
+    url="https://github.com/sylvinite/locioser",
     author="Isak Sylvin",
     author_email='isak.sylvin@scilifelab.se',
-    install_requires=parse_reqs(),  
+    install_requires=install_requires,  
 
     entry_points={
-        'console_scripts': [
-            'locioser=locioser.core:main'  
+        'console_scripts': ['locioser=locioser.cli:cli'],
+        'locioser.subcommands': [
+          'create_job=locioser.job_creator:create_job',
+          'scrape=locioser.scraper:scrape'
         ]
     },
 )

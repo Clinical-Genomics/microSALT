@@ -1,4 +1,4 @@
-"""Initial script to fetch data from QC, Assembly and BLAST output and put them into a database.
+"""This initial script scrapes output files for data and add them to the database
    Heavy WIP
    By: Isak Sylvin, @sylvinite"""
 
@@ -16,3 +16,10 @@ with open("{}/config.yml".format(os.path.dirname(os.path.realpath(__file__))), '
   config = yaml.load(conf)
 
 
+#Take in BLAST file
+#Take in assembly stats
+#Take in QC yaml output (Robin knows)
+#Take in LIMSid -> udfinfo (Kenny knows)
+
+#Parse files
+#Dump into database (via db manipulator)

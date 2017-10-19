@@ -1,2 +1,4 @@
 click
+pymysql
 pyyaml
+sqlalchemy

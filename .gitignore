@@ -1,0 +1,5 @@
+locioser/mysql.yml
+locioser/__pycache__
+*.egg-info
+*pyc
+*.swp
