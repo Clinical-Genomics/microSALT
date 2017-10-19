@@ -19,10 +19,8 @@ setup(
     install_requires=install_requires,  
 
     entry_points={
-        'console_scripts': ['locioser=locioser.cli:cli'],
+        'console_scripts': ['locioser=locioser.cli:root'],
         'locioser.subcommands': [
-          'create_job=locioser.job_creator:create_job',
-          'scrape=locioser.scraper:scrape'
-        ]
+        'create_job=locioser.cli:create_job']
     },
 )

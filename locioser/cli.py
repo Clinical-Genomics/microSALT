@@ -6,19 +6,22 @@
 
 import click
 import os
+import pdb
+import yaml
 
 from pkg_resources import iter_entry_points
 from locioser import __version__
+from locioser import job_creator
 
 @click.group()
 @click.version_option(__version__)
 @click.pass_context
-def cli(ctx, config_file):
-	""" Tool for the Automation of Storage and Analyses """
-	ctx.obj = {}
-        with open("{}/config.yml".format(os.path.dirname(os.path.realpath(__file__))), 'r') as conf:
-          config = yaml.load(conf)
+def root(ctx):
+    """ Fundamental MLST pipeline """
+    ctx.obj = {}
 
-#Add subcommands dynamically to the CLI
-for entry_point in iter_entry_points('locioser.subcommands'):
-    cli.add_command(entry_point.load())
+@root.command()
+@click.argument('indir')
+def create_job(indir):
+    boss = job_creator.Job_Creator(indir)
+    boss.create_job()
