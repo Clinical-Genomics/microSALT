@@ -13,10 +13,9 @@ import yaml
 class Job_Creator():
 
   fileformat = re.compile('(\d{1}_\d{6}_\w{9}_.{10,12}_\w{8,12}_)(\d{1})(.fastq.gz)') 
-  with open("{}/config.yml".format(os.path.dirname(os.path.realpath(__file__))), 'r') as conf:
-      config = yaml.load(conf)
 
-  def __init__(self, indir):
+  def __init__(self, indir, config):
+    self.config = config
     self.now = time.strftime("%Y.%m.%d_%H.%M.%S")
     self.indir = os.path.abspath(indir)
     self.name = os.path.basename(os.path.normpath(indir))
@@ -83,7 +82,7 @@ class Job_Creator():
     self.config["folders"]["references"], self.config["folders"]["references"], self.config["organism"], self.config["organism"]))
     #create run
     blast_format = "7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send"
-    batchfile.write("blastn -db {}/{} -query {}/assembly/contigs.fasta -out {}/loci_query_tab.txt -num_threads {} -max_target_seqs 1 -outfmt {}\n\n".format(\
+    batchfile.write("\"blastn -db {}/{} -query {}/assembly/contigs.fasta -out {}/loci_query_tab.txt -num_threads {} -max_target_seqs 1 -outfmt {}\"\n\n".format(\
     self.config["folders"]["references"], self.config["organism"], self.outdir, self.outdir, self.config["slurm_header"]["threads"], blast_format))
 
 
