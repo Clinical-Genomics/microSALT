@@ -22,10 +22,7 @@ class DB_Manipulator:
   def __init__(self):
     self.engine = create_engine("mysql+pymysql://{}:{}@{}:{}/{}".format(self.mysql['user'],self.mysql['pw'],self.mysql['host'],self.mysql['port'],self.mysql['db']))
     self.metadata = MetaData(self.engine)
-    self.blasttable = ""
-
-  def create_blasttable(self):
-      blast = Table('blasttable', self.metadata,
+    self.blasttable = Table('blasttable', self.metadata,
         Column('run', String(40), primary_key=True),
         Column('date_analysis', DateTime),
         Column('loci', String(10)),
@@ -41,9 +38,9 @@ class DB_Manipulator:
         Column('end', Integer),
         Column('db_start', Integer),
         Column('db_end', Integer),
-        
       )
-      self.blasttable = blast
+
+  def create_blasttable(self):
       if not self.engine.dialect.has_table(self.engine, 'blasttable'):
         self.blasttable.create()
       else:
@@ -55,9 +52,9 @@ class DB_Manipulator:
     #Checks if entry exists
     if not self.blasttable.select((self.blasttable.c.run == data_dict['run']) & (self.blasttable.c.loci == data_dict['loci'])).execute().fetchone():
       inserter.execute(data_dict)
-
+  
   def get_blastcolumns(self):
     return self.blasttable.c.keys()
 
-  def get_blastrecord(self):
-    print("pop")
+  def get_all_blastrecords(self):
+    return self.blasttable.select().execute().fetchall()

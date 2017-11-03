@@ -1,4 +1,4 @@
-"""This is the main entry point of locioser. Current commands are analyze and store
+"""This is the main entry point of microSALT. Current commands are analyze and store
    Heavy WIP
    By: Isak Sylvin, @sylvinite"""
 
@@ -10,9 +10,10 @@ import pdb
 import yaml
 
 from pkg_resources import iter_entry_points
-from locioser import __version__
-from locioser import job_creator
-from locioser import scraper
+from microSALT import __version__
+from microSALT import job_creator
+from microSALT import scraper
+from microSALT import exporter
 
 @click.group()
 @click.version_option(__version__)
@@ -36,3 +37,9 @@ def create_job(ctx, indir):
 def scrape(ctx, infile):
   garbageman = scraper.Scraper(infile, ctx.obj)
   garbageman.scrape_blast_loci()
+
+@root.command()
+@click.pass_context
+def export(ctx):
+  ferryman = exporter.Exporter(ctx.obj)
+  ferryman.std_export()

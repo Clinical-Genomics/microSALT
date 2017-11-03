@@ -1,0 +1,6 @@
+#line: "mysql+pymysql://stageuser:userstage@localhost:3308/stage-cust015_cm"
+user: isak.sylvin
+pw: $rockandrolls
+host: clinical-db.scilifelab.se
+port: 3306
+db: cust015_cm_stage
