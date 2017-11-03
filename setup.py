@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from locioser import __version__
+from microSALT import __version__
 from setuptools import setup
 
 version = __version__
@@ -11,16 +11,14 @@ except IOError:
     install_requires = []
 
 setup(
-    name="locioser",
+    name="microSALT",
     version=version,
-    url="https://github.com/sylvinite/locioser",
+    url="https://github.com/sylvinite/microSALT",
     author="Isak Sylvin",
     author_email='isak.sylvin@scilifelab.se',
     install_requires=install_requires,  
 
     entry_points={
-        'console_scripts': ['locioser=locioser.cli:root'],
-        'locioser.subcommands': [
-        'create_job=locioser.cli:create_job']
+        'console_scripts': ['microSALT=microSALT.cli:root'],
     },
 )

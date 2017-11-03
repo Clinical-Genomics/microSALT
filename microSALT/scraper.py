@@ -10,7 +10,7 @@ import re
 import time
 import yaml
 
-from locioser import db_manipulator
+from microSALT import db_manipulator
 
 import pdb # debug
 
