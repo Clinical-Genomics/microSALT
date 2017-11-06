@@ -13,6 +13,3 @@ folders:
   indata: "/home/isak.sylvin/MWGS/indata"
   results: "/home/isak.sylvin/MWGS/results"
   references: "/home/isak.sylvin/MWGS/references/definitions"
-
-#lowercase bound by underscore
-organism: klebsiella_pneumoniae

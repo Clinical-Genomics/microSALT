@@ -26,18 +26,19 @@ class DB_Manipulator:
         Column('run', String(40), primary_key=True),
         Column('date_analysis', DateTime),
         Column('loci', String(10)),
+        Column('assumed_ST', SmallInteger),
+        Column('allele', SmallInteger),
         Column('haplotype', String(5)),
         Column('contig_name', String(20), primary_key=True),
         Column('contig_length', Integer),
         Column('contig_coverage', Float(6,2)),
-        Column('db_hit', String(20)),
         Column('identity', Float(3,2)),
         Column('evalue', String(10)),
         Column('bitscore', SmallInteger),
-        Column('start', Integer),
-        Column('end', Integer),
-        Column('db_start', Integer),
-        Column('db_end', Integer),
+        Column('contig_start', Integer),
+        Column('contig_end', Integer),
+        Column('loci_start', Integer),
+        Column('loci_end', Integer),
       )
 
   def create_blasttable(self):
@@ -49,12 +50,16 @@ class DB_Manipulator:
   def add_blastrecord(self, data_dict):
     #TODO: Dictionary must contain all values found in fields list. Otherwise return error.
     inserter = self.blasttable.insert()
-    #Checks if entry exists
-    if not self.blasttable.select((self.blasttable.c.run == data_dict['run']) & (self.blasttable.c.loci == data_dict['loci'])).execute().fetchone():
+    #TODO: Checks if entry exists. Give a bucket of errors atm if duplicate record.
+    if not self.blasttable.select((self.blasttable.c.run == data_dict['run']) & (self.blasttable.c.loci == data_dict['contig_name'])).execute().fetchone():
       inserter.execute(data_dict)
   
   def get_blastcolumns(self):
-    return self.blasttable.c.keys()
+    """ Returns a dictionary where each column is a key. Makes re-entry easier """
+    return dict.fromkeys(self.blasttable.c.keys())
 
   def get_all_blastrecords(self):
     return self.blasttable.select().execute().fetchall()
+
+  #def 
+

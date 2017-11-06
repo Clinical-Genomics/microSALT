@@ -26,36 +26,46 @@ class Scraper():
     self.blastdb.create_blasttable()
     columns = self.blastdb.get_blastcolumns() 
 
+
     with open("{}".format(self.infile), 'r') as inblast:
       for line in inblast:
         #Ignore commented fields
         if not line[0] == '#':
           elem_list = line.rstrip().split("\t")
+
+          columns["identity"] = elem_list[4]
+          columns["evalue"] = elem_list[5]
+          columns["bitscore"] = int(elem_list[6])
+          columns["contig_start"] = elem_list[7]
+          columns["contig_end"] = elem_list[8]
+          columns["loci_start"] = elem_list[9]
+          columns["loci_end"] =  elem_list[10]
+          columns["haplotype"] = elem_list[1]
+
+          #Remove the bp index from the ST hit
+          #Note this ST is assumed, since one allele appear in many ST
+          columns["assumed_ST"] = int(re.search('\w+', elem_list[3]).group(0)) 
+
           # remove " + " elem 0
           elem_list[0] = re.search('(\w+)', elem_list[0]).group(0)
+          columns["loci"] = elem_list[0]
           # split elem 2 into contig node_NO, length, cov
           nodeinfo = elem_list.pop(2).split('_')
-          elem_list.insert(2, "{}_{}".format(nodeinfo[0], nodeinfo[1]))
-          elem_list.insert(3, nodeinfo[3])
-          elem_list.insert(4, nodeinfo[5]) 
-        
+          columns["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
+          columns["contig_length"] = nodeinfo[3]
+          columns["contig_coverage"] = nodeinfo[5]
+
           #Get run and date from folder structure
           rundir = os.path.basename(os.path.dirname(self.infile))
           rundir = rundir.split('_')
-          elem_list.insert(0, rundir[0])
+          columns["run"] = rundir[0]
           rundir[1] = re.sub('\.','-',rundir[1])
           rundir[2] = re.sub('\.',':',rundir[2])
-          elem_list.insert(1, "{} {}".format(rundir[1], rundir[2]))
+          columns["date_analysis"] = "{} {}".format(rundir[1], rundir[2])
 
-          #Since everything is ordered correctly, match values to keys
-          i=0
-          inrecord = dict()
-          while i < len(elem_list):
-            inrecord[columns[i]] = elem_list[i]
-            i = i+1
           #Needs to check if entry already exists
           #pdb.set_trace()
-          self.blastdb.add_blastrecord(inrecord)
+          self.blastdb.add_blastrecord(columns)
 
 #Take in assembly stats
 #Take in QC yaml output (Robin knows)
