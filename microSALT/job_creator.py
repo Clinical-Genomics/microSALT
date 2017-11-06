@@ -14,11 +14,12 @@ class Job_Creator():
 
   fileformat = re.compile('(\d{1}_\d{6}_\w{9}_.{10,12}_\w{8,12}_)(\d{1})(.fastq.gz)') 
 
-  def __init__(self, indir, config):
+  def __init__(self, indir, organism, config):
     self.config = config
     self.now = time.strftime("%Y.%m.%d_%H.%M.%S")
     self.indir = os.path.abspath(indir)
     self.name = os.path.basename(os.path.normpath(indir))
+    self.organism = organism
     self.batchfile = ""
     self.outdir = ""
 
@@ -77,13 +78,26 @@ class Job_Creator():
   def create_blastjob(self):
     #index database
     batchfile = open(self.batchfile, "a+")
-    #TODO: Organism needs to be established in the future
-    batchfile.write("cd {} && makeblastdb -in {}/{}.xmfa -dbtype nucl -parse_seqids -out {}\n".format(\
-    self.config["folders"]["references"], self.config["folders"]["references"], self.config["organism"], self.config["organism"]))
+
+    #TODO: Put these as two functions in scraper and call a scraper object.
+    #Establish organism
+    refname = ""
+    indexed = 0
+    refs = os.listdir(self.config["folders"]["references"])
+    for file in refs:
+      hit = re.search('({}\w+).xmfa'.format(self.organism), file)
+      if hit:
+        refname = hit.group(1)
+      if re.search('({}\w+).n\w+'.format(self.organism), file):
+        indexed = indexed + 1
+
+    if indexed < 5:
+      batchfile.write("cd {} && makeblastdb -in {}/{}.xmfa -dbtype nucl -parse_seqids -out {}\n".format(\
+      self.config["folders"]["references"], self.config["folders"]["references"], refname, refname))
     #create run
     blast_format = "7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send"
-    batchfile.write("\"blastn -db {}/{} -query {}/assembly/contigs.fasta -out {}/loci_query_tab.txt -num_threads {} -max_target_seqs 1 -outfmt {}\"\n\n".format(\
-    self.config["folders"]["references"], self.config["organism"], self.outdir, self.outdir, self.config["slurm_header"]["threads"], blast_format))
+    batchfile.write("blastn -db {}/{} -query {}/assembly/contigs.fasta -out {}/loci_query_tab.txt -num_threads {} -max_target_seqs 1 -outfmt {}\n\n".format(\
+    self.config["folders"]["references"], refname, self.outdir, self.outdir, self.config["slurm_header"]["threads"], blast_format))
 
 
   def create_job(self):

@@ -26,9 +26,10 @@ def root(ctx):
 
 @root.command()
 @click.argument('indir')
+@click.argument('organism')
 @click.pass_context
-def create_job(ctx, indir):
-    boss = job_creator.Job_Creator(indir, ctx.obj)
+def create_job(ctx, indir, organism):
+    boss = job_creator.Job_Creator(indir, organism, ctx.obj)
     boss.create_job()
 
 @root.command()
