@@ -19,15 +19,21 @@ class Scraper():
   def __init__(self, infile, config):
     self.config = config
     self.infile = os.path.abspath(infile)
-    self.blastdb=db_manipulator.DB_Manipulator()
+    self.blastdb=db_manipulator.DB_Manipulator(config)
 
   def scrape_blast_loci(self):
     #Assign each element correct keys
-    self.blastdb.create_blasttable()
     columns = self.blastdb.get_blastcolumns() 
 
 
     with open("{}".format(self.infile), 'r') as inblast:
+      #Grab database = organism from blast output
+      inblast.readline()
+      inblast.readline()
+      db = inblast.readline()
+      db = db.rstrip().split(' ')
+      columns['organism'] = os.path.basename(os.path.normpath(db[2]))
+      
       for line in inblast:
         #Ignore commented fields
         if not line[0] == '#':
@@ -63,8 +69,9 @@ class Scraper():
           rundir[2] = re.sub('\.',':',rundir[2])
           columns["date_analysis"] = "{} {}".format(rundir[1], rundir[2])
 
-          #Needs to check if entry already exists
-          #pdb.set_trace()
+          #Get allele from ST number
+         
+
           self.blastdb.add_blastrecord(columns)
 
 #Take in assembly stats
