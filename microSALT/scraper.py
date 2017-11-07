@@ -70,8 +70,7 @@ class Scraper():
           columns["date_analysis"] = "{} {}".format(rundir[1], rundir[2])
 
           #Get allele from ST number
-         
-
+          columns['allele'] = self.blastdb.st2allele(columns) 
           self.blastdb.add_blastrecord(columns)
 
 #Take in assembly stats
