@@ -9,10 +9,12 @@ import os
 import pymysql
 import re
 from sqlalchemy import *
+from sqlalchemy.orm import sessionmaker
 import yaml
 
 import pdb # debug
 
+#TODO: Rewrite all pushes/queries through session+commit
 class DB_Manipulator:
 
   # Keeping mysql.yml seperate lets us share the main config one without security issues
@@ -22,7 +24,10 @@ class DB_Manipulator:
   def __init__(self, config):
     self.config = config
     self.engine = create_engine("mysql+pymysql://{}:{}@{}:{}/{}".format(self.mysql['user'],self.mysql['pw'],self.mysql['host'],self.mysql['port'],self.mysql['db']))
+    Session = sessionmaker(bind=self.engine)
+    self.session = Session()
     self.metadata = MetaData(self.engine)
+    self.profiletables = dict()
     ## Tables
     self.blasttable = Table('blast', self.metadata,
         Column('run', String(40), primary_key=True),
@@ -43,28 +48,26 @@ class DB_Manipulator:
         Column('loci_start', Integer),
         Column('loci_end', Integer),
       )
-    #TODO: DAT REDUNDANCY
-    self.profiletable = Table('profiles', self.metadata,
-        Column('organism', String(30), primary_key=True),
-        Column('ST', SmallInteger, primary_key=True),
-        Column('loci_1', SmallInteger),
-        Column('loci_2', SmallInteger),
-        Column('loci_3', SmallInteger),
-        Column('loci_4', SmallInteger),
-        Column('loci_5', SmallInteger),
-        Column('loci_6', SmallInteger),
-        Column('loci_7', SmallInteger),
-    )
-    self.organismloci = Table('organismloci', self.metadata,
-        Column('organism', String(30), primary_key=True),
-        Column('loci_1', String(5)),
-        Column('loci_2', String(5)),
-        Column('loci_3', String(5)),
-        Column('loci_4', String(5)),
-        Column('loci_5', String(5)),
-        Column('loci_6', String(5)),
-        Column('loci_7', String(5)),
-    )
+
+    indata = os.listdir(self.config["folders"]["profiles"])
+    for file in indata:
+      #if not self.engine.dialect.has_table(self.engine, 'profile_{}'.format(file)):
+        with open("{}/{}".format(self.config["folders"]["profiles"], file), "r") as fh:
+          #Sets profile_* headers
+          head = fh.readline()
+          head = head.rstrip().split('\t')
+          pt = Table('profile_{}'.format(file), self.metadata,
+            Column(head[0], SmallInteger, primary_key=True),
+            Column(head[1], SmallInteger),
+            Column(head[2], SmallInteger),
+            Column(head[3], SmallInteger),
+            Column(head[3], SmallInteger),
+            Column(head[4], SmallInteger),
+            Column(head[5], SmallInteger),
+            Column(head[6], SmallInteger),
+            Column(head[7], SmallInteger),
+          )
+          self.profiletables[file]=pt
 
     #Attempts to create tables every time a new object is formed. Maybe not ideal
     self.create_tables()
@@ -72,65 +75,54 @@ class DB_Manipulator:
   def create_tables(self):
       if not self.engine.dialect.has_table(self.engine, 'blast'):
         self.blasttable.create()
-      if not self.engine.dialect.has_table(self.engine, 'organismloci') and not self.engine.dialect.has_table(self.engine, 'profiles'):
-        self.profiletable.create()
-        self.organismloci.create()
-        self.init_profilerecords()
-
+      for k,v in self.profiletables.items():
+        if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
+          self.profiletables[k].create()
+          self.init_profiletable(k, v)         
+ 
   def add_blastrecord(self, data_dict):
     #TODO: Dictionary must contain all values found in fields list. Otherwise return error.
     inserter = self.blasttable.insert()
     #TODO: Checks if entry exists. Give a bucket of errors atm if duplicate record. Should use PK!
-    if not self.blasttable.select((self.blasttable.c.run == data_dict['run']) & (self.blasttable.c.loci == data_dict['contig_name'])).execute().fetchone():
+    if not self.blasttable.select((self.blasttable.c.run == data_dict['run']) & (self.blasttable.c.contig_name == data_dict['contig_name'])).execute().fetchone():
       inserter.execute(data_dict)
  
-  def init_profilerecords(self):
-    indata = os.listdir(self.config["folders"]["profiles"])
-    data = self.profiletable.insert()
-    headers = self.organismloci.insert()
-
-    headdict = self.get_organismlocicolumns()
-    linedict = self.get_profilecolumns()
-
-    for file in indata:
-      headdict['organism'] = file
-      linedict['organism'] = file
-      with open("{}/{}".format(self.config["folders"]["profiles"], file), "r") as fh:
-        #Send first row to organismloci table
+  def init_profiletable(self, filename, table):
+    data = table.insert()
+    linedict = dict.fromkeys(table.c.keys())
+    with open("{}/{}".format(self.config["folders"]["profiles"], filename), "r") as fh:
+        #Skip header
         head = fh.readline()
         head = head.rstrip().split('\t')
-        headdict['loci_1'] = head[1]
-        headdict['loci_2'] = head[2]
-        headdict['loci_3'] = head[3]
-        headdict['loci_4'] = head[4]
-        headdict['loci_5'] = head[5]
-        headdict['loci_6'] = head[6]
-        headdict['loci_7'] = head[7]
-        headers.execute(headdict)
-
-        #Rest to profiles table
         for line in fh:
-          line = line.rstrip().split('\t')
-          linedict['ST'] = line[0]
-          linedict['loci_1'] = line[1]
-          linedict['loci_2'] = line[2]
-          linedict['loci_3'] = line[3]
-          linedict['loci_4'] = line[4]
-          linedict['loci_5'] = line[5]
-          linedict['loci_6'] = line[6]
-          linedict['loci_7'] = line[7]
-          data.execute(linedict)
+            line = line.rstrip().split('\t')
+            linedict[head[0]] = line[0]
+            linedict[head[1]] = line[1]
+            linedict[head[2]] = line[2]
+            linedict[head[3]] = line[3]
+            linedict[head[4]] = line[4]
+            linedict[head[5]] = line[5]
+            linedict[head[6]] = line[6]
+            linedict[head[7]] = line[7]
+            data.execute(linedict)
  
   def get_blastcolumns(self):
     """ Returns a dictionary where each column is a key. Makes re-entry easier """
     return dict.fromkeys(self.blasttable.c.keys())
 
-  def get_profilecolumns(self):
-    return dict.fromkeys(self.profiletable.c.keys())
-
-  def get_organismlocicolumns(self):
-    return dict.fromkeys(self.organismloci.c.keys())
-
   def get_all_blastrecords(self):
     return self.blasttable.select().execute().fetchall()
+
+  def st2allele(self, entry):
+    """ Takes an entire blast table column and returns the correct allele number """
+    #Query correct table
+    for k,v in self.profiletables.items():
+      if k == entry['organism']:
+        return self.session.query(eval("v.c.{}".format(entry['loci']))).filter(v.c.ST==entry['assumed_ST']).scalar()
+
+  def alleles2st(self):
+    """Takes an allele list for an organism and calculates most likely ST"""
+    pdb.set_trace()
+    #Currently can't deal with alternatives
+    print("pop")
 
