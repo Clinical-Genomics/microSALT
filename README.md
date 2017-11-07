@@ -3,9 +3,12 @@ WIP repo of a MLST pipeline.
 
 ## Dependencies
 * Python 3.6
-* BLAST
-* SpaDES
 * MySQL
+
+* BLAST
+* CutAdapt
+* SpaDES
+
 
 ## Database info
 An additional mysql.yml file is required to be present in the microSALT sub-folder.

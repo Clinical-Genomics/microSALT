@@ -10,7 +10,8 @@ slurm_header:
 
 #Default file folders
 folders:
-  indata: "/home/isak.sylvin/CG_MLST/indata"
+  installations: "/home/isak.sylvin/CG_MLST/"
+  #indata: "/home/isak.sylvin/CG_MLST/indata"
   results: "/home/isak.sylvin/CG_MLST/results"
   references: "/home/isak.sylvin/CG_MLST/references/definitions"
   profiles: "/home/isak.sylvin/CG_MLST/references/profiles"
