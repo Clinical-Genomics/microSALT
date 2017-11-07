@@ -23,25 +23,8 @@ class Job_Creator():
     self.batchfile = ""
     self.outdir = ""
 
-  def create_header(self):
-    batchfile = open(self.batchfile, "w+")
-    batchfile.write("#!/bin/bash -l\n\n")
-    batchfile.write("#SBATCH -A {}\n".format(self.config["slurm_header"]["project"]))
-    batchfile.write("#SBATCH -p {}\n".format(self.config["slurm_header"]["type"]))
-    batchfile.write("#SBATCH -n {}\n".format(self.config["slurm_header"]["threads"]))
-    batchfile.write("#SBATCH -t {}\n".format(self.config["slurm_header"]["time"]))
-    batchfile.write("#SBATCH -J {}_{}\n".format(self.config["slurm_header"]["job_name"], self.now))
-    batchfile.write("#SBATCH --qos {}\n\n".format(self.config["slurm_header"]["qos"]))
-    batchfile.close()
-
-  def create_spadesjob(self):
-    ## Write intial cli
-    batchfile = open(self.batchfile, "a+")
-    #memory is actually 128 per node regardless of cores.
-    batchfile.write("spades.py --threads {} --memory {} -o {}/assembly"\
-    .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir))
-
-    ## Establish valid file pairs
+  def verify_fastq(self):
+    """ Uses arg indir to return a list of PE fastq tuples fulfilling naming convention """
     files = os.listdir(self.indir)
     verified_files = list()
     while len(files) > 0:
@@ -60,9 +43,47 @@ class Job_Creator():
           files.pop( files.index(pairname) )
           verified_files.append(file_parts[0])
           verified_files.append(pairname)
-        else:
-          print("No pair mate found. Add an error message.")
+    return verified_files
+ 
+  def create_header(self):
+    batchfile = open(self.batchfile, "w+")
+    batchfile.write("#!/bin/bash -l\n\n")
+    batchfile.write("#SBATCH -A {}\n".format(self.config["slurm_header"]["project"]))
+    batchfile.write("#SBATCH -p {}\n".format(self.config["slurm_header"]["type"]))
+    batchfile.write("#SBATCH -n {}\n".format(self.config["slurm_header"]["threads"]))
+    batchfile.write("#SBATCH -t {}\n".format(self.config["slurm_header"]["time"]))
+    batchfile.write("#SBATCH -J {}_{}\n".format(self.config["slurm_header"]["job_name"], self.now))
+    batchfile.write("#SBATCH --qos {}\n\n".format(self.config["slurm_header"]["qos"]))
+    batchfile.close()
 
+  def create_trimjob(self):
+    batchfile = open(self.batchfile, "a+")
+    files = self.verify_fastq()
+  #Currently default values
+    if len(files) % 2 != 0:
+      print("Some kind of error here!")
+    else:
+      i=0
+      while i < len(files):
+        outfile = files[i].split('.')[0][:-2]
+        batchfile.write("trimmomatic-0.36.jar PE -threads {} -phred33 {}/{} {}/{} {}/{}_trim_front_pair.fq {}/{}_trim_front_unpair.fq\
+        {}/{}_trim_rev_pair.fq {}/{}_trim_rev_unpair.fq\
+        ILLUMINACLIP:{}/Trimmomatic-0.36/adapters/NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n\n"\
+        .format(self.config["slurm_header"]["threads"], self.indir, files[i], self.indir, files[i+1], self.config["folders"]["results"],\
+        outfile, self.config["folders"]["results"], outfile, self.config["folders"]["results"], outfile, self.config["folders"]["results"],\
+        outfile, self.config["folders"]["installations"]))
+        i=i+2
+      batchfile.write("\n\n")
+    batchfile.close()
+
+  def create_spadesjob(self):
+    ## Write intial cli
+    batchfile = open(self.batchfile, "a+")
+    #memory is actually 128 per node regardless of cores.
+    batchfile.write("spades.py --threads {} --memory {} -o {}/assembly"\
+    .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir))
+    
+    verified_files = self.verify_fastq()
     ## Write valid file pairs
     pairno = 0
     for file in verified_files:
@@ -107,5 +128,6 @@ class Job_Creator():
     self.batchfile = "{}/runfile.sbatch".format(self.outdir)
 
     self.create_header()
+    self.create_trimjob()
     self.create_spadesjob()
     self.create_blastjob()
