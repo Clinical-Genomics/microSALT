@@ -6,7 +6,9 @@
 
 import click
 import os
+import pdb
 import re
+import sys
 import time
 import yaml
 
@@ -14,18 +16,22 @@ class Job_Creator():
 
   fileformat = re.compile('(\d{1}_\d{6}_\w{9}_.{10,12}_\w{8,12}_)(\d{1})(.fastq.gz)') 
 
-  def __init__(self, indir, organism, config):
+  def __init__(self, indir, organism, config, log):
     self.config = config
     self.now = time.strftime("%Y.%m.%d_%H.%M.%S")
     self.indir = os.path.abspath(indir)
     self.name = os.path.basename(os.path.normpath(indir))
     self.organism = organism
+    self.logger = log
     self.batchfile = ""
     self.outdir = ""
 
   def verify_fastq(self):
     """ Uses arg indir to return a list of PE fastq tuples fulfilling naming convention """
     files = os.listdir(self.indir)
+    if files == []:
+      self.logger.error("No fastq files found in specified directory. Exited.")
+      sys.exit()
     verified_files = list()
     while len(files) > 0:
       file_parts = self.fileformat.match( files.pop(0) )
@@ -36,13 +42,16 @@ class Job_Creator():
         elif file_parts[2] == '2':
           pairno = '1'
         else:
-          print("No pair mate found. Add an error message.")
-
+          self.logger.error("Some fastq files in directory have no mate. Exited.")
+          sys.exit()
         pairname = "{}{}{}".format(file_parts[1], pairno, file_parts[3])
         if pairname in files:
           files.pop( files.index(pairname) )
           verified_files.append(file_parts[0])
           verified_files.append(pairname)
+    if verified_files == []:
+      self.logger.error("No correctly named fastq files found in directory. Exited.")
+      sys.exit()
     return verified_files
  
   def create_header(self):

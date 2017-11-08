@@ -11,7 +11,6 @@ slurm_header:
 #Default file folders
 folders:
   installations: "/home/isak.sylvin/CG_MLST/"
-  #indata: "/home/isak.sylvin/CG_MLST/indata"
-  results: "/home/isak.sylvin/CG_MLST/results"
-  references: "/home/isak.sylvin/CG_MLST/references/definitions"
-  profiles: "/home/isak.sylvin/CG_MLST/references/profiles"
+  results: "/mnt/hds/proj/cust015/mlst/results"
+  references: "/mnt/hds/proj/cust015/mlst/references/definitions"
+  profiles: "/mnt/hds/proj/cust015/mlst/references/profiles"
