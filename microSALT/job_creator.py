@@ -24,7 +24,7 @@ class Job_Creator():
     self.organism = organism
     self.logger = log
     self.batchfile = ""
-    self.outdir = ""
+    self.outdir = "{}/{}_{}".format(self.config["folders"]["results"],self.name, self.now)
 
   def verify_fastq(self):
     """ Uses arg indir to return a list of PE fastq tuples fulfilling naming convention """
@@ -78,9 +78,8 @@ class Job_Creator():
         batchfile.write("trimmomatic-0.36.jar PE -threads {} -phred33 {}/{} {}/{} {}/{}_trim_front_pair.fq {}/{}_trim_front_unpair.fq\
         {}/{}_trim_rev_pair.fq {}/{}_trim_rev_unpair.fq\
         ILLUMINACLIP:{}/Trimmomatic-0.36/adapters/NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n\n"\
-        .format(self.config["slurm_header"]["threads"], self.indir, files[i], self.indir, files[i+1], self.config["folders"]["results"],\
-        outfile, self.config["folders"]["results"], outfile, self.config["folders"]["results"], outfile, self.config["folders"]["results"],\
-        outfile, self.config["folders"]["installations"]))
+        .format(self.config["slurm_header"]["threads"], self.indir, files[i], self.indir, files[i+1], self.outdir,\
+        outfile, self.outdir, outfile, self.outdir, outfile, self.outdir, outfile, self.config["folders"]["installations"]))
         i=i+2
       batchfile.write("\n\n")
     batchfile.close()
@@ -115,23 +114,27 @@ class Job_Creator():
     indexed = 0
     refs = os.listdir(self.config["folders"]["references"])
     for file in refs:
-      hit = re.search('({}\w+).xmfa'.format(self.organism), file)
+      hit = re.search('({}\w*).xmfa'.format(self.organism), file)
       if hit:
         refname = hit.group(1)
-      if re.search('({}\w+).n\w+'.format(self.organism), file):
+      if re.search('{}\w*.\w+'.format(self.organism), file):
         indexed = indexed + 1
+    if refname == "":
+      self.logger.error("Bad reference name given, no reference database found!")
+      sys.exit()
 
     if indexed < 5:
       batchfile.write("cd {} && makeblastdb -in {}/{}.xmfa -dbtype nucl -parse_seqids -out {}\n".format(\
       self.config["folders"]["references"], self.config["folders"]["references"], refname, refname))
     #create run
-    blast_format = "7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send"
+    blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send\""
     batchfile.write("blastn -db {}/{} -query {}/assembly/contigs.fasta -out {}/loci_query_tab.txt -num_threads {} -max_target_seqs 1 -outfmt {}\n\n".format(\
     self.config["folders"]["references"], refname, self.outdir, self.outdir, self.config["slurm_header"]["threads"], blast_format))
 
 
   def create_job(self):
-    self.outdir = "{}/{}_{}".format(self.config["folders"]["results"],self.name, self.now)
+    import pdb
+    pdb.set_trace()
     if not os.path.exists(self.outdir):
       os.makedirs(self.outdir)
     self.batchfile = "{}/runfile.sbatch".format(self.outdir)

@@ -1,5 +1,6 @@
-locioser/mysql.yml
-locioser/__pycache__
+microSALT/mysql.yml
+microSALT/__pycache__
+microSALT/microSALT.log
 *.egg-info
 *pyc
 *.swp

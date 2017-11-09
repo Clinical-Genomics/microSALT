@@ -29,10 +29,8 @@ class DB_Manipulator:
     self.metadata = MetaData(self.engine)
     self.profiletables = dict()
     ## Tables
-    self.blasttable = Table('blast', self.metadata,
-        Column('run', String(40), primary_key=True),
-        Column('date_analysis', DateTime),
-        Column('organism', String(30)),
+    self.samples = Table('samples', self.metadata,
+        Column('CG_ID_Sample', String(15), primary_key=True),
         Column('loci', String(10)),
         Column('assumed_ST', SmallInteger),
         Column('allele', SmallInteger),
@@ -47,6 +45,13 @@ class DB_Manipulator:
         Column('contig_end', Integer),
         Column('loci_start', Integer),
         Column('loci_end', Integer),
+      )
+    #Assuming this ID mess holds, still unsure  
+    self.projects = Table('projects', self.metadata,
+        Column('CG_ID_Project', String(15), primary_key=True),
+        Column('date_analysis', DateTime),
+        Column('organism', String(30)),
+        Column('ST', SmallInteger),
       )
 
     indata = os.listdir(self.config["folders"]["profiles"])
@@ -73,18 +78,18 @@ class DB_Manipulator:
     self.create_tables()
 
   def create_tables(self):
-      if not self.engine.dialect.has_table(self.engine, 'blast'):
-        self.blasttable.create()
+      if not self.engine.dialect.has_table(self.engine, 'samples'):
+        self.samples.create()
       for k,v in self.profiletables.items():
         if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
           self.profiletables[k].create()
           self.init_profiletable(k, v)         
  
-  def add_blastrecord(self, data_dict):
+  def add_samplesrecord(self, data_dict):
     #TODO: Dictionary must contain all values found in fields list. Otherwise return error.
-    inserter = self.blasttable.insert()
+    inserter = self.samples.insert()
     #TODO: Checks if entry exists. Give a bucket of errors atm if duplicate record. Should use PK!
-    if not self.blasttable.select((self.blasttable.c.run == data_dict['run']) & (self.blasttable.c.contig_name == data_dict['contig_name'])).execute().fetchone():
+    if not self.samples.select((self.samples.c.run == data_dict['run']) & (self.samples.c.contig_name == data_dict['contig_name'])).execute().fetchone():
       inserter.execute(data_dict)
  
   def init_profiletable(self, filename, table):
@@ -106,15 +111,15 @@ class DB_Manipulator:
             linedict[head[7]] = line[7]
             data.execute(linedict)
  
-  def get_blastcolumns(self):
+  def get_samplescolumns(self):
     """ Returns a dictionary where each column is a key. Makes re-entry easier """
-    return dict.fromkeys(self.blasttable.c.keys())
+    return dict.fromkeys(self.samples.c.keys())
 
-  def get_all_blastrecords(self):
-    return self.blasttable.select().execute().fetchall()
+  def get_all_samplesrecords(self):
+    return self.samples.select().execute().fetchall()
 
   def st2allele(self, entry):
-    """ Takes an entire blast table column and returns the correct allele number """
+    """ Takes an entire samples table column and returns the correct allele number """
     #Query correct table
     for k,v in self.profiletables.items():
       if k == entry['organism']:
