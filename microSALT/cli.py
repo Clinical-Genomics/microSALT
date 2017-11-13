@@ -24,7 +24,7 @@ def root(ctx):
     """ Fundamental MLST pipeline """
     install_dir = os.path.dirname(os.path.realpath(__file__))
     #Load config yaml
-    with open("{}/config.yml".format(install_dir), 'r') as conf:
+    with open("{}/configs/config.yml".format(install_dir), 'r') as conf:
       config = yaml.load(conf)
     ctx.obj['config'] = config
 

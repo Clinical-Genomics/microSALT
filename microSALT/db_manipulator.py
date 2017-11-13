@@ -18,7 +18,7 @@ import pdb # debug
 class DB_Manipulator:
 
   # Keeping mysql.yml seperate lets us share the main config one without security issues
-  with open("{}/mysql.yml".format(os.path.dirname(os.path.realpath(__file__))), 'r') as conf:
+  with open("{}/configs/mysql.yml".format(os.path.dirname(os.path.realpath(__file__))), 'r') as conf:
     mysql = yaml.load(conf)
 
   def __init__(self, config, log):

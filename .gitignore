@@ -1,4 +1,4 @@
-microSALT/mysql.yml
+microSALT/configs/mysql.yml
 microSALT/__pycache__
 microSALT/microSALT.log
 *.egg-info
