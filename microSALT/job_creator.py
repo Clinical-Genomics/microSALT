@@ -14,7 +14,7 @@ import yaml
 
 class Job_Creator():
 
-  fileformat = re.compile('(\d{1}_\d{6}_\w{9}_.{10,12}_\w{8,12}_)(\d{1})(.fastq.gz)') 
+  fileformat = re.compile('(\d{1}_\d{6}_\w{9}_.{5,12}_\w{8,12}_)(\d{1})(.fastq.gz)') 
 
   def __init__(self, indir, organism, config, log):
     self.config = config
@@ -68,20 +68,16 @@ class Job_Creator():
   def create_trimjob(self):
     batchfile = open(self.batchfile, "a+")
     files = self.verify_fastq()
-  #Currently default values
-    if len(files) % 2 != 0:
-      print("Some kind of error here!")
-    else:
-      i=0
-      while i < len(files):
-        outfile = files[i].split('.')[0][:-2]
-        batchfile.write("trimmomatic-0.36.jar PE -threads {} -phred33 {}/{} {}/{} {}/{}_trim_front_pair.fq {}/{}_trim_front_unpair.fq\
-        {}/{}_trim_rev_pair.fq {}/{}_trim_rev_unpair.fq\
-        ILLUMINACLIP:{}/Trimmomatic-0.36/adapters/NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n\n"\
-        .format(self.config["slurm_header"]["threads"], self.indir, files[i], self.indir, files[i+1], self.outdir,\
-        outfile, self.outdir, outfile, self.outdir, outfile, self.outdir, outfile, self.config["folders"]["installations"]))
-        i=i+2
-      batchfile.write("\n\n")
+    i=0
+    while i < len(files):
+      outfile = files[i].split('.')[0][:-2]
+      batchfile.write("trimmomatic-0.36.jar PE -threads {} -phred33 {}/{} {}/{} {}/{}_trim_front_pair.fq {}/{}_trim_front_unpair.fq\
+      {}/{}_trim_rev_pair.fq {}/{}_trim_rev_unpair.fq\
+      ILLUMINACLIP:{}/Trimmomatic-0.36/adapters/NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n\n"\
+      .format(self.config["slurm_header"]["threads"], self.indir, files[i], self.indir, files[i+1], self.outdir,\
+      outfile, self.outdir, outfile, self.outdir, outfile, self.outdir, outfile, self.config["folders"]["installations"]))
+      i=i+2
+    batchfile.write("\n\n")
     batchfile.close()
 
   def create_spadesjob(self):
@@ -108,7 +104,6 @@ class Job_Creator():
     #index database
     batchfile = open(self.batchfile, "a+")
 
-    #TODO: Put these as two functions in scraper and call a scraper object.
     #Establish organism
     refname = ""
     indexed = 0
@@ -133,8 +128,6 @@ class Job_Creator():
 
 
   def create_job(self):
-    import pdb
-    pdb.set_trace()
     if not os.path.exists(self.outdir):
       os.makedirs(self.outdir)
     self.batchfile = "{}/runfile.sbatch".format(self.outdir)
@@ -143,3 +136,4 @@ class Job_Creator():
     self.create_trimjob()
     self.create_spadesjob()
     self.create_blastjob()
+    self.logger.info("Created runfile for project {} in folder {}".format(self.name, self.outdir))

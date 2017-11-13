@@ -6,35 +6,53 @@
 
 import click
 import os
+import pdb
 import re
+import sys
 import time
 import yaml
 
 from microSALT import db_manipulator
 
-import pdb # debug
 
 class Scraper():
 
-  def __init__(self, infile, config):
+  def __init__(self, infile, config, log):
     self.config = config
+    self.logger = log
     self.infile = os.path.abspath(infile)
-    self.blastdb=db_manipulator.DB_Manipulator(config)
+    self.db_pusher=db_manipulator.DB_Manipulator(config, self.logger)
 
-  def scrape_blast_loci(self):
+  def scrape_loci_output(self):
     #Assign each element correct keys
-    columns = self.blastdb.get_blastcolumns() 
-
-
-    with open("{}".format(self.infile), 'r') as inblast:
-      #Grab database = organism from blast output
-      inblast.readline()
-      inblast.readline()
-      db = inblast.readline()
+    columns = self.db_pusher.get_columns('samples') 
+    pcolumns = self.db_pusher.get_columns('projects')
+    if not os.path.exists(self.infile):
+      self.logger.error("Invalid file path to infile, {}".format(self.infile))
+      sys.exit()
+    with open("{}".format(self.infile), 'r') as insample:
+      #Grab database = organism from sample output
+      insample.readline()
+      insample.readline()
+      db = insample.readline()
       db = db.rstrip().split(' ')
-      columns['organism'] = os.path.basename(os.path.normpath(db[2]))
-      
-      for line in inblast:
+
+      #Get run and date from folder structure
+      rundir = os.path.basename(os.path.dirname(self.infile))
+      rundir = rundir.split('_')
+      columns["CG_ID_sample"] = rundir[0]
+      rundir[1] = re.sub('\.','-',rundir[1])
+      rundir[2] = re.sub('\.',':',rundir[2])
+ 
+      #TODO: Fetch from LIMS, setting placeholder for now
+      pcolumns["CG_ID_project"] = "P-{}".format(columns["CG_ID_sample"])
+      pcolumns["date_analysis"] = "{} {}".format(rundir[1], rundir[2])
+      pcolumns['organism'] = os.path.basename(os.path.normpath(db[2]))
+      pcolumns['ST'] = 0 #Should not be necessary, but safer.
+      self.db_pusher.add_record(pcolumns, 'projects')     
+
+      columns["CG_ID_project"] = "P-{}".format(columns["CG_ID_sample"]) 
+      for line in insample:
         #Ignore commented fields
         if not line[0] == '#':
           elem_list = line.rstrip().split("\t")
@@ -61,22 +79,13 @@ class Scraper():
           columns["contig_length"] = nodeinfo[3]
           columns["contig_coverage"] = nodeinfo[5]
 
-          #Get run and date from folder structure
-          rundir = os.path.basename(os.path.dirname(self.infile))
-          rundir = rundir.split('_')
-          columns["run"] = rundir[0]
-          rundir[1] = re.sub('\.','-',rundir[1])
-          rundir[2] = re.sub('\.',':',rundir[2])
-          columns["date_analysis"] = "{} {}".format(rundir[1], rundir[2])
-
+          #TODO: REFIX THIS
           #Get allele from ST number
-          columns['allele'] = self.blastdb.st2allele(columns) 
-          self.blastdb.add_blastrecord(columns)
+          columns['allele'] = self.db_pusher.st2allele(pcolumns['organism'], columns['loci'], columns['assumed_ST'])
+          self.db_pusher.add_record(columns, 'samples')
 
-#Take in assembly stats
-#Take in QC yaml output (Robin knows)
-#Take in LIMSid -> udfinfo (Kenny knows)
-
-#Parse files
-#Dump into database (via db manipulator)
+      #TODO: Fetch from LIMS, setting placeholder for now
+      ST = self.db_pusher.alleles2st(columns['CG_ID_sample'])
+      self.db_pusher.update_record(pcolumns, 'projects', {'ST':ST})
+    self.logger.info("Added a record to the database")
 

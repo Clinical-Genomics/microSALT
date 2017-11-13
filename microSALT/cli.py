@@ -53,8 +53,8 @@ def create_job(ctx, indir, organism):
 @click.argument('infile')
 @click.pass_context
 def scrape(ctx, infile):
-  garbageman = scraper.Scraper(infile, ctx.obj['config'])
-  garbageman.scrape_blast_loci()
+  garbageman = scraper.Scraper(infile, ctx.obj['config'], ctx.obj['log'])
+  garbageman.scrape_loci_output()
 
 @root.command()
 @click.pass_context
