@@ -30,15 +30,17 @@ class DB_Manipulator:
     self.metadata = MetaData(self.engine)
     self.profiletables = dict()
     ## Tables
-    self.projects = Table('projects', self.metadata,
-        Column('CG_ID_project', String(15), primary_key=True),
+    self.samples = Table('samples', self.metadata,
+        Column('CG_ID_sample', String(15), primary_key=True, nullable=False),
+        Column('CG_ID_project', String(15)),
+        Column('Customer_ID_sample', String(15)),
+        Column('Customer_ID_project', String(15)),
         Column('date_analysis', DateTime),
         Column('organism', String(30)),
         Column('ST', SmallInteger, default=-1),
       )
-    self.samples = Table('samples', self.metadata,
-        Column('CG_ID_project', String(15), ForeignKey(self.projects.c.CG_ID_project), nullable=False),
-        Column('CG_ID_sample', String(15), primary_key=True),
+    self.seq_types = Table('seq_types', self.metadata,
+        Column('CG_ID_sample', String(15), ForeignKey(self.samples.c.CG_ID_sample), primary_key=True),
         Column('loci', String(10)),
         Column('assumed_ST', SmallInteger),
         Column('allele', SmallInteger),
@@ -80,12 +82,12 @@ class DB_Manipulator:
     self.create_tables()
 
   def create_tables(self):
-      if not self.engine.dialect.has_table(self.engine, 'projects'):
-        self.projects.create()
-        self.logger.info("Created projects table")
       if not self.engine.dialect.has_table(self.engine, 'samples'):
         self.samples.create()
         self.logger.info("Created samples table")
+      if not self.engine.dialect.has_table(self.engine, 'seq_types'):
+        self.seq_types.create()
+        self.logger.info("Created sequencing types table")
       for k,v in self.profiletables.items():
         if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
           self.profiletables[k].create()
@@ -169,14 +171,9 @@ class DB_Manipulator:
   def alleles2st(self, cg_sid):
     """Takes a CG sample ID and calculates most likely ST"""
     # TODO: Can be cleaned A LOT.
-    pids = self.session.query(self.samples.c.CG_ID_project).filter(self.samples.c.CG_ID_sample==cg_sid).all()
-    if not pids.count(pids[0]) == len(pids):
-      self.logger.error("One sample shared over multiple projects. Unable to set ST. Exited.")
-      sys.exit()
-    pid = pids[0][0]
-    organism = self.session.query(self.projects.c.organism).filter(self.projects.c.CG_ID_project==pid).scalar()
+    organism = self.session.query(self.samples.c.organism).filter(self.samples.c.CG_ID_sample==cg_sid).scalar()
     #ONLY GRABS ALLELES WITH 100% ID 
-    alleles = self.session.query(self.samples.c.loci, self.samples.c.allele).filter(self.samples.c.CG_ID_sample==cg_sid, self.samples.c.identity==100).all()  
+    alleles = self.session.query(self.seq_types.c.loci, self.seq_types.c.allele).filter(self.seq_types.c.CG_ID_sample==cg_sid, self.seq_types.c.identity==100).all()  
     #Ugly check that duplicate entries dont exist
     alle_list = list()
     for item in alleles:
@@ -194,7 +191,7 @@ class DB_Manipulator:
           index += 1
         ST = self.session.query(v).filter(exec(filtero)).all()
         if ST == []:
-          self.logger.info("No ST for allele combo found. Setting ST to -1.")
+          self.logger.info("No ST for allele combo found. Setting ST to 0.")
           return 0
         else: 
           return ST

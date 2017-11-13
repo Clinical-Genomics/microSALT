@@ -25,8 +25,8 @@ class Scraper():
 
   def scrape_loci_output(self):
     #Assign each element correct keys
-    columns = self.db_pusher.get_columns('samples') 
-    pcolumns = self.db_pusher.get_columns('projects')
+    columns = self.db_pusher.get_columns('seq_types') 
+    pcolumns = self.db_pusher.get_columns('samples')
     if not os.path.exists(self.infile):
       self.logger.error("Invalid file path to infile, {}".format(self.infile))
       sys.exit()
@@ -40,6 +40,7 @@ class Scraper():
       #Get run and date from folder structure
       rundir = os.path.basename(os.path.dirname(self.infile))
       rundir = rundir.split('_')
+      pcolumns["CG_ID_sample"] = rundir[0]
       columns["CG_ID_sample"] = rundir[0]
       rundir[1] = re.sub('\.','-',rundir[1])
       rundir[2] = re.sub('\.',':',rundir[2])
@@ -49,9 +50,8 @@ class Scraper():
       pcolumns["date_analysis"] = "{} {}".format(rundir[1], rundir[2])
       pcolumns['organism'] = os.path.basename(os.path.normpath(db[2]))
       pcolumns['ST'] = 0 #Should not be necessary, but safer.
-      self.db_pusher.add_record(pcolumns, 'projects')     
+      self.db_pusher.add_record(pcolumns, 'samples')     
 
-      columns["CG_ID_project"] = "P-{}".format(columns["CG_ID_sample"]) 
       for line in insample:
         #Ignore commented fields
         if not line[0] == '#':
@@ -82,10 +82,10 @@ class Scraper():
           #TODO: REFIX THIS
           #Get allele from ST number
           columns['allele'] = self.db_pusher.st2allele(pcolumns['organism'], columns['loci'], columns['assumed_ST'])
-          self.db_pusher.add_record(columns, 'samples')
+          self.db_pusher.add_record(columns, 'seq_types')
 
       #TODO: Fetch from LIMS, setting placeholder for now
       ST = self.db_pusher.alleles2st(columns['CG_ID_sample'])
-      self.db_pusher.update_record(pcolumns, 'projects', {'ST':ST})
+      self.db_pusher.update_record(pcolumns, 'samples', {'ST':ST})
     self.logger.info("Added a record to the database")
 
