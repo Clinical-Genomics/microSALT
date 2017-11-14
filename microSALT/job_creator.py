@@ -25,6 +25,7 @@ class Job_Creator():
     self.logger = log
     self.batchfile = ""
     self.outdir = "{}/{}_{}".format(self.config["folders"]["results"],self.name, self.now)
+    self.trimmed_files = dict()
 
   def verify_fastq(self):
     """ Uses arg indir to return a list of PE fastq tuples fulfilling naming convention """
@@ -66,24 +67,31 @@ class Job_Creator():
     batchfile.close()
 
   def create_trimjob(self):
+    outfiles = dict()
+    outfiles['fp'] = "{}/{}_trim_front_pair.fq".format(self.outdir, outfile)
+    outfiles['fu'] = "{}/{}_trim_front_unpair.fq".format(self.outdir, outfile)
+    outfiles['rp'] = "{}/{}_trim_rev_pair.fq".format(self.outdir, outfile)
+    outfiles['ru'] = "{}/{}_trim_rev_unpair.fq".format(self.outdir, outfile)
+
     batchfile = open(self.batchfile, "a+")
     files = self.verify_fastq()
     i=0
     while i < len(files):
       outfile = files[i].split('.')[0][:-2]
-      batchfile.write("trimmomatic-0.36.jar PE -threads {} -phred33 {}/{} {}/{} {}/{}_trim_front_pair.fq {}/{}_trim_front_unpair.fq\
-      {}/{}_trim_rev_pair.fq {}/{}_trim_rev_unpair.fq\
+      batchfile.write("# Trimmomatic set {}".format(i+1))
+      batchfile.write("trimmomatic-0.36.jar PE -threads {} -phred33 {}/{} {}/{} {} {} {} {}\
       ILLUMINACLIP:{}/Trimmomatic-0.36/adapters/NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n\n"\
-      .format(self.config["slurm_header"]["threads"], self.indir, files[i], self.indir, files[i+1], self.outdir,\
-      outfile, self.outdir, outfile, self.outdir, outfile, self.outdir, outfile, self.config["folders"]["installations"]))
+      .format(self.config["slurm_header"]["threads"], self.indir, files[i], self.indir, files[i+1],\
+      outfiles['fp'], outfiles['fu'], outfiles['rp'], outfiles['ru'], self.config["folders"]["installations"]))
       i=i+2
-    batchfile.write("\n\n")
     batchfile.close()
+    self.trimmed_files = outfiles
 
   def create_spadesjob(self):
     ## Write intial cli
     batchfile = open(self.batchfile, "a+")
     #memory is actually 128 per node regardless of cores.
+    batchfile.write("# Spades assembly")
     batchfile.write("spades.py --threads {} --memory {} -o {}/assembly"\
     .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir))
     
@@ -119,13 +127,14 @@ class Job_Creator():
       sys.exit()
 
     if indexed < 5:
-      batchfile.write("cd {} && makeblastdb -in {}/{}.xmfa -dbtype nucl -parse_seqids -out {}\n".format(\
+      batchfile.write("# Blast database indexing. Only necessary for initial run of organism")
+      batchfile.write("cd {} && makeblastdb -in {}/{}.xmfa -dbtype nucl -parse_seqids -out {}\n\n".format(\
       self.config["folders"]["references"], self.config["folders"]["references"], refname, refname))
     #create run
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send\""
+    batchfile.write("# BLAST MLST alignment")
     batchfile.write("blastn -db {}/{} -query {}/assembly/contigs.fasta -out {}/loci_query_tab.txt -num_threads {} -max_target_seqs 1 -outfmt {}\n\n".format(\
     self.config["folders"]["references"], refname, self.outdir, self.outdir, self.config["slurm_header"]["threads"], blast_format))
-
 
   def create_job(self):
     if not os.path.exists(self.outdir):

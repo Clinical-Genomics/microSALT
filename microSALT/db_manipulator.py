@@ -8,16 +8,20 @@ import click
 import os
 import pymysql
 import re
-from microSALT.tables import samples, seq_types, profiles
+from microSALT import Base
+from microSALT.tables.samples import Samples
+from microSALT.tables.seq_types import Seq_types
+from microSALT.tables.profiles import Profiles
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 import yaml
 
 import pdb # debug
 
+
 #TODO: Rewrite all pushes/queries through session+commit
 class DB_Manipulator:
-
+ 
   # Keeping mysql.yml seperate lets us share the main config one without security issues
   with open("{}/configs/mysql.yml".format(os.path.dirname(os.path.realpath(__file__))), 'r') as conf:
     mysql = yaml.load(conf)
@@ -29,25 +33,30 @@ class DB_Manipulator:
     Session = sessionmaker(bind=self.engine)
     self.session = Session()
     self.metadata = MetaData(self.engine)
-    self.samples = samples.Samples(self.metadata).table
-    self.seq_types = seq_types.Seq_types(self.metadata).table
-    self.profiles = profiles.Profiles(self.metadata, self.config).tables
+    #TODO: Switch profiles to ORM format
+    self.profiles = Profiles(self.metadata, self.config).tables
 
     self.create_tables()
 
   def create_tables(self):
       if not self.engine.dialect.has_table(self.engine, 'samples'):
-        self.samples.create()
+        self.samples.__table__.create(self.engine)
         self.logger.info("Created samples table")
       if not self.engine.dialect.has_table(self.engine, 'seq_types'):
-        self.seq_types.create()
+        self.seq_types.__table__.create(self.engine)
         self.logger.info("Created sequencing types table")
       for k,v in self.profiles.items():
         if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
           self.profiles[k].create()
           self.init_profiletable(k, v)       
+
+  def _is_orm(self, tablename):
+    try:
+      eval("self.{}.__table__".format(tablename))
+    except AttributeError:
+      return False
  
-  def add_record(self, data_dict, tablename):
+  def add_rec(self, data_dict, tablename):
     """ Adds a record to the specified table through a dict with columns as keys.
         Use in tandem with get_columns for best results """
    
@@ -68,7 +77,28 @@ class DB_Manipulator:
     else:
       self.logger.info("Failed to insert duplicate record into table {}".format(tablename))
 
-  def update_record(self, data_dict, tablename, indict):
+  def add_rec_orm(self, data_dict, tablename):
+    #Check for duplicate
+    pk_list = eval("{}.__table__.primary_key.columns.keys()".format(tablename))
+    #Check key collision, REALLY have to streamline this.
+    statem  = "self.session.query("
+    for item in pk_list:
+      statem += "{}.{}, ".format(tablename, item)
+    statem +=").filter("
+    for item in pk_list:
+      statem += "{}.{}=='{}', ".format(tablename, item, data_dict[item])
+    statem +=").all()"
+
+    if not eval(statem):   
+      newobj = eval("{}()".format(tablename))
+      for k, v in data_dict.items():
+        exec("newobj.{} = v".format(k, v))
+      self.session.add(newobj)
+      self.session.commit()
+    else:
+      self.logger.info("Failed to insert duplicate record into table {}".format(tablename))
+
+  def upd_rec(self, data_dict, tablename, indict):
     #Oh dear.. Just happy it works tbh
     instring = ""
     for k,v in data_dict.items():
@@ -86,6 +116,17 @@ class DB_Manipulator:
       input += "{}={}".format(k,v)
     input += ")"
     eval(input).execute()
+
+  def upd_rec_orm(self, data_dict, tablename, indict):
+    argstring = ""
+    for k,v in data_dict.items():
+      "{}={}, ".format(k, v)
+    if len(eval("self.session.query({}).filter_by({}).all()".format(tablename, argstring))) > 1:
+      self.logger.error("More than 1 record found when updating. Exited.")
+      sys.exit()
+    else:
+      eval("self.session.query({}).filter_by({}).update({})".format(tablename, argstring, indict))  
+      self.session.commit()
 
   def init_profiletable(self, filename, table):
     data = table.insert()
@@ -105,7 +146,11 @@ class DB_Manipulator:
   
   def get_columns(self, table):
     """ Returns a dictionary where each column is a key. Makes re-entry easier """
-    return eval("dict.fromkeys(self.{}.c.keys())".format(table))
+    return eval("dict.fromkeys(self.{}.keys())".format(table))
+
+  def get_columns_orm(self, table):
+    """ Returns all records for a given ORM table"""
+    return eval("dict.fromkeys({}.__table__.columns.keys())".format(table))
 
   def get_all_records(self, table):
     """ Returns all records for a given table"""
@@ -125,9 +170,9 @@ class DB_Manipulator:
   def alleles2st(self, cg_sid):
     """Takes a CG sample ID and calculates most likely ST"""
     # TODO: Can be cleaned A LOT.
-    organism = self.session.query(self.samples.c.organism).filter(self.samples.c.CG_ID_sample==cg_sid).scalar()
+    organism = self.session.query(Samples.organism).filter(Samples.CG_ID_sample==cg_sid).scalar()
     #ONLY GRABS ALLELES WITH 100% ID 
-    alleles = self.session.query(self.seq_types.c.loci, self.seq_types.c.allele).filter(self.seq_types.c.CG_ID_sample==cg_sid, self.seq_types.c.identity==100).all()  
+    alleles = self.session.query(Seq_types.loci, Seq_types.allele).filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity==100).all()  
     #Ugly check that duplicate entries dont exist
     alle_list = list()
     for item in alleles:
@@ -149,5 +194,3 @@ class DB_Manipulator:
           return 0
         else: 
           return ST
-
-

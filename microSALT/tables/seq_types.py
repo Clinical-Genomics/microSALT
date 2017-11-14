@@ -1,36 +1,28 @@
-""" Initial script to deliver and fetch data from a database
+"""Sequencing types (blast results) table definitions
    Heavy WIP
    By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 
-import click
-import os
-import re
 from sqlalchemy import *
-import yaml
+from microSALT import Base
+from sqlalchemy.orm import relationship
 
-import pdb # debug
-
-#TODO: Rewrite all pushes/queries through session+commit
-class Seq_types:
-
-  def __init__(self, metadata):
-
-    self.table = Table('seq_types', metadata,
-        Column('CG_ID_sample', String(15), ForeignKey(metadata.tables['samples'].c.CG_ID_sample), primary_key=True),
-        Column('loci', String(10)),
-        Column('assumed_ST', SmallInteger),
-        Column('allele', SmallInteger),
-        Column('haplotype', String(5)),
-        Column('contig_name', String(20), primary_key=True),
-        Column('contig_length', Integer),
-        Column('contig_coverage', Float(6,2)),
-        Column('identity', Float(3,2)),
-        Column('evalue', String(10)),
-        Column('bitscore', SmallInteger),
-        Column('contig_start', Integer),
-        Column('contig_end', Integer),
-        Column('loci_start', Integer),
-        Column('loci_end', Integer),
-      )
+class Seq_types(Base):
+  __tablename__ = 'seq_types'
+  CG_ID_sample = Column(String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
+  samples = relationship('Samples', back_populates='seq_types')
+  loci = Column(String(10))
+  assumed_ST = Column(SmallInteger)
+  allele = Column(SmallInteger)
+  haplotype = Column(String(5))
+  contig_name = Column(String(20), primary_key=True)
+  contig_length = Column(Integer)
+  contig_coverage = Column(Float(6,2))
+  identity = Column(Float(3,2))
+  evalue = Column(String(10))
+  bitscore = Column(SmallInteger)
+  contig_start = Column(Integer)
+  contig_end = Column(Integer)
+  loci_start = Column(Integer)
+  loci_end = Column(Integer)

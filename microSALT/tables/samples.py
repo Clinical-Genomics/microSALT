@@ -1,27 +1,22 @@
-""" Initial script to deliver and fetch data from a database
+"""Samples table definition
    Heavy WIP
    By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 
-import click
-import os
-import re
 from sqlalchemy import *
-import yaml
+from microSALT import Base
+from sqlalchemy.orm import relationship
 
-import pdb # debug
 
-#TODO: Rewrite all pushes/queries through session+commit
-class Samples:
-  def __init__(self, metadata):
+class Samples(Base):
 
-    self.table = Table('samples', metadata,
-        Column('CG_ID_sample', String(15), primary_key=True, nullable=False),
-        Column('CG_ID_project', String(15)),
-        Column('Customer_ID_sample', String(15)),
-        Column('Customer_ID_project', String(15)),
-        Column('date_analysis', DateTime),
-        Column('organism', String(30)),
-        Column('ST', SmallInteger, default=-1),
-      )
+   __tablename__ = 'samples'
+   CG_ID_sample = Column(String(15), primary_key=True, nullable=False)
+   seq_types = relationship("Seq_types", back_populates="samples")
+   CG_ID_project = Column(String(15))
+   Customer_ID_sample = Column(String(15))
+   Customer_ID_project = Column(String(15))
+   date_analysis = Column(DateTime)
+   organism = Column(String(30))
+   ST = Column(SmallInteger, default=-1)

@@ -1,4 +1,4 @@
-""" Initial script to deliver and fetch data from a database
+"""Table definitions for profiles databases. Bit special since it spawns multiple tables.
    Heavy WIP
    By: Isak Sylvin, @sylvinite"""
 
