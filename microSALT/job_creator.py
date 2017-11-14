@@ -67,44 +67,59 @@ class Job_Creator():
     batchfile.close()
 
   def create_trimjob(self):
-    outfiles = dict()
-    outfiles['fp'] = "{}/{}_trim_front_pair.fq".format(self.outdir, outfile)
-    outfiles['fu'] = "{}/{}_trim_front_unpair.fq".format(self.outdir, outfile)
-    outfiles['rp'] = "{}/{}_trim_rev_pair.fq".format(self.outdir, outfile)
-    outfiles['ru'] = "{}/{}_trim_rev_unpair.fq".format(self.outdir, outfile)
-
     batchfile = open(self.batchfile, "a+")
     files = self.verify_fastq()
     i=0
+    j=1
     while i < len(files):
       outfile = files[i].split('.')[0][:-2]
-      batchfile.write("# Trimmomatic set {}".format(i+1))
+      if not outfile in self.trimmed_files:
+        self.trimmed_files[outfile] = dict()
+      self.trimmed_files[outfile]['fp'] = "{}/{}_trim_front_pair.fq".format(self.outdir, outfile)
+      self.trimmed_files[outfile]['fu'] = "{}/{}_trim_front_unpair.fq".format(self.outdir, outfile)
+      self.trimmed_files[outfile]['rp'] = "{}/{}_trim_rev_pair.fq".format(self.outdir, outfile)
+      self.trimmed_files[outfile]['ru'] = "{}/{}_trim_rev_unpair.fq".format(self.outdir, outfile)
+      
+      batchfile.write("# Trimmomatic set {}\n".format(j))
       batchfile.write("trimmomatic-0.36.jar PE -threads {} -phred33 {}/{} {}/{} {} {} {} {}\
       ILLUMINACLIP:{}/Trimmomatic-0.36/adapters/NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n\n"\
       .format(self.config["slurm_header"]["threads"], self.indir, files[i], self.indir, files[i+1],\
-      outfiles['fp'], outfiles['fu'], outfiles['rp'], outfiles['ru'], self.config["folders"]["installations"]))
+      self.trimmed_files[outfile]['fp'], self.trimmed_files[outfile]['fu'], self.trimmed_files[outfile]['rp'], self.trimmed_files[outfile]['ru'], self.config["folders"]["installations"]))
       i=i+2
+      j+=1
     batchfile.close()
-    self.trimmed_files = outfiles
 
+  def interlace_files(self):
+    """Interlaces all unpaired files"""
+    suffix = "_unpaired_interlaced.fq"
+    for name, v in self.trimmed_files.items():
+      self.logger.info("Creating unpaired interlace file for run {}".format(name))
+      f = open("{}/{}{}".format(self.outdir, name, suffix), "w")
+      pdb.set_trace()
+      fu = open("{}".format(v['fu']), "r")
+      ru = open("{}".format(v['ru']), "r")
+      f.write(fu.read())
+      f.write(ru.read())
+      f.close()
+      fu.close()
+      ru.close()
+      self.trimmed_files[name]['i'] = "{}/{}{}".format(self.outdir, name, suffix)
+    
   def create_spadesjob(self):
-    ## Write intial cli
     batchfile = open(self.batchfile, "a+")
     #memory is actually 128 per node regardless of cores.
-    batchfile.write("# Spades assembly")
+    batchfile.write("# Spades assembly\n")
     batchfile.write("spades.py --threads {} --memory {} -o {}/assembly"\
     .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir))
     
-    verified_files = self.verify_fastq()
-    ## Write valid file pairs
-    pairno = 0
-    for file in verified_files:
-      #If index is even, raise pair no
-      if (verified_files.index(file) & 1) == 0:
-        pairno = pairno + 1
-      #Set read no
-      readno = verified_files.index(file) % 2 + 1
-      batchfile.write(" --pe{}-{} {}/{}".format(pairno, readno, self.indir, file))
+    libno = 1
+    for k,v in self.trimmed_files.items():
+      batchfile.write(" --pe{}-1 {}".format(libno, self.trimmed_files[k]['fp']))
+      batchfile.write(" --pe{}-2 {}".format(libno, self.trimmed_files[k]['rp']))
+      # Method requires manager
+      #batchfile.write(" --pe{}-s {}".format(libno, self.trimmed_files[k]['i']))
+      libno += 1
+
     batchfile.write("\n\n")
     batchfile.close()
 
@@ -127,15 +142,16 @@ class Job_Creator():
       sys.exit()
 
     if indexed < 5:
-      batchfile.write("# Blast database indexing. Only necessary for initial run of organism")
+      batchfile.write("# Blast database indexing. Only necessary for initial run of organism\n")
       batchfile.write("cd {} && makeblastdb -in {}/{}.xmfa -dbtype nucl -parse_seqids -out {}\n\n".format(\
       self.config["folders"]["references"], self.config["folders"]["references"], refname, refname))
     #create run
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send\""
-    batchfile.write("# BLAST MLST alignment")
+    batchfile.write("# BLAST MLST alignment\n")
     batchfile.write("blastn -db {}/{} -query {}/assembly/contigs.fasta -out {}/loci_query_tab.txt -num_threads {} -max_target_seqs 1 -outfmt {}\n\n".format(\
     self.config["folders"]["references"], refname, self.outdir, self.outdir, self.config["slurm_header"]["threads"], blast_format))
 
+#TODO: This function will be managed outside
   def create_job(self):
     if not os.path.exists(self.outdir):
       os.makedirs(self.outdir)
@@ -143,6 +159,8 @@ class Job_Creator():
 
     self.create_header()
     self.create_trimjob()
+    # Method requires manager
+    #self.interlace_files()
     self.create_spadesjob()
     self.create_blastjob()
     self.logger.info("Created runfile for project {} in folder {}".format(self.name, self.outdir))

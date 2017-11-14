@@ -12,9 +12,9 @@ import logging
 
 from pkg_resources import iter_entry_points
 from microSALT import __version__
-from microSALT import job_creator
-from microSALT import scraper
-from microSALT import exporter
+from microSALT.job_creator import Job_Creator
+from microSALT.scraper import Scraper
+from microSALT.exporter import Exporter
 
 @click.group()
 @click.version_option(__version__)
@@ -40,24 +40,29 @@ def root(ctx):
     ch.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
     logger.addHandler(ch)
     ctx.obj['log'] = logger
+
+@root.command()
+def analyze(ctx):
+  manager = Manager(ctx.obj['config'], ctx.obj['log'])
+  manager.start_analysis()  
  
 @root.command()
 @click.argument('indir')
 @click.argument('organism')
 @click.pass_context
 def create_job(ctx, indir, organism):
-    boss = job_creator.Job_Creator(indir, organism, ctx.obj['config'], ctx.obj['log'])
-    boss.create_job()
+    worker = Job_Creator(indir, organism, ctx.obj['config'], ctx.obj['log'])
+    worker.create_job()
 
 @root.command()
 @click.argument('infile')
 @click.pass_context
 def scrape(ctx, infile):
-  garbageman = scraper.Scraper(infile, ctx.obj['config'], ctx.obj['log'])
+  garbageman = Scraper(infile, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_loci_output()
 
 @root.command()
 @click.pass_context
 def export(ctx):
-  ferryman = exporter.Exporter(ctx.obj['config'])
+  ferryman = Exporter(ctx.obj['config'])
   ferryman.std_export()
