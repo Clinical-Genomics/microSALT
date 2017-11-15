@@ -190,9 +190,12 @@ class DB_Manipulator:
         while index <  len(alleles):
           filtero += "v.c.{}=={}, ".format(alleles[index][0], alleles[index][1])
           index += 1
-        ST = self.session.query(v).filter(exec(filtero)).all()
+        ST = eval("self.session.query(v).filter({}).all()".format(filtero))
         if ST == []:
           self.logger.info("No ST for allele combo found. Setting ST to 0.")
           return 0
+        if len(ST) > 1:
+          self.logger.warning("Multiple ST found. Setting ST to -2. Manually investigate")
+          return -2
         else: 
-          return ST
+          return ST[0][0]

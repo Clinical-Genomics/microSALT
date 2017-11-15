@@ -47,7 +47,6 @@ class Scraper():
       pcolumns['CG_ID_project'] = "P-{}".format(pcolumns["CG_ID_sample"])
       pcolumns["date_analysis"] = "{} {}".format(rundir[1], rundir[2])
       pcolumns['organism'] = os.path.basename(os.path.normpath(db[2]))
-      pcolumns['ST'] = -1 #Should not be necessary, but safer.
       self.db_pusher.add_rec_orm(pcolumns, 'Samples')     
 
       for line in insample:
