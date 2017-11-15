@@ -5,6 +5,7 @@
 #!/usr/bin/env python
 
 import click
+import glob
 import os
 import pdb
 import re
@@ -121,8 +122,8 @@ class Job_Creator():
     batchfile.write("\n\n")
     batchfile.close()
 
-  def create_blastjob(self):
-    #index database
+  def create_blastjob_single(self):
+    """ Creates a blast job for instances where the definitions file is one per organism"""
     batchfile = open(self.batchfile, "a+")
 
     #Establish organism
@@ -146,10 +147,50 @@ class Job_Creator():
     #create run
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send\""
     batchfile.write("# BLAST MLST alignment\n")
-    batchfile.write("blastn -db {}/{} -query {}/assembly/contigs.fasta -out {}/loci_query_tab.txt -num_threads {} -max_target_seqs 1 -outfmt {}\n\n".format(\
+    batchfile.write("blastn -db {}/{} -query {}/assembly/contigs.fasta -out {}/loci_query_tab.txt -task megablast -num_threads {} -max_target_seqs 1 -outfmt {}\n\n".format(\
     self.config["folders"]["references"], refname, self.outdir, self.outdir, self.config["slurm_header"]["threads"], blast_format))
+    batchfile.close()
 
-  #TODO: This function will be managed outside
+  def create_blastjob_multi(self):
+    """Creates a blast job for instances where many loci definition files make up an organism"""
+    batchfile = open(self.batchfile, "a+")
+    #Expand provided name
+    orgs = os.listdir(self.config["folders"]["references"])
+    hits = 0
+    for target in orgs:
+      if self.organism in target:
+        hits += 1
+        possible = target
+    if hits == 1: 
+      self.organism = possible
+    elif hits > 1:
+      self.logger.error("Bad reference name given, multiple reference databases found!")
+      sys.exit()
+    else:
+      self.logger.error("Bad reference name given, no reference database found!")
+      sys.exit()
+    
+    #Check for indexation, makeblastdb job if not enough of them.
+    full_dir = "{}/{}".format(self.config["folders"]["references"], self.organism)
+    files = os.listdir(full_dir)
+    tfa_list = glob.glob("{}/*.tfa".format(full_dir)) 
+    nin_suff = sum([1 for elem in files if 'nin' in elem]) #one type of index file 
+    if nin_suff < len(tfa_list):
+      batchfile.write("# Blast database indexing. Only necessary for initial run of organism\n")
+      for file in tfa_list:
+        batchfile.write("cd {} && makeblastdb -in {}/{} -dbtype nucl -parse_seqids -out {}\n".format(\
+        full_dir, full_dir, os.path.basename(file),  os.path.basename(file[:-4])))
+    batchfile.write("\n")
+   
+    #Create run
+    blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send\""
+    for entry in tfa_list:
+      batchfile.write("# BLAST MLST alignment for {}, {}\n".format(self.organism, os.path.basename(entry[:-4])))
+      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/loci_query_{}.txt -task megablast -num_threads {} -max_target_seqs 1 -outfmt {}\n".format(\
+      entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
+    batchfile.write("\n")
+    batchfile.close()
+
   def create_job(self):
     if not os.path.exists(self.outdir):
       os.makedirs(self.outdir)
@@ -159,5 +200,5 @@ class Job_Creator():
     self.create_trimjob()
     self.interlace_files()
     self.create_spadesjob()
-    self.create_blastjob()
+    self.create_blastjob_multi()
     self.logger.info("Created runfile for project {} in folder {}".format(self.name, self.outdir))

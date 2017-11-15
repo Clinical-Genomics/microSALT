@@ -12,5 +12,5 @@ slurm_header:
 folders:
   installations: "/home/isak.sylvin/CG_MLST/"
   results: "/mnt/hds/proj/cust015/mlst/results"
-  references: "/mnt/hds/proj/cust015/mlst/references/definitions"
+  references: "/mnt/hds/proj/cust015/mlst/references/definitions_locisplit"
   profiles: "/mnt/hds/proj/cust015/mlst/references/profiles"

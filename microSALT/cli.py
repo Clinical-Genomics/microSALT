@@ -55,11 +55,11 @@ def create_job(ctx, indir, organism):
     worker.create_job()
 
 @root.command()
-@click.argument('infile')
+@click.argument('indir')
 @click.pass_context
-def scrape(ctx, infile):
-  garbageman = Scraper(infile, ctx.obj['config'], ctx.obj['log'])
-  garbageman.scrape_loci_output()
+def scrape(ctx, indir):
+  garbageman = Scraper(indir, ctx.obj['config'], ctx.obj['log'])
+  garbageman.scrape_all_loci()
 
 @root.command()
 @click.pass_context

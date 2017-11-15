@@ -5,6 +5,7 @@
 #!/usr/bin/env python
 
 import click
+import glob
 import os
 import pdb
 import re
@@ -17,37 +18,54 @@ from microSALT import db_manipulator
 
 class Scraper():
 
-  def __init__(self, infile, config, log):
+  def __init__(self, infolder, config, log):
     self.config = config
     self.logger = log
-    self.infile = os.path.abspath(infile)
+    self.infolder = os.path.abspath(infolder)
     self.db_pusher=db_manipulator.DB_Manipulator(config, self.logger)
+    self.CG_ID_sample = ""
 
-  def scrape_loci_output(self):
-    #Assign each element correct keys
-    columns = self.db_pusher.get_columns_orm('Seq_types') 
+  def scrape_all_loci(self):
+    q_list = glob.glob("{}/loci_query_*".format(self.infolder))
+    #Due to FK samples MUST be scraped before seq_types
+    self.scrape_sampleinfo()
+    for file in q_list:
+      #Unoptimized for multi. Calls sample once per seq_type
+      self.scrape_single_loci(file)
+    #Requires all loci results to be initialized
+    ST = self.db_pusher.alleles2st(self.CG_ID_sample)
+    self.db_pusher.upd_rec_orm({'CG_ID_sample':self.CG_ID_sample}, 'Samples', {'ST':ST})
+
+  def scrape_sampleinfo(self):
+    """Identifies sample values"""
     pcolumns = self.db_pusher.get_columns_orm('Samples')
-    if not os.path.exists(self.infile):
-      self.logger.error("Invalid file path to infile, {}".format(self.infile))
-      sys.exit()
-    with open("{}".format(self.infile), 'r') as insample:
-      insample.readline()
-      insample.readline()
-      db = insample.readline()
-      db = db.rstrip().split(' ')
 
-      #Get run and date from folder structure
-      rundir = os.path.basename(os.path.dirname(self.infile))
-      rundir = rundir.split('_')
-      pcolumns["CG_ID_sample"] = rundir[0]
-      columns["CG_ID_sample"] = rundir[0]
-      rundir[1] = re.sub('\.','-',rundir[1])
-      rundir[2] = re.sub('\.',':',rundir[2])
- 
-      pcolumns['CG_ID_project'] = "P-{}".format(pcolumns["CG_ID_sample"])
-      pcolumns["date_analysis"] = "{} {}".format(rundir[1], rundir[2])
-      pcolumns['organism'] = os.path.basename(os.path.normpath(db[2]))
-      self.db_pusher.add_rec_orm(pcolumns, 'Samples')     
+    rundir = os.path.basename(os.path.normpath(self.infolder)).split('_')
+    self.CG_ID_sample = rundir[0]
+    pcolumns["CG_ID_sample"] = self.CG_ID_sample
+    rundir[1] = re.sub('\.','-',rundir[1])
+    rundir[2] = re.sub('\.',':',rundir[2])
+
+    pcolumns['CG_ID_project'] = "P-{}".format(pcolumns["CG_ID_sample"])
+    pcolumns["date_analysis"] = "{} {}".format(rundir[1], rundir[2])
+    self.db_pusher.add_rec_orm(pcolumns, 'Samples')
+
+  #TODO: Look over column assignment, since new input probably screwed things over
+  def scrape_single_loci(self, infile):
+    """Scrapes a single blast output file for MLST results"""
+    columns = self.db_pusher.get_columns_orm('Seq_types') 
+    if not os.path.exists(self.infolder):
+      self.logger.error("Invalid file path to infolder, {}".format(self.infolder))
+      sys.exit()
+    with open("{}".format(infile), 'r') as insample:
+      insample.readline()
+      insample.readline()
+      #Takes ref db/organism from resultfile. Awkward.
+      db = insample.readline().rstrip().split(' ')
+      organ = db[2].split('/')[-2]
+      self.db_pusher.upd_rec_orm({'CG_ID_sample' : self.CG_ID_sample}, 'Samples', {'organism': organ})
+
+      columns["CG_ID_sample"] = self.CG_ID_sample
 
       for line in insample:
         #Ignore commented fields
@@ -56,30 +74,25 @@ class Scraper():
 
           columns["identity"] = elem_list[4]
           columns["evalue"] = elem_list[5]
-          columns["bitscore"] = int(elem_list[6])
+          columns["bitscore"] = elem_list[6]
           columns["contig_start"] = elem_list[7]
           columns["contig_end"] = elem_list[8]
           columns["loci_start"] = elem_list[9]
           columns["loci_end"] =  elem_list[10]
           columns["haplotype"] = elem_list[1]
 
-          #Note this ST is assumed, since one allele appear in many ST
-          columns["assumed_ST"] = int(re.search('\w+', elem_list[3]).group(0)) 
+         
+          # Split elem 3 in loci (name) and allele (number) 
+          columns["loci"] = elem_list[3].split('_')[0]
+          columns["allele"] = int(elem_list[3].split('_')[1])
 
-          # remove " + " elem 0
-          elem_list[0] = re.search('(\w+)', elem_list[0]).group(0)
-          columns["loci"] = elem_list[0]
           # split elem 2 into contig node_NO, length, cov
-          nodeinfo = elem_list.pop(2).split('_')
+          nodeinfo = elem_list[2].split('_')
           columns["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
           columns["contig_length"] = nodeinfo[3]
           columns["contig_coverage"] = nodeinfo[5]
 
-          #Get allele from ST number
-          columns['allele'] = self.db_pusher.st2allele(pcolumns['organism'], columns['loci'], columns['assumed_ST'])
           self.db_pusher.add_rec_orm(columns, 'Seq_types')
 
-      ST = self.db_pusher.alleles2st(columns['CG_ID_sample'])
-      self.db_pusher.upd_rec_orm(pcolumns, 'Samples', {'ST':ST})
-    self.logger.info("Added a record to the database")
 
+    self.logger.info("Added a record to the database")

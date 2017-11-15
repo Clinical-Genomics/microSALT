@@ -48,7 +48,7 @@ class DB_Manipulator:
         self.logger.info("Created sequencing types table")
       for k,v in self.profiles.items():
         if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
-          Profiles[k].create()
+          self.profiles[k].create()
           self.init_profiletable(k, v)       
 
   def _is_orm(self, tablename):
@@ -161,6 +161,7 @@ class DB_Manipulator:
 
   def st2allele(self, organism, loci, ST):
     """ Takes organism name, loci name and assumed ST no.  and returns the correct allele number """
+    #LEGACY CODE. Keeping for the moment in case need re-emerges.
     for k,v in self.profiles.items():
       if k == organism:
         try:
