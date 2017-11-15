@@ -14,6 +14,7 @@ from microSALT.tables.seq_types import Seq_types
 from microSALT.tables.profiles import Profiles
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
+import sys
 import yaml
 
 import pdb # debug
@@ -40,14 +41,14 @@ class DB_Manipulator:
 
   def create_tables(self):
       if not self.engine.dialect.has_table(self.engine, 'samples'):
-        self.samples.__table__.create(self.engine)
+        Samples.__table__.create(self.engine)
         self.logger.info("Created samples table")
       if not self.engine.dialect.has_table(self.engine, 'seq_types'):
-        self.seq_types.__table__.create(self.engine)
+        Seq_types.__table__.create(self.engine)
         self.logger.info("Created sequencing types table")
       for k,v in self.profiles.items():
         if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
-          self.profiles[k].create()
+          Profiles[k].create()
           self.init_profiletable(k, v)       
 
   def _is_orm(self, tablename):
@@ -120,9 +121,10 @@ class DB_Manipulator:
   def upd_rec_orm(self, data_dict, tablename, indict):
     argstring = ""
     for k,v in data_dict.items():
-      "{}={}, ".format(k, v)
+      if v != None:
+        argstring +="{}='{}', ".format(k, v)
     if len(eval("self.session.query({}).filter_by({}).all()".format(tablename, argstring))) > 1:
-      self.logger.error("More than 1 record found when updating. Exited.")
+      self.logger.error("More than 1 record found when orm updating. Exited.")
       sys.exit()
     else:
       eval("self.session.query({}).filter_by({}).update({})".format(tablename, argstring, indict))  

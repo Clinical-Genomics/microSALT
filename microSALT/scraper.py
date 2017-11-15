@@ -31,7 +31,6 @@ class Scraper():
       self.logger.error("Invalid file path to infile, {}".format(self.infile))
       sys.exit()
     with open("{}".format(self.infile), 'r') as insample:
-      #Grab database = organism from sample output
       insample.readline()
       insample.readline()
       db = insample.readline()
@@ -45,8 +44,7 @@ class Scraper():
       rundir[1] = re.sub('\.','-',rundir[1])
       rundir[2] = re.sub('\.',':',rundir[2])
  
-      #TODO: Fetch from LIMS, setting placeholder for now
-      pcolumns["CG_ID_project"] = "P-{}".format(columns["CG_ID_sample"])
+      pcolumns['CG_ID_project'] = "P-{}".format(pcolumns["CG_ID_sample"])
       pcolumns["date_analysis"] = "{} {}".format(rundir[1], rundir[2])
       pcolumns['organism'] = os.path.basename(os.path.normpath(db[2]))
       pcolumns['ST'] = -1 #Should not be necessary, but safer.
@@ -66,7 +64,6 @@ class Scraper():
           columns["loci_end"] =  elem_list[10]
           columns["haplotype"] = elem_list[1]
 
-          #Remove the bp index from the ST hit
           #Note this ST is assumed, since one allele appear in many ST
           columns["assumed_ST"] = int(re.search('\w+', elem_list[3]).group(0)) 
 
@@ -79,12 +76,10 @@ class Scraper():
           columns["contig_length"] = nodeinfo[3]
           columns["contig_coverage"] = nodeinfo[5]
 
-          #TODO: REFIX THIS
           #Get allele from ST number
           columns['allele'] = self.db_pusher.st2allele(pcolumns['organism'], columns['loci'], columns['assumed_ST'])
           self.db_pusher.add_rec_orm(columns, 'Seq_types')
 
-      #TODO: Fetch from LIMS, setting placeholder for now
       ST = self.db_pusher.alleles2st(columns['CG_ID_sample'])
       self.db_pusher.upd_rec_orm(pcolumns, 'Samples', {'ST':ST})
     self.logger.info("Added a record to the database")
