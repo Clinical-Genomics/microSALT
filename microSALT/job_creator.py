@@ -91,20 +91,19 @@ class Job_Creator():
 
   def interlace_files(self):
     """Interlaces all unpaired files"""
+    batchfile = open(self.batchfile, "a+")
+    batchfile.write("# Interlaced unpaired reads file creation\n")
     suffix = "_unpaired_interlaced.fq"
     for name, v in self.trimmed_files.items():
+      interfile = "{}/{}{}".format(self.outdir, name, suffix)
       self.logger.info("Creating unpaired interlace file for run {}".format(name))
-      f = open("{}/{}{}".format(self.outdir, name, suffix), "w")
-      pdb.set_trace()
-      fu = open("{}".format(v['fu']), "r")
-      ru = open("{}".format(v['ru']), "r")
-      f.write(fu.read())
-      f.write(ru.read())
-      f.close()
-      fu.close()
-      ru.close()
-      self.trimmed_files[name]['i'] = "{}/{}{}".format(self.outdir, name, suffix)
-    
+      batchfile.write("touch {}\n".format(interfile))
+      batchfile.write("cat {} >> {}\n".format(v['fu'], interfile))
+      batchfile.write("cat {} >> {}\n".format(v['ru'], interfile))
+      self.trimmed_files[name]['i'] = "{}".format(interfile)
+      batchfile.write("\n")
+    batchfile.close()    
+
   def create_spadesjob(self):
     batchfile = open(self.batchfile, "a+")
     #memory is actually 128 per node regardless of cores.
@@ -116,8 +115,7 @@ class Job_Creator():
     for k,v in self.trimmed_files.items():
       batchfile.write(" --pe{}-1 {}".format(libno, self.trimmed_files[k]['fp']))
       batchfile.write(" --pe{}-2 {}".format(libno, self.trimmed_files[k]['rp']))
-      # Method requires manager
-      #batchfile.write(" --pe{}-s {}".format(libno, self.trimmed_files[k]['i']))
+      batchfile.write(" --pe{}-s {}".format(libno, self.trimmed_files[k]['i']))
       libno += 1
 
     batchfile.write("\n\n")
@@ -151,7 +149,7 @@ class Job_Creator():
     batchfile.write("blastn -db {}/{} -query {}/assembly/contigs.fasta -out {}/loci_query_tab.txt -num_threads {} -max_target_seqs 1 -outfmt {}\n\n".format(\
     self.config["folders"]["references"], refname, self.outdir, self.outdir, self.config["slurm_header"]["threads"], blast_format))
 
-#TODO: This function will be managed outside
+  #TODO: This function will be managed outside
   def create_job(self):
     if not os.path.exists(self.outdir):
       os.makedirs(self.outdir)
@@ -159,8 +157,7 @@ class Job_Creator():
 
     self.create_header()
     self.create_trimjob()
-    # Method requires manager
-    #self.interlace_files()
+    self.interlace_files()
     self.create_spadesjob()
     self.create_blastjob()
     self.logger.info("Created runfile for project {} in folder {}".format(self.name, self.outdir))
