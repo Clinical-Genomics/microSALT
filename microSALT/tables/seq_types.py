@@ -5,23 +5,23 @@
 #!/usr/bin/env python
 
 from sqlalchemy import *
-from microSALT import Base
 from sqlalchemy.orm import relationship
+from microSALT import db
 
-class Seq_types(Base):
+class Seq_types(db.Model):
   __tablename__ = 'seq_types'
-  CG_ID_sample = Column(String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
+  CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
   samples = relationship('Samples', back_populates='seq_types')
-  loci = Column(String(10))
-  allele = Column(SmallInteger)
-  haplotype = Column(String(5))
-  contig_name = Column(String(20), primary_key=True)
-  contig_length = Column(Integer)
-  contig_coverage = Column(Float(6,2))
-  identity = Column(Float(3,2))
-  evalue = Column(String(10))
-  bitscore = Column(SmallInteger)
-  contig_start = Column(Integer)
-  contig_end = Column(Integer)
-  loci_start = Column(Integer)
-  loci_end = Column(Integer)
+  loci = db.Column(db.String(10))
+  allele = db.Column(db.SmallInteger)
+  haplotype = db.Column(db.String(5))
+  contig_name = db.Column(db.String(20), primary_key=True)
+  contig_length = db.Column(db.Integer)
+  contig_coverage = db.Column(db.Float(6,2))
+  identity = db.Column(db.Float(3,2))
+  evalue = db.Column(db.String(10))
+  bitscore = db.Column(db.SmallInteger)
+  contig_start = db.Column(db.Integer)
+  contig_end = db.Column(db.Integer)
+  loci_start = db.Column(db.Integer)
+  loci_end = db.Column(db.Integer)
