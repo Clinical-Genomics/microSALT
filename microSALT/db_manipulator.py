@@ -8,7 +8,7 @@ import click
 import os
 import pymysql
 import re
-from microSALT import Base
+from microSALT import db
 from microSALT.tables.samples import Samples
 from microSALT.tables.seq_types import Seq_types
 from microSALT.tables.profiles import Profiles
