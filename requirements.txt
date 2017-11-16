@@ -3,4 +3,4 @@ pymysql
 pyyaml
 sqlalchemy
 flask
-flask-sqlalchemy
+flask_sqlalchemy
