@@ -1,0 +1,81 @@
+<html>
+<head>
+
+
+
+    <title>microSALT</title>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/startbootstrap-sb-admin-2/1.0.8/css/sb-admin-2.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/1.1.2/css/buttons.bootstrap.min.css">
+    <link rel="stylesheet" href="{{url_for('static', filename='style.css')}}">
+</head>
+<body>
+<div id="wrapper">
+        <!-- Navigation -->
+    <nav class="navbar navbar-default navbar-static-top" role="navigation" style="margin-bottom: 0">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="{{ url_for('start_page') }}">Back to Start</a>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="col-lg-16">
+            <div class="panel">
+                <div class="panel-body">
+                    <h2 class="page-header"><strong>microSALT Results </strong><br><small>Clinical Micro Biology</small><small><p align="right" id="date"></p></small></h2>
+                    <footer><div class="table-responsive">
+                                <table  class="table table-bordered" >
+                                        <tr>
+                                            <th scope="row" >Sample</th>
+                                            <td>{{sample_name}}</td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row" >Analysis date</th>
+                                            <td>{{example_sample.date_analysis}}</td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row" >Organism</th>
+                                            <td>{{example_sample.organism}}</td>
+                                        </tr>
+                                </table>
+                            </div>
+                            <div class="table-responsive">
+                                <table  class="table table-bordered" >
+                                    <thead>
+                                        <tr>
+                                            <th>Loci</th>
+                                            <th width="18%">Allele</th>
+                                            <th>Contig Coverage</th>
+                                            <th>Haplotype</th>
+                                            <th>Identity</th>
+                                            <th>E-value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for s in blast %}
+                                        <tr>
+                                            <td>{{s.loci}}</td>
+                                            <td width="18%"> {{ s.allele}}</td>
+                                            <td>{{ s.contig_coverage|round(2)  }}</td>
+                                            <td>{{ s.haplotype }}</td>
+                                            <td>{{ s.identity|round(2) }}</td>
+                                            <td>{{ s.evalue }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                    </footer>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+var d = new Date();
+document.getElementById("date").innerHTML = d.toDateString();
+</script>
