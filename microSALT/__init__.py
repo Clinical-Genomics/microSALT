@@ -8,6 +8,7 @@ with open("{}/configs/mysql.yml".format(os.path.dirname(os.path.realpath(__file_
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://{}:{}@{}:{}/{}".format(mysql['user'],mysql['pw'],mysql['host'],mysql['port'],mysql['db'])
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 
