@@ -24,21 +24,30 @@
         <div class="col-lg-16">
             <div class="panel">
                 <div class="panel-body">
-                    <h2 class="page-header"><strong>microSALT Results </strong><br><small>Clinical Micro Biology</small><small><p align="right" id="date"></p></small></h2>
+                    <h2 class="page-header"><strong>microSALT Results </strong><br><small>Clinical Microbiology</small><small><p align="right" id="date"></p></small></h2>
                     <footer><div class="table-responsive">
                                 <table  class="table table-bordered" >
                                         <tr>
                                             <th scope="row" >Sample</th>
-                                            <td>{{sample_name}}</td>
+                                            <td>{{samples.CG_ID_sample}}</td>
                                         </tr>
                                         <tr>
                                             <th scope="row" >Analysis date</th>
-                                            <td>{{example_sample.date_analysis}}</td>
+                                            <td>{{samples.date_analysis}}</td>
                                         </tr>
                                         <tr>
                                             <th scope="row" >Organism</th>
-                                            <td>{{example_sample.organism}}</td>
+                                            <td>{{samples.organism.replace('_', ' ').title()}}</td>
                                         </tr>
+                                        <tr>
+                                            <th scope="row" >Sequence Type</th>
+                                            {% if samples.ST > 0 %}
+                                              <td>{{samples.ST}}</td>
+                                            {% else %}
+                                              <td>Manual review required</td>
+                                            {% endif %}
+                                        </tr>
+
                                 </table>
                             </div>
                             <div class="table-responsive">
@@ -54,7 +63,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for s in blast %}
+                                        {% for s in seq_types %}
                                         <tr>
                                             <td>{{s.loci}}</td>
                                             <td width="18%"> {{ s.allele}}</td>

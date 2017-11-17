@@ -170,12 +170,16 @@ class DB_Manipulator:
           self.logger.info("Found loci {}, which has no profile entry".format(loci))
           return 0
 
+  def get_100pc_alleles(self, cg_sid):
+    """ Only grabs alleles from a samples that have 100% hit rate. Solves most problems"""
+    return self.session.query(Seq_types.loci, Seq_types.allele).filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity==100).all()
+
   def alleles2st(self, cg_sid):
     """Takes a CG sample ID and calculates most likely ST"""
     # TODO: Can be cleaned A LOT.
     organism = self.session.query(Samples.organism).filter(Samples.CG_ID_sample==cg_sid).scalar()
-    #ONLY GRABS ALLELES WITH 100% ID 
-    alleles = self.session.query(Seq_types.loci, Seq_types.allele).filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity==100).all()  
+    #ONLY GRABS ALLELES WITH 100% ID
+    alleles =self.get_100pc_alleles(cg_sid) 
     #Ugly check that duplicate entries dont exist
     alle_list = list()
     for item in alleles:
