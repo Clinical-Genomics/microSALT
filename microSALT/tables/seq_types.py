@@ -12,7 +12,7 @@ class Seq_types(db.Model):
   __tablename__ = 'seq_types'
   CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
   samples = relationship('Samples', back_populates='seq_types')
-  loci = db.Column(db.String(10))
+  loci = db.Column(db.String(10), primary_key=True)
   allele = db.Column(db.SmallInteger)
   haplotype = db.Column(db.String(5))
   contig_name = db.Column(db.String(20), primary_key=True)
