@@ -2,3 +2,5 @@ click
 pymysql
 pyyaml
 sqlalchemy
+flask
+flask_sqlalchemy
