@@ -10,7 +10,7 @@ from microSALT.tables.seq_types import Seq_types
 @app.route('/microSALT/')
 def start_page():
     samples = Samples.query.all()
-    projects = list(set([(samp.CG_ID_project,samp.date_analysis ,samp.Customer_ID_project) for samp in samples]))
+    projects = list(set([(samp.CG_ID_project,samp.Customer_ID_project) for samp in samples]))
 
     return render_template('start_page.html',
         projects = projects)
