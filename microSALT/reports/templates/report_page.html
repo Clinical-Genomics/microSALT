@@ -1,48 +1,30 @@
-<html>
-<head>
+{% extends 'layout.html' %}
 
-
-
-    <title>microSALT</title>
-
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/startbootstrap-sb-admin-2/1.0.8/css/sb-admin-2.css">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/1.1.2/css/buttons.bootstrap.min.css">
-    <link rel="stylesheet" href="{{url_for('static', filename='style.css')}}">
-</head>
-<body>
-<div id="wrapper">
-        <!-- Navigation -->
-    <nav class="navbar navbar-default navbar-static-top" role="navigation" style="margin-bottom: 0">
-        <div class="navbar-header">
-            <a class="navbar-brand" href="{{ url_for('start_page') }}">Back to Start</a>
-        </div>
-    </nav>
+{% block body %}
     <div class="container-fluid">
         <div class="col-lg-16">
             <div class="panel">
                 <div class="panel-body">
                     <h2 class="page-header"><strong>microSALT Results </strong><br><small>Clinical Microbiology</small><small><p align="right" id="date"></p></small></h2>
+                    {% for sample in reduced_samples %}
                     <footer><div class="table-responsive">
                                 <table  class="table table-bordered" >
                                         <tr>
                                             <th scope="row" >Sample</th>
-                                            <td>{{samples.CG_ID_sample}}</td>
+                                            <td>{{sample.sample.CG_ID_sample}}</td>
                                         </tr>
                                         <tr>
                                             <th scope="row" >Analysis date</th>
-                                            <td>{{samples.date_analysis}}</td>
+                                            <td>{{sample.sample.date_analysis}}</td>
                                         </tr>
                                         <tr>
                                             <th scope="row" >Organism</th>
-                                            <td>{{samples.organism.replace('_', ' ').title()}}</td>
+                                            <td>{{sample.sample.organism.replace('_', ' ').title()}}</td>
                                         </tr>
                                         <tr>
                                             <th scope="row" >Sequence Type</th>
-                                            {% if samples.ST > 0 %}
-                                              <td>{{samples.ST}}</td>
+                                            {% if sample.sample.ST > 0 %}
+                                              <td>{{sample.sample.ST}}</td>
                                             {% else %}
                                               <td>Manual review required</td>
                                             {% endif %}
@@ -63,28 +45,24 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for s in seq_types %}
+                                        {% for seq_type in sample.seq_types %}
                                         <tr>
-                                            <td>{{s.loci}}</td>
-                                            <td width="18%"> {{ s.allele}}</td>
-                                            <td>{{ s.contig_coverage|round(2)  }}</td>
-                                            <td>{{ s.haplotype }}</td>
-                                            <td>{{ s.identity|round(2) }}</td>
-                                            <td>{{ s.evalue }}</td>
+                                            <td>{{seq_type.loci}}</td>
+                                            <td width="18%"> {{ seq_type.allele}}</td>
+                                            <td>{{ seq_type.contig_coverage|round(2)  }}</td>
+                                            <td>{{ seq_type.haplotype }}</td>
+                                            <td>{{ seq_type.identity|round(2) }}</td>
+                                            <td>{{ seq_type.evalue }}</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
                                 </table>
                             </div>
                     </footer>
+                    {% endfor %}
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-
-<script>
-var d = new Date();
-document.getElementById("date").innerHTML = d.toDateString();
-</script>
+{% endblock %}
