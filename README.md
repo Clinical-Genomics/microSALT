@@ -9,6 +9,7 @@ WIP repo of a MLST pipeline.
 * CutAdapt
 * SpaDES
 
+* CGLims ; https://github.com/Clinical-Genomics/cglims
 
 ## Database info
 An additional mysql.yml file is required to be present in the microSALT sub-folder.
