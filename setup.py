@@ -16,8 +16,7 @@ setup(
     url="https://github.com/sylvinite/microSALT",
     author="Isak Sylvin",
     author_email='isak.sylvin@scilifelab.se',
-    install_requires=install_requires,  
-
+    install_requires=install_requires,
     entry_points={
         'console_scripts': ['microSALT=microSALT.cli:root'],
     },

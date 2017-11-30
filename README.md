@@ -9,13 +9,33 @@ WIP repo of a MLST pipeline.
 * CutAdapt
 * SpaDES
 
-* CGLims ; https://github.com/Clinical-Genomics/cglims
+* Genologics, `https://github.com/SciLifeLab/genologics.git`
+>>>>>>> d71dc54afe60f95c38c3c5c6598ed4abe5a2d623
 
-## Database info
-An additional mysql.yml file is required to be present in the microSALT sub-folder.
+## Configuration
+### Flask/Database configuration
+An additional config.py file is required to be present in the instance folder.
 Formatting of the file is as follows:
-```user: USER
-pw: PASSWORD
-host: DATABASE_URL
-port: PORT
-db: DATABASE_NAME```
+```
+# -*- coding: utf-8 -*-
+
+SQLALCHEMY_DATABASE_URI= 'mysql+pymysql://DB_USER:DB_PASSWORD@DB_HOST:DB_PORT/DB_DATABASENAME'
+SQLALCHEMY_TRACK_MODIFICATIONS= False
+DEBUG= True
+```
+Debug statement has to be omitted for any production usage.
+### Paths
+Review `microSALT/config/paths_and_headers.yml` so that it accurately uses the headers and paths you desire.
+
+### LIMS
+Create `$HOME/.genologicsrc` with the following formatting:
+```
+[genologics]
+BASEURI=https://yourlims.example.com:8443
+USERNAME=your_username
+PASSWORD=your_password
+[logging]
+MAIN_LOG=/home/glsai/your_main_log_file
+```
+
+Additionally replace `ConfigParser` with `configparser` in `config.py` for python3 support. 

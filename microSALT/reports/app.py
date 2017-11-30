@@ -1,5 +1,5 @@
 # encoding: utf-8
-from microSALT.page_core import app
+from microSALT.reports.views import app
 
 if __name__ == '__main__':
     app.run()
