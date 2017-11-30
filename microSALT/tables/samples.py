@@ -16,6 +16,8 @@ class Samples(db.Model):
    CG_ID_project = db.Column(db.String(15))
    Customer_ID_sample = db.Column(db.String(15))
    Customer_ID_project = db.Column(db.String(15))
+   date_ordered = db.Column(db.DateTime)
+   date_qc = db.Column(db.DateTime)
    date_analysis = db.Column(db.DateTime)
    organism = db.Column(db.String(30))
    ST = db.Column(db.SmallInteger, default=-1)
