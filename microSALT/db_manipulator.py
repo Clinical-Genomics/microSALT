@@ -22,7 +22,7 @@ class DB_Manipulator:
   def __init__(self, config, log):
     self.config = config
     self.logger = log
-    self.engine = create_engine(app.config['DATABASE_URI'])
+    self.engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
     Session = sessionmaker(bind=self.engine)
     self.session = Session()
     self.metadata = MetaData(self.engine)
