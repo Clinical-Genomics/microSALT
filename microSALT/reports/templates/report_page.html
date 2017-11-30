@@ -3,20 +3,27 @@
 {% block body %}
     <div class="container-fluid">
         <div class="col-lg-16">
-            <div class="panel">
-                <div class="panel-body">
-                    <h2 class="page-header"><strong>microSALT Results </strong><br><small>Clinical Microbiology</small><small><p align="right" id="date"></p></small></h2>
                     {% for sample in reduced_samples %}
+                    <div class="panel">
+                    <div class="panel-body">
                     <footer>
+                    <h2 class="page-header"><div class="row"></div><strong>microSALT Results</strong><br>
+                        <small>Clinical Microbiology</small>
+                        <small><p align="right">{{date}}</p></small></h2>
                         <div class="table-responsive">
                                 <table  class="table table-bordered" >
                                         <tr>
-                                            <th scope="row" >Sample</th>
-                                            <td>{{sample.sample.CG_ID_sample}}</td>
+                                            <td><b>Project ID <i>(CG Project ID)</i></b></td>
+                                            <td>{{sample.sample.Customer_ID_project}} <i>({{sample.sample.CG_ID_project}})</i></td>
+                                            
+                                        </tr>
+                                        <tr>
+                                            <td><b>Sample ID <i>(CG Sample ID)</i></b></td>
+                                            <td>{{sample.sample.Customer_ID_sample}}  <i>({{sample.sample.CG_ID_sample}})</i></td>
                                         </tr>
                                         <tr>
                                             <th scope="row" >Analysis date</th>
-                                            <td>{{sample.sample.date_analysis}}</td>
+                                            <td>{{sample.sample.date_analysis.date()}}</td>
                                         </tr>
                                         <tr>
                                             <th scope="row" >Organism</th>
@@ -60,9 +67,11 @@
                                 </table>
                             </div>
                     </footer>
-                    {% endfor %}
                 </div>
             </div>
+                    {% endfor %}
+                
+           
         </div>
     </div>
 </div>

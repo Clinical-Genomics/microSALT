@@ -4,6 +4,8 @@ from microSALT.tables.samples import Samples
 from microSALT.tables.seq_types import Seq_types
 from microSALT import app
 
+from datetime import date
+
 @app.route('/microSALT/')
 def start_page():
     samples = Samples.query.all()
@@ -31,5 +33,7 @@ def report_page(project, organism):
     samples = Samples.query.filter_by(organism=organism, CG_ID_project=project).all()
     reduced_samples = [ {'sample':sample, 'seq_types' : Seq_types.query.filter_by(CG_ID_sample=sample.CG_ID_sample, identity=100)} for sample in samples]
 
+    print date.today().isoformat()
     return render_template('report_page.html',
-        reduced_samples = reduced_samples)
+        reduced_samples = reduced_samples,
+        date = date.today().isoformat())
