@@ -1,11 +1,8 @@
-import os
-import yaml
 from flask import Flask, render_template
-from flask_sqlalchemy import SQLAlchemy
-from microSALT.reports import app, db
 
 from microSALT.tables.samples import Samples
 from microSALT.tables.seq_types import Seq_types
+from microSALT import app
 
 @app.route('/microSALT/')
 def start_page():
@@ -18,6 +15,7 @@ def start_page():
 @app.route('/microSALT/<project>')
 def project_page(project):
     organisms = []
+    #TODO: Establish organism by database query
     all_organisms = ['enterococcus_faecalis','enterococcus_faecium','escherichia_coli','klebsiella_pneumoniae','staphylococcus_aureus']
     for organism in all_organisms:
         samples = Samples.query.filter_by(organism=organism, CG_ID_project=project).all()
@@ -27,9 +25,6 @@ def project_page(project):
     return render_template('project_page.html',
         organisms = organisms,
         project = project) 
-
-
-    
 
 @app.route('/microSALT/<project>/<organism>')
 def report_page(project, organism):

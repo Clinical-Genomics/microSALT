@@ -6,9 +6,8 @@
 
 import click
 import os
-import pymysql
 import re
-from microSALT import db
+from microSALT import app
 from microSALT.tables.samples import Samples
 from microSALT.tables.seq_types import Seq_types
 from microSALT.tables.profiles import Profiles
@@ -17,20 +16,13 @@ from sqlalchemy.orm import sessionmaker
 import sys
 import yaml
 
-import pdb # debug
-
-
 #TODO: Rewrite all pushes/queries through session+commit
 class DB_Manipulator:
  
-  # Keeping mysql.yml seperate lets us share the main config one without security issues
-  with open("{}/configs/mysql.yml".format(os.path.dirname(os.path.realpath(__file__))), 'r') as conf:
-    mysql = yaml.load(conf)
-
   def __init__(self, config, log):
     self.config = config
     self.logger = log
-    self.engine = create_engine("mysql+pymysql://{}:{}@{}:{}/{}".format(self.mysql['user'],self.mysql['pw'],self.mysql['host'],self.mysql['port'],self.mysql['db']))
+    self.engine = create_engine(app.config['DATABASE_URI'])
     Session = sessionmaker(bind=self.engine)
     self.session = Session()
     self.metadata = MetaData(self.engine)

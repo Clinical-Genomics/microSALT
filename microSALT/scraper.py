@@ -61,9 +61,13 @@ class Scraper():
     pcolumns["CG_ID_sample"] = self.CG_ID_sample
     rundir[1] = re.sub('\.','-',rundir[1])
     rundir[2] = re.sub('\.',':',rundir[2])
-
-    pcolumns['CG_ID_project'] = "P-{}".format(pcolumns["CG_ID_sample"])
+    pcolumns['CG_ID_project'] = self.CG_ID_project
     pcolumns["date_analysis"] = "{} {}".format(rundir[1], rundir[2])
+    pcolumns['Customer_ID_project'] = self.Customer_ID_project
+    pcolumns['Customer_ID_sample'] = self.Customer_ID_sample
+    #Date recieved
+    #Date completed (what completed??)
+
     self.db_pusher.add_rec_orm(pcolumns, 'Samples')
 
   #TODO: Look over column assignment, since new input probably screwed things over
