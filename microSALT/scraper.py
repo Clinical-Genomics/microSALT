@@ -13,12 +13,8 @@ import sys
 import time
 import yaml
 
-from genologics.lims import Lims
-from genologics.config import BASEURI,USERNAME,PASSWORD
-from genologics.entities import Samples
-
-from microSALT import db_manipulator
-
+from microSALT.db_manipulator import DB_Manipulator
+from microSALT.lims_fetcher import LIMS_Fetcher
 
 class Scraper():
 
@@ -26,19 +22,10 @@ class Scraper():
     self.config = config
     self.logger = log
     self.infolder = os.path.abspath(infolder)
-    self.db_pusher=db_manipulator.DB_Manipulator(config, self.logger)
+    self.db_pusher=DB_Manipulator(config, self.logger)
+    self.lims_fetcher=LIMS_Fetcher()
     self.CG_ID_sample = ""
     self.lims_sample_info = {}
-
-  def get_lims_sample_info(self):
-    lims = Lims(BASEURI, USERNAME, PASSWORD)
-    sample = Sample(lims, id=self.CG_ID_sample)
-    self.lims_sample_info = {'date_completed' : sample.date_completed,
-                             'date_received' : sample.date_received,
-                             'CG_ID_project': sample.project.id,
-                             'Customer_ID_sample' : sample.name,
-                             'Customer_ID_project' : sample.project.name}
-
 
   def scrape_all_loci(self):
     q_list = glob.glob("{}/loci_query_*".format(self.infolder))
@@ -54,16 +41,21 @@ class Scraper():
   def scrape_sampleinfo(self):
     """Identifies sample values"""
     pcolumns = self.db_pusher.get_columns_orm('Samples')
-
     rundir = os.path.basename(os.path.normpath(self.infolder)).split('_')
     self.CG_ID_sample = rundir[0]
-    self.get_lims_sample_info()
+    self.lims_fetcher.get_lims_sample_info(self.CG_ID_sample)
     pcolumns["CG_ID_sample"] = self.CG_ID_sample
+    self.lims_fetcher.get_lims_sample_info(self.CG_ID_sample)
     rundir[1] = re.sub('\.','-',rundir[1])
     rundir[2] = re.sub('\.',':',rundir[2])
 
-    pcolumns['CG_ID_project'] = "P-{}".format(pcolumns["CG_ID_sample"])
+    pcolumns['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
     pcolumns["date_analysis"] = "{} {}".format(rundir[1], rundir[2])
+    pcolumns['Customer_ID_project'] = self.lims_fetcher.data['Customer_ID_project']
+    pcolumns['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
+    pcolumns['date_ordered'] = self.lims_fetcher.data['date_received']
+    pcolumns['date_qc'] = self.lims_fetcher.data['date_completed']
+
     self.db_pusher.add_rec_orm(pcolumns, 'Samples')
 
   #TODO: Look over column assignment, since new input probably screwed things over
