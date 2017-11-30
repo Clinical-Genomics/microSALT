@@ -1,5 +1,6 @@
 # microSALT
-WIP repo of a MLST pipeline.
+microbial Sequence Analysis and Loci-based Typing pipeline
+Currently a work in progress. First release estimated time of arrival by christmas.
 
 ## Dependencies
 * Python 3.6
@@ -10,7 +11,6 @@ WIP repo of a MLST pipeline.
 * SpaDES
 
 * Genologics, `https://github.com/SciLifeLab/genologics.git`
->>>>>>> d71dc54afe60f95c38c3c5c6598ed4abe5a2d623
 
 ## Configuration
 ### Flask/Database configuration

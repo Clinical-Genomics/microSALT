@@ -42,18 +42,23 @@ def root(ctx):
     logger.addHandler(ch)
     ctx.obj['log'] = logger
 
-@root.command()
+@root.group()
+@click.pass_context
+def analyze(ctx):
+  pass
+
+@analyze.command()
 @click.argument('project_dir')
 @click.pass_context
-def analyze(ctx, project_dir):
+def project(ctx, project_dir):
   manager = Manager(project_dir, ctx.obj['config'], ctx.obj['log'])
-  manager.start_analysis()  
- 
-@root.command()
+  manager.start_analysis() 
+
+@analyze.command()
 @click.argument('sample_dir')
 @click.argument('organism')
 @click.pass_context
-def create_job(ctx, sample_dir, organism):
+def sample(ctx, sample_dir, organism):
     worker = Job_Creator(sample_dir, organism, ctx.obj['config'], ctx.obj['log'])
     worker.create_job()
 

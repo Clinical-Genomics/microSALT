@@ -7,7 +7,6 @@
 import click
 import glob
 import os
-import pdb
 import re
 import sys
 import time
@@ -32,7 +31,7 @@ class Job_Creator():
     """ Uses arg indir to return a list of PE fastq tuples fulfilling naming convention """
     files = os.listdir(self.indir)
     if files == []:
-      self.logger.error("No fastq files found in specified directory. Exited.")
+      self.logger.error("No fastq files found in specified directory {}. Exited.".format(self.indir))
       sys.exit()
     verified_files = list()
     while len(files) > 0:
@@ -44,7 +43,7 @@ class Job_Creator():
         elif file_parts[2] == '2':
           pairno = '1'
         else:
-          self.logger.error("Some fastq files in directory have no mate. Exited.")
+          self.logger.error("Some fastq files in directory have no mate in directory {}. Exited.".format(self.indir))
           sys.exit()
         pairname = "{}{}{}".format(file_parts[1], pairno, file_parts[3])
         if pairname in files:
@@ -52,7 +51,7 @@ class Job_Creator():
           verified_files.append(file_parts[0])
           verified_files.append(pairname)
     if verified_files == []:
-      self.logger.error("No correctly named fastq files found in directory. Exited.")
+      self.logger.error("No correctly named fastq files found in directory {}. Exited.".format(self.indir))
       sys.exit()
     return verified_files
  
@@ -163,10 +162,9 @@ class Job_Creator():
         self.logger.error("Bad LIMS reference name given, multiple reference databases found!")
         sys.exit()
 
-  def index_unindexed_db(self, folder):
+  def index_unindexed_db(self, full_dir):
     #Check for indexation, makeblastdb job if not enough of them.
     batchfile = open(self.batchfile, "a+")
-    full_dir = "{}".format(folder)
     files = os.listdir(full_dir)
     tfa_list = glob.glob("{}/*.tfa".format(full_dir))
     nin_suff = sum([1 for elem in files if 'nin' in elem]) #one type of index file 
@@ -182,8 +180,8 @@ class Job_Creator():
     """ Creates a blast job for instances where the definitions file is one per organism"""
 
     #Establish organism
-    find_reference_strict()
-    index_unindexed_db(self.config["folders"]["references"])
+    self.find_reference_strict()
+    self.index_unindexed_db(self.config["folders"]["references"])
 
     #create run
     batchfile = open(self.batchfile, "a+")
@@ -196,12 +194,13 @@ class Job_Creator():
   def create_blastjob_multi(self):
     """Creates a blast job for instances where many loci definition files make up an organism"""
     #Expand provided name
-    find_organism_strict()
-    index_unindexed_db("{}/{}".format(self.config["folders"]["references"], self.organism))
+    self.find_reference_strict()
+    self.index_unindexed_db("{}/{}".format(self.config["folders"]["references"], self.organism))
  
     #Create run
     batchfile = open(self.batchfile, "a+")
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send\""
+    tfa_list = glob.glob("{}/{}/*.tfa".format(self.config["folders"]["references"], self.organism))
     for entry in tfa_list:
       batchfile.write("# BLAST MLST alignment for {}, {}\n".format(self.organism, os.path.basename(entry[:-4])))
       batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/loci_query_{}.txt -task megablast -num_threads {} -max_target_seqs 1 -outfmt {}\n".format(\
