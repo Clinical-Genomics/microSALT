@@ -13,6 +13,10 @@ import sys
 import time
 import yaml
 
+from genologics.lims import Lims
+from genologics.config import BASEURI,USERNAME,PASSWORD
+from genologics.entities import Samples
+
 from microSALT import db_manipulator
 
 
@@ -24,6 +28,17 @@ class Scraper():
     self.infolder = os.path.abspath(infolder)
     self.db_pusher=db_manipulator.DB_Manipulator(config, self.logger)
     self.CG_ID_sample = ""
+    self.lims_sample_info = {}
+
+  def get_lims_sample_info(self):
+    lims = Lims(BASEURI, USERNAME, PASSWORD)
+    sample = Sample(lims, id=self.CG_ID_sample)
+    self.lims_sample_info = {'date_completed' : sample.date_completed,
+                             'date_received' : sample.date_received,
+                             'CG_ID_project': sample.project.id,
+                             'Customer_ID_sample' : sample.name,
+                             'Customer_ID_project' : sample.project.name}
+
 
   def scrape_all_loci(self):
     q_list = glob.glob("{}/loci_query_*".format(self.infolder))
@@ -42,6 +57,7 @@ class Scraper():
 
     rundir = os.path.basename(os.path.normpath(self.infolder)).split('_')
     self.CG_ID_sample = rundir[0]
+    self.get_lims_sample_info()
     pcolumns["CG_ID_sample"] = self.CG_ID_sample
     rundir[1] = re.sub('\.','-',rundir[1])
     rundir[2] = re.sub('\.',':',rundir[2])
