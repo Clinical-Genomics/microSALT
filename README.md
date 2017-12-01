@@ -1,5 +1,6 @@
 # microSALT
-WIP repo of a MLST pipeline.
+microbial Sequence Analysis and Loci-based Typing pipeline
+Currently a work in progress. First release estimated time of arrival by christmas.
 
 ## Dependencies
 * Python 3.6
