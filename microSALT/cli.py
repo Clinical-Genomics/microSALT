@@ -12,10 +12,9 @@ import logging
 
 from pkg_resources import iter_entry_points
 from microSALT import __version__
-from microSALT.job_creator import Job_Creator
-from microSALT.scraper import Scraper
-from microSALT.exporter import Exporter
-from microSALT.manager import Manager
+from microSALT.utils.scraper import Scraper
+from microSALT.utils.job_creator import Job_Creator
+from microSALT.server.views import app
 
 @click.group()
 @click.version_option(__version__)
@@ -51,26 +50,36 @@ def analyze(ctx):
 @click.argument('project_dir')
 @click.pass_context
 def project(ctx, project_dir):
-  manager = Manager(project_dir, ctx.obj['config'], ctx.obj['log'])
-  manager.start_analysis() 
+  manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
+  manager.project_job() 
 
 @analyze.command()
 @click.argument('sample_dir')
-@click.argument('organism')
 @click.pass_context
-def sample(ctx, sample_dir, organism):
-    worker = Job_Creator(sample_dir, organism, ctx.obj['config'], ctx.obj['log'])
-    worker.create_job()
+def sample(ctx, sample_dir):
+    worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
+    worker.sample_job()
+
+@root.group()
+@click.pass_context
+def scrape(ctx):
+  pass
+
+@scrape.command()
+@click.argument('sample_dir')
+@click.pass_context
+def sample(ctx, sample_dir):
+  garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
+  garbageman.scrape_sample()
+
+@scrape.command()
+@click.argument('project_dir')
+@click.pass_context
+def project(ctx, project_dir):
+  garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
+  garbageman.scrape_project()
 
 @root.command()
-@click.argument('indir')
 @click.pass_context
-def scrape(ctx, indir):
-  garbageman = Scraper(indir, ctx.obj['config'], ctx.obj['log'])
-  garbageman.scrape_all_loci()
-
-@root.command()
-@click.pass_context
-def export(ctx):
-  ferryman = Exporter(ctx.obj['config'])
-  ferryman.std_export()
+def viewer(ctx):
+  app.run()

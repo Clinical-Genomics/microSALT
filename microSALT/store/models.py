@@ -10,9 +10,7 @@ import re
 from sqlalchemy import *
 import yaml
 
-import pdb # debug
-
-#TODO: Rewrite all pushes/queries through session+commit
+#TODO: Rewrite this implementation into orm format
 class Profiles:
 
   def __init__(self, metadata, config):

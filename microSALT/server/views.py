@@ -1,0 +1,31 @@
+from datetime import date
+from flask import Flask, render_template
+
+from microSALT.store.orm_models import Projects, Samples, Seq_types
+from microSALT import app
+
+@app.route('/microSALT/')
+def start_page():
+    projects = Projects.query.all()
+
+    return render_template('start_page.html',
+        projects = projects)
+
+@app.route('/microSALT/<project>')
+def project_page(project):
+    species = list()
+    distinct_organisms = Samples.query.distinct()
+    for one_guy in distinct_organisms:
+        species.append(one_guy.organism)
+    return render_template('project_page.html',
+        organisms = species,
+        project = project) 
+
+@app.route('/microSALT/<project>/<organism>')
+def report_page(project, organism):
+    # Joins all three tables, and displays only hits with 100% hit rate
+    sample_info = Samples.query.filter_by(organism=organism).join(Projects).join(Seq_types).filter_by(identity=100).all()
+
+    return render_template('report_page.html',
+        sample_info = sample_info,
+        date = date.today().isoformat())

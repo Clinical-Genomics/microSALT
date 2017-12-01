@@ -7,14 +7,17 @@
 import click
 import os
 import re
-from microSALT import app
-from microSALT.tables.samples import Samples
-from microSALT.tables.seq_types import Seq_types
-from microSALT.tables.profiles import Profiles
-from sqlalchemy import *
-from sqlalchemy.orm import sessionmaker
 import sys
 import yaml
+
+from sqlalchemy import *
+from sqlalchemy.orm import sessionmaker
+
+from microSALT import app
+from microSALT.store.orm_models import Projects, Samples, Seq_types
+from microSALT.store.models import Profiles
+from sqlalchemy import *
+from sqlalchemy.orm import sessionmaker
 
 #TODO: Rewrite all pushes/queries through session+commit
 class DB_Manipulator:
@@ -32,6 +35,9 @@ class DB_Manipulator:
     self.create_tables()
 
   def create_tables(self):
+      if not self.engine.dialect.has_table(self.engine, 'projects'):
+        Projects.__table__.create(self.engine)
+        self.logger.info("Created samples table")
       if not self.engine.dialect.has_table(self.engine, 'samples'):
         Samples.__table__.create(self.engine)
         self.logger.info("Created samples table")
