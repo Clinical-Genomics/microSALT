@@ -81,5 +81,5 @@ def project(ctx, project_dir):
 
 @root.command()
 @click.pass_context
-def viewer(ctx):
+def view(ctx):
   app.run()

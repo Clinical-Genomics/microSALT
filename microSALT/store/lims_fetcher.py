@@ -21,11 +21,17 @@ class LIMS_Fetcher():
 
   def get_lims_project_info(self, cg_projid):
     project = Project(self.lims, id=cg_projid)
-    self.data.update({'date_received': project.open_date,
-                             'Customer_ID_project' : project.name})
+    try:
+      self.data.update({'date_received': project.open_date,
+                               'Customer_ID_project' : project.name})
+    except KeyError:
+      pass
 
   def get_lims_sample_info(self, cg_sampleid):
     sample = Sample(self.lims, id=cg_sampleid)
-    self.data.update({'CG_ID_project': sample.project.id,
+    try:
+      self.data.update({'CG_ID_project': sample.project.id,
                              'Customer_ID_sample' : sample.name,
                              'organism' : sample.udf['Strain']})
+    except KeyError:
+      pass

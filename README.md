@@ -1,6 +1,9 @@
 # microSALT
 microbial Sequence Analysis and Loci-based Typing pipeline
-Currently a work in progress. First release estimated time of arrival by christmas.
+
+Currently a work in progress. 
+
+First release estimated time of arrival by christmas.
 
 ## Dependencies
 * Python 3.6
@@ -15,6 +18,7 @@ Currently a work in progress. First release estimated time of arrival by christm
 ## Configuration
 ### Flask/Database configuration
 An additional config.py file is required to be present in the instance folder.
+
 Formatting of the file is as follows:
 ```
 # -*- coding: utf-8 -*-

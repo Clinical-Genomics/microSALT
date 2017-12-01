@@ -18,21 +18,23 @@ class Job_Creator():
 
   fileformat = re.compile('(\d{1}_\d{6}_\w{9}_.{5,12}_\w{8,12}_)(\d{1})(.fastq.gz)') 
 
-  def __init__(self, indir, organism, config, log, outdir=""):
+  def __init__(self, indir, config, log, outdir=""):
     self.config = config
     self.logger = log
+    self.now = time.strftime("%Y.%m.%d_%H.%M.%S")
     if outdir == "":
-      self.outdir="{}/{}_{}".format(config["folders"]["results"],time.strftime("%Y.%m.%d_%H.%M.%S"),  os.path.basename(os.path.normpath(indir)))
+      self.outdir="{}/{}_{}".format(config["folders"]["results"], os.path.basename(os.path.normpath(indir)), self.now)
     self.indir = os.path.abspath(indir)
 
-    self.name = os.path.basename(os.path.normpath(indir))
     self.trimmed_files = dict()
     self.batchfile = ""
     self.organism = ""
+    self.sample_name = os.path.basename(os.path.normpath(indir))
 
   def find_organism(self):
     lims_fetcher=LIMS_Fetcher()
-    self.organism = self.lims_fetcher.data['organism']
+    lims_fetcher.get_lims_sample_info(self.sample_name)
+    self.organism = lims_fetcher.data['organism']
 
     orgs = os.listdir(self.config["folders"]["references"])
     organism = re.split('.| ', self.organism)
@@ -86,7 +88,7 @@ class Job_Creator():
     batchfile.write("#SBATCH -p {}\n".format(self.config["slurm_header"]["type"]))
     batchfile.write("#SBATCH -n {}\n".format(self.config["slurm_header"]["threads"]))
     batchfile.write("#SBATCH -t {}\n".format(self.config["slurm_header"]["time"]))
-    batchfile.write("#SBATCH -J {}_{}\n".format(self.config["slurm_header"]["job_name"], self.now))
+    batchfile.write("#SBATCH -J {}_MSLT_job_{}\n".format(self.sample_name, self.now))
     batchfile.write("#SBATCH --qos {}\n\n".format(self.config["slurm_header"]["qos"]))
     batchfile.close()
 
@@ -146,7 +148,7 @@ class Job_Creator():
     batchfile.close()
 
   def index_unindexed_db(self, full_dir):
-    #Check for indexation, makeblastdb job if not enough of them.
+    """Check for indexation, makeblastdb job if not enough of them."""
     batchfile = open(self.batchfile, "a+")
     files = os.listdir(full_dir)
     tfa_list = glob.glob("{}/*.tfa".format(full_dir))
@@ -190,30 +192,37 @@ class Job_Creator():
   def get_sbatch(self):
     return self.batchfile
 
+  #TODO: Let project job spawn more job_creator objects rather than reassigning instance variables
   def project_job(self):
+    proj_path = self.outdir
     if not os.path.exists(self.outdir):
       os.makedirs(self.outdir)
     concat_file = "{}/concatinated.sbatch".format(self.outdir)
-    concat = open(self.concat_batch, 'w+')
+    concat = open(concat_file, 'w+')
+    concat.write("#!/bin/sh\n\n")
     for (dirpath, dirnames, filenames) in os.walk(self.indir):
       for dir in dirnames:
-        self.outdir = "{}/{}_{}".format(self.config["folders"]["results"],time.strftime("%Y.%m.%d_%H.%M.%S"),  os.path.basename(os.path.normpath(indir)))   
+        self.outdir = "{}/{}".format(proj_path, dir) 
+        self.indir = "{}/{}".format(dirpath, dir) 
+        self.sample_name = dir 
         self.sample_job()
         outfile = self.get_sbatch()
-        #In the future, rather than running the files, just start everything in this list.
-        #Make this a dry-run command instead.
         concat.write("sbatch {}\n".format(outfile))
     concat.close()
 
   def sample_job(self):
-    self.find_organism()
-    if not os.path.exists(self.outdir):
-      os.makedirs(self.outdir)
-    self.batchfile = "{}/runfile.sbatch".format(self.outdir)
+    self.trimmed_files = dict()
+    try:
+      self.find_organism()
+      if not os.path.exists(self.outdir):
+        os.makedirs(self.outdir)
+      self.batchfile = "{}/runfile.sbatch".format(self.outdir)
 
-    self.create_header()
-    self.create_trimjob()
-    self.interlace_files()
-    self.create_spadesjob()
-    self.create_blastjob_multi()
-    self.logger.info("Created runfile for project {} in folder {}".format(self.name, self.outdir))
+      self.create_header()
+      self.create_trimjob()
+      self.interlace_files()
+      self.create_spadesjob()
+      self.create_blastjob_multi()
+      self.logger.info("Created runfile for project {} in folder {}".format(self.indir, self.outdir))
+    except Exception as e:
+      pass
