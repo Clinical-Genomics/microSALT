@@ -3,7 +3,7 @@
 {% block body %}
     <div class="container-fluid">
         <div class="col-lg-16">
-                    {% for sample in reduced_samples %}
+                    {% for sample in sample_info %}
                     <div class="panel">
                     <div class="panel-body">
                     <footer>
@@ -14,25 +14,25 @@
                                 <table  class="table table-bordered" >
                                         <tr>
                                             <td><b>Project ID <i>(CG Project ID)</i></b></td>
-                                            <td>{{sample.sample.Customer_ID_project}} <i>({{sample.sample.CG_ID_project}})</i></td>
+                                            <td>{{sample.projects.Customer_ID_project}} <i>({{sample.projects.CG_ID_project}})</i></td>
                                             
                                         </tr>
                                         <tr>
                                             <td><b>Sample ID <i>(CG Sample ID)</i></b></td>
-                                            <td>{{sample.sample.Customer_ID_sample}}  <i>({{sample.sample.CG_ID_sample}})</i></td>
+                                            <td>{{sample.Customer_ID_sample}}  <i>({{sample.CG_ID_sample}})</i></td>
                                         </tr>
                                         <tr>
                                             <th scope="row" >Analysis date</th>
-                                            <td>{{sample.sample.date_analysis.date()}}</td>
+                                            <td>{{sample.date_analysis.date()}}</td>
                                         </tr>
                                         <tr>
                                             <th scope="row" >Organism</th>
-                                            <td>{{sample.sample.organism.replace('_', ' ').title()}}</td>
+                                            <td>{{sample.organism.replace('_', ' ').title()}}</td>
                                         </tr>
                                         <tr>
                                             <th scope="row" >Sequence Type</th>
-                                            {% if sample.sample.ST > 0 %}
-                                              <td>{{sample.sample.ST}}</td>
+                                            {% if sample.ST > 0 %}
+                                              <td>{{sample.ST}}</td>
                                             {% else %}
                                               <td>Manual review required</td>
                                             {% endif %}

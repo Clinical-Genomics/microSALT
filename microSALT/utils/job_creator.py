@@ -12,20 +12,44 @@ import sys
 import time
 import yaml
 
+from microSALT.store.lims_fetcher import LIMS_Fetcher
+
 class Job_Creator():
 
   fileformat = re.compile('(\d{1}_\d{6}_\w{9}_.{5,12}_\w{8,12}_)(\d{1})(.fastq.gz)') 
 
-  def __init__(self, indir, organism, config, log):
+  def __init__(self, indir, organism, config, log, outdir=""):
     self.config = config
-    self.now = time.strftime("%Y.%m.%d_%H.%M.%S")
-    self.indir = os.path.abspath(indir)
-    self.name = os.path.basename(os.path.normpath(indir))
-    self.organism = organism
     self.logger = log
-    self.batchfile = ""
-    self.outdir = "{}/{}_{}".format(self.config["folders"]["results"],self.name, self.now)
+    if outdir == "":
+      self.outdir="{}/{}_{}".format(config["folders"]["results"],time.strftime("%Y.%m.%d_%H.%M.%S"),  os.path.basename(os.path.normpath(indir)))
+    self.indir = os.path.abspath(indir)
+
+    self.name = os.path.basename(os.path.normpath(indir))
     self.trimmed_files = dict()
+    self.batchfile = ""
+    self.organism = ""
+
+  def find_organism(self):
+    lims_fetcher=LIMS_Fetcher()
+    self.organism = self.lims_fetcher.data['organism']
+
+    orgs = os.listdir(self.config["folders"]["references"])
+    organism = re.split('.| ', self.organism)
+    refs = 0
+    for target in orgs:
+      hit = 0
+      for piece in organism:
+        if not piece in target:
+          break
+        else:
+          hit += 1
+      if hit == len(organism):
+        self.organism = target
+      if refs > 1:
+        self.logger.error("Bad LIMS reference name given, multiple reference databases found!")
+        sys.exit()
+
 
   def verify_fastq(self):
     """ Uses arg indir to return a list of PE fastq tuples fulfilling naming convention """
@@ -121,47 +145,6 @@ class Job_Creator():
     batchfile.write("\n\n")
     batchfile.close()
 
-  def find_reference_strict(self):
-    orgs = os.listdir(self.config["folders"]["references"])
-    hits = 0
-    #Folders are named after target organism
-    for target in orgs:
-      #Finds based on file
-      hit = re.search('({}\w*).xmfa'.format(self.organism), target)
-      if hit:
-        self.organism = hit.group(1)
-
-      #Finds based on folder
-      if self.organism in target:
-        hits += 1
-        possible = target
-    if hits == 1:
-      self.organism = possible
-    elif hits > 1:
-      self.logger.error("Bad reference name given, multiple reference databases found!")
-      sys.exit()
-    else:
-      self.logger.error("Bad reference name given, no reference database found!")
-      sys.exit()
-
-  def find_reference_loose(self):
-    """ Finds a unique reference which all pieces of organism string map to"""
-    orgs = os.listdir(self.config["folders"]["references"])
-    organism = re.split('.| ', self.organism)
-    refs = 0
-    for target in orgs:
-      hit = 0
-      for piece in organism:
-        if not piece in target:
-          break
-        else:
-          hit += 1 
-      if hit == len(organism):
-        self.organism = target
-      if refs > 1:
-        self.logger.error("Bad LIMS reference name given, multiple reference databases found!")
-        sys.exit()
-
   def index_unindexed_db(self, full_dir):
     #Check for indexation, makeblastdb job if not enough of them.
     batchfile = open(self.batchfile, "a+")
@@ -179,8 +162,6 @@ class Job_Creator():
   def create_blastjob_single(self):
     """ Creates a blast job for instances where the definitions file is one per organism"""
 
-    #Establish organism
-    self.find_reference_strict()
     self.index_unindexed_db(self.config["folders"]["references"])
 
     #create run
@@ -193,8 +174,6 @@ class Job_Creator():
 
   def create_blastjob_multi(self):
     """Creates a blast job for instances where many loci definition files make up an organism"""
-    #Expand provided name
-    self.find_reference_strict()
     self.index_unindexed_db("{}/{}".format(self.config["folders"]["references"], self.organism))
  
     #Create run
@@ -211,7 +190,23 @@ class Job_Creator():
   def get_sbatch(self):
     return self.batchfile
 
-  def create_job(self):
+  def project_job(self):
+    if not os.path.exists(self.outdir):
+      os.makedirs(self.outdir)
+    concat_file = "{}/concatinated.sbatch".format(self.outdir)
+    concat = open(self.concat_batch, 'w+')
+    for (dirpath, dirnames, filenames) in os.walk(self.indir):
+      for dir in dirnames:
+        self.outdir = "{}/{}_{}".format(self.config["folders"]["results"],time.strftime("%Y.%m.%d_%H.%M.%S"),  os.path.basename(os.path.normpath(indir)))   
+        self.sample_job()
+        outfile = self.get_sbatch()
+        #In the future, rather than running the files, just start everything in this list.
+        #Make this a dry-run command instead.
+        concat.write("sbatch {}\n".format(outfile))
+    concat.close()
+
+  def sample_job(self):
+    self.find_organism()
     if not os.path.exists(self.outdir):
       os.makedirs(self.outdir)
     self.batchfile = "{}/runfile.sbatch".format(self.outdir)

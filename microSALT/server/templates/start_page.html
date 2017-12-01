@@ -18,15 +18,15 @@
                                         <table id="batch_table" class="table table-striped table-bordered" cellspacing="0" width="100%">
                                             <thead>
                                                 <tr>
-                                                <th><a>CG Project ID</a></th>
-                                                <th><a>Cust Project ID</a></th>
+                                                <th><a>Clinical Genomics Project ID</a></th>
+                                                <th><a>Customer Project ID</a></th>
                                                 </tr>
                                             </thead>
                                             <tbody class=list >
                                             {% for project in projects %}
                                             <tr>
-                                            <td><a href={{ url_for('project_page', project=project[0]) }}>{{project[0]}}</a></td>
-                                            <td>{{project[2]}}</td>
+                                            <td><a href={{ url_for('project_page', project=project.CG_ID_project) }}>{{project.CG_ID_project}}</a></td>
+                                            <td><a href={{ url_for('project_page', project=project.CG_ID_project) }}>{{project.Customer_ID_project}}</a></td>
                                             </tr>
                                             {% endfor %}
                                             </tbody>

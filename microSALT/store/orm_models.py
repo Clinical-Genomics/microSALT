@@ -11,21 +11,21 @@ from microSALT import db
 class Samples(db.Model):
 
    __tablename__ = 'samples'
-   CG_ID_sample = db.Column(db.String(15), primary_key=True, nullable=False)
    seq_types = relationship("Seq_types", back_populates="samples")
-   CG_ID_project = db.Column(db.String(15))
+   projects = relationship('Projects', back_populates='samples')
+
+   CG_ID_sample = db.Column(db.String(15), primary_key=True, nullable=False)
+   CG_ID_project = db.Column(db.String(15), ForeignKey('projects.CG_ID_project'))
    Customer_ID_sample = db.Column(db.String(15))
-   Customer_ID_project = db.Column(db.String(15))
-   date_ordered = db.Column(db.DateTime)
-   date_qc = db.Column(db.DateTime)
-   date_analysis = db.Column(db.DateTime)
    organism = db.Column(db.String(30))
    ST = db.Column(db.SmallInteger, default=-1)
+   date_analysis = db.Column(db.DateTime)
 
 class Seq_types(db.Model):
   __tablename__ = 'seq_types'
-  CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
   samples = relationship('Samples', back_populates='seq_types')
+
+  CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
   loci = db.Column(db.String(10), primary_key=True)
   allele = db.Column(db.SmallInteger)
   haplotype = db.Column(db.String(5))
@@ -40,3 +40,12 @@ class Seq_types(db.Model):
   loci_start = db.Column(db.Integer)
   loci_end = db.Column(db.Integer)
 
+class Projects(db.Model):
+
+   __tablename__ = 'projects'
+   samples = relationship('Samples', back_populates='projects')
+
+   CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
+   Customer_ID_project = db.Column(db.String(15))
+   date_ordered = db.Column(db.DateTime)
+   date_delivered = db.Column(db.DateTime)

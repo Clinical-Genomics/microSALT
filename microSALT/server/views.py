@@ -1,37 +1,31 @@
 from datetime import date
 from flask import Flask, render_template
 
-from microSALT.store.orm_models import Samples, Seq_types
+from microSALT.store.orm_models import Projects, Samples, Seq_types
 from microSALT import app
 
 @app.route('/microSALT/')
 def start_page():
-    samples = Samples.query.all()
-    projects = list(set([(samp.CG_ID_project,samp.Customer_ID_project) for samp in samples]))
+    projects = Projects.query.all()
 
     return render_template('start_page.html',
         projects = projects)
 
 @app.route('/microSALT/<project>')
 def project_page(project):
-    organisms = []
-    #TODO: Establish organism by database query
-    all_organisms = ['enterococcus_faecalis','enterococcus_faecium','escherichia_coli','klebsiella_pneumoniae','staphylococcus_aureus']
-    for organism in all_organisms:
-        samples = Samples.query.filter_by(organism=organism, CG_ID_project=project).all()
-        if samples:
-            organisms.append(organism)
-
+    species = list()
+    distinct_organisms = Samples.query.distinct()
+    for one_guy in distinct_organisms:
+        species.append(one_guy.organism)
     return render_template('project_page.html',
-        organisms = organisms,
+        organisms = species,
         project = project) 
 
 @app.route('/microSALT/<project>/<organism>')
 def report_page(project, organism):
-    samples = Samples.query.filter_by(organism=organism, CG_ID_project=project).all()
-    reduced_samples = [ {'sample':sample, 'seq_types' : Seq_types.query.filter_by(CG_ID_sample=sample.CG_ID_sample, identity=100)} for sample in samples]
+    # Joins all three tables, and displays only hits with 100% hit rate
+    sample_info = Samples.query.filter_by(organism=organism).join(Projects).join(Seq_types).filter_by(identity=100).all()
 
-    print date.today().isoformat()
     return render_template('report_page.html',
-        reduced_samples = reduced_samples,
+        sample_info = sample_info,
         date = date.today().isoformat())
