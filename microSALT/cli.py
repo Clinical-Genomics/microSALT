@@ -12,10 +12,7 @@ import logging
 
 from pkg_resources import iter_entry_points
 from microSALT import __version__
-from microSALT.job_creator import Job_Creator
-from microSALT.scraper import Scraper
-from microSALT.exporter import Exporter
-from microSALT.manager import Manager
+from microSALT.utils import *
 
 @click.group()
 @click.version_option(__version__)
@@ -68,9 +65,3 @@ def sample(ctx, sample_dir, organism):
 def scrape(ctx, indir):
   garbageman = Scraper(indir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_all_loci()
-
-@root.command()
-@click.pass_context
-def export(ctx):
-  ferryman = Exporter(ctx.obj['config'])
-  ferryman.std_export()

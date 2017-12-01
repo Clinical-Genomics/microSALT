@@ -12,8 +12,8 @@ import sys
 import time
 import yaml
 
-from microSALT.job_creator import Job_Creator
-from microSALT.lims_fetcher import LIMS_Fetcher
+from microSALT.utils.job_creator import Job_Creator
+from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Manager():
 

@@ -7,14 +7,17 @@
 import click
 import os
 import re
-from microSALT import app
-from microSALT.tables.samples import Samples
-from microSALT.tables.seq_types import Seq_types
-from microSALT.tables.profiles import Profiles
-from sqlalchemy import *
-from sqlalchemy.orm import sessionmaker
 import sys
 import yaml
+
+from sqlalchemy import *
+from sqlalchemy.orm import sessionmaker
+
+from microSALT import app
+from microSALT.store.orm_models import Samples, Seq_types
+from microSALT.store.models import Profiles
+from sqlalchemy import *
+from sqlalchemy.orm import sessionmaker
 
 #TODO: Rewrite all pushes/queries through session+commit
 class DB_Manipulator:

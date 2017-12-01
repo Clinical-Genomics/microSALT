@@ -1,10 +1,8 @@
+from datetime import date
 from flask import Flask, render_template
 
-from microSALT.tables.samples import Samples
-from microSALT.tables.seq_types import Seq_types
+from microSALT.store.orm_models import Samples, Seq_types
 from microSALT import app
-
-from datetime import date
 
 @app.route('/microSALT/')
 def start_page():

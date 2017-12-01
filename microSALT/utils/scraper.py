@@ -12,8 +12,8 @@ import sys
 import time
 import yaml
 
-from microSALT.db_manipulator import DB_Manipulator
-from microSALT.lims_fetcher import LIMS_Fetcher
+from microSALT.store.db_manipulator import DB_Manipulator
+from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Scraper():
 
