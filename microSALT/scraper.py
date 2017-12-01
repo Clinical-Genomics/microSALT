@@ -7,7 +7,6 @@
 import click
 import glob
 import os
-import pdb
 import re
 import sys
 import time

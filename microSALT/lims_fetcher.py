@@ -18,13 +18,16 @@ class LIMS_Fetcher():
 
   def __init__(self):
     self.data = {}
+    self.lims = Lims(BASEURI, USERNAME, PASSWORD)
 
   def get_lims_sample_info(self, cg_sampleid):
-    lims = Lims(BASEURI, USERNAME, PASSWORD)
-    sample = Sample(lims, id=cg_sampleid)
+    sample = Sample(self.lims, id=cg_sampleid)
     self.data = {'date_completed' : sample.date_completed,
                              'date_received' : sample.date_received,
                              'CG_ID_project': sample.project.id,
                              'Customer_ID_sample' : sample.name,
                              'Customer_ID_project' : sample.project.name}
 
+  def get_lims_sample_organism(self, cg_sampleid):
+    sample = Sample(self.lims, id=cg_sampleid)
+    self.data = {'organism' : sample.udf['Strain']}

@@ -15,6 +15,7 @@ from microSALT import __version__
 from microSALT.job_creator import Job_Creator
 from microSALT.scraper import Scraper
 from microSALT.exporter import Exporter
+from microSALT.manager import Manager
 
 @click.group()
 @click.version_option(__version__)
@@ -41,17 +42,24 @@ def root(ctx):
     logger.addHandler(ch)
     ctx.obj['log'] = logger
 
-@root.command()
+@root.group()
+@click.pass_context
 def analyze(ctx):
-  manager = Manager(ctx.obj['config'], ctx.obj['log'])
-  manager.start_analysis()  
- 
-@root.command()
-@click.argument('indir')
+  pass
+
+@analyze.command()
+@click.argument('project_dir')
+@click.pass_context
+def project(ctx, project_dir):
+  manager = Manager(project_dir, ctx.obj['config'], ctx.obj['log'])
+  manager.start_analysis() 
+
+@analyze.command()
+@click.argument('sample_dir')
 @click.argument('organism')
 @click.pass_context
-def create_job(ctx, indir, organism):
-    worker = Job_Creator(indir, organism, ctx.obj['config'], ctx.obj['log'])
+def sample(ctx, sample_dir, organism):
+    worker = Job_Creator(sample_dir, organism, ctx.obj['config'], ctx.obj['log'])
     worker.create_job()
 
 @root.command()
