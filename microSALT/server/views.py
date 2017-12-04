@@ -16,7 +16,8 @@ def project_page(project):
     species = list()
     distinct_organisms = Samples.query.distinct()
     for one_guy in distinct_organisms:
-        species.append(one_guy.organism)
+        if one_guy.organism not in species:
+            species.append(one_guy.organism)
     return render_template('project_page.html',
         organisms = species,
         project = project) 
