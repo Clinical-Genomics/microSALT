@@ -14,7 +14,7 @@ def start_page():
 @app.route('/microSALT/<project>')
 def project_page(project):
     species = list()
-    distinct_organisms = Samples.query.distinct()
+    distinct_organisms = Samples.query.filter_by(CG_ID_project=project).distinct()
     for one_guy in distinct_organisms:
         if one_guy.organism not in species:
             species.append(one_guy.organism)
