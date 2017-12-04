@@ -26,8 +26,8 @@ class LIMS_Fetcher():
       self.data.update({'date_received': project.open_date,
                                'CG_ID_project': cg_projid,
                                'Customer_ID_project' : project.name})
-    except KeyError:
-      self.logger.warn("Unable to fetch LIMS info for project {}".format(cg_projid))
+    except KeyError as e:
+      self.logger.warn("Unable to fetch LIMS info for project {}\nSource: {}".format(cg_projid, str(e)))
 
   def get_lims_sample_info(self, cg_sampleid):
     sample = Sample(self.lims, id=cg_sampleid)
@@ -36,5 +36,11 @@ class LIMS_Fetcher():
                              'CG_ID_sample': cg_sampleid,
                              'Customer_ID_sample' : sample.name,
                              'organism' : sample.udf['Strain']})
-    except KeyError:
-      self.logger.warn("Unable to fetch LIMS info for sample {}, strain info is:".format(cg_sampleid, sample.udf['Strain']))
+    except KeyError as e:
+      self.logger.warn("Unable to fetch LIMS info for sample {}. Possibly negative control.\nSource: {}".format(cg_sampleid, str(e)))
+    #Deal with inconsistent input
+    if self.data['organism'] == 'VRE':
+      try:
+        self.data.update({'organism' : sample.udf['Comment']})
+      except Exception as e:
+        self.logger.warn("Ambigious organism {} found in sample {}, but no comment clarifies.\nSource: {}".format(self.data['organism'], cg_sampleid, str(e)))
