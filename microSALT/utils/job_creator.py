@@ -31,13 +31,12 @@ class Job_Creator():
     self.organism = ""
     self.sample_name = os.path.basename(os.path.normpath(indir))
 
-  def find_organism(self):
+  def set_organism(self):
     lims_fetcher=LIMS_Fetcher()
     lims_fetcher.get_lims_sample_info(self.sample_name)
     self.organism = lims_fetcher.data['organism']
-
     orgs = os.listdir(self.config["folders"]["references"])
-    organism = re.split('.| ', self.organism)
+    organism = re.split('\W+', self.organism)
     refs = 0
     for target in orgs:
       hit = 0
@@ -147,7 +146,7 @@ class Job_Creator():
     batchfile.write("\n\n")
     batchfile.close()
 
-  def index_unindexed_db(self, full_dir):
+  def index_db(self, full_dir):
     """Check for indexation, makeblastdb job if not enough of them."""
     batchfile = open(self.batchfile, "a+")
     files = os.listdir(full_dir)
@@ -164,7 +163,7 @@ class Job_Creator():
   def create_blastjob_single(self):
     """ Creates a blast job for instances where the definitions file is one per organism"""
 
-    self.index_unindexed_db(self.config["folders"]["references"])
+    self.index_db(self.config["folders"]["references"])
 
     #create run
     batchfile = open(self.batchfile, "a+")
@@ -176,7 +175,7 @@ class Job_Creator():
 
   def create_blastjob_multi(self):
     """Creates a blast job for instances where many loci definition files make up an organism"""
-    self.index_unindexed_db("{}/{}".format(self.config["folders"]["references"], self.organism))
+    self.index_db("{}/{}".format(self.config["folders"]["references"], self.organism))
  
     #Create run
     batchfile = open(self.batchfile, "a+")
@@ -213,7 +212,7 @@ class Job_Creator():
   def sample_job(self):
     self.trimmed_files = dict()
     try:
-      self.find_organism()
+      self.set_organism()
       if not os.path.exists(self.outdir):
         os.makedirs(self.outdir)
       self.batchfile = "{}/runfile.sbatch".format(self.outdir)
@@ -225,4 +224,4 @@ class Job_Creator():
       self.create_blastjob_multi()
       self.logger.info("Created runfile for project {} in folder {}".format(self.indir, self.outdir))
     except Exception as e:
-      pass
+      self.logger.warning("Unable to create job for instance {}".format(self.indir))

@@ -15,6 +15,7 @@ import yaml
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 
+# TODO: Rewrite so samples use seperate objects
 class Scraper():
 
   def __init__(self, infolder, config, log):
@@ -22,26 +23,28 @@ class Scraper():
     self.logger = log
     self.infolder = os.path.abspath(infolder)
     
+    self.name = os.path.basename(os.path.normpath(self.infolder)).split('_')[0]
+    #Lukewarm way to grab the date part of the input folder. Kind of crud.
+    self.date = "{} {}".format(re.sub('\.','-', self.infolder.split('_')[1]), re.sub('\.','-', self.infolder.split('_')[2]))
     self.db_pusher=DB_Manipulator(config, self.logger)
-    self.lims_fetcher=LIMS_Fetcher()
-    self.CG_ID_sample = ""
-    self.sampledir = ""
+    self.lims_fetcher=LIMS_Fetcher(log)
     self.lims_sample_info = {}
 
   def scrape_project(self):
     #Scrape order matters a lot!
-    self.lims_fetcher.get_lims_project_info(os.path.basename(os.path.normpath(infolder)))
+    self.lims_fetcher.get_lims_project_info(self.name)
     self.scrape_projectinfo()
-    for (dirpath, dirnames, filenames) in os.walk(indir):
+    for (dirpath, dirnames, filenames) in os.walk(self.infolder):
       for dir in dirnames:
+        self.infolder = "{}/{}".format(dirpath, dir)
+        self.name = dir
+        self.lims_fetcher.get_lims_sample_info(dir)
         self.scrape_sampleinfo()
         self.scrape_all_loci()
 
   def scrape_sample(self):
     #Scrape order matters a lot!
-    self.sampledir = os.path.basename(os.path.normpath(self.infolder))
-    self.CG_ID_sample = self.sampledir.split('_')[0]
-    self.lims_fetcher.get_lims_sample_info(self.CG_ID_sample)
+    self.lims_fetcher.get_lims_sample_info(self.name)
     self.lims_fetcher.get_lims_project_info(self.lims_fetcher.data['CG_ID_project'])
 
     self.scrape_projectinfo()
@@ -53,30 +56,25 @@ class Scraper():
     for file in q_list:
       self.scrape_single_loci(file)
     #Requires all loci results to be initialized
-    ST = self.db_pusher.alleles2st(self.CG_ID_sample)
-    self.db_pusher.upd_rec_orm({'CG_ID_sample':self.CG_ID_sample}, 'Samples', {'ST':ST})
+    ST = self.db_pusher.alleles2st(self.name)
+    self.db_pusher.upd_rec_orm({'CG_ID_sample':self.name}, 'Samples', {'ST':ST})
 
   def scrape_projectinfo(self):
     proj_col=dict()
-    proj_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
+    proj_col['CG_ID_project'] = self.name
     proj_col['Customer_ID_project'] = self.lims_fetcher.data['Customer_ID_project']
     proj_col['date_ordered'] = self.lims_fetcher.data['date_received']
     self.db_pusher.add_rec_orm(proj_col, 'Projects')
 
   def scrape_sampleinfo(self):
     """Identifies sample values"""
-    sample_col = self.db_pusher.get_columns_orm('Samples')
-    sample_col["CG_ID_sample"] = self.CG_ID_sample
-    rundir = self.sampledir.split('_')
-    rundir[1] = re.sub('\.','-',rundir[1])
-    rundir[2] = re.sub('\.',':',rundir[2])
-
+    sample_col = self.db_pusher.get_columns_orm('Samples') 
+    sample_col['CG_ID_sample'] = self.lims_fetcher.data['CG_ID_sample']
     sample_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
     sample_col['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
-    sample_col["date_analysis"] = "{} {}".format(rundir[1], rundir[2])
+    sample_col["date_analysis"] = self.date
     self.db_pusher.add_rec_orm(sample_col, 'Samples')
 
-  #TODO: Look over column assignment, since new input probably screwed things over
   def scrape_single_loci(self, infile):
     """Scrapes a single blast output file for MLST results"""
     seq_col = self.db_pusher.get_columns_orm('Seq_types') 
@@ -89,9 +87,9 @@ class Scraper():
       #Takes ref db/organism from resultfile. Awkward.
       db = insample.readline().rstrip().split(' ')
       organ = db[2].split('/')[-2]
-      self.db_pusher.upd_rec_orm({'CG_ID_sample' : self.CG_ID_sample}, 'Samples', {'organism': organ})
+      self.db_pusher.upd_rec_orm({'CG_ID_sample' : self.name}, 'Samples', {'organism': organ})
 
-      seq_col["CG_ID_sample"] = self.CG_ID_sample
+      seq_col["CG_ID_sample"] = self.name
 
       for line in insample:
         #Ignore commented fields
@@ -117,7 +115,6 @@ class Scraper():
           seq_col["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
           seq_col["contig_length"] = nodeinfo[3]
           seq_col["contig_coverage"] = nodeinfo[5]
-
           self.db_pusher.add_rec_orm(seq_col, 'Seq_types')
 
 
