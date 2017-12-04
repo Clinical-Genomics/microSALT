@@ -20,6 +20,8 @@ from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 
 #TODO: Rewrite all pushes/queries through session+commit
+#TODO: Contains a lot of legacy from deving. Remove what cant be repurposed.
+#TODO: Direct most server calls through here.
 class DB_Manipulator:
  
   def __init__(self, config, log):
@@ -184,8 +186,9 @@ class DB_Manipulator:
       if not item[0] in alle_list:
         alle_list.append(item[0])
       else:
-        self.logger.error("Duplicate alleles found when converting alleles to ST. No logic implemented. Exited")
-        sys.exit()
+        self.logger.warning("Alles are non-unique for sample {}. Setting ST to -2.".format(cg_sid))
+        return -2
+ 
     for k,v in self.profiles.items():
       if k == organism:
         filtero = ""
@@ -195,10 +198,10 @@ class DB_Manipulator:
           index += 1
         ST = eval("self.session.query(v).filter({}).all()".format(filtero))
         if ST == []:
-          self.logger.info("No ST for allele combo found. Setting ST to 0.")
+          self.logger.warning("No ST for allele combo of sample {} found. Setting ST to 0.".format(cg_sid))
           return 0
         if len(ST) > 1:
-          self.logger.warning("Multiple ST found. Setting ST to -2. Manually investigate")
-          return -2
+          self.logger.warning("Multiple ST found for sample {}. Setting ST to -1".format(cg_sid))
+          return -1
         else: 
           return ST[0][0]
