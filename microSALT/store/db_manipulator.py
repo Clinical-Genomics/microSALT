@@ -170,36 +170,14 @@ class DB_Manipulator:
           self.logger.info("Found loci {}, which has no profile entry".format(loci))
           return 0
 
-  def simpleAllele2st(self, cg_sid):
-    """ Finds a definitive ST if such exists """
+  def alleles2st(self, cg_sid):
     organism = self.session.query(Samples.organism).filter(Samples.CG_ID_sample==cg_sid).scalar()
-    # Find clear top hits
     hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9, Seq_types.evalue==0.0).all()
-
-    #Check that there's only correct number of loci hits
-    if len(self.profiles[organism].columns.values()) == len(hits):
-      self.logger.info("Equal number of hits as organism profile for {} on {}".format(cg_sid, organism))
-
-    #Find ST
-    filterstring = ""
-    for entry in hits:
-      filterstring += " {}={} and".format(entry.loci, entry.allele)
-    filterstring = filterstring[:-3]
-    output = self.session.query(self.profiles[organism]).filter(text(filterstring)).all()
-
-    if len(output) == 1:
-      return output[0].ST
-    else:
-      return -1 #No Simple solution found
-
-  def complexAllele2st(self, cg_sid):
-    organism = self.session.query(Samples.organism).filter(Samples.CG_ID_sample==cg_sid).scalar()
+    thresholdless = True
     if 'clonal_complex' in self.profiles[organism].columns.keys():
       non_allele_columns = 2
     else:
       non_allele_columns = 1 
-    #All hits, regardless of thresholds
-    hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid).all()
 
     #Establish there's enough unique hits at all, otherwise we're screwed from the get go
     uniqueDict = dict()
@@ -209,27 +187,20 @@ class DB_Manipulator:
         uniqueDict[hit.loci].append(hit.allele)
       elif hit.allele not in uniqueDict[hit.loci]:
         uniqueDict[hit.loci].append(hit.allele)
-
-    # Find exact match, but without identity and evalue thresholds
-    if len(self.profiles[organism].columns.values()) - non_allele_columns == len(uniqueDict.keys())\
-    and sum([len(x) for x in uniqueDict.values()]) == len(self.profiles[organism].columns.values()) - non_allele_columns:
-      self.logger.warning("Disregarding thresholds for sample {} in order to establish ST match".format(cg_sid))
-      # Find ST (extended)
-      filterstring = ""
-      for entry in hits:
-        filterstring += " {}={} and".format(entry.loci, entry.allele)
-      filterstring = filterstring[:-3]
-      output = self.session.query(self.profiles[organism]).filter(text(filterstring)).all()
-  
-      if len(output) > 0:
-        self.logger.warning("Sample {} has ST{}.".format(cg_sid, output[0].ST))
-        return output[0].ST
-      else:
-        self.logger.warning("Sample {} on {} has a single allele set but no matching ST. Either incorrectly called allele, or novel ST has been found. Setting ST to -2".format(cg_sid, organism))
-        return -2
-    elif len(self.profiles[organism].columns.values()) - non_allele_columns > len(uniqueDict.keys()):
-      self.logger.warning("Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3".format(cg_sid, organism))
-      return -3
+    if len(self.profiles[organism].columns.values()) - non_allele_columns > len(uniqueDict.keys()):
+      # Not enough hits with thresholds, using threshold-less. 
+      hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid).all()
+      thresholds = False
+      #If Still not enough, return -3
+      for hit in hits:
+        if hit.loci not in uniqueDict.keys():
+          uniqueDict[hit.loci] = list()
+          uniqueDict[hit.loci].append(hit.allele)
+        elif hit.allele not in uniqueDict[hit.loci]:
+          uniqueDict[hit.loci].append(hit.allele)
+      if len(self.profiles[organism].columns.values()) - non_allele_columns > len(uniqueDict.keys()):
+        self.logger.warning("Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3".format(cg_sid, organism))
+        return -3
 
     # Tests all allele combinations found to see if any of them result in ST
     filterstring = ""
@@ -237,7 +208,7 @@ class DB_Manipulator:
       for num in val:
         if val.index(num) == 0 and len(val) > 1:
           filterstring += " ("
-        filterstring += " {}={} ".format(key, num) 
+        filterstring += " {}={} ".format(key, num)
         if len(val) == 1:
           filterstring += "and"
         elif val.index(num)+1 == len(val) and len(val) > 1:
@@ -250,15 +221,14 @@ class DB_Manipulator:
       STlist= list()
       for st in output:
         STlist.append(st.ST)
-      best = self.bestST(STlist, cg_sid) 
+      best = self.bestST(STlist, cg_sid)
       self.logger.warning("Multiple possible ST found for sample {}, list: {}. Established ST{} as best hit.".format(cg_sid, STlist, best))
       return best
-    else:
-      self.logger.warning("Multiple allele instances found for {}. Only valid allele combination was ST{}".format(cg_sid, output[0].ST))
+    elif len(output) == 1:
       return output[0].ST
-
-    self.logger.warning("Completely unable to catch Sequence Type. Setting ST to -5, review immediately. Analysis should never be here.")
-    return -5
+    else:
+      self.logger.warning("Sample {} on {} has a single allele set but no matching ST. Either incorrectly called allele, or novel ST has been found. Setting ST to -2".format(cg_sid, organism))
+      return -2
 
   def bestST(self, st_list, cg_sid):
     """Takes in a list of ST and a sample. Establishes which ST is most likely by criteria  id -> eval -> contig coverage"""
@@ -319,14 +289,3 @@ class DB_Manipulator:
         topCC = scores[key]['cc']
         topST = key
     return topST
-
-  def alleles2st(self, cg_sid):
-    """Takes a CG sample ID and calculates most likely ST"""
-    # All this needs to be conveyed to views
-    ST = self.simpleAllele2st(cg_sid)
-    if ST > 0:
-      return ST
-    #TODO: Distinquish between different negative codes
-    else:
-      self.logger.warning("No Simple ST found for {}. Using complex finder.".format(cg_sid))
-      return self.complexAllele2st(cg_sid)
