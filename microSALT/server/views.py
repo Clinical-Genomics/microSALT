@@ -24,7 +24,7 @@ def project_page(project):
 
 @app.route('/microSALT/<project>/<organism>')
 def report_page(project, organism):
-    # Joins all three tables, and displays only hits with 100% hit rate
+    # Joins all three tables
     sample_info = Samples.query.filter_by(organism=organism).join(Projects).filter_by(CG_ID_project=project).join(Seq_types).all()
 
     return render_template('report_page.html',
