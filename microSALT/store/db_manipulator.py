@@ -198,7 +198,7 @@ class DB_Manipulator:
       non_allele_columns = 2
     else:
       non_allele_columns = 1 
-    #All hits
+    #All hits, regardless of thresholds
     hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid).all()
 
     #Establish there's enough unique hits at all, otherwise we're screwed from the get go
@@ -210,9 +210,10 @@ class DB_Manipulator:
       elif hit.allele not in uniqueDict[hit.loci]:
         uniqueDict[hit.loci].append(hit.allele)
 
-    #Check that correct amount of alleles has been found AND that no allele has multiple numbers
-    #This corrects the issue where the loci does not have 100% id
-    if len(self.profiles[organism].columns.values()) - non_allele_columns == len(uniqueDict.keys()) and sum([len(x) for x in uniqueDict.values()]) == len(self.profiles[organism].columns.values()) - non_allele_columns:
+    # Find exact match, but without identity and evalue thresholds
+    if len(self.profiles[organism].columns.values()) - non_allele_columns == len(uniqueDict.keys())\
+    and sum([len(x) for x in uniqueDict.values()]) == len(self.profiles[organism].columns.values()) - non_allele_columns:
+      self.logger.warning("Disregarding thresholds for sample {} in order to establish ST match".format(cg_sid))
       # Find ST (extended)
       filterstring = ""
       for entry in hits:
@@ -221,25 +222,22 @@ class DB_Manipulator:
       output = self.session.query(self.profiles[organism]).filter(text(filterstring)).all()
   
       if len(output) > 0:
-        self.logger.warning("Sampe {} has ST {} from extended search (breaking thresholds). Be aware".format(cg_sid, output[0].ST))
+        self.logger.warning("Sample {} has ST{}.".format(cg_sid, output[0].ST))
         return output[0].ST
       else:
-        self.logger.warning("Sufficent loci found but no ST. True hit is not top hit, or novel ST has been found. Sample {} on {}. Setting ST to -2".format(cg_sid, organism))
+        self.logger.warning("Sample {} on {} has a single allele set but no matching ST. Either incorrectly called allele, or novel ST has been found. Setting ST to -2".format(cg_sid, organism))
         return -2
     elif len(self.profiles[organism].columns.values()) - non_allele_columns > len(uniqueDict.keys()):
-      self.logger.warning("Less hits than organism profile for {} on {}. Relax blast constraint? Unable to fanthom a ST. Setting to -3".format(cg_sid, organism))
+      self.logger.warning("Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3".format(cg_sid, organism))
       return -3
 
-    # This corrects the issue where multiple alleles for a given loci were found.
-    # Find all ST combinations, put them in a list
+    # Tests all allele combinations found to see if any of them result in ST
     filterstring = ""
     for key, val in uniqueDict.items():
       for num in val:
         if val.index(num) == 0 and len(val) > 1:
           filterstring += " ("
-
         filterstring += " {}={} ".format(key, num) 
-
         if len(val) == 1:
           filterstring += "and"
         elif val.index(num)+1 == len(val) and len(val) > 1:
@@ -251,11 +249,76 @@ class DB_Manipulator:
     if len(output) > 1:
       STlist= list()
       for st in output:
-        STlist.append(st.ST) 
-      self.logger.warning("Multiple possible ST found for sample {}, list: {}".format(cg_sid, STlist))
+        STlist.append(st.ST)
+      best = self.bestST(STlist, cg_sid) 
+      self.logger.warning("Multiple possible ST found for sample {}, list: {}. Established ST{} as best hit.".format(cg_sid, STlist, best))
+      return best
     else:
-      self.logger.warning("Established ST{} for {} from expandeded search".format(output[0].ST, cg_sid))
+      self.logger.warning("Multiple allele instances found for {}. Only valid allele combination was ST{}".format(cg_sid, output[0].ST))
       return output[0].ST
+
+    self.logger.warning("Completely unable to catch Sequence Type. Setting ST to -5, review immediately. Analysis should never be here.")
+    return -5
+
+  def bestST(self, st_list, cg_sid):
+    """Takes in a list of ST and a sample. Establishes which ST is most likely by criteria  id -> eval -> contig coverage"""
+
+    profiles = list()
+    scores = dict()
+    organism = self.session.query(Samples.organism).filter(Samples.CG_ID_sample==cg_sid).scalar()
+    for st in st_list:
+      scores[st] = dict()
+      scores[st]['id'] = 0
+      scores[st]['eval'] = 0
+      scores[st]['cc'] = 0
+      profiles.append(self.session.query(self.profiles[organism]).filter(text('ST={}'.format(st))).first())
+
+    # Get value metrics for each allele set that resolves an ST 
+    for prof in profiles:
+      filterstring = "and_(Seq_types.CG_ID_sample=='{}', or_(".format(cg_sid)
+      for index, allele in enumerate(prof):
+        if 'ST' not in prof.keys()[index] and 'clonal_complex' not in prof.keys()[index]:
+          filterstring += "and_(Seq_types.loci=='{}', Seq_types.allele=='{}'), ".format(prof.keys()[index], allele)
+      filterstring = filterstring[:-2] + "))"
+      alleles = self.session.query(Seq_types).filter(eval(filterstring)).all()
+
+      # Keep only best allele of each loci name
+      index = 0
+      addedloci = dict()
+      while index < len(alleles)-1:
+        if alleles[index].loci in addedloci:
+          nex = addedloci[alleles[index].loci]
+
+          if (alleles[index].identity > alleles[nex].identity) or (alleles[index].identity == alleles[nex].identity and float(alleles[index].evalue) < float(alleles[nex].evalue))\
+          or (alleles[index].identity == alleles[nex].identity and float(alleles[index].evalue) == float(alleles[nex].evalue) and alleles[index].contig_coverage > alleles[nex].contig_coverage):
+            alleles.pop(nex)
+            addedloci[alleles[index].loci] = index
+          else:
+            alleles.pop(index)
+        else:    
+          addedloci[alleles[index].loci] = index
+          index += 1
+      #Compute metrics
+      for allele in alleles:
+        scores[prof.ST]['id'] += allele.identity
+        scores[prof.ST]['eval'] += float(allele.evalue)
+        scores[prof.ST]['cc'] += allele.contig_coverage
+
+    topST = ""
+    topID = 0
+    topEval = 100
+    topCC = 0
+    for key, val in scores.items():
+      if scores[key]['id'] > topID:
+        topID = scores[key]['id']
+        topST = key
+      elif scores[key]['id'] == topID and scores[key]['eval'] < topEval:
+        topEval = scores[key]['eval']
+        topST = key
+      elif scores[key]['id'] == topID and scores[key]['eval'] == topEval:
+        topCC = scores[key]['cc']
+        topST = key
+    return topST
 
   def alleles2st(self, cg_sid):
     """Takes a CG sample ID and calculates most likely ST"""
