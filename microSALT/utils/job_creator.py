@@ -32,25 +32,27 @@ class Job_Creator():
     self.sample_name = os.path.basename(os.path.normpath(indir))
 
   def set_organism(self):
-    lims_fetcher=LIMS_Fetcher()
+    lims_fetcher=LIMS_Fetcher(self.logger)
     lims_fetcher.get_lims_sample_info(self.sample_name)
-    self.organism = lims_fetcher.data['organism']
+    self.organism = lims_fetcher.data['organism'].lower()
     orgs = os.listdir(self.config["folders"]["references"])
     organism = re.split('\W+', self.organism)
-    refs = 0
-    for target in orgs:
-      hit = 0
-      for piece in organism:
-        if not piece in target:
-          break
-        else:
-          hit += 1
-      if hit == len(organism):
-        self.organism = target
-      if refs > 1:
-        self.logger.error("Bad LIMS reference name given, multiple reference databases found!")
-        sys.exit()
-
+    try:
+      refs = 0
+      for target in orgs:
+        hit = 0
+        for piece in organism:
+          if piece in target:
+            hit +=1
+          #For when people misspell the strain in the orderform
+          elif piece == "pneumonsiae" and "pneumoniae" in target:
+            hit +=1
+          else:
+            break
+        if hit == len(organism):
+          self.organism = target
+    except Exception as e:
+      self.logger.warn("Unable to find reference for {}, strain {} has no reference match\nSource: {}".format(self.sample_name, self.organism, e))
 
   def verify_fastq(self):
     """ Uses arg indir to return a list of PE fastq tuples fulfilling naming convention """
@@ -188,6 +190,7 @@ class Job_Creator():
     batchfile.write("\n")
     batchfile.close()
 
+
   def get_sbatch(self):
     return self.batchfile
 
@@ -216,7 +219,7 @@ class Job_Creator():
       if not os.path.exists(self.outdir):
         os.makedirs(self.outdir)
       self.batchfile = "{}/runfile.sbatch".format(self.outdir)
-
+      
       self.create_header()
       self.create_trimjob()
       self.interlace_files()
@@ -224,4 +227,4 @@ class Job_Creator():
       self.create_blastjob_multi()
       self.logger.info("Created runfile for project {} in folder {}".format(self.indir, self.outdir))
     except Exception as e:
-      self.logger.warning("Unable to create job for instance {}".format(self.indir))
+      self.logger.warning("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))

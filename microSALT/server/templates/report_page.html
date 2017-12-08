@@ -3,7 +3,7 @@
 {% block body %}
     <div class="container-fluid">
         <div class="col-lg-16">
-                    {% for sample in sample_info %}
+                  {% for sample in samples %}
                     <div class="panel">
                     <div class="panel-body">
                     <footer>
@@ -27,7 +27,7 @@
                                         </tr>
                                         <tr>
                                             <th scope="row" >Organism</th>
-                                            <td>{{sample.organism.replace('_', ' ').title()}}</td>
+                                            <td><i>{{sample.organism.replace('_', ' ').title()}}</i></td>
                                         </tr>
                                         <tr>
                                             <th scope="row" >Sequence Type</th>
@@ -54,6 +54,7 @@
                                     </thead>
                                     <tbody>
                                         {% for seq_type in sample.seq_types %}
+                                          {% if seq_type.st_predictor %}
                                         <tr>
                                             <td>{{seq_type.loci}}</td>
                                             <td width="18%"> {{ seq_type.allele}}</td>
@@ -62,16 +63,15 @@
                                             <td>{{ seq_type.identity|round(2) }}</td>
                                             <td>{{ seq_type.evalue }}</td>
                                         </tr>
-                                        {% endfor %}
+                                        {% endif %}
+                                      {% endfor %}
                                     </tbody>
                                 </table>
                             </div>
                     </footer>
                 </div>
             </div>
-                    {% endfor %}
-                
-           
+          {% endfor %}
         </div>
     </div>
 </div>
