@@ -16,8 +16,6 @@ from sqlalchemy.orm import sessionmaker
 from microSALT import app
 from microSALT.store.orm_models import Projects, Samples, Seq_types
 from microSALT.store.models import Profiles
-from sqlalchemy import *
-from sqlalchemy.orm import sessionmaker
 
 #TODO: Rewrite all pushes/queries through session+commit
 #TODO: Contains a lot of legacy from deving. Remove what cant be repurposed.
@@ -170,9 +168,22 @@ class DB_Manipulator:
           self.logger.info("Found loci {}, which has no profile entry".format(loci))
           return 0
 
+  def setPredictor(self, cg_sid, pks=dict()):
+    """ Helper function that flags a set of seq_types as part of the final prediction.
+      Flags all in case nothing can be established.
+      Optionally takes in a loci -> contig name dict for allele distinction. """
+    sample = self.session.query(Seq_types).filter(Seq_types.CG_ID_sample==cg_sid)
+    if pks == dict():
+      sample.update({Seq_types.st_predictor: 1})
+    else:
+      for loci, cn in pks.items():
+        sample.filter(Seq_types.loci==loci, Seq_types.contig_name==cn).update({Seq_types.st_predictor : 1})
+    self.session.commit()
+
   def alleles2st(self, cg_sid):
     organism = self.session.query(Samples.organism).filter(Samples.CG_ID_sample==cg_sid).scalar()
     hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9, Seq_types.evalue==0.0).all()
+    #Unused, might be valuable later
     thresholdless = True
     if 'clonal_complex' in self.profiles[organism].columns.keys():
       non_allele_columns = 2
@@ -200,6 +211,7 @@ class DB_Manipulator:
           uniqueDict[hit.loci].append(hit.allele)
       if len(self.profiles[organism].columns.values()) - non_allele_columns > len(uniqueDict.keys()):
         self.logger.warning("Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3".format(cg_sid, organism))
+        self.setPredictor(cg_sid)
         return -3
 
     # Tests all allele combinations found to see if any of them result in ST
@@ -221,23 +233,27 @@ class DB_Manipulator:
       STlist= list()
       for st in output:
         STlist.append(st.ST)
-      best = self.bestST(STlist, cg_sid)
+      best = self.bestST(cg_sid, STlist)
       self.logger.warning("Multiple possible ST found for sample {}, list: {}. Established ST{} as best hit.".format(cg_sid, STlist, best))
       return best
     elif len(output) == 1:
-      return output[0].ST
+      #This bestST call is excessive and should be streamlined later
+      return self.bestST(cg_sid, [output[0].ST])
     else:
       self.logger.warning("Sample {} on {} has a single allele set but no matching ST. Either incorrectly called allele, or novel ST has been found. Setting ST to -2".format(cg_sid, organism))
+      self.setPredictor(cg_sid)
       return -2
 
-  def bestST(self, st_list, cg_sid):
+  def bestST(self, cg_sid, st_list):
     """Takes in a list of ST and a sample. Establishes which ST is most likely by criteria  id -> eval -> contig coverage"""
 
     profiles = list()
     scores = dict()
+    bestalleles = dict()
     organism = self.session.query(Samples.organism).filter(Samples.CG_ID_sample==cg_sid).scalar()
     for st in st_list:
       scores[st] = dict()
+      bestalleles[st] = dict()
       scores[st]['id'] = 0
       scores[st]['eval'] = 0
       scores[st]['cc'] = 0
@@ -254,25 +270,30 @@ class DB_Manipulator:
 
       # Keep only best allele of each loci name
       index = 0
-      addedloci = dict()
+      seenLoci = dict()
       while index < len(alleles)-1:
-        if alleles[index].loci in addedloci:
-          nex = addedloci[alleles[index].loci]
+        if alleles[index].loci in seenLoci:
+          prev = seenLoci[alleles[index].loci]
 
-          if (alleles[index].identity > alleles[nex].identity) or (alleles[index].identity == alleles[nex].identity and float(alleles[index].evalue) < float(alleles[nex].evalue))\
-          or (alleles[index].identity == alleles[nex].identity and float(alleles[index].evalue) == float(alleles[nex].evalue) and alleles[index].contig_coverage > alleles[nex].contig_coverage):
-            alleles.pop(nex)
-            addedloci[alleles[index].loci] = index
+          if (alleles[index].identity > alleles[prev].identity) or\
+          (alleles[index].identity == alleles[prev].identity and float(alleles[index].evalue) < float(alleles[prev].evalue))\
+          or (alleles[index].identity == alleles[prev].identity and float(alleles[index].evalue) == float(alleles[prev].evalue)\
+          and alleles[index].contig_coverage > alleles[prev].contig_coverage):
+            alleles.pop(prev)
+            seenLoci[alleles[index].loci] = index
           else:
             alleles.pop(index)
         else:    
-          addedloci[alleles[index].loci] = index
+          seenLoci[alleles[index].loci] = index
           index += 1
+
       #Compute metrics
       for allele in alleles:
         scores[prof.ST]['id'] += allele.identity
         scores[prof.ST]['eval'] += float(allele.evalue)
         scores[prof.ST]['cc'] += allele.contig_coverage
+        bestalleles[prof.ST][allele.loci] = ""
+        bestalleles[prof.ST][allele.loci] += allele.contig_name
 
     topST = ""
     topID = 0
@@ -288,4 +309,5 @@ class DB_Manipulator:
       elif scores[key]['id'] == topID and scores[key]['eval'] == topEval:
         topCC = scores[key]['cc']
         topST = key
+    self.setPredictor(cg_sid, bestalleles[topST])
     return topST
