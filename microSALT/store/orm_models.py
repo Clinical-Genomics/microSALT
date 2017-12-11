@@ -39,6 +39,7 @@ class Seq_types(db.Model):
   contig_end = db.Column(db.Integer)
   loci_start = db.Column(db.Integer)
   loci_end = db.Column(db.Integer)
+  st_predictor = db.Column(db.Boolean)
 
 class Projects(db.Model):
 
