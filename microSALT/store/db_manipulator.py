@@ -16,10 +16,10 @@ from sqlalchemy.orm import sessionmaker
 from microSALT import app
 from microSALT.store.orm_models import Projects, Samples, Seq_types
 from microSALT.store.models import Profiles
-from sqlalchemy import *
-from sqlalchemy.orm import sessionmaker
 
 #TODO: Rewrite all pushes/queries through session+commit
+#TODO: Contains a lot of legacy from deving. Remove what cant be repurposed.
+#TODO: Direct most server calls through here.
 class DB_Manipulator:
  
   def __init__(self, config, log):
@@ -168,37 +168,146 @@ class DB_Manipulator:
           self.logger.info("Found loci {}, which has no profile entry".format(loci))
           return 0
 
-  def get_100pc_alleles(self, cg_sid):
-    """ Only grabs alleles from a samples that have 100% hit rate. Solves most problems"""
-    return self.session.query(Seq_types.loci, Seq_types.allele).filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity==100).all()
+  def setPredictor(self, cg_sid, pks=dict()):
+    """ Helper function that flags a set of seq_types as part of the final prediction.
+      Flags all in case nothing can be established.
+      Optionally takes in a loci -> contig name dict for allele distinction. """
+    sample = self.session.query(Seq_types).filter(Seq_types.CG_ID_sample==cg_sid)
+    if pks == dict():
+      sample.update({Seq_types.st_predictor: 1})
+    else:
+      for loci, cn in pks.items():
+        sample.filter(Seq_types.loci==loci, Seq_types.contig_name==cn).update({Seq_types.st_predictor : 1})
+    self.session.commit()
 
   def alleles2st(self, cg_sid):
-    """Takes a CG sample ID and calculates most likely ST"""
-    # TODO: Can be cleaned A LOT.
     organism = self.session.query(Samples.organism).filter(Samples.CG_ID_sample==cg_sid).scalar()
-    #ONLY GRABS ALLELES WITH 100% ID
-    alleles =self.get_100pc_alleles(cg_sid) 
-    #Ugly check that duplicate entries dont exist
-    alle_list = list()
-    for item in alleles:
-      if not item[0] in alle_list:
-        alle_list.append(item[0])
-      else:
-        self.logger.error("Duplicate alleles found when converting alleles to ST. No logic implemented. Exited")
-        sys.exit()
-    for k,v in self.profiles.items():
-      if k == organism:
-        filtero = ""
-        index = 0
-        while index <  len(alleles):
-          filtero += "v.c.{}=={}, ".format(alleles[index][0], alleles[index][1])
+    hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9, Seq_types.evalue==0.0).all()
+    #Unused, might be valuable later
+    thresholdless = True
+    if 'clonal_complex' in self.profiles[organism].columns.keys():
+      non_allele_columns = 2
+    else:
+      non_allele_columns = 1 
+
+    #Establish there's enough unique hits at all, otherwise we're screwed from the get go
+    uniqueDict = dict()
+    for hit in hits:
+      if hit.loci not in uniqueDict.keys():
+        uniqueDict[hit.loci] = list()
+        uniqueDict[hit.loci].append(hit.allele)
+      elif hit.allele not in uniqueDict[hit.loci]:
+        uniqueDict[hit.loci].append(hit.allele)
+    if len(self.profiles[organism].columns.values()) - non_allele_columns > len(uniqueDict.keys()):
+      # Not enough hits with thresholds, using threshold-less. 
+      hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid).all()
+      thresholds = False
+      #If Still not enough, return -3
+      for hit in hits:
+        if hit.loci not in uniqueDict.keys():
+          uniqueDict[hit.loci] = list()
+          uniqueDict[hit.loci].append(hit.allele)
+        elif hit.allele not in uniqueDict[hit.loci]:
+          uniqueDict[hit.loci].append(hit.allele)
+      if len(self.profiles[organism].columns.values()) - non_allele_columns > len(uniqueDict.keys()):
+        self.logger.warning("Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3".format(cg_sid, organism))
+        self.setPredictor(cg_sid)
+        return -3
+
+    # Tests all allele combinations found to see if any of them result in ST
+    filterstring = ""
+    for key, val in uniqueDict.items():
+      for num in val:
+        if val.index(num) == 0 and len(val) > 1:
+          filterstring += " ("
+        filterstring += " {}={} ".format(key, num)
+        if len(val) == 1:
+          filterstring += "and"
+        elif val.index(num)+1 == len(val) and len(val) > 1:
+          filterstring += ") and"
+        else:
+          filterstring += "or"
+    filterstring = filterstring[:-3]
+    output = self.session.query(self.profiles[organism]).filter(text(filterstring)).all()
+    if len(output) > 1:
+      STlist= list()
+      for st in output:
+        STlist.append(st.ST)
+      best = self.bestST(cg_sid, STlist)
+      self.logger.warning("Multiple possible ST found for sample {}, list: {}. Established ST{} as best hit.".format(cg_sid, STlist, best))
+      return best
+    elif len(output) == 1:
+      #This bestST call is excessive and should be streamlined later
+      return self.bestST(cg_sid, [output[0].ST])
+    else:
+      self.logger.warning("Sample {} on {} has a single allele set but no matching ST. Either incorrectly called allele, or novel ST has been found. Setting ST to -2".format(cg_sid, organism))
+      self.setPredictor(cg_sid)
+      return -2
+
+  def bestST(self, cg_sid, st_list):
+    """Takes in a list of ST and a sample. Establishes which ST is most likely by criteria  id -> eval -> contig coverage"""
+
+    profiles = list()
+    scores = dict()
+    bestalleles = dict()
+    organism = self.session.query(Samples.organism).filter(Samples.CG_ID_sample==cg_sid).scalar()
+    for st in st_list:
+      scores[st] = dict()
+      bestalleles[st] = dict()
+      scores[st]['id'] = 0
+      scores[st]['eval'] = 0
+      scores[st]['cc'] = 0
+      profiles.append(self.session.query(self.profiles[organism]).filter(text('ST={}'.format(st))).first())
+
+    # Get value metrics for each allele set that resolves an ST 
+    for prof in profiles:
+      filterstring = "and_(Seq_types.CG_ID_sample=='{}', or_(".format(cg_sid)
+      for index, allele in enumerate(prof):
+        if 'ST' not in prof.keys()[index] and 'clonal_complex' not in prof.keys()[index]:
+          filterstring += "and_(Seq_types.loci=='{}', Seq_types.allele=='{}'), ".format(prof.keys()[index], allele)
+      filterstring = filterstring[:-2] + "))"
+      alleles = self.session.query(Seq_types).filter(eval(filterstring)).all()
+
+      # Keep only best allele of each loci name
+      index = 0
+      seenLoci = dict()
+      while index < len(alleles)-1:
+        if alleles[index].loci in seenLoci:
+          prev = seenLoci[alleles[index].loci]
+
+          if (alleles[index].identity > alleles[prev].identity) or\
+          (alleles[index].identity == alleles[prev].identity and float(alleles[index].evalue) < float(alleles[prev].evalue))\
+          or (alleles[index].identity == alleles[prev].identity and float(alleles[index].evalue) == float(alleles[prev].evalue)\
+          and alleles[index].contig_coverage > alleles[prev].contig_coverage):
+            alleles.pop(prev)
+            seenLoci[alleles[index].loci] = index
+          else:
+            alleles.pop(index)
+        else:    
+          seenLoci[alleles[index].loci] = index
           index += 1
-        ST = eval("self.session.query(v).filter({}).all()".format(filtero))
-        if ST == []:
-          self.logger.info("No ST for allele combo found. Setting ST to 0.")
-          return 0
-        if len(ST) > 1:
-          self.logger.warning("Multiple ST found. Setting ST to -2. Manually investigate")
-          return -2
-        else: 
-          return ST[0][0]
+
+      #Compute metrics
+      for allele in alleles:
+        scores[prof.ST]['id'] += allele.identity
+        scores[prof.ST]['eval'] += float(allele.evalue)
+        scores[prof.ST]['cc'] += allele.contig_coverage
+        bestalleles[prof.ST][allele.loci] = ""
+        bestalleles[prof.ST][allele.loci] += allele.contig_name
+
+    topST = ""
+    topID = 0
+    topEval = 100
+    topCC = 0
+    for key, val in scores.items():
+      if scores[key]['id'] > topID:
+        topID = scores[key]['id']
+        topST = key
+      elif scores[key]['id'] == topID and scores[key]['eval'] < topEval:
+        topEval = scores[key]['eval']
+        topST = key
+      elif scores[key]['id'] == topID and scores[key]['eval'] == topEval:
+        topCC = scores[key]['cc']
+        topST = key
+    self.setPredictor(cg_sid, bestalleles[topST])
+    return topST

@@ -22,10 +22,12 @@ class Scraper():
     self.config = config
     self.logger = log
     self.infolder = os.path.abspath(infolder)
-    
-    self.name = os.path.basename(os.path.normpath(self.infolder)).split('_')[0]
+    self.sampledir = ""
+   
+    last_folder = os.path.basename(os.path.normpath(self.infolder)) 
+    self.name = last_folder.split('_')[0]
     #Lukewarm way to grab the date part of the input folder. Kind of crud.
-    self.date = "{} {}".format(re.sub('\.','-', self.infolder.split('_')[1]), re.sub('\.','-', self.infolder.split('_')[2]))
+    self.date = "{} {}".format(re.sub('\.','-', last_folder.split('_')[1]), re.sub('\.',':', last_folder.split('_')[2]))
     self.db_pusher=DB_Manipulator(config, self.logger)
     self.lims_fetcher=LIMS_Fetcher(log)
     self.lims_sample_info = {}
@@ -34,16 +36,17 @@ class Scraper():
     #Scrape order matters a lot!
     self.lims_fetcher.get_lims_project_info(self.name)
     self.scrape_projectinfo()
-    for (dirpath, dirnames, filenames) in os.walk(self.infolder):
-      for dir in dirnames:
-        self.infolder = "{}/{}".format(dirpath, dir)
-        self.name = dir
-        self.lims_fetcher.get_lims_sample_info(dir)
-        self.scrape_sampleinfo()
-        self.scrape_all_loci()
+    for dir in os.listdir(self.infolder):
+     if os.path.isdir("{}/{}".format(self.infolder, dir)): 
+       self.sampledir = "{}/{}".format(self.infolder, dir)
+       self.name = dir
+       self.lims_fetcher.get_lims_sample_info(dir)
+       self.scrape_sampleinfo()
+       self.scrape_all_loci()
 
   def scrape_sample(self):
     #Scrape order matters a lot!
+    self.sampledir = self.infolder
     self.lims_fetcher.get_lims_sample_info(self.name)
     self.lims_fetcher.get_lims_project_info(self.lims_fetcher.data['CG_ID_project'])
 
@@ -52,7 +55,7 @@ class Scraper():
     self.scrape_all_loci()
 
   def scrape_all_loci(self):
-    q_list = glob.glob("{}/loci_query_*".format(self.infolder))
+    q_list = glob.glob("{}/loci_query_*".format(self.sampledir))
     for file in q_list:
       self.scrape_single_loci(file)
     #Requires all loci results to be initialized
@@ -78,13 +81,13 @@ class Scraper():
   def scrape_single_loci(self, infile):
     """Scrapes a single blast output file for MLST results"""
     seq_col = self.db_pusher.get_columns_orm('Seq_types') 
-    if not os.path.exists(self.infolder):
-      self.logger.error("Invalid file path to infolder, {}".format(self.infolder))
+    if not os.path.exists(self.sampledir):
+      self.logger.error("Invalid file path to infolder, {}".format(self.sampledir))
       sys.exit()
     with open("{}".format(infile), 'r') as insample:
       insample.readline()
       insample.readline()
-      #Takes ref db/organism from resultfile. Awkward.
+      #TODO: Takes ref db/organism from resultfile. Switch to take from LIMS
       db = insample.readline().rstrip().split(' ')
       organ = db[2].split('/')[-2]
       self.db_pusher.upd_rec_orm({'CG_ID_sample' : self.name}, 'Samples', {'organism': organ})
