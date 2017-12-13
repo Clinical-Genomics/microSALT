@@ -66,8 +66,6 @@ class Job_Creator():
       file_parts = self.fileformat.match( files.pop(0) )
       #If file meets standard format, find pair
       if file_parts:
-        #import pdb
-        #pdb.set_trace()
         if file_parts[2] == '1':
           pairno = '2'
         elif file_parts[2] == '2':

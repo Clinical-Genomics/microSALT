@@ -1,4 +1,4 @@
-"""This is the main entry point of microSALT. Current commands are create and store
+"""This is the main entry point of microSALT.
    Heavy WIP
    By: Isak Sylvin, @sylvinite"""
 

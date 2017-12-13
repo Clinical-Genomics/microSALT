@@ -34,7 +34,7 @@ class LIMS_Fetcher():
     #TODO: Should control samples be analyzed?
     if 'Strain' not in sample.udf or sample.udf['Strain'] == 'Other':
       self.logger.warn("Unspecific strain specified for sample {}. Assuming control sample, thus ignoring."\
-      .format(self.data['organism'], cg_sampleid))
+      .format(sample.udf['Strain'], cg_sampleid))
     elif sample.udf['Strain'] == 'VRE':
       try:
         self.data.update({'organism' : sample.udf['Comment']})

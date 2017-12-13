@@ -102,7 +102,6 @@ class Scraper():
             seq_col["loci_start"] = elem_list[9]
             seq_col["loci_end"] =  elem_list[10]
             seq_col["haplotype"] = elem_list[1]
-
          
             # Split elem 3 in loci (name) and allele (number) 
             seq_col["loci"] = elem_list[3].split('_')[0]
@@ -114,6 +113,5 @@ class Scraper():
             seq_col["contig_length"] = nodeinfo[3]
             seq_col["contig_coverage"] = nodeinfo[5]
             self.db_pusher.add_rec_orm(seq_col, 'Seq_types')
-
 
     self.logger.info("Added a record to the database")
