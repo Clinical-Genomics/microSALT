@@ -59,8 +59,11 @@ class Scraper():
     for file in q_list:
       self.scrape_single_loci(file)
     #Requires all loci results to be initialized
-    ST = self.db_pusher.alleles2st(self.name)
-    self.db_pusher.upd_rec_orm({'CG_ID_sample':self.name}, 'Samples', {'ST':ST})
+    try:
+      ST = self.db_pusher.alleles2st(self.name)
+      self.db_pusher.upd_rec_orm({'CG_ID_sample':self.name}, 'Samples', {'ST':ST})
+    except Exception as e:
+      pass
 
   def scrape_projectinfo(self):
     proj_col=dict()
@@ -71,12 +74,16 @@ class Scraper():
 
   def scrape_sampleinfo(self):
     """Identifies sample values"""
-    sample_col = self.db_pusher.get_columns_orm('Samples') 
-    sample_col['CG_ID_sample'] = self.lims_fetcher.data['CG_ID_sample']
-    sample_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
-    sample_col['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
-    sample_col["date_analysis"] = self.date
-    self.db_pusher.add_rec_orm(sample_col, 'Samples')
+    try:
+      sample_col = self.db_pusher.get_columns_orm('Samples') 
+      sample_col['CG_ID_sample'] = self.lims_fetcher.data['CG_ID_sample']
+      sample_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
+      sample_col['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
+      sample_col["date_analysis"] = self.date
+      self.db_pusher.add_rec_orm(sample_col, 'Samples')
+    except Exception as e:
+      #Ignores unloaded samples
+      pass
 
   def scrape_single_loci(self, infile):
     """Scrapes a single blast output file for MLST results"""
@@ -84,34 +91,37 @@ class Scraper():
     if not os.path.exists(self.sampledir):
       self.logger.error("Invalid file path to infolder, {}".format(self.sampledir))
       sys.exit()
-    with open("{}".format(infile), 'r') as insample:
-      organism = self.lims_fetcher.get_organism_refname(self.name)
-      self.db_pusher.upd_rec_orm({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
-      seq_col["CG_ID_sample"] = self.name
+    try:
+      with open("{}".format(infile), 'r') as insample:
+        organism = self.lims_fetcher.get_organism_refname(self.name)
+        self.db_pusher.upd_rec_orm({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
+        seq_col["CG_ID_sample"] = self.name
 
-      for line in insample:
-        #Ignore commented fields
-        if not line[0] == '#':
-          elem_list = line.rstrip().split("\t")
-          if not elem_list[1] == 'N/A':
-            seq_col["identity"] = elem_list[4]
-            seq_col["evalue"] = elem_list[5]
-            seq_col["bitscore"] = elem_list[6]
-            seq_col["contig_start"] = elem_list[7]
-            seq_col["contig_end"] = elem_list[8]
-            seq_col["loci_start"] = elem_list[9]
-            seq_col["loci_end"] =  elem_list[10]
-            seq_col["haplotype"] = elem_list[1]
+        for line in insample:
+          #Ignore commented fields
+          if not line[0] == '#':
+            elem_list = line.rstrip().split("\t")
+            if not elem_list[1] == 'N/A':
+              seq_col["identity"] = elem_list[4]
+              seq_col["evalue"] = elem_list[5]
+              seq_col["bitscore"] = elem_list[6]
+              seq_col["contig_start"] = elem_list[7]
+              seq_col["contig_end"] = elem_list[8]
+              seq_col["loci_start"] = elem_list[9]
+              seq_col["loci_end"] =  elem_list[10]
+              seq_col["haplotype"] = elem_list[1]
          
-            # Split elem 3 in loci (name) and allele (number) 
-            seq_col["loci"] = elem_list[3].split('_')[0]
-            seq_col["allele"] = int(elem_list[3].split('_')[1])
+              # Split elem 3 in loci (name) and allele (number) 
+              seq_col["loci"] = elem_list[3].split('_')[0]
+              seq_col["allele"] = int(elem_list[3].split('_')[1])
 
-            # split elem 2 into contig node_NO, length, cov
-            nodeinfo = elem_list[2].split('_')
-            seq_col["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
-            seq_col["contig_length"] = nodeinfo[3]
-            seq_col["contig_coverage"] = nodeinfo[5]
-            self.db_pusher.add_rec_orm(seq_col, 'Seq_types')
-
-    self.logger.info("Added a record to the database")
+              # split elem 2 into contig node_NO, length, cov
+              nodeinfo = elem_list[2].split('_')
+              seq_col["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
+              seq_col["contig_length"] = nodeinfo[3]
+              seq_col["contig_coverage"] = nodeinfo[5]
+              self.db_pusher.add_rec_orm(seq_col, 'Seq_types')
+      
+      self.logger.info("Added a record to the database")
+    except Exception as e:
+      pass

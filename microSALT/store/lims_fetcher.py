@@ -32,22 +32,17 @@ class LIMS_Fetcher():
 
   def get_lims_sample_info(self, cg_sampleid):
     sample = Sample(self.lims, id=cg_sampleid)
-    #TODO: Should control samples be analyzed?
-    if 'Strain' not in sample.udf or sample.udf['Strain'] == 'Other':
-      self.logger.warn("Unspecific strain specified for sample {}. Assuming control sample, thus ignoring."\
-      .format(cg_sampleid))
-    else:
-      organism = sample.udf['Strain']
-      if sample.udf['Strain'] == 'VRE':
-        if 'Comment' in sample.udf:
-          organism = sample.udf['Comment']
-        elif sample.udf['Reference Genome Microbial'] == 'NC_017960.1':
-          organism = 'Enterococcus faecium'
-        elif sample.udf['Reference Genome Microbial'] == 'NC_004668.1':
-          organism = 'Enterococcus faecalis'
-        else:
-          self.logger.warn("Unable to resolve ambigious organism found in sample {}."\
-          .format(cg_sampleid))
+    organism = sample.udf['Strain']
+    if sample.udf['Strain'] == 'VRE':
+      if 'Comment' in sample.udf:
+        organism = sample.udf['Comment']
+      elif sample.udf['Reference Genome Microbial'] == 'NC_017960.1':
+        organism = 'Enterococcus faecium'
+      elif sample.udf['Reference Genome Microbial'] == 'NC_004668.1':
+        organism = 'Enterococcus faecalis'
+      else:
+        self.logger.warn("Unable to resolve ambigious organism found in sample {}."\
+        .format(cg_sampleid))
       try:
         self.data.update({'CG_ID_project': sample.project.id,
                              'CG_ID_sample': cg_sampleid,
