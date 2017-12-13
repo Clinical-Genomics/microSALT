@@ -182,6 +182,9 @@ class DB_Manipulator:
 
   def alleles2st(self, cg_sid):
     organism = self.session.query(Samples.organism).filter(Samples.CG_ID_sample==cg_sid).scalar()
+    if organism is None:
+      self.logger.warning("No organism set for {}. Most likely control sample. Setting ST to -1".format(cg_sid))
+      return -1
     hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9, Seq_types.evalue==0.0).all()
     #Unused, might be valuable later
     thresholdless = True

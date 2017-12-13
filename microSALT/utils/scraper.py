@@ -29,7 +29,7 @@ class Scraper():
     #Lukewarm way to grab the date part of the input folder. Kind of crud.
     self.date = "{} {}".format(re.sub('\.','-', last_folder.split('_')[1]), re.sub('\.',':', last_folder.split('_')[2]))
     self.db_pusher=DB_Manipulator(config, self.logger)
-    self.lims_fetcher=LIMS_Fetcher(log)
+    self.lims_fetcher=LIMS_Fetcher(log, config)
     self.lims_sample_info = {}
 
   def scrape_project(self):
@@ -85,8 +85,8 @@ class Scraper():
       self.logger.error("Invalid file path to infolder, {}".format(self.sampledir))
       sys.exit()
     with open("{}".format(infile), 'r') as insample:
-      self.db_pusher.upd_rec_orm({'CG_ID_sample' : self.name}, 'Samples', {'organism': self.lims_fetcher.data['organism']})
-
+      organism = self.lims_fetcher.get_organism_refname(self.name)
+      self.db_pusher.upd_rec_orm({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
       seq_col["CG_ID_sample"] = self.name
 
       for line in insample:
