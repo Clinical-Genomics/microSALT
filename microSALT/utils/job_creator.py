@@ -16,7 +16,8 @@ from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Job_Creator():
 
-  fileformat = re.compile('(\d{1}_\d{6}_\w{9}_.{5,12}_\w{8,12}_)(\d{1})(.fastq.gz)') 
+  #TODO: Non-stringent file format. Establish once standard has been made
+  fileformat = re.compile('(\d{1}_\d{6}_\w{9}_.{5,12}_\w{8,12}_|\d{6}_\w{9}_.{3,12}_)(\d{1})(.fastq.gz)') 
 
   def __init__(self, indir, config, log, outdir=""):
     self.config = config
@@ -65,6 +66,8 @@ class Job_Creator():
       file_parts = self.fileformat.match( files.pop(0) )
       #If file meets standard format, find pair
       if file_parts:
+        #import pdb
+        #pdb.set_trace()
         if file_parts[2] == '1':
           pairno = '2'
         elif file_parts[2] == '2':

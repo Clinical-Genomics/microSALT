@@ -85,12 +85,7 @@ class Scraper():
       self.logger.error("Invalid file path to infolder, {}".format(self.sampledir))
       sys.exit()
     with open("{}".format(infile), 'r') as insample:
-      insample.readline()
-      insample.readline()
-      #TODO: Takes ref db/organism from resultfile. Switch to take from LIMS
-      db = insample.readline().rstrip().split(' ')
-      organ = db[2].split('/')[-2]
-      self.db_pusher.upd_rec_orm({'CG_ID_sample' : self.name}, 'Samples', {'organism': organ})
+      self.db_pusher.upd_rec_orm({'CG_ID_sample' : self.name}, 'Samples', {'organism': self.lims_fetcher.data['organism']})
 
       seq_col["CG_ID_sample"] = self.name
 
@@ -98,27 +93,27 @@ class Scraper():
         #Ignore commented fields
         if not line[0] == '#':
           elem_list = line.rstrip().split("\t")
-
-          seq_col["identity"] = elem_list[4]
-          seq_col["evalue"] = elem_list[5]
-          seq_col["bitscore"] = elem_list[6]
-          seq_col["contig_start"] = elem_list[7]
-          seq_col["contig_end"] = elem_list[8]
-          seq_col["loci_start"] = elem_list[9]
-          seq_col["loci_end"] =  elem_list[10]
-          seq_col["haplotype"] = elem_list[1]
+          if not elem_list[1] == 'N/A':
+            seq_col["identity"] = elem_list[4]
+            seq_col["evalue"] = elem_list[5]
+            seq_col["bitscore"] = elem_list[6]
+            seq_col["contig_start"] = elem_list[7]
+            seq_col["contig_end"] = elem_list[8]
+            seq_col["loci_start"] = elem_list[9]
+            seq_col["loci_end"] =  elem_list[10]
+            seq_col["haplotype"] = elem_list[1]
 
          
-          # Split elem 3 in loci (name) and allele (number) 
-          seq_col["loci"] = elem_list[3].split('_')[0]
-          seq_col["allele"] = int(elem_list[3].split('_')[1])
+            # Split elem 3 in loci (name) and allele (number) 
+            seq_col["loci"] = elem_list[3].split('_')[0]
+            seq_col["allele"] = int(elem_list[3].split('_')[1])
 
-          # split elem 2 into contig node_NO, length, cov
-          nodeinfo = elem_list[2].split('_')
-          seq_col["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
-          seq_col["contig_length"] = nodeinfo[3]
-          seq_col["contig_coverage"] = nodeinfo[5]
-          self.db_pusher.add_rec_orm(seq_col, 'Seq_types')
+            # split elem 2 into contig node_NO, length, cov
+            nodeinfo = elem_list[2].split('_')
+            seq_col["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
+            seq_col["contig_length"] = nodeinfo[3]
+            seq_col["contig_coverage"] = nodeinfo[5]
+            self.db_pusher.add_rec_orm(seq_col, 'Seq_types')
 
 
     self.logger.info("Added a record to the database")
