@@ -1,4 +1,4 @@
-"""This is the main entry point of microSALT. Current commands are analyze and store
+"""This is the main entry point of microSALT.
    Heavy WIP
    By: Isak Sylvin, @sylvinite"""
 
@@ -14,6 +14,7 @@ from pkg_resources import iter_entry_points
 from microSALT import __version__
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
+from microSALT.utils.renamer import Renamer 
 from microSALT.server.views import app
 
 @click.group()
@@ -43,22 +44,29 @@ def root(ctx):
 
 @root.group()
 @click.pass_context
-def analyze(ctx):
+def create(ctx):
   pass
 
-@analyze.command()
+@create.command()
 @click.argument('project_dir')
 @click.pass_context
 def project(ctx, project_dir):
   manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
   manager.project_job() 
 
-@analyze.command()
+@create.command()
 @click.argument('sample_dir')
 @click.pass_context
 def sample(ctx, sample_dir):
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
     worker.sample_job()
+
+@root.command()
+@click.argument('project_dir')
+@click.pass_context
+def rename(ctx, project_dir):
+  fixer = Renamer(project_dir, ctx.obj['config'], ctx.obj['log'])
+  fixer.rename_project()
 
 @root.group()
 @click.pass_context

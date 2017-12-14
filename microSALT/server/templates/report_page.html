@@ -33,19 +33,22 @@
                                             <th scope="row" >Sequence Type</th>
                                             {% if sample.ST > 0 %}
                                               <td>{{sample.ST}}</td>
+                                            {% elif sample.ST == -1 %}
+                                              <td>Control sample. No ST established.</td>
                                             {% else %}
-                                              <td>Problems establishing ST during analysis. Review the entry in-depth.</td>
+                                              <td>No ST found. Displaying all allele hits.</td>
                                             {% endif %}
                                         </tr>
                                         <tr>
                                             <th scope="row" >Thresholds</th>
-                                              {% set thresholds='Passed' %}
                                               {% for seq_type in sample.seq_types %}
-                                                {% if seq_type.identity < 100 %}
-                                                  {% set threholds='Failed' %}
+                                                {% if seq_type.identity < 100.00 or sample.ST < 0 %}
+                                                  {% set miss=True %}
+                                                {% endif %}
+                                                {% if loop.last %}
+                                                  {% if not miss %}<td>Passed</td>{% else %}<td>Failed</td>{% endif %}
                                                 {% endif %}
                                               {% endfor %}
-	                                        <td>{{thresholds}}</td> 
 
                                 </table>
                             </div>

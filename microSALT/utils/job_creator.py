@@ -16,12 +16,14 @@ from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Job_Creator():
 
-  fileformat = re.compile('(\d{1}_\d{6}_\w{9}_.{5,12}_\w{8,12}_)(\d{1})(.fastq.gz)') 
+  #TODO: Non-stringent file format. Establish once standard has been made
+  fileformat = re.compile('(\d{1}_\d{6}_\w{9}_.{5,12}_\w{8,12}_|\d{6}_\w{9}_.{3,12}_)(\d{1})(.fastq.gz)') 
 
   def __init__(self, indir, config, log, outdir=""):
     self.config = config
     self.logger = log
     self.now = time.strftime("%Y.%m.%d_%H.%M.%S")
+    self.lims_fetcher = lims_fetcher=LIMS_Fetcher(log, config)
     if outdir == "":
       self.outdir="{}/{}_{}".format(config["folders"]["results"], os.path.basename(os.path.normpath(indir)), self.now)
     self.indir = os.path.abspath(indir)
@@ -30,29 +32,6 @@ class Job_Creator():
     self.batchfile = ""
     self.organism = ""
     self.sample_name = os.path.basename(os.path.normpath(indir))
-
-  def set_organism(self):
-    lims_fetcher=LIMS_Fetcher(self.logger)
-    lims_fetcher.get_lims_sample_info(self.sample_name)
-    self.organism = lims_fetcher.data['organism'].lower()
-    orgs = os.listdir(self.config["folders"]["references"])
-    organism = re.split('\W+', self.organism)
-    try:
-      refs = 0
-      for target in orgs:
-        hit = 0
-        for piece in organism:
-          if piece in target:
-            hit +=1
-          #For when people misspell the strain in the orderform
-          elif piece == "pneumonsiae" and "pneumoniae" in target:
-            hit +=1
-          else:
-            break
-        if hit == len(organism):
-          self.organism = target
-    except Exception as e:
-      self.logger.warn("Unable to find reference for {}, strain {} has no reference match\nSource: {}".format(self.sample_name, self.organism, e))
 
   def verify_fastq(self):
     """ Uses arg indir to return a list of PE fastq tuples fulfilling naming convention """
@@ -215,7 +194,7 @@ class Job_Creator():
   def sample_job(self):
     self.trimmed_files = dict()
     try:
-      self.set_organism()
+      self.organism = self.lims_fetcher.get_organism_refname(self.sample_name)
       if not os.path.exists(self.outdir):
         os.makedirs(self.outdir)
       self.batchfile = "{}/runfile.sbatch".format(self.outdir)
