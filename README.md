@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="https://github.com/sylvinite/microSALT">
+    <img width="1000" height="250" src="artwork/microsalt.jpg"/>
+  </a>
+</p>
+
 # microSALT
 microbial Sequence Analysis and Loci-based Typing pipeline
 
