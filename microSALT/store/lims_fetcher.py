@@ -43,14 +43,14 @@ class LIMS_Fetcher():
       else:
         self.logger.warn("Unable to resolve ambigious organism found in sample {}."\
         .format(cg_sampleid))
-      try:
-        self.data.update({'CG_ID_project': sample.project.id,
-                             'CG_ID_sample': cg_sampleid,
-                             'Customer_ID_sample' : sample.name,
-                             'organism' : organism})
-      except KeyError as e:
-        self.logger.warn("Unable to fetch LIMS info for sample {}. Review LIMS data.\nSource: {}"\
-        .format(cg_sampleid, str(e)))
+    try:
+      self.data.update({'CG_ID_project': sample.project.id,
+                           'CG_ID_sample': cg_sampleid,
+                           'Customer_ID_sample' : sample.name,
+                           'organism' : organism})
+    except KeyError as e:
+      self.logger.warn("Unable to fetch LIMS info for sample {}. Review LIMS data.\nSource: {}"\
+      .format(cg_sampleid, str(e)))
 
   def get_organism_refname(self, sample_name):
     self.get_lims_sample_info(sample_name)

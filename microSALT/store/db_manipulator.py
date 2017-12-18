@@ -152,22 +152,6 @@ class DB_Manipulator:
     """ Returns all records for a given ORM table"""
     return eval("dict.fromkeys({}.__table__.columns.keys())".format(table))
 
-  def get_all_records(self, table):
-    """ Returns all records for a given table"""
-    return eval("self.{}.select().execute().fetchall()".format(table))
-
-
-  def st2allele(self, organism, loci, ST):
-    """ Takes organism name, loci name and assumed ST no.  and returns the correct allele number """
-    #LEGACY CODE. Keeping for the moment in case need re-emerges.
-    for k,v in self.profiles.items():
-      if k == organism:
-        try:
-          return self.session.query(eval("v.c.{}".format(loci))).filter(v.c.ST==ST).scalar()
-        except AttributeError:
-          self.logger.info("Found loci {}, which has no profile entry".format(loci))
-          return 0
-
   def setPredictor(self, cg_sid, pks=dict()):
     """ Helper function that flags a set of seq_types as part of the final prediction.
       Flags all in case nothing can be established.
