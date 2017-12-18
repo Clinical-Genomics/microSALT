@@ -4,14 +4,9 @@
   </a>
 </p>
 
-# microSALT
 microbial Sequence Analysis and Loci-based Typing pipeline
 
-Currently a work in progress. 
-
-First release estimated time of arrival by christmas.
-
-## Dependencies
+## Requirements
 * Python 3.6
 * MySQL
 
@@ -23,9 +18,7 @@ First release estimated time of arrival by christmas.
 
 ## Configuration
 ### Flask/Database configuration
-An additional config.py file is required to be present in the instance folder.
-
-Formatting of the file is as follows:
+Create the folder `instance` under `microSALT` containing the file `config.py` with the following formatting:
 ```
 # -*- coding: utf-8 -*-
 
@@ -33,9 +26,9 @@ SQLALCHEMY_DATABASE_URI= 'mysql+pymysql://DB_USER:DB_PASSWORD@DB_HOST:DB_PORT/DB
 SQLALCHEMY_TRACK_MODIFICATIONS= False
 DEBUG= True
 ```
-Debug statement has to be omitted for any production usage.
-### Paths
-Review `microSALT/config/paths_and_headers.yml` so that it accurately uses the headers and paths you desire.
+Omit debug statement for production usage.
+### Paths file
+Review `microSALT/config/paths_and_headers.yml` to accurately represent the file paths and sbatch headers required by your system.
 
 ### LIMS
 Create `$HOME/.genologicsrc` with the following formatting:
@@ -48,4 +41,11 @@ PASSWORD=your_password
 MAIN_LOG=/home/glsai/your_main_log_file
 ```
 
-Additionally replace `ConfigParser` with `configparser` in `config.py` for python3 support. 
+Additionally `ConfigParser` in `config.py` needs to be replaced with `configparser` for python3 support.
+
+## Usage
+* Use the `rename` function on the folder of your input fastq files
+* Use the `create` function to generate sbatch job(s) defined under `folders['results']`. Manually start them via the `concatinated.sh` script.
+* After the jobs have been finished. Use the `scrape` function to upload parsed results to the SQL backend.
+* Use the `view` function to start a flask instance to view the results. Point your browser at `http://127.0.0.1:5000/`
+* Navigate to your run, and print the results to PDF format if necessary.
