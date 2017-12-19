@@ -21,8 +21,8 @@ from microSALT.server.views import app
 @click.version_option(__version__)
 @click.pass_context
 def root(ctx):
+    """ microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline """
     ctx.obj = {}
-    """ Fundamental MLST pipeline """
     install_dir = os.path.dirname(os.path.realpath(__file__))
     #Load config yaml
     with open("{}/config/paths_and_headers.yml".format(install_dir), 'r') as conf:
@@ -45,12 +45,14 @@ def root(ctx):
 @root.group()
 @click.pass_context
 def create(ctx):
+  """Produces sbatch jobs for the given input"""
   pass
 
 @create.command()
 @click.argument('project_dir')
 @click.pass_context
 def project(ctx, project_dir):
+  """Create jobs for a project"""
   manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
   manager.project_job() 
 
@@ -58,6 +60,7 @@ def project(ctx, project_dir):
 @click.argument('sample_dir')
 @click.pass_context
 def sample(ctx, sample_dir):
+    """Create a job for a single sample"""
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
     worker.sample_job()
 
@@ -65,18 +68,21 @@ def sample(ctx, sample_dir):
 @click.argument('project_dir')
 @click.pass_context
 def rename(ctx, project_dir):
+  """Renames external ID samples to unique internal ID ones"""
   fixer = Renamer(project_dir, ctx.obj['config'], ctx.obj['log'])
   fixer.rename_project()
 
 @root.group()
 @click.pass_context
 def scrape(ctx):
+  """Parses results folder for analysis results and uploads to database"""
   pass
 
 @scrape.command()
 @click.argument('sample_dir')
 @click.pass_context
 def sample(ctx, sample_dir):
+  """Parse results from analysing a single sample"""
   garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_sample()
 
@@ -84,10 +90,12 @@ def sample(ctx, sample_dir):
 @click.argument('project_dir')
 @click.pass_context
 def project(ctx, project_dir):
+  """Parse results from analysing a single project"""
   garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_project()
 
 @root.command()
 @click.pass_context
 def view(ctx):
+  """Starts a flask based display of results at http://127.0.0.1:5000/"""
   app.run()
