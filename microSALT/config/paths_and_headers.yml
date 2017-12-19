@@ -6,7 +6,7 @@ slurm_header:
   threads: "10"
   time: "01:00:00"
   qos: "normal"
-  job_name: "MLST_test"
+  job_prefix: "MLST"
 
 #File finding pattern
 file_pattern: '(\d{1}_)?(\d{6})_(\w{9})_(.{3,12})_(\w{8,12}_)?(\d{1})(.fastq.gz)'

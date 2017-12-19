@@ -66,7 +66,7 @@ class Job_Creator():
     batchfile.write("#SBATCH -p {}\n".format(self.config["slurm_header"]["type"]))
     batchfile.write("#SBATCH -n {}\n".format(self.config["slurm_header"]["threads"]))
     batchfile.write("#SBATCH -t {}\n".format(self.config["slurm_header"]["time"]))
-    batchfile.write("#SBATCH -J {}_MSLT_job_{}\n".format(self.sample_name, self.now))
+    batchfile.write("#SBATCH -J {}_{}\n".format(self.config["slurm_header"]["job_prefix"], self.sample_name))
     batchfile.write("#SBATCH --qos {}\n\n".format(self.config["slurm_header"]["qos"]))
     batchfile.close()
 
