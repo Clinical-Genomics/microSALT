@@ -105,9 +105,8 @@ class DB_Manipulator:
     return dict.fromkeys(table.__table__.columns.keys())
 
   def setPredictor(self, cg_sid, pks=dict()):
-    """ Helper function that flags a set of seq_types as part of the final prediction.
-      Flags all in case nothing can be established.
-      Optionally takes in a loci -> contig name dict for allele distinction. """
+    """ Helper function. Flags a set of seq_types as part of the final prediction.
+      Uses optional pks[loci]=contig_name dictionary to distinguish in scenarios where an allele number has multiple hits"""
     sample = self.session.query(Seq_types).filter(Seq_types.CG_ID_sample==cg_sid)
     if pks == dict():
       sample.update({Seq_types.st_predictor: 1})
@@ -121,7 +120,8 @@ class DB_Manipulator:
     if organism is None:
       self.logger.warning("No organism set for {}. Most likely control sample. Setting ST to -1".format(cg_sid))
       return -1
-    hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9, Seq_types.evalue==0.0).all()
+    hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity)\
+           .filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9, Seq_types.evalue==0.0).all()
     #Unused, might be valuable later
     thresholdless = True
     if 'clonal_complex' in self.profiles[organism].columns.keys():
@@ -149,7 +149,8 @@ class DB_Manipulator:
         elif hit.allele not in uniqueDict[hit.loci]:
           uniqueDict[hit.loci].append(hit.allele)
       if len(self.profiles[organism].columns.values()) - non_allele_columns > len(uniqueDict.keys()):
-        self.logger.warning("Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3".format(cg_sid, organism))
+        self.logger.warning("Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3"\
+                            .format(cg_sid, organism))
         self.setPredictor(cg_sid)
         return -3
 
@@ -178,7 +179,8 @@ class DB_Manipulator:
       #This bestST call is excessive and should be streamlined later
       return self.bestST(cg_sid, [output[0].ST])
     else:
-      self.logger.warning("Sample {} on {} has a single allele set but no matching ST. Either incorrectly called allele, or novel ST has been found. Setting ST to -2".format(cg_sid, organism))
+      self.logger.warning("Sample {} on {} has a single allele set but no matching ST.\
+Either incorrectly called allele, or novel ST has been found. Setting ST to -2".format(cg_sid, organism))
       self.setPredictor(cg_sid)
       return -2
 
