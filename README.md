@@ -18,17 +18,10 @@ microbial Sequence Analysis and Loci-based Typing pipeline
 
 ## Configuration
 ### Flask/Database configuration
-Create the folder `instance` under `microSALT` containing the file `config.py` with the following formatting:
-```
-# -*- coding: utf-8 -*-
+Rename the configuration file under folder `instance` to `sqlalchemy_config.py` and modify the line `SQLALCHEMY_DATABASE_URI` to correctly point to your database. For production purposes, set the `DEBUG` flag to False.
 
-SQLALCHEMY_DATABASE_URI= 'mysql+pymysql://DB_USER:DB_PASSWORD@DB_HOST:DB_PORT/DB_DATABASENAME'
-SQLALCHEMY_TRACK_MODIFICATIONS= False
-DEBUG= True
-```
-Omit debug statement for production usage.
 ### Paths file
-Review `microSALT/config/paths_and_headers.yml` to accurately represent the file paths and sbatch headers required by your system.
+Review `microSALT/paths.yml` to accurately represent the file paths and sbatch headers required by your system.
 
 ### LIMS
 Create `$HOME/.genologicsrc` with the following formatting:

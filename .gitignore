@@ -1,9 +1,8 @@
 .DS_Store
 
-microSALT/config/mysql.yml
 microSALT/__pycache__
 microSALT/microSALT.log
-instance/config.py
+instance/sqlalchemy_config.py
 *.egg-info
 *pyc
 *.swp
