@@ -26,7 +26,7 @@ class Scraper():
    
     last_folder = os.path.basename(os.path.normpath(self.infolder)) 
     self.name = last_folder.split('_')[0]
-    #Lukewarm way to grab the date part of the input folder. Kind of crud.
+    #TODO: Lukewarm way to grab the date part of the input folder. Kind of crud.
     self.date = "{} {}".format(re.sub('\.','-', last_folder.split('_')[1]), re.sub('\.',':', last_folder.split('_')[2]))
     self.db_pusher=DB_Manipulator(config, self.logger)
     self.lims_fetcher=LIMS_Fetcher(log, config)

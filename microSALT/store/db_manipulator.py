@@ -70,17 +70,18 @@ class DB_Manipulator:
   def upd_rec(self, data_dict, tablename, indict):
     """Updates a record to the specified table through a dict with columns as keys."""
     table = eval(tablename)
-    filter = ""
+    filter = list()
     for k,v in data_dict.items():
       if v != None:
-        filter +="{}=='{}' ,".format(k, v)
-    if len(self.session.query(table).filter(filter).all()) > 1:
+        filter.append("{}='{}'".format(k, v))
+    filter = ','.join(filter)
+    if len(self.session.query(table).filter(text(filter)).all()) > 1:
       self.logger.error("More than 1 record found when orm updating. Exited.")
       sys.exit()
     else:
-      self.session.query(table).filter(filter).update(indict)
+      self.session.query(table).filter(text(filter)).update(indict)
       self.session.commit()
-
+  
   def init_profiletable(self, filename, table):
     """Creates profile tables by looping, since a lot of infiles exist"""
     data = table.insert()
@@ -153,17 +154,19 @@ class DB_Manipulator:
         return -3
 
     # Tests all allele combinations found to see if any of them result in ST
-    filter = ""
+    filter = list()
     for key, val in uniqueDict.items():
-      subfilter = ""
+      subfilter = list()
       for num in val:
-        subfilter += " self.profiles[organism].c.{}=={} ,".format(key, num)
-      if len(num) > 1:
-        subfilter = "_or({})".format(subfilter)
-      filter += subfilter
-    filter = "_and({})".format(filter)
-
-    output = self.session.query(self.profiles[organism]).filter(text(filter)).all()
+        subfilter.append(" self.profiles[organism].c.{}=={} ".format(key, num))
+      subfilter = ','.join(subfilter)
+      if len(val) > 1:
+        subfilter = "or_({})".format(subfilter)
+      filter.append(subfilter)
+    filter = ','.join(filter)
+    filter = "and_({})".format(filter)
+    output = self.session.query(self.profiles[organism]).filter(eval(filter)).all()
+ 
     if len(output) > 1:
       STlist= list()
       for st in output:
@@ -195,15 +198,19 @@ class DB_Manipulator:
       profiles.append(self.session.query(self.profiles[organism]).filter(text('ST={}'.format(st))).first())
 
     # Get value metrics for each allele set that resolves an ST
-    # TODO: Make it readable 
     for prof in profiles:
-      filterstring = "and_(Seq_types.CG_ID_sample=='{}', or_(".format(cg_sid)
+      alleleconditions = list()
+      allconditions = ["Seq_types.CG_ID_sample=='{}'".format(cg_sid)]
+
       for index, allele in enumerate(prof):
         if 'ST' not in prof.keys()[index] and 'clonal_complex' not in prof.keys()[index]:
-          filterstring += "and_(Seq_types.loci=='{}', Seq_types.allele=='{}'), ".format(prof.keys()[index], allele)
-      filterstring = filterstring[:-2] + "))"
-      alleles = self.session.query(Seq_types).filter(eval(filterstring)).all()
-   
+          condition = "Seq_types.loci=='{}' , Seq_types.allele=='{}'".format(prof.keys()[index], allele)
+          alleleconditions.append("and_({})".format(condition))
+
+      alleleconditions = "or_({})".format(','.join(alleleconditions))
+      allconditions.append(alleleconditions)
+      allconditions = "and_({})".format(','.join(allconditions))
+      alleles = self.session.query(Seq_types).filter(eval(allconditions)).all()
 
       # Keep only best allele of each loci name
       index = 0
