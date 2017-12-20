@@ -61,7 +61,7 @@ class Scraper():
     #Requires all loci results to be initialized
     try:
       ST = self.db_pusher.alleles2st(self.name)
-      self.db_pusher.upd_rec_orm({'CG_ID_sample':self.name}, 'Samples', {'ST':ST})
+      self.db_pusher.upd_rec({'CG_ID_sample':self.name}, 'Samples', {'ST':ST})
     except Exception as e:
       pass
 
@@ -70,31 +70,31 @@ class Scraper():
     proj_col['CG_ID_project'] = self.name
     proj_col['Customer_ID_project'] = self.lims_fetcher.data['Customer_ID_project']
     proj_col['date_ordered'] = self.lims_fetcher.data['date_received']
-    self.db_pusher.add_rec_orm(proj_col, 'Projects')
+    self.db_pusher.add_rec(proj_col, 'Projects')
 
   def scrape_sampleinfo(self):
     """Identifies sample values"""
     try:
-      sample_col = self.db_pusher.get_columns_orm('Samples') 
+      sample_col = self.db_pusher.get_columns('Samples') 
       sample_col['CG_ID_sample'] = self.lims_fetcher.data['CG_ID_sample']
       sample_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
       sample_col['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
       sample_col["date_analysis"] = self.date
-      self.db_pusher.add_rec_orm(sample_col, 'Samples')
+      self.db_pusher.add_rec(sample_col, 'Samples')
     except Exception as e:
       #Ignores unloaded samples
       pass
 
   def scrape_single_loci(self, infile):
     """Scrapes a single blast output file for MLST results"""
-    seq_col = self.db_pusher.get_columns_orm('Seq_types') 
+    seq_col = self.db_pusher.get_columns('Seq_types') 
     if not os.path.exists(self.sampledir):
       self.logger.error("Invalid file path to infolder, {}".format(self.sampledir))
       sys.exit()
     try:
       with open("{}".format(infile), 'r') as insample:
         organism = self.lims_fetcher.get_organism_refname(self.name)
-        self.db_pusher.upd_rec_orm({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
+        self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
         seq_col["CG_ID_sample"] = self.name
 
         for line in insample:
