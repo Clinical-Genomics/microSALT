@@ -55,8 +55,7 @@ class DB_Manipulator:
     pk_values = list()
     for item in pk_list:
       pk_values.append(data_dict[item])
-      existing = self.session.query(table).get(pk_values)
-
+    existing = self.session.query(table).get(pk_values)
     #Add record
     if not existing:
       newobj = table()
@@ -70,16 +69,16 @@ class DB_Manipulator:
   def upd_rec(self, data_dict, tablename, indict):
     """Updates a record to the specified table through a dict with columns as keys."""
     table = eval(tablename)
-    filter = list()
+    args = list()
     for k,v in data_dict.items():
       if v != None:
-        filter.append("{}='{}'".format(k, v))
-    filter = ','.join(filter)
-    if len(self.session.query(table).filter(text(filter)).all()) > 1:
+        args.append("table.{}=='{}'".format(k, v))
+    filter = ','.join(args)
+    if len(self.session.query(table).filter(eval(filter)).all()) > 1:
       self.logger.error("More than 1 record found when orm updating. Exited.")
       sys.exit()
     else:
-      self.session.query(table).filter(text(filter)).update(indict)
+      self.session.query(table).filter(eval(filter)).update(indict)
       self.session.commit()
   
   def init_profiletable(self, filename, table):

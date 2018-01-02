@@ -34,21 +34,21 @@ class Scraper():
 
   def scrape_project(self):
     #Scrape order matters a lot!
-    self.lims_fetcher.get_lims_project_info(self.name)
+    self.lims_fetcher.load_lims_project_info(self.name)
     self.scrape_projectinfo()
     for dir in os.listdir(self.infolder):
      if os.path.isdir("{}/{}".format(self.infolder, dir)): 
        self.sampledir = "{}/{}".format(self.infolder, dir)
        self.name = dir
-       self.lims_fetcher.get_lims_sample_info(dir)
+       self.lims_fetcher.load_lims_sample_info(dir)
        self.scrape_sampleinfo()
        self.scrape_all_loci()
 
   def scrape_sample(self):
     #Scrape order matters a lot!
     self.sampledir = self.infolder
-    self.lims_fetcher.get_lims_sample_info(self.name)
-    self.lims_fetcher.get_lims_project_info(self.lims_fetcher.data['CG_ID_project'])
+    self.lims_fetcher.load_lims_sample_info(self.name)
+    self.lims_fetcher.load_lims_project_info(self.lims_fetcher.data['CG_ID_project'])
 
     self.scrape_projectinfo()
     self.scrape_sampleinfo()
@@ -56,6 +56,8 @@ class Scraper():
 
   def scrape_all_loci(self):
     q_list = glob.glob("{}/loci_query_*".format(self.sampledir))
+    organism = self.lims_fetcher.get_organism_refname(self.name)
+    self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
     for file in q_list:
       self.scrape_single_loci(file)
     #Requires all loci results to be initialized
@@ -63,7 +65,7 @@ class Scraper():
       ST = self.db_pusher.alleles2st(self.name)
       self.db_pusher.upd_rec({'CG_ID_sample':self.name}, 'Samples', {'ST':ST})
     except Exception as e:
-      pass
+      self.logger.error("{}".format(str(e)))
 
   def scrape_projectinfo(self):
     proj_col=dict()
@@ -82,8 +84,7 @@ class Scraper():
       sample_col["date_analysis"] = self.date
       self.db_pusher.add_rec(sample_col, 'Samples')
     except Exception as e:
-      #Ignores unloaded samples
-      pass
+      self.logger.error("{}".format(str(e)))
 
   def scrape_single_loci(self, infile):
     """Scrapes a single blast output file for MLST results"""
@@ -93,8 +94,6 @@ class Scraper():
       sys.exit()
     try:
       with open("{}".format(infile), 'r') as insample:
-        organism = self.lims_fetcher.get_organism_refname(self.name)
-        self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
         seq_col["CG_ID_sample"] = self.name
 
         for line in insample:
@@ -120,8 +119,8 @@ class Scraper():
               seq_col["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
               seq_col["contig_length"] = nodeinfo[3]
               seq_col["contig_coverage"] = nodeinfo[5]
-              self.db_pusher.add_rec_orm(seq_col, 'Seq_types')
+              self.db_pusher.add_rec(seq_col, 'Seq_types')
       
       self.logger.info("Added a record to the database")
     except Exception as e:
-      pass
+      self.logger.error("{}".format(str(e)))

@@ -21,7 +21,7 @@ class LIMS_Fetcher():
     self.logger = log
     self.config = config
 
-  def get_lims_project_info(self, cg_projid):
+  def load_lims_project_info(self, cg_projid):
     project = Project(self.lims, id=cg_projid)
     try:
       self.data.update({'date_received': project.open_date,
@@ -30,7 +30,7 @@ class LIMS_Fetcher():
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for project {}\nSource: {}".format(cg_projid, str(e)))
 
-  def get_lims_sample_info(self, cg_sampleid):
+  def load_lims_sample_info(self, cg_sampleid):
     sample = Sample(self.lims, id=cg_sampleid)
     organism = sample.udf['Strain']
     if sample.udf['Strain'] == 'VRE':
@@ -53,7 +53,8 @@ class LIMS_Fetcher():
       .format(cg_sampleid, str(e)))
 
   def get_organism_refname(self, sample_name):
-    self.get_lims_sample_info(sample_name)
+    """Gets organism/strain name, returns formatted name for mlst reference use"""
+    self.load_lims_sample_info(sample_name)
     lims_organ = self.data['organism'].lower()
     orgs = os.listdir(self.config["folders"]["references"])
     organism = re.split('\W+', lims_organ)
