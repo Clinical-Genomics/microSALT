@@ -25,7 +25,7 @@ def project_page(project):
     organism_groups.append("all")
     distinct_organisms = session.query(Samples).filter_by(CG_ID_project=project).distinct()
     for one_guy in distinct_organisms:
-        if one_guy.organism not in organism_groups:
+        if one_guy.organism not in organism_groups and one_guy.organism is not None:
             organism_groups.append(one_guy.organism)
     organism_groups.sort()
     return render_template('project_page.html',
