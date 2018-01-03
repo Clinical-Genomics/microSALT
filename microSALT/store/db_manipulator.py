@@ -17,9 +17,6 @@ from microSALT import app
 from microSALT.store.orm_models import Projects, Samples, Seq_types
 from microSALT.store.models import Profiles
 
-#TODO: Rewrite all pushes/queries through session+commit
-#TODO: Contains a lot of legacy from deving. Remove what cant be repurposed.
-#TODO: Direct most server calls through here.
 class DB_Manipulator:
  
   def __init__(self, config, log):
@@ -35,104 +32,61 @@ class DB_Manipulator:
     self.create_tables()
 
   def create_tables(self):
-      if not self.engine.dialect.has_table(self.engine, 'projects'):
-        Projects.__table__.create(self.engine)
-        self.logger.info("Created samples table")
-      if not self.engine.dialect.has_table(self.engine, 'samples'):
-        Samples.__table__.create(self.engine)
-        self.logger.info("Created samples table")
-      if not self.engine.dialect.has_table(self.engine, 'seq_types'):
-        Seq_types.__table__.create(self.engine)
-        self.logger.info("Created sequencing types table")
-      for k,v in self.profiles.items():
-        if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
-          self.profiles[k].create()
-          self.init_profiletable(k, v)       
+    """Creates all tabes individually. A bit more control than usual"""
+    if not self.engine.dialect.has_table(self.engine, 'projects'):
+      Projects.__table__.create(self.engine)
+      self.logger.info("Created samples table")
+    if not self.engine.dialect.has_table(self.engine, 'samples'):
+      Samples.__table__.create(self.engine)
+      self.logger.info("Created samples table")
+    if not self.engine.dialect.has_table(self.engine, 'seq_types'):
+      Seq_types.__table__.create(self.engine)
+      self.logger.info("Created sequencing types table")
+    for k,v in self.profiles.items():
+      if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
+        self.profiles[k].create()
+        self.init_profiletable(k, v)       
 
-  def _is_orm(self, tablename):
-    try:
-      eval("self.{}.__table__".format(tablename))
-    except AttributeError:
-      return False
- 
   def add_rec(self, data_dict, tablename):
-    """ Adds a record to the specified table through a dict with columns as keys.
-        Use in tandem with get_columns for best results """
-   
-    #Find PK 
-    pk_list = [key.name for key in inspect(eval("self.{}".format(tablename))).primary_key]
-    #Check key collision, REALLY have to streamline this.
-    statem  = "self.session.query("
+    """Adds a record to the specified table through a dict with columns as keys."""
+    table = eval(tablename)
+    #Check for existing entry
+    pk_list = table.__table__.primary_key.columns.keys()
+    pk_values = list()
     for item in pk_list:
-      statem += "self.{}.c.{}, ".format(tablename, item)
-    statem +=").filter("
-    for item in pk_list:
-      statem += "self.{}.c.{}=='{}', ".format(tablename, item, data_dict[item])
-    statem +=").all()"
-
-    if not eval(statem):
-      eval("self.{}.insert().execute(data_dict)".format(tablename))
-      self.session.commit() 
-    else:
-      self.logger.info("Failed to insert duplicate record into table {}".format(tablename))
-
-  def add_rec_orm(self, data_dict, tablename):
-    #Check for duplicate
-    pk_list = eval("{}.__table__.primary_key.columns.keys()".format(tablename))
-    #Check key collision, REALLY have to streamline this.
-    statem  = "self.session.query("
-    for item in pk_list:
-      statem += "{}.{}, ".format(tablename, item)
-    statem +=").filter("
-    for item in pk_list:
-      statem += "{}.{}=='{}', ".format(tablename, item, data_dict[item])
-    statem +=").all()"
-
-    if not eval(statem):   
-      newobj = eval("{}()".format(tablename))
+      pk_values.append(data_dict[item])
+    existing = self.session.query(table).get(pk_values)
+    #Add record
+    if not existing:
+      newobj = table()
       for k, v in data_dict.items():
-        exec("newobj.{} = v".format(k, v))
+        setattr(newobj, k, v)
       self.session.add(newobj)
       self.session.commit()
     else:
       self.logger.info("Failed to insert duplicate record into table {}".format(tablename))
 
   def upd_rec(self, data_dict, tablename, indict):
-    #Oh dear.. Just happy it works tbh
-    instring = ""
-    for k,v in data_dict.items():
-      #Avoids invalid match with empty fields
-      if not v==None:
-        instring+="self.{}.c.{}=='{}', ".format(tablename, k,v) 
-    if len(eval("self.session.query(self.{}).filter({}).all()".format(tablename, instring))) > 1:
-      self.logger.error("More than 1 record found when updating. Exited.")
-      sys.exit()
-    input = "self.{}.update(self.{}).where(".format(tablename,tablename)
-    for k,v in data_dict.items():
-      input +="self.{}.c.{}=='{}' and ".format(tablename, k,v)
-    input = input[:-4] + ").values("
-    for k,v in indict.items(): 
-      input += "{}={}".format(k,v)
-    input += ")"
-    eval(input).execute()
-
-  def upd_rec_orm(self, data_dict, tablename, indict):
-    argstring = ""
+    """Updates a record to the specified table through a dict with columns as keys."""
+    table = eval(tablename)
+    args = list()
     for k,v in data_dict.items():
       if v != None:
-        argstring +="{}='{}', ".format(k, v)
-    if len(eval("self.session.query({}).filter_by({}).all()".format(tablename, argstring))) > 1:
+        args.append("table.{}=='{}'".format(k, v))
+    filter = ','.join(args)
+    if len(self.session.query(table).filter(eval(filter)).all()) > 1:
       self.logger.error("More than 1 record found when orm updating. Exited.")
       sys.exit()
     else:
-      eval("self.session.query({}).filter_by({}).update({})".format(tablename, argstring, indict))  
+      self.session.query(table).filter(eval(filter)).update(indict)
       self.session.commit()
-
+  
   def init_profiletable(self, filename, table):
+    """Creates profile tables by looping, since a lot of infiles exist"""
     data = table.insert()
     linedict = dict.fromkeys(table.c.keys())
     with open("{}/{}".format(self.config["folders"]["profiles"], filename), "r") as fh:
-      #Skip header
+      #Skips header
       head = fh.readline()
       head = head.rstrip().split('\t')
       for line in fh:
@@ -144,18 +98,14 @@ class DB_Manipulator:
         data.execute(linedict)
     self.logger.info("Created profile table {}".format(table))
   
-  def get_columns(self, table):
-    """ Returns a dictionary where each column is a key. Makes re-entry easier """
-    return eval("dict.fromkeys(self.{}.keys())".format(table))
-
-  def get_columns_orm(self, table):
+  def get_columns(self, tablename):
     """ Returns all records for a given ORM table"""
-    return eval("dict.fromkeys({}.__table__.columns.keys())".format(table))
+    table = eval(tablename)
+    return dict.fromkeys(table.__table__.columns.keys())
 
   def setPredictor(self, cg_sid, pks=dict()):
-    """ Helper function that flags a set of seq_types as part of the final prediction.
-      Flags all in case nothing can be established.
-      Optionally takes in a loci -> contig name dict for allele distinction. """
+    """ Helper function. Flags a set of seq_types as part of the final prediction.
+      Uses optional pks[loci]=contig_name dictionary to distinguish in scenarios where an allele number has multiple hits"""
     sample = self.session.query(Seq_types).filter(Seq_types.CG_ID_sample==cg_sid)
     if pks == dict():
       sample.update({Seq_types.st_predictor: 1})
@@ -169,7 +119,8 @@ class DB_Manipulator:
     if organism is None:
       self.logger.warning("No organism set for {}. Most likely control sample. Setting ST to -1".format(cg_sid))
       return -1
-    hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9, Seq_types.evalue==0.0).all()
+    hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity)\
+           .filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9, Seq_types.evalue==0.0).all()
     #Unused, might be valuable later
     thresholdless = True
     if 'clonal_complex' in self.profiles[organism].columns.keys():
@@ -197,25 +148,25 @@ class DB_Manipulator:
         elif hit.allele not in uniqueDict[hit.loci]:
           uniqueDict[hit.loci].append(hit.allele)
       if len(self.profiles[organism].columns.values()) - non_allele_columns > len(uniqueDict.keys()):
-        self.logger.warning("Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3".format(cg_sid, organism))
+        self.logger.warning("Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3"\
+                            .format(cg_sid, organism))
         self.setPredictor(cg_sid)
         return -3
 
     # Tests all allele combinations found to see if any of them result in ST
-    filterstring = ""
+    filter = list()
     for key, val in uniqueDict.items():
+      subfilter = list()
       for num in val:
-        if val.index(num) == 0 and len(val) > 1:
-          filterstring += " ("
-        filterstring += " {}={} ".format(key, num)
-        if len(val) == 1:
-          filterstring += "and"
-        elif val.index(num)+1 == len(val) and len(val) > 1:
-          filterstring += ") and"
-        else:
-          filterstring += "or"
-    filterstring = filterstring[:-3]
-    output = self.session.query(self.profiles[organism]).filter(text(filterstring)).all()
+        subfilter.append(" self.profiles[organism].c.{}=={} ".format(key, num))
+      subfilter = ','.join(subfilter)
+      if len(val) > 1:
+        subfilter = "or_({})".format(subfilter)
+      filter.append(subfilter)
+    filter = ','.join(filter)
+    filter = "and_({})".format(filter)
+    output = self.session.query(self.profiles[organism]).filter(eval(filter)).all()
+ 
     if len(output) > 1:
       STlist= list()
       for st in output:
@@ -227,7 +178,8 @@ class DB_Manipulator:
       #This bestST call is excessive and should be streamlined later
       return self.bestST(cg_sid, [output[0].ST])
     else:
-      self.logger.warning("Sample {} on {} has a single allele set but no matching ST. Either incorrectly called allele, or novel ST has been found. Setting ST to -2".format(cg_sid, organism))
+      self.logger.warning("Sample {} on {} has a single allele set but no matching ST.\
+Either incorrectly called allele, or novel ST has been found. Setting ST to -2".format(cg_sid, organism))
       self.setPredictor(cg_sid)
       return -2
 
@@ -246,14 +198,20 @@ class DB_Manipulator:
       scores[st]['cc'] = 0
       profiles.append(self.session.query(self.profiles[organism]).filter(text('ST={}'.format(st))).first())
 
-    # Get value metrics for each allele set that resolves an ST 
+    # Get value metrics for each allele set that resolves an ST
     for prof in profiles:
-      filterstring = "and_(Seq_types.CG_ID_sample=='{}', or_(".format(cg_sid)
+      alleleconditions = list()
+      allconditions = ["Seq_types.CG_ID_sample=='{}'".format(cg_sid)]
+
       for index, allele in enumerate(prof):
         if 'ST' not in prof.keys()[index] and 'clonal_complex' not in prof.keys()[index]:
-          filterstring += "and_(Seq_types.loci=='{}', Seq_types.allele=='{}'), ".format(prof.keys()[index], allele)
-      filterstring = filterstring[:-2] + "))"
-      alleles = self.session.query(Seq_types).filter(eval(filterstring)).all()
+          condition = "Seq_types.loci=='{}' , Seq_types.allele=='{}'".format(prof.keys()[index], allele)
+          alleleconditions.append("and_({})".format(condition))
+
+      alleleconditions = "or_({})".format(','.join(alleleconditions))
+      allconditions.append(alleleconditions)
+      allconditions = "and_({})".format(','.join(allconditions))
+      alleles = self.session.query(Seq_types).filter(eval(allconditions)).all()
 
       # Keep only best allele of each loci name
       index = 0

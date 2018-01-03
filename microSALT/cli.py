@@ -24,8 +24,8 @@ def root(ctx):
     """ microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline """
     ctx.obj = {}
     install_dir = os.path.dirname(os.path.realpath(__file__))
-    #Load config yaml
-    with open("{}/config/paths_and_headers.yml".format(install_dir), 'r') as conf:
+    #Load paths yaml
+    with open("{}/paths.yml".format(install_dir), 'r') as conf:
       config = yaml.load(conf)
     ctx.obj['config'] = config
 

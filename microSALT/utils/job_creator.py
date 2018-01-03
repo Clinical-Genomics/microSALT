@@ -16,9 +16,6 @@ from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Job_Creator():
 
-  #TODO: Non-stringent file format. Establish once standard has been made
-  fileformat = re.compile('(\d{1}_\d{6}_\w{9}_.{5,12}_\w{8,12}_|\d{6}_\w{9}_.{3,12}_)(\d{1})(.fastq.gz)') 
-
   def __init__(self, indir, config, log, outdir=""):
     self.config = config
     self.logger = log
@@ -27,6 +24,7 @@ class Job_Creator():
     if outdir == "":
       self.outdir="{}/{}_{}".format(config["folders"]["results"], os.path.basename(os.path.normpath(indir)), self.now)
     self.indir = os.path.abspath(indir)
+    self.fileformat = re.compile(self.config['file_pattern'])
 
     self.trimmed_files = dict()
     self.batchfile = ""
@@ -44,14 +42,14 @@ class Job_Creator():
       file_parts = self.fileformat.match( files.pop(0) )
       #If file meets standard format, find pair
       if file_parts:
-        if file_parts[2] == '1':
+        if file_parts[6] == '1':
           pairno = '2'
-        elif file_parts[2] == '2':
+        elif file_parts[6] == '2':
           pairno = '1'
         else:
           self.logger.error("Some fastq files in directory have no mate in directory {}. Exited.".format(self.indir))
           sys.exit()
-        pairname = "{}{}{}".format(file_parts[1], pairno, file_parts[3])
+        pairname = "{}{}_{}_{}_{}{}{}".format(file_parts[1],file_parts[2],file_parts[3],file_parts[4],file_parts[5], pairno, file_parts[7])
         if pairname in files:
           files.pop( files.index(pairname) )
           verified_files.append(file_parts[0])
@@ -68,7 +66,7 @@ class Job_Creator():
     batchfile.write("#SBATCH -p {}\n".format(self.config["slurm_header"]["type"]))
     batchfile.write("#SBATCH -n {}\n".format(self.config["slurm_header"]["threads"]))
     batchfile.write("#SBATCH -t {}\n".format(self.config["slurm_header"]["time"]))
-    batchfile.write("#SBATCH -J {}_MSLT_job_{}\n".format(self.sample_name, self.now))
+    batchfile.write("#SBATCH -J {}_{}\n".format(self.config["slurm_header"]["job_prefix"], self.sample_name))
     batchfile.write("#SBATCH --qos {}\n\n".format(self.config["slurm_header"]["qos"]))
     batchfile.close()
 

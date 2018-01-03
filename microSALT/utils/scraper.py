@@ -26,7 +26,7 @@ class Scraper():
    
     last_folder = os.path.basename(os.path.normpath(self.infolder)) 
     self.name = last_folder.split('_')[0]
-    #Lukewarm way to grab the date part of the input folder. Kind of crud.
+    #TODO: Replace date from dir with entry from analysis files/database
     self.date = "{} {}".format(re.sub('\.','-', last_folder.split('_')[1]), re.sub('\.',':', last_folder.split('_')[2]))
     self.db_pusher=DB_Manipulator(config, self.logger)
     self.lims_fetcher=LIMS_Fetcher(log, config)
@@ -34,21 +34,21 @@ class Scraper():
 
   def scrape_project(self):
     #Scrape order matters a lot!
-    self.lims_fetcher.get_lims_project_info(self.name)
+    self.lims_fetcher.load_lims_project_info(self.name)
     self.scrape_projectinfo()
     for dir in os.listdir(self.infolder):
      if os.path.isdir("{}/{}".format(self.infolder, dir)): 
        self.sampledir = "{}/{}".format(self.infolder, dir)
        self.name = dir
-       self.lims_fetcher.get_lims_sample_info(dir)
+       self.lims_fetcher.load_lims_sample_info(dir)
        self.scrape_sampleinfo()
        self.scrape_all_loci()
 
   def scrape_sample(self):
     #Scrape order matters a lot!
     self.sampledir = self.infolder
-    self.lims_fetcher.get_lims_sample_info(self.name)
-    self.lims_fetcher.get_lims_project_info(self.lims_fetcher.data['CG_ID_project'])
+    self.lims_fetcher.load_lims_sample_info(self.name)
+    self.lims_fetcher.load_lims_project_info(self.lims_fetcher.data['CG_ID_project'])
 
     self.scrape_projectinfo()
     self.scrape_sampleinfo()
@@ -56,45 +56,44 @@ class Scraper():
 
   def scrape_all_loci(self):
     q_list = glob.glob("{}/loci_query_*".format(self.sampledir))
+    organism = self.lims_fetcher.get_organism_refname(self.name)
+    self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
     for file in q_list:
       self.scrape_single_loci(file)
     #Requires all loci results to be initialized
     try:
       ST = self.db_pusher.alleles2st(self.name)
-      self.db_pusher.upd_rec_orm({'CG_ID_sample':self.name}, 'Samples', {'ST':ST})
+      self.db_pusher.upd_rec({'CG_ID_sample':self.name}, 'Samples', {'ST':ST})
     except Exception as e:
-      pass
+      self.logger.error("{}".format(str(e)))
 
   def scrape_projectinfo(self):
     proj_col=dict()
     proj_col['CG_ID_project'] = self.name
     proj_col['Customer_ID_project'] = self.lims_fetcher.data['Customer_ID_project']
     proj_col['date_ordered'] = self.lims_fetcher.data['date_received']
-    self.db_pusher.add_rec_orm(proj_col, 'Projects')
+    self.db_pusher.add_rec(proj_col, 'Projects')
 
   def scrape_sampleinfo(self):
     """Identifies sample values"""
     try:
-      sample_col = self.db_pusher.get_columns_orm('Samples') 
+      sample_col = self.db_pusher.get_columns('Samples') 
       sample_col['CG_ID_sample'] = self.lims_fetcher.data['CG_ID_sample']
       sample_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
       sample_col['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
       sample_col["date_analysis"] = self.date
-      self.db_pusher.add_rec_orm(sample_col, 'Samples')
+      self.db_pusher.add_rec(sample_col, 'Samples')
     except Exception as e:
-      #Ignores unloaded samples
-      pass
+      self.logger.error("{}".format(str(e)))
 
   def scrape_single_loci(self, infile):
     """Scrapes a single blast output file for MLST results"""
-    seq_col = self.db_pusher.get_columns_orm('Seq_types') 
+    seq_col = self.db_pusher.get_columns('Seq_types') 
     if not os.path.exists(self.sampledir):
       self.logger.error("Invalid file path to infolder, {}".format(self.sampledir))
       sys.exit()
     try:
       with open("{}".format(infile), 'r') as insample:
-        organism = self.lims_fetcher.get_organism_refname(self.name)
-        self.db_pusher.upd_rec_orm({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
         seq_col["CG_ID_sample"] = self.name
 
         for line in insample:
@@ -120,8 +119,8 @@ class Scraper():
               seq_col["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
               seq_col["contig_length"] = nodeinfo[3]
               seq_col["contig_coverage"] = nodeinfo[5]
-              self.db_pusher.add_rec_orm(seq_col, 'Seq_types')
+              self.db_pusher.add_rec(seq_col, 'Seq_types')
       
       self.logger.info("Added a record to the database")
     except Exception as e:
-      pass
+      self.logger.error("{}".format(str(e)))
