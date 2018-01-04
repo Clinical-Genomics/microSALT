@@ -86,9 +86,9 @@ class Job_Creator():
       
       batchfile.write("# Trimmomatic set {}\n".format(j))
       batchfile.write("trimmomatic-0.36.jar PE -threads {} -phred33 {}/{} {}/{} {} {} {} {}\
-      ILLUMINACLIP:{}/Trimmomatic-0.36/adapters/NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n\n"\
+      ILLUMINACLIP:{}NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n\n"\
       .format(self.config["slurm_header"]["threads"], self.indir, files[i], self.indir, files[i+1],\
-      self.trimmed_files[outfile]['fp'], self.trimmed_files[outfile]['fu'], self.trimmed_files[outfile]['rp'], self.trimmed_files[outfile]['ru'], self.config["folders"]["installations"]))
+      self.trimmed_files[outfile]['fp'], self.trimmed_files[outfile]['fu'], self.trimmed_files[outfile]['rp'], self.trimmed_files[outfile]['ru'], self.config["folders"]["adapters"]))
       i=i+2
       j+=1
     batchfile.close()
