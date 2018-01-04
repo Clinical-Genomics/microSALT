@@ -68,7 +68,7 @@ def sample(ctx, sample_dir):
 @click.argument('project_dir')
 @click.pass_context
 def rename(ctx, project_dir):
-  """Renames external ID samples to unique internal ID ones"""
+  """Replace samples external ID with internal (unique) ones"""
   fixer = Renamer(project_dir, ctx.obj['config'], ctx.obj['log'])
   fixer.rename_project()
 

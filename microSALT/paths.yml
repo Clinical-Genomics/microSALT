@@ -8,15 +8,20 @@ slurm_header:
   qos: "normal"
   job_prefix: "MLST"
 
-# File finding pattern
-file_pattern: '(\d{1}_)?(\d{6})_(\w{9})_(.{3,12})_(\w{8,12}_)?(\d{1})(.fastq.gz)'
+regex:
+  # File finding pattern
+  pattern: '(\d{1}_)?(\d{6})_(\w{9})_(.{3,12})_(\w{8,12}_)?(\d{1})(.fastq.gz)'
+  # Capture group that contains forward/reverse identifier
+  direction_id: 6
+  # Pattern for files that need their id updated. Needs to contain SINGLE capture group of external id.
+  rename_pattern: 'MY_WEIRD_FILE_(\w{9})_CRAZYSUFFIX'
 
 # Default file folders
 folders:
   # Cutadapt adapters folder
   adapters: "/home/isak.sylvin/CG_MLST/Trimmomatic-0.36/adapters/"
-  # ST references. Each ST profile file under "profiles" have an identicial folder under
-  # references. Each references sub-folder contains the .tfa files for each locus.  
+  # ST references. Each ST profile file under "profiles" have an identicial namefolder 
+  # under references. Each references sub-folder contains the .tfa file for each locus.  
   profiles: "/mnt/hds/proj/cust015/mlst/references/profiles"  
   references: "/mnt/hds/proj/cust015/mlst/references/definitions_locisplit"
   # Output folder for ALL output
