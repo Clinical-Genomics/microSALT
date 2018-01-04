@@ -21,7 +21,7 @@ microbial Sequence Analysis and Loci-based Typing pipeline
 Rename the configuration file under folder `instance` to `sqlalchemy_config.py` and modify the line `SQLALCHEMY_DATABASE_URI` to correctly point to your database. For production purposes, set the `DEBUG` flag to False.
 
 ### Paths file
-Review `microSALT/paths.yml` to accurately represent the file paths and sbatch headers required by your system.
+Review `instance/paths_EXAMPLE.yml` to accurately represent the file paths and sbatch headers required by your system.
 
 ### LIMS
 Create `$HOME/.genologicsrc` with the following formatting:

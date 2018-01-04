@@ -3,6 +3,7 @@
 microSALT/__pycache__
 microSALT/microSALT.log
 instance/sqlalchemy_config.py
+instance/paths.yml
 *.egg-info
 *pyc
 *.swp

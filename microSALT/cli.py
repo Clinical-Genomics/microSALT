@@ -23,9 +23,9 @@ from microSALT.server.views import app
 def root(ctx):
     """ microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline """
     ctx.obj = {}
-    install_dir = os.path.dirname(os.path.realpath(__file__))
+    source_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     #Load paths yaml
-    with open("{}/paths.yml".format(install_dir), 'r') as conf:
+    with open("{}/instance/paths.yml".format(source_dir), 'r') as conf:
       config = yaml.load(conf)
     ctx.obj['config'] = config
 
@@ -33,7 +33,7 @@ def root(ctx):
     logger = logging.getLogger('main_logger')
     logger.setLevel(logging.DEBUG)
    
-    fh = logging.FileHandler("{}/{}".format(install_dir, "microSALT.log"))
+    fh = logging.FileHandler("{}/{}".format(source_dir, "microSALT.log"))
     fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
     logger.addHandler(fh)
     ch = logging.StreamHandler()
