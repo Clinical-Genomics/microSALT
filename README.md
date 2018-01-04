@@ -11,7 +11,7 @@ microbial Sequence Analysis and Loci-based Typing pipeline
 * MySQL
 
 * BLAST
-* CutAdapt
+* Trimmomatic
 * SpaDES
 
 * Genologics, `https://github.com/SciLifeLab/genologics.git`
