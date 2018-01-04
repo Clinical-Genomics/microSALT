@@ -109,5 +109,5 @@ def project(ctx, project_dir):
 @root.command()
 @click.pass_context
 def view(ctx):
-  """Starts a flask based display of results at http://127.0.0.1:5000/"""
+  """Starts a flask based display of results at http://127.0.0.1:5000/microSALT"""
   app.run()

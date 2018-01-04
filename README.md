@@ -44,5 +44,5 @@ Additionally `ConfigParser` in `config.py` needs to be replaced with `configpars
 * Use the `rename` function on the folder of your input fastq files if they contain external ID (replaces them with internal)
 * Use the `create` function to generate sbatch job(s) defined under `folders['results']`. Manually start them via the `concatinated.sh` script.
 * After the jobs have been finished. Use the `scrape` function to upload parsed results to the SQL backend.
-* Use the `view` function to start a flask instance to view the results. Point your browser at `http://127.0.0.1:5000/`
+* Use the `view` function to start a flask instance to view the results. Point your browser at `http://127.0.0.1:5000/microSALT`
 * Navigate to your run, and print the results to PDF format if requested.
