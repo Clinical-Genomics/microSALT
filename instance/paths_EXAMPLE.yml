@@ -9,10 +9,9 @@ slurm_header:
   job_prefix: "MLST"
 
 regex:
-  # File finding pattern
-  file_pattern: '(\d{1}_)?(\d{6})_(\w{9})_(.{3,12})_(\w{8,12}_)?(\d{1})(.fastq.gz)'
-  # Capture group that contains forward/reverse identifier
-  direction_id: 6
+  # File finding pattern. Needs single capture for reverse/forward identifier. All other groups
+  # MUST be non capturing
+  file_pattern: '(?:\d{1}_)?\d{6}_\w{9}_.{3,12}_(?:\w{8,12}_)?(\d{1}).fastq.gz'
   # Pattern for files that need their id updated. Needs to contain SINGLE capture group of external id.
   rename_pattern: 'MY_WEIRD_FILE_(\w{9})_CRAZYSUFFIX'
 

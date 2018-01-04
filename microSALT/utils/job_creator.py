@@ -127,17 +127,20 @@ class Job_Creator():
 
   def index_db(self, full_dir):
     """Check for indexation, makeblastdb job if not enough of them."""
-    batchfile = open(self.batchfile, "a+")
-    files = os.listdir(full_dir)
-    tfa_list = glob.glob("{}/*.tfa".format(full_dir))
-    nin_suff = sum([1 for elem in files if 'nin' in elem]) #one type of index file 
-    if nin_suff < len(tfa_list):
-      batchfile.write("# Blast database indexing. Only necessary for initial run of organism\n")
-      for file in tfa_list:
-        batchfile.write("cd {} && makeblastdb -in {}/{} -dbtype nucl -parse_seqids -out {}\n".format(\
-        full_dir, full_dir, os.path.basename(file),  os.path.basename(file[:-4])))
-    batchfile.write("\n")
-    batchfile.close()
+    try:
+      batchfile = open(self.batchfile, "a+")
+      files = os.listdir(full_dir)
+      tfa_list = glob.glob("{}/*.tfa".format(full_dir))
+      nin_suff = sum([1 for elem in files if 'nin' in elem]) #one type of index file 
+      if nin_suff < len(tfa_list):
+        batchfile.write("# Blast database indexing. Only necessary for initial run of organism\n")
+        for file in tfa_list:
+          batchfile.write("cd {} && makeblastdb -in {}/{} -dbtype nucl -parse_seqids -out {}\n".format(\
+          full_dir, full_dir, os.path.basename(file),  os.path.basename(file[:-4])))
+      batchfile.write("\n")
+      batchfile.close()
+    except Exception as e:
+      self.logger.error("No associated reference for {} for specified organism: {}".format(self.sample_name, self.organism))
 
   def create_blastjob_single(self):
     """ Creates a blast job for instances where the definitions file is one per organism"""
@@ -191,6 +194,7 @@ class Job_Creator():
       concat.close()
     except Exception as e:
       self.logger.warning("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
+      os.removedirs(self.outdir)
 
   def sample_job(self):
     self.trimmed_files = dict()
@@ -208,3 +212,4 @@ class Job_Creator():
       self.logger.info("Created runfile for project {} in folder {}".format(self.indir, self.outdir))
     except Exception as e:
       self.logger.warning("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
+      os.removedirs(self.outdir)
