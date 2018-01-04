@@ -1,5 +1,5 @@
 ---
-#SBATCH configuration
+# SBATCH configuration
 slurm_header:
   project: "microbial"
   type: "core"
@@ -8,12 +8,16 @@ slurm_header:
   qos: "normal"
   job_prefix: "MLST"
 
-#File finding pattern
+# File finding pattern
 file_pattern: '(\d{1}_)?(\d{6})_(\w{9})_(.{3,12})_(\w{8,12}_)?(\d{1})(.fastq.gz)'
 
-#Default file folders
+# Default file folders
 folders:
-  installations: "/home/isak.sylvin/CG_MLST/"
-  results: "/mnt/hds/proj/cust015/mlst/results"
+  # Cutadapt adapters folder
+  adapters: "/home/isak.sylvin/CG_MLST/Trimmomatic-0.36/adapters/"
+  # ST references. Each ST profile file under "profiles" have an identicial folder under
+  # references. Each references sub-folder contains the .tfa files for each locus.  
+  profiles: "/mnt/hds/proj/cust015/mlst/references/profiles"  
   references: "/mnt/hds/proj/cust015/mlst/references/definitions_locisplit"
-  profiles: "/mnt/hds/proj/cust015/mlst/references/profiles"
+  # Output folder for ALL output
+  results: "/mnt/hds/proj/cust015/mlst/results"
