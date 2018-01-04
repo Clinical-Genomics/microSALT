@@ -24,7 +24,6 @@ class Job_Creator():
     if outdir == "":
       self.outdir="{}/{}_{}".format(config["folders"]["results"], os.path.basename(os.path.normpath(indir)), self.now)
     self.indir = os.path.abspath(indir)
-    self.fileformat = re.compile(self.config['regex']['file_pattern'])
 
     self.trimmed_files = dict()
     self.batchfile = ""
@@ -38,22 +37,23 @@ class Job_Creator():
       self.logger.error("No fastq files found in specified directory {}. Exited.".format(self.indir))
       sys.exit()
     verified_files = list()
-    while len(files) > 0:
-      file_parts = self.fileformat.match( files.pop(0) )
-      #If file meets standard format, find pair
-      if file_parts:
-        if file_parts[self.config['regex']['direction_id']] == '1':
+    for file in files:
+      file_match = re.match( self.config['regex']['file_pattern'], file)
+      #file_match = self.fileformat.match( file )
+      if file_match:
+        if file_match[1] == '1':
           pairno = '2'
-        elif file_parts[self.config['regex']['direction_id']] == '2':
-          pairno = '1'
+          #Construct mate name
+          pairname = "{}{}{}".format(file_match.string[:file_match.end(1)-1] , pairno, file_match.string[file_match.end(1):file_match.end()])
+          if pairname in files:
+            files.pop( files.index(pairname) )
+            verified_files.append(file_match[0])
+            verified_files.append(pairname)
+        elif file_match[1] == '2':
+          pass
         else:
           self.logger.error("Some fastq files in directory have no mate in directory {}. Exited.".format(self.indir))
           sys.exit()
-        pairname = "{}{}_{}_{}_{}{}{}".format(file_parts[1],file_parts[2],file_parts[3],file_parts[4],file_parts[5], pairno, file_parts[7])
-        if pairname in files:
-          files.pop( files.index(pairname) )
-          verified_files.append(file_parts[0])
-          verified_files.append(pairname)
     if verified_files == []:
       self.logger.error("No correctly named fastq files found in directory {}. Exited.".format(self.indir))
       sys.exit()
@@ -174,20 +174,23 @@ class Job_Creator():
   #TODO: Let project job spawn more job_creator objects rather than reassigning instance variables
   def project_job(self):
     proj_path = self.outdir
-    if not os.path.exists(self.outdir):
-      os.makedirs(self.outdir)
-    concat_file = "{}/concatinated.sbatch".format(self.outdir)
-    concat = open(concat_file, 'w+')
-    concat.write("#!/bin/sh\n\n")
-    for (dirpath, dirnames, filenames) in os.walk(self.indir):
-      for dir in dirnames:
-        self.outdir = "{}/{}".format(proj_path, dir) 
-        self.indir = "{}/{}".format(dirpath, dir) 
-        self.sample_name = dir 
-        self.sample_job()
-        outfile = self.get_sbatch()
-        concat.write("sbatch {}\n".format(outfile))
-    concat.close()
+    try:
+      if not os.path.exists(self.outdir):
+        os.makedirs(self.outdir)
+      concat_file = "{}/concatinated.sbatch".format(self.outdir)
+      concat = open(concat_file, 'w+')
+      concat.write("#!/bin/sh\n\n")
+      for (dirpath, dirnames, filenames) in os.walk(self.indir):
+        for dir in dirnames:
+          self.outdir = "{}/{}".format(proj_path, dir) 
+          self.indir = "{}/{}".format(dirpath, dir) 
+          self.sample_name = dir 
+          self.sample_job()
+          outfile = self.get_sbatch()
+          concat.write("sbatch {}\n".format(outfile))
+      concat.close()
+    except Exception as e:
+      self.logger.warning("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
 
   def sample_job(self):
     self.trimmed_files = dict()
