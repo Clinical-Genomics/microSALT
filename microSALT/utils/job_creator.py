@@ -24,7 +24,7 @@ class Job_Creator():
     if outdir == "":
       self.outdir="{}/{}_{}".format(config["folders"]["results"], os.path.basename(os.path.normpath(indir)), self.now)
     self.indir = os.path.abspath(indir)
-    self.fileformat = re.compile(self.config['file_pattern'])
+    self.fileformat = re.compile(self.config['regex']['file_pattern'])
 
     self.trimmed_files = dict()
     self.batchfile = ""
@@ -42,9 +42,9 @@ class Job_Creator():
       file_parts = self.fileformat.match( files.pop(0) )
       #If file meets standard format, find pair
       if file_parts:
-        if file_parts[6] == '1':
+        if file_parts[self.config['regex']['direction_id']] == '1':
           pairno = '2'
-        elif file_parts[6] == '2':
+        elif file_parts[self.config['regex']['direction_id']] == '2':
           pairno = '1'
         else:
           self.logger.error("Some fastq files in directory have no mate in directory {}. Exited.".format(self.indir))
