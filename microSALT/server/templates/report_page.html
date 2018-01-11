@@ -1,12 +1,63 @@
 {% extends 'layout.html' %}
-
 {% block body %}
     <div class="container-fluid">
         <div class="col-lg-16">
+<!-- Summary page  -->
+                <footer>
+                    <div class="panel"><div class="panel-body">
+                    <h2 class="page-header"><strong>microSALT Results</strong><br>
+                        <small>Clinical Microbiology</small>
+                        <small><p align="right">{{date}}</p></small></h2>
+                        <h3><strong>Summary</strong><br></h3>
+                        <div class="table-responsive">
+                                <table  class="table table-bordered" >
+                                  <tr>
+                                      <td><b>Project ID <i>(CG Project ID)</i></b>
+                                      <td><b>Analysis date</b></td>
+                                  </tr>
+                                  <tr>
+                                      <td>{{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></td>
+                                      <td>{{samples[0].date_analysis.date()}}</td>
+                                  </tr>
+                                </table>
+                        </div>
+                        <div class="table-responsive">
+                                <table  class="table table-bordered" >
+                                  <tr>
+                                      </td><td><b>Sample ID <i>(CG Sample ID)</i></b></td>
+                                      <td><b>Organism</b></td>
+                                      <td><b>Sequence Type</b></td>
+                                      <td><b>Thresholds</b></td>
+                                  </tr>
+                                  {% for sample in samples %}
+                                  <tr>
+                                      <td>{{sample.Customer_ID_sample}}  <i>({{sample.CG_ID_sample}})</i></td>
+                                      <td><i>{{sample.organism.replace('_', ' ').title()}}</i></td>
+                                      {% if sample.ST > 0 %}
+                                         <td>{{sample.ST}}</td>
+                                      {% elif sample.ST == -1 %}
+                                         <td>Control sample</td>
+                                      {% else %}
+                                         <td>None</td>
+                                      {% endif %}
+                                      {% for seq_type in sample.seq_types %}
+                                        {% if seq_type.identity < 100.00 or sample.ST < 0 %}
+                                          {% set miss=True %}
+                                        {% endif %}
+                                        {% if loop.last %}
+                                          {% if not miss %}<td>Passed</td>{% else %}<td>Failed</td>{% endif %}
+                                        {% endif %}
+                                      {% endfor %}
+                                  </tr>
+                                  {% endfor %}
+                                </table>
+                         </div>
+                    </div></div>
+                </footer>
+<!-- Sample pages -->
                   {% for sample in samples %}
-                    <div class="panel">
-                    <div class="panel-body">
-                    <footer>
+                  <footer>
+                    <div class="panel"><div class="panel-body">
                     <h2 class="page-header"><div class="row"></div><strong>microSALT Results</strong><br>
                         <small>Clinical Microbiology</small>
                         <small><p align="right">{{date}}</p></small></h2>
@@ -80,14 +131,10 @@
                                     </tbody>
                                 </table>
                             </div>
-                    </footer>
                 </div>
             </div>
+          </footer>
           {% endfor %}
         </div>
     </div>
-</div>
-
-
-
 {% endblock %}

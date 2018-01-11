@@ -35,6 +35,5 @@ class Renamer():
           #Change files
           for f in files:
             fm = fileformat.match(f)
-            id_match = re.search(fm[1], f)
-            os.rename("{}/{}".format(newfolder, f), "{}/{}{}{}".format(newfolder, f[:id_match.start()] , sample.id, f[id_match():]) )
+            os.rename("{}/{}".format(newfolder, f), "{}/{}{}{}".format(newfolder, fm.string[:fm.end(1)-1] , sample.id, fm.string[fm.end(1):fm.end()]) )
         

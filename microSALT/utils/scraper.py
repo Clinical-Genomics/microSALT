@@ -33,6 +33,7 @@ class Scraper():
     self.lims_sample_info = {}
 
   def scrape_project(self):
+    """Scrapes a project folder for information"""
     #Scrape order matters a lot!
     self.lims_fetcher.load_lims_project_info(self.name)
     self.scrape_projectinfo()
@@ -45,6 +46,7 @@ class Scraper():
        self.scrape_all_loci()
 
   def scrape_sample(self):
+    """Scrapes a sample folder for information"""
     #Scrape order matters a lot!
     self.sampledir = self.infolder
     self.lims_fetcher.load_lims_sample_info(self.name)
@@ -55,6 +57,7 @@ class Scraper():
     self.scrape_all_loci()
 
   def scrape_all_loci(self):
+    """Scrapes all BLAST output in a folder"""
     q_list = glob.glob("{}/loci_query_*".format(self.sampledir))
     organism = self.lims_fetcher.get_organism_refname(self.name)
     self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
@@ -68,6 +71,7 @@ class Scraper():
       self.logger.error("{}".format(str(e)))
 
   def scrape_projectinfo(self):
+    """Identifies project values"""
     proj_col=dict()
     proj_col['CG_ID_project'] = self.name
     proj_col['Customer_ID_project'] = self.lims_fetcher.data['Customer_ID_project']

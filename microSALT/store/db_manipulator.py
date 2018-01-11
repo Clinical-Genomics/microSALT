@@ -105,11 +105,15 @@ class DB_Manipulator:
 
   def setPredictor(self, cg_sid, pks=dict()):
     """ Helper function. Flags a set of seq_types as part of the final prediction.
-      Uses optional pks[loci]=contig_name dictionary to distinguish in scenarios where an allele number has multiple hits"""
+    Uses optional pks[loci]=contig_name dictionary to distinguish in scenarios where an allele number has multiple hits"""
     sample = self.session.query(Seq_types).filter(Seq_types.CG_ID_sample==cg_sid)
+
     if pks == dict():
       sample.update({Seq_types.st_predictor: 1})
     else:
+      #Resets all previous predictors
+      sample.update({Seq_types.st_predictor: None})
+      #Set subset
       for loci, cn in pks.items():
         sample.filter(Seq_types.loci==loci, Seq_types.contig_name==cn).update({Seq_types.st_predictor : 1})
     self.session.commit()
@@ -175,7 +179,7 @@ class DB_Manipulator:
       self.logger.warning("Multiple possible ST found for sample {}, list: {}. Established ST{} as best hit.".format(cg_sid, STlist, best))
       return best
     elif len(output) == 1:
-      #This bestST call is excessive and should be streamlined later
+      #Doing bestST only to establish best loci number combination
       return self.bestST(cg_sid, [output[0].ST])
     else:
       self.logger.warning("Sample {} on {} has a single allele set but no matching ST.\
@@ -185,7 +189,6 @@ Either incorrectly called allele, or novel ST has been found. Setting ST to -2".
 
   def bestST(self, cg_sid, st_list):
     """Takes in a list of ST and a sample. Establishes which ST is most likely by criteria  id -> eval -> contig coverage"""
-
     profiles = list()
     scores = dict()
     bestalleles = dict()
@@ -198,48 +201,43 @@ Either incorrectly called allele, or novel ST has been found. Setting ST to -2".
       scores[st]['cc'] = 0
       profiles.append(self.session.query(self.profiles[organism]).filter(text('ST={}'.format(st))).first())
 
-    # Get value metrics for each allele set that resolves an ST
+    # Get values for each allele set that resolves an ST
     for prof in profiles:
       alleleconditions = list()
+      alleledict = dict()
       allconditions = ["Seq_types.CG_ID_sample=='{}'".format(cg_sid)]
 
       for index, allele in enumerate(prof):
         if 'ST' not in prof.keys()[index] and 'clonal_complex' not in prof.keys()[index]:
           condition = "Seq_types.loci=='{}' , Seq_types.allele=='{}'".format(prof.keys()[index], allele)
+          alleledict[prof.keys()[index]] = ""
           alleleconditions.append("and_({})".format(condition))
 
       alleleconditions = "or_({})".format(','.join(alleleconditions))
       allconditions.append(alleleconditions)
       allconditions = "and_({})".format(','.join(allconditions))
-      alleles = self.session.query(Seq_types).filter(eval(allconditions)).all()
+      all_alleles = self.session.query(Seq_types).filter(eval(allconditions)).all()
 
-      # Keep only best allele of each loci name
-      index = 0
-      seenLoci = dict()
-      while index < len(alleles)-1:
-        if alleles[index].loci in seenLoci:
-          prev = seenLoci[alleles[index].loci]
+      # Keep only best hit each loci
+      for allele in all_alleles:
+       if alleledict[allele.loci] == "":
+         alleledict[allele.loci] = allele
+       else:
+        if (allele.identity > alleledict[allele.loci].identity) or\
+        (allele.identity == alleledict[allele.loci].identity and float(allele.evalue) < float(alleledict[allele.loci].evalue))\
+        or (allele.identity == alleledict[allele.loci].identity and float(allele.evalue) == float(alleledict[allele.loci].evalue)\
+        and allele.contig_coverage > alleledict[allele.loci].contig_coverage):
+          alleledict[allele.loci] = allele
 
-          if (alleles[index].identity > alleles[prev].identity) or\
-          (alleles[index].identity == alleles[prev].identity and float(alleles[index].evalue) < float(alleles[prev].evalue))\
-          or (alleles[index].identity == alleles[prev].identity and float(alleles[index].evalue) == float(alleles[prev].evalue)\
-          and alleles[index].contig_coverage > alleles[prev].contig_coverage):
-            alleles.pop(prev)
-            seenLoci[alleles[index].loci] = index
-          else:
-            alleles.pop(index)
-        else:    
-          seenLoci[alleles[index].loci] = index
-          index += 1
-
-      #Compute metrics
-      for allele in alleles:
+      #Create score dict for the ST
+      for key, allele in alleledict.items():
         scores[prof.ST]['id'] += allele.identity
         scores[prof.ST]['eval'] += float(allele.evalue)
         scores[prof.ST]['cc'] += allele.contig_coverage
         bestalleles[prof.ST][allele.loci] = ""
         bestalleles[prof.ST][allele.loci] += allele.contig_name
 
+    #Establish best ST
     topST = ""
     topID = 0
     topEval = 100

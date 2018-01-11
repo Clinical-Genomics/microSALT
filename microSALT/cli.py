@@ -6,7 +6,7 @@
 
 import click
 import os
-import pdb
+import sys
 import yaml
 import logging
 
@@ -23,17 +23,21 @@ from microSALT.server.views import app
 def root(ctx):
     """ microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline """
     ctx.obj = {}
-    install_dir = os.path.dirname(os.path.realpath(__file__))
+    source_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     #Load paths yaml
-    with open("{}/paths.yml".format(install_dir), 'r') as conf:
-      config = yaml.load(conf)
+    try:
+      with open("{}/instance/paths.yml".format(source_dir), 'r') as conf:
+        config = yaml.load(conf)
+    except Exception as e:
+        print("Unable to load paths configuration. Do you have a paths.yml file in folder instance/ ?")
+        sys.exit(-1)
     ctx.obj['config'] = config
 
     #Defining logging here. Might want to move it later.
     logger = logging.getLogger('main_logger')
     logger.setLevel(logging.DEBUG)
    
-    fh = logging.FileHandler("{}/{}".format(install_dir, "microSALT.log"))
+    fh = logging.FileHandler("{}/{}".format(source_dir, "microSALT.log"))
     fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
     logger.addHandler(fh)
     ch = logging.StreamHandler()
@@ -41,6 +45,9 @@ def root(ctx):
     ch.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
     logger.addHandler(ch)
     ctx.obj['log'] = logger
+
+def done():
+  print("\nExecution finished!")
 
 @root.group()
 @click.pass_context
@@ -54,7 +61,8 @@ def create(ctx):
 def project(ctx, project_dir):
   """Create jobs for a project"""
   manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
-  manager.project_job() 
+  manager.project_job()
+  done() 
 
 @create.command()
 @click.argument('sample_dir')
@@ -63,6 +71,7 @@ def sample(ctx, sample_dir):
     """Create a job for a single sample"""
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
     worker.sample_job()
+    done()
 
 @root.command()
 @click.argument('project_dir')
@@ -71,6 +80,7 @@ def rename(ctx, project_dir):
   """Replace samples external ID with internal (unique) ones"""
   fixer = Renamer(project_dir, ctx.obj['config'], ctx.obj['log'])
   fixer.rename_project()
+  done()
 
 @root.group()
 @click.pass_context
@@ -85,6 +95,7 @@ def sample(ctx, sample_dir):
   """Parse results from analysing a single sample"""
   garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_sample()
+  done()
 
 @scrape.command()
 @click.argument('project_dir')
@@ -93,9 +104,10 @@ def project(ctx, project_dir):
   """Parse results from analysing a single project"""
   garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_project()
+  done()
 
 @root.command()
 @click.pass_context
 def view(ctx):
-  """Starts a flask based display of results at http://127.0.0.1:5000/"""
+  """Starts a flask based display of results at http://127.0.0.1:5000/microSALT"""
   app.run()

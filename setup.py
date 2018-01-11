@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from microSALT import __version__
-from setuptools import setup
+from setuptools import setup, find_packages
 
 version = __version__
 
@@ -13,11 +13,16 @@ except IOError:
 setup(
     name="microSALT",
     version=version,
+    long_description=__doc__,
     url="https://github.com/sylvinite/microSALT",
     author="Isak Sylvin",
     author_email='isak.sylvin@scilifelab.se',
     install_requires=install_requires,
+    packages=['microSALT'],
+    include_package_data=True,
+    zip_safe=False,
     entry_points={
         'console_scripts': ['microSALT=microSALT.cli:root'],
     },
 )
+
