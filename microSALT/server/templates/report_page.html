@@ -32,13 +32,20 @@
                                   {% for sample in samples %}
                                   <tr>
                                       <td>{{sample.Customer_ID_sample}}  <i>({{sample.CG_ID_sample}})</i></td>
-                                      <td><i>{{sample.organism.replace('_', ' ').title()}}</i></td>
+                                      {% if sample.organism is not none %}
+                                        <td><i>{{sample.organism.replace('_', ' ').title()}}</i></td>
+                                      {% else %}
+                                        <td><i>Control</i></td>
+                                      {% endif %}
                                       {% if sample.ST > 0 %}
                                          <td>{{sample.ST}}</td>
                                       {% elif sample.ST == -1 %}
-                                         <td>Control sample</td>
+                                         <td>Control</td>
                                       {% else %}
                                          <td>None</td>
+                                      {% endif %}
+                                      {% if sample.seq_types|length == 0 %}
+                                        <td>N/A</td>
                                       {% endif %}
                                       {% for seq_type in sample.seq_types %}
                                         {% if seq_type.identity < 100.00 or sample.ST < 0 %}
@@ -78,7 +85,11 @@
                                         </tr>
                                         <tr>
                                             <th scope="row" >Organism</th>
-                                            <td><i>{{sample.organism.replace('_', ' ').title()}}</i></td>
+                                            {% if sample.organism is not none %}
+                                              <td><i>{{sample.organism.replace('_', ' ').title()}}</i></td>
+                                            {% else %}
+                                              <td><i>Control</i></td>
+                                            {% endif %}
                                         </tr>
                                         <tr>
                                             <th scope="row" >Sequence Type</th>
@@ -92,6 +103,9 @@
                                         </tr>
                                         <tr>
                                             <th scope="row" >Thresholds</th>
+                                              {% if sample.seq_types|length == 0 %}
+                                                <td>N/A</td>
+                                              {% endif %}
                                               {% for seq_type in sample.seq_types %}
                                                 {% if seq_type.identity < 100.00 or sample.ST < 0 %}
                                                   {% set miss=True %}
@@ -104,6 +118,7 @@
                                 </table>
                             </div>
                             <div class="table-responsive">
+                                {% if not sample.seq_types|length == 0 %}
                                 <table  class="table table-bordered" >
                                     <thead>
                                         <tr>
@@ -130,6 +145,7 @@
                                       {% endfor %}
                                     </tbody>
                                 </table>
+                                {% endif %}
                             </div>
                 </div>
             </div>
