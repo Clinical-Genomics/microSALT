@@ -14,7 +14,6 @@ from pkg_resources import iter_entry_points
 from microSALT import __version__
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
-from microSALT.utils.renamer import Renamer 
 from microSALT.server.views import app
 
 @click.group()
@@ -72,15 +71,6 @@ def sample(ctx, sample_dir):
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
     worker.sample_job()
     done()
-
-@root.command()
-@click.argument('project_dir')
-@click.pass_context
-def rename(ctx, project_dir):
-  """Replace samples external ID with internal (unique) ones"""
-  fixer = Renamer(project_dir, ctx.obj['config'], ctx.obj['log'])
-  fixer.rename_project()
-  done()
 
 @root.group()
 @click.pass_context
