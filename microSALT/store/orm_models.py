@@ -50,3 +50,10 @@ class Projects(db.Model):
    Customer_ID_project = db.Column(db.String(15))
    date_ordered = db.Column(db.DateTime)
    date_delivered = db.Column(db.DateTime)
+
+class Versions(db.Model):
+
+  __tablename__ = 'versions'
+
+  name = db.Column(db.String(30), primary_key=True, nullable=False)
+  version = db.Column(db.String(30))

@@ -14,6 +14,7 @@ from pkg_resources import iter_entry_points
 from microSALT import __version__
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
+from microSALT.utils.ref_updater import Ref_Updater
 from microSALT.server.views import app
 
 @click.group()
@@ -46,12 +47,12 @@ def root(ctx):
     ctx.obj['log'] = logger
 
 def done():
-  print("\nExecution finished!")
+  print("Execution finished!")
 
 @root.group()
 @click.pass_context
 def create(ctx):
-  """Produces sbatch jobs for the given input"""
+  """Produces sbatch jobs of the given input"""
   pass
 
 @create.command()
@@ -75,7 +76,7 @@ def sample(ctx, sample_dir):
 @root.group()
 @click.pass_context
 def scrape(ctx):
-  """Parses results folder for analysis results and uploads to database"""
+  """Parses analysis results and uploads to database"""
   pass
 
 @scrape.command()
@@ -98,6 +99,14 @@ def project(ctx, project_dir):
 
 @root.command()
 @click.pass_context
+def update(ctx):
+  """Verifies & updates all references"""
+  fixer = Ref_Updater(ctx.obj['config'], ctx.obj['log'])
+  fixer.update_refs()
+  done()
+
+@root.command()
+@click.pass_context
 def view(ctx):
-  """Starts a flask based display of results at http://127.0.0.1:5000/microSALT"""
+  """Starts a webserver at http://127.0.0.1:5000/microSALT"""
   app.run()
