@@ -28,8 +28,8 @@ class Scraper():
     self.name = last_folder.split('_')[0]
     #TODO: Replace date from dir with entry from analysis files/database
     self.date = "{} {}".format(re.sub('\.','-', last_folder.split('_')[1]), re.sub('\.',':', last_folder.split('_')[2]))
-    self.db_pusher=DB_Manipulator(config, self.logger)
-    self.lims_fetcher=LIMS_Fetcher(log, config)
+    self.db_pusher=DB_Manipulator(config, log)
+    self.lims_fetcher=LIMS_Fetcher(config, log)
     self.lims_sample_info = {}
 
   def scrape_project(self):

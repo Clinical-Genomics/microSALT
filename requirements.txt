@@ -1,7 +1,9 @@
 click
+flask
+flask_sqlalchemy
 genologics
+json
 pymysql
 pyyaml
 sqlalchemy
-flask
-flask_sqlalchemy
+urllib

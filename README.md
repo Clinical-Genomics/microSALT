@@ -5,10 +5,14 @@
 </p>
 
 microbial Sequence Analysis and Loci-based Typing pipeline
+
+The microbial sequence analysis and loci-based typing pipeline (microSALT) is used to determine a microbial samples organism specific sequence type. This is in turn defined from a set of six to eight organism specific allele types. microSALT also provides a database storage solution and pdf generation of these results.
+
 ## Requirements
 ### Hardware
 * A slurm enabled HPC
 * A mySQL server
+* A (clarity) LIMS server
 
 ###Software
 * Conda
@@ -23,9 +27,7 @@ microbial Sequence Analysis and Loci-based Typing pipeline
 `source activate MLST`
 
 `git clone https://github.com/sylvinite/microSALT.git`
-`git clone https://github.com/SciLifeLab/genologics.git`
 Perform all steps under __Configuration__
-`cd genologics && pip install -r requirements.txt && pip install . && cd ..`
 `cd microSALT && pip install -r requirements.txt && pip install -e . && cd ..`
 
 ## Configuration
@@ -48,6 +50,8 @@ MAIN_LOG=/home/glsai/your_main_log_file
 
 ### Genologics python3 support
 `ConfigParser` in `config.py` needs to be replaced with `configparser` for python3 support.
+
+Easiest way to find your `config.py` file is to run `microSALT` after all other configuration steps have been executed.
 
 ## Usage
 * Use the `create` function to generate sbatch job(s) defined under `folders['results']`. Manually start them via the `concatinated.sh` script.

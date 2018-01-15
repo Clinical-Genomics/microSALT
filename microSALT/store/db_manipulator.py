@@ -4,17 +4,13 @@
 
 #!/usr/bin/env python
 
-import click
-import os
-import re
 import sys
-import yaml
 
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 
 from microSALT import app
-from microSALT.store.orm_models import Projects, Samples, Seq_types
+from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
 from microSALT.store.models import Profiles
 
 class DB_Manipulator:
@@ -32,13 +28,16 @@ class DB_Manipulator:
     self.create_tables()
 
   def create_tables(self):
-    """Creates all tabes individually. A bit more control than usual"""
+    """Creates all tables individually. A bit more control than usual"""
     if not self.engine.dialect.has_table(self.engine, 'projects'):
       Projects.__table__.create(self.engine)
       self.logger.info("Created samples table")
     if not self.engine.dialect.has_table(self.engine, 'samples'):
       Samples.__table__.create(self.engine)
       self.logger.info("Created samples table")
+    if not self.engine.dialect.has_table(self.engine, 'versions'):
+      Versions.__table__.create(self.engine)
+      self.logger.info("Created versions table")
     if not self.engine.dialect.has_table(self.engine, 'seq_types'):
       Seq_types.__table__.create(self.engine)
       self.logger.info("Created sequencing types table")
@@ -66,11 +65,11 @@ class DB_Manipulator:
     else:
       self.logger.info("Failed to insert duplicate record into table {}".format(tablename))
 
-  def upd_rec(self, data_dict, tablename, indict):
+  def upd_rec(self, req_dict, tablename, upd_dict):
     """Updates a record to the specified table through a dict with columns as keys."""
     table = eval(tablename)
     args = list()
-    for k,v in data_dict.items():
+    for k,v in req_dict.items():
       if v != None:
         args.append("table.{}=='{}'".format(k, v))
     filter = ','.join(args)
@@ -78,9 +77,17 @@ class DB_Manipulator:
       self.logger.error("More than 1 record found when orm updating. Exited.")
       sys.exit()
     else:
-      self.session.query(table).filter(eval(filter)).update(indict)
+      self.session.query(table).filter(eval(filter)).update(upd_dict)
       self.session.commit()
-  
+
+  def reload_profiletable(self, organism):
+    """Drop the named non-orm table, then load it with fresh data"""
+    table = self.profiles[organism]
+    self.profiles[organism].drop()
+    self.profiles[organism].create()
+    self.init_profiletable(organism, table)
+    self.logger.warning("Profile table for {} updated to latest version".format(organism)) 
+ 
   def init_profiletable(self, filename, table):
     """Creates profile tables by looping, since a lot of infiles exist"""
     data = table.insert()
@@ -97,11 +104,26 @@ class DB_Manipulator:
           index = index+1
         data.execute(linedict)
     self.logger.info("Created profile table {}".format(table))
-  
+    # Set initial debug version
+    self.add_rec({'name': 'profile_{}'.format(filename), 'version': '1800-01-01'}, 'Versions')
+    self.logger.info("Added dummy version (1800-01-01) for table profile_{}".format(filename)) 
+ 
   def get_columns(self, tablename):
     """ Returns all records for a given ORM table"""
     table = eval(tablename)
     return dict.fromkeys(table.__table__.columns.keys())
+
+  def get_profiles(self):
+    """Returns non-orm profiles tables"""
+    return self.profiles
+
+  def get_version(self, name):
+    """ Gets the version from a given name. Should be generalized to return any value for any input"""
+    version = self.session.query(Versions).filter(Versions.name==name).scalar()
+    if version is None:
+      return "1800-01-01"
+    else:
+      return version.version
 
   def setPredictor(self, cg_sid, pks=dict()):
     """ Helper function. Flags a set of seq_types as part of the final prediction.

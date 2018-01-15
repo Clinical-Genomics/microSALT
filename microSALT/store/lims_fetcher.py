@@ -15,7 +15,7 @@ from genologics.entities import Project, Sample
 
 class LIMS_Fetcher():
 
-  def __init__(self, log, config):
+  def __init__(self, config, log):
     self.data = {}
     self.lims = Lims(BASEURI, USERNAME, PASSWORD)
     self.logger = log

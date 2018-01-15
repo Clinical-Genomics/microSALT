@@ -56,4 +56,4 @@ class Versions(db.Model):
   __tablename__ = 'versions'
 
   name = db.Column(db.String(30), primary_key=True, nullable=False)
-  version = db.Column(db.String(30))
+  version = db.Column(db.String(10))
