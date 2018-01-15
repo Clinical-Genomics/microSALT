@@ -72,6 +72,12 @@ class Job_Creator():
     batchfile.close()
 
   def create_trimjob(self):
+    for root, dirs, files in os.walk(self.config["folders"]["adapters"]):
+      if not "NexteraPE-PE.fa" in files: 
+        self.logger.error("Adapters folder at {} does not contain NexteraPE-PE.fa. Review paths.yml")
+      else:
+        break
+
     batchfile = open(self.batchfile, "a+")
     files = self.verify_fastq()
     i=0
