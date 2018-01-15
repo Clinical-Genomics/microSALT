@@ -8,6 +8,7 @@ import click
 import glob
 import os
 import re
+import shutil
 import sys
 import time
 import yaml
@@ -194,7 +195,7 @@ class Job_Creator():
       concat.close()
     except Exception as e:
       self.logger.warning("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
-      os.removedirs(self.outdir)
+      shutil.rmtree(self.outdir)
 
   def sample_job(self):
     self.trimmed_files = dict()
@@ -212,4 +213,4 @@ class Job_Creator():
       self.logger.info("Created runfile for project {} in folder {}".format(self.indir, self.outdir))
     except Exception as e:
       self.logger.warning("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
-      os.removedirs(self.outdir)
+      shutil.rmtree(self.outdir)

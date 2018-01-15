@@ -25,6 +25,12 @@ class Ref_Updater():
   def update_refs(self):
     self.fetch_pubmlst()
 
+  def fetch_enterobase(self):
+    pass
+
+  def fetch_pasteur(self):
+    pass
+
   def fetch_pubmlst(self):
     # Example request URI: http://rest.pubmlst.org/db/pubmlst_neisseria_seqdef/schemes/1/profiles_csv
     seqdef_url = dict()

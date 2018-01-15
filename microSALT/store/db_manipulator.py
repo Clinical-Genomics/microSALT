@@ -147,8 +147,6 @@ class DB_Manipulator:
       return -1
     hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity)\
            .filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9, Seq_types.evalue==0.0).all()
-    #Unused, might be valuable later
-    thresholdless = True
     if 'clonal_complex' in self.profiles[organism].columns.keys():
       non_allele_columns = 2
     else:
