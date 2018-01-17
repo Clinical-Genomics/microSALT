@@ -33,7 +33,7 @@
                                   <tr>
                                       <td>{{sample.Customer_ID_sample}}  <i>({{sample.CG_ID_sample}})</i></td>
                                       {% if sample.organism is not none %}
-                                        <td><i>{{sample.organism.replace('_', ' ').title()}}</i></td>
+                                        <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
                                       {% else %}
                                         <td><i>Control</i></td>
                                       {% endif %}
@@ -86,7 +86,7 @@
                                         <tr>
                                             <th scope="row" >Organism</th>
                                             {% if sample.organism is not none %}
-                                              <td><i>{{sample.organism.replace('_', ' ').title()}}</i></td>
+                                              <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
                                             {% else %}
                                               <td><i>Control</i></td>
                                             {% endif %}
