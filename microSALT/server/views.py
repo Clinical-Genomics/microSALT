@@ -39,7 +39,8 @@ def report_page(project, organism_group):
     else:
         sample_info = session.query(Samples).\
         filter(Samples.organism==organism_group, Samples.CG_ID_project==project)
-    sample_info = sample_info.order_by(Samples.CG_ID_sample).all()
+    #sample_info = sample_info.order_by(Samples.CG_ID_sample).all()
+    sample_info = sorted(sample_info, key=lambda sample: int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
 
     return render_template('report_page.html',
         samples = sample_info,
