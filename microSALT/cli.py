@@ -84,6 +84,10 @@ def scrape(ctx):
 @click.pass_context
 def sample(ctx, sample_dir):
   """Parse results from analysing a single sample"""
+  print("Checking versions of references.."
+  fixer = Ref_Updater(ctx.obj['config'], ctx.obj['log'])
+  fixer.update_refs()
+  print("Version check done. Beginning data scrape")
   garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_sample()
   done()
@@ -93,6 +97,10 @@ def sample(ctx, sample_dir):
 @click.pass_context
 def project(ctx, project_dir):
   """Parse results from analysing a single project"""
+  print("Checking versions of references.."
+  fixer = Ref_Updater(ctx.obj['config'], ctx.obj['log'])
+  fixer.update_refs()
+  print("Version check done. Beginning data scrape")
   garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_project()
   done()
