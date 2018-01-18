@@ -60,6 +60,10 @@ def create(ctx):
 @click.pass_context
 def project(ctx, project_dir):
   """Create jobs for a project"""
+  print("Checking versions of references.."
+  fixer = Ref_Updater(ctx.obj['config'], ctx.obj['log'])
+  fixer.update_refs()
+  print("Version check done. Creating sbatch jobs")
   manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
   manager.project_job()
   done() 
@@ -69,6 +73,10 @@ def project(ctx, project_dir):
 @click.pass_context
 def sample(ctx, sample_dir):
     """Create a job for a single sample"""
+    print("Checking versions of references.."
+    fixer = Ref_Updater(ctx.obj['config'], ctx.obj['log'])
+    fixer.update_refs()
+    print("Version check done. Creating sbatch job")
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
     worker.sample_job()
     done()
@@ -84,10 +92,6 @@ def scrape(ctx):
 @click.pass_context
 def sample(ctx, sample_dir):
   """Parse results from analysing a single sample"""
-  print("Checking versions of references.."
-  fixer = Ref_Updater(ctx.obj['config'], ctx.obj['log'])
-  fixer.update_refs()
-  print("Version check done. Beginning data scrape")
   garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_sample()
   done()
@@ -97,10 +101,6 @@ def sample(ctx, sample_dir):
 @click.pass_context
 def project(ctx, project_dir):
   """Parse results from analysing a single project"""
-  print("Checking versions of references.."
-  fixer = Ref_Updater(ctx.obj['config'], ctx.obj['log'])
-  fixer.update_refs()
-  print("Version check done. Beginning data scrape")
   garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_project()
   done()
