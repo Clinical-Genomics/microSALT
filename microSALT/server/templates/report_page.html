@@ -28,6 +28,7 @@
                                       <td><b>Organism</b></td>
                                       <td><b>Sequence Type</b></td>
                                       <td><b>Thresholds</b></td>
+                                      <td><b>Reference version</b></td>
                                   </tr>
                                   {% for sample in samples %}
                                   <tr>
@@ -55,6 +56,7 @@
                                           {% if not miss %}<td>Passed</td>{% else %}<td>Failed</td>{% endif %}
                                         {% endif %}
                                       {% endfor %}
+                                      <td>{{version[sample.organism]}}</td>
                                   </tr>
                                   {% endfor %}
                                 </table>
@@ -114,7 +116,9 @@
                                                   {% if not miss %}<td>Passed</td>{% else %}<td>Failed</td>{% endif %}
                                                 {% endif %}
                                               {% endfor %}
-
+                                        <tr>
+                                            <th scope="row">Reference version</th>
+                                              <td>{{version[sample.organism]}}</td>
                                 </table>
                             </div>
                             <div class="table-responsive">
