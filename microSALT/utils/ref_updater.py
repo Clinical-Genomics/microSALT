@@ -5,9 +5,11 @@
 #!/usr/bin/env python
 import json
 import os
+import re
 import shutil
 import urllib.request
 
+from bs4 import BeautifulSoup
 from microSALT.store.db_manipulator import DB_Manipulator
 
 class Ref_Updater():
@@ -16,22 +18,64 @@ class Ref_Updater():
     self.config = config
     self.logger = log
     self.db_access = DB_Manipulator(config, log)
-
-    self.refs = self.db_access.get_profiles()
+    self.updated = list()
     #Fetch names of existing refs
+    self.refs = self.db_access.get_profiles()
     organisms = self.refs.keys()
-    self.organisms = [*organisms]
-  
+    self.organisms = [*organisms] 
+ 
   def update_refs(self):
+    """Updates all references. Order is important, since no object is updated twice"""
     self.fetch_pubmlst()
+    self.fetch_external()
 
-  def fetch_enterobase(self):
-    pass
+  def fetch_external(self):
+    """ Updates reference for data that IS ONLY LINKED to pubMLST """
+    prefix = "https://pubmlst.org"
+    query = urllib.request.urlopen("{}/data/".format(prefix))
+    soup = BeautifulSoup(query, 'html.parser')
+    tr_sub = soup.find_all("tr", class_="td1")
 
-  def fetch_pasteur(self):
-    pass
+    # Only search every other instance
+    iterator = iter(tr_sub)
+    unfound = True
+    try:
+      while unfound:
+        entry = iterator.__next__()
+        # Gather general info from first object
+        sample = entry.get_text().split('\n')
+        organ = sample[1].lower().replace(' ', '_')
+        # In order to get ecoli #1
+        if "escherichia_coli" in organ and "#1" in organ:
+          organ = organ[:-2]
+        currver = self.db_access.get_version("profile_{}".format(organ))
+        profile_no = re.search('\d+', sample[2]).group(0)
+        if organ in self.organisms and organ not in self.updated and profile_no > currver:
+          # Download definition files
+          st_link = prefix + entry.find_all("a")[1]['href']
+          output = "{}/{}".format(self.config['folders']['profiles'], organ)
+          urllib.request.urlretrieve(st_link, output)
+          # Update database
+          self.db_access.upd_rec({'name':"profile_{}".format(organ)}, 'Versions', {'version':profile_no})
+          self.db_access.reload_profiletable(organ)
+          # Gather loci from second object
+          entry = iterator.__next__()
+          # Clear existing directory and download allele files
+          out = "{}/{}".format(self.config['folders']['references'], organ)
+          shutil.rmtree(out)
+          os.makedirs(out)
+          for loci in entry.find_all("a"):
+            loci = loci['href']
+            lociname = os.path.basename(os.path.normpath(loci))
+            input = prefix + loci
+            urllib.request.urlretrieve(input, "{}/{}".format(out, lociname))
+        else:
+          iterator.__next__()
+    except StopIteration:
+      pass
 
   def fetch_pubmlst(self):
+    """ Updates reference for data that is stored on pubMLST """
     # Example request URI: http://rest.pubmlst.org/db/pubmlst_neisseria_seqdef/schemes/1/profiles_csv
     seqdef_url = dict()
     databases = "http://rest.pubmlst.org/db"
@@ -45,6 +89,7 @@ class Ref_Updater():
         for subtype in item['databases']:
           if name.replace('_', ' ') in subtype['description'].lower():
             #Seqdef always appear after isolates, so this is fine
+            self.updated.append(name.replace('_', ' '))
             seqdef_url[name] = subtype['href']
 
     for key, val in seqdef_url.items():
@@ -56,13 +101,13 @@ class Ref_Updater():
       req = urllib.request.Request(ver_input)
       with urllib.request.urlopen(req) as response:
         query = json.loads(response.read().decode('utf-8'))
-      if query['last_updated'] >= currver:
-        self.db_access.upd_rec({'name':pname}, 'Versions', {'version':query['last_updated']})
+      if query['last_updated'] > currver:
         # Download definition files
         output = "{}/{}".format(self.config['folders']['profiles'], key)
         input = "{}/schemes/1/profiles_csv".format(val)
         urllib.request.urlretrieve(input, output)
-        # Update actual profiletable
+        # Update database
+        self.db_access.upd_rec({'name':pname}, 'Versions', {'version':query['last_updated']})
         self.db_access.reload_profiletable(key)
 
         loci_input="{}/schemes/1".format(val)

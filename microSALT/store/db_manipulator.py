@@ -105,8 +105,8 @@ class DB_Manipulator:
         data.execute(linedict)
     self.logger.info("Created profile table {}".format(table))
     # Set initial debug version
-    self.add_rec({'name': 'profile_{}'.format(filename), 'version': '1800-01-01'}, 'Versions')
-    self.logger.info("Added dummy version (1800-01-01) for table profile_{}".format(filename)) 
+    self.add_rec({'name': 'profile_{}'.format(filename), 'version': '0'}, 'Versions')
+    self.logger.info("Added dummy version (0) for table profile_{}".format(filename)) 
  
   def get_columns(self, tablename):
     """ Returns all records for a given ORM table"""
@@ -121,7 +121,7 @@ class DB_Manipulator:
     """ Gets the version from a given name. Should be generalized to return any value for any input"""
     version = self.session.query(Versions).filter(Versions.name==name).scalar()
     if version is None:
-      return "1800-01-01"
+      return "0"
     else:
       return version.version
 
