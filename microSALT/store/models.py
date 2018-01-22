@@ -1,5 +1,4 @@
 """Table definitions for profiles databases. Bit special since it spawns multiple tables.
-   Heavy WIP
    By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python

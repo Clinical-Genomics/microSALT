@@ -1,5 +1,4 @@
-"""This initial script creates sbatch jobs
-   Heavy WIP
+"""Creates sbatch jobs for MLST instances
    By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python

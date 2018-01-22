@@ -1,5 +1,4 @@
 """Samples table definition
-   Heavy WIP
    By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
@@ -19,7 +18,10 @@ class Samples(db.Model):
    Customer_ID_sample = db.Column(db.String(15))
    organism = db.Column(db.String(30))
    ST = db.Column(db.SmallInteger, default=-1)
+   aux_ST = db.Column(db.Boolean, default=0)
+   aux_alleles = db.Column(db.SmallInteger, default=0)
    date_analysis = db.Column(db.DateTime)
+
 
 class Seq_types(db.Model):
   __tablename__ = 'seq_types'
@@ -42,7 +44,6 @@ class Seq_types(db.Model):
   st_predictor = db.Column(db.Boolean)
 
 class Projects(db.Model):
-
    __tablename__ = 'projects'
    samples = relationship('Samples', back_populates='projects')
 
@@ -52,7 +53,6 @@ class Projects(db.Model):
    date_delivered = db.Column(db.DateTime)
 
 class Versions(db.Model):
-
   __tablename__ = 'versions'
 
   name = db.Column(db.String(30), primary_key=True, nullable=False)

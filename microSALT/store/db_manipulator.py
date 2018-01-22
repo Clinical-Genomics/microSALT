@@ -1,5 +1,4 @@
-""" Initial script to deliver and fetch data from a database
-   Heavy WIP
+""" Delivers and fetches data from the database
    By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
@@ -141,45 +140,34 @@ class DB_Manipulator:
     self.session.commit()
 
   def alleles2st(self, cg_sid):
+    """ Takes a CG_ID_sample and predicts the correct ST """
+    thresholds = True
     organism = self.session.query(Samples.organism).filter(Samples.CG_ID_sample==cg_sid).scalar()
     if organism is None:
       self.logger.warning("No organism set for {}. Most likely control sample. Setting ST to -1".format(cg_sid))
       return -1
     hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity)\
            .filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9, Seq_types.evalue==0.0).all()
-    if 'clonal_complex' in self.profiles[organism].columns.keys():
-      non_allele_columns = 2
-    else:
-      non_allele_columns = 1 
 
-    #Establish there's enough unique hits at all, otherwise we're screwed from the get go
-    uniqueDict = dict()
-    for hit in hits:
-      if hit.loci not in uniqueDict.keys():
-        uniqueDict[hit.loci] = list()
-        uniqueDict[hit.loci].append(hit.allele)
-      elif hit.allele not in uniqueDict[hit.loci]:
-        uniqueDict[hit.loci].append(hit.allele)
-    if len(self.profiles[organism].columns.values()) - non_allele_columns > len(uniqueDict.keys()):
-      # Not enough hits with thresholds, using threshold-less. 
-      hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid).all()
-      thresholds = False
-      #If Still not enough, return -3
-      for hit in hits:
-        if hit.loci not in uniqueDict.keys():
-          uniqueDict[hit.loci] = list()
-          uniqueDict[hit.loci].append(hit.allele)
-        elif hit.allele not in uniqueDict[hit.loci]:
-          uniqueDict[hit.loci].append(hit.allele)
-      if len(self.profiles[organism].columns.values()) - non_allele_columns > len(uniqueDict.keys()):
+    [alleles, allelediff] = self.get_unique_alleles(cg_sid, threshold)
+    if alleles >= 0:
+      hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity)\
+           .filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9, Seq_types.evalue==0.0).all()
+    else:
+      threshold = False
+      [alleles, allelediff] = self.get_unique_alleles(cg_sid, threshold)
+      if alleles >= 0:
+        hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid).all()
+      else: 
         self.logger.warning("Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3"\
                             .format(cg_sid, organism))
         self.setPredictor(cg_sid)
         return -3
+    self.upd_rec({'CG_ID_sample':cg_sid}, 'Samples', {'Aux_alleles':allelediff})
 
     # Tests all allele combinations found to see if any of them result in ST
     filter = list()
-    for key, val in uniqueDict.items():
+    for key, val in alleles.items():
       subfilter = list()
       for num in val:
         subfilter.append(" self.profiles[organism].c.{}=={} ".format(key, num))
@@ -196,7 +184,9 @@ class DB_Manipulator:
       for st in output:
         STlist.append(st.ST)
       best = self.bestST(cg_sid, STlist)
-      self.logger.warning("Multiple possible ST found for sample {}, list: {}. Established ST{} as best hit.".format(cg_sid, STlist, best))
+      self.upd_rec({'CG_ID_sample':cg_sid}, 'Samples', {'Aux_ST':1})
+      if thresholds:   
+        self.logger.warning("Multiple ST within threshold found for sample {}, list: {}. Established ST{} as best hit.".format(cg_sid, STlist, best))
       return best
     elif len(output) == 1:
       #Doing bestST only to establish best loci number combination
@@ -274,3 +264,28 @@ Either incorrectly called allele, or novel ST has been found. Setting ST to -2".
         topST = key
     self.setPredictor(cg_sid, bestalleles[topST])
     return topST
+
+  def get_unique_alleles(self, cg_sid, threshold=True):
+    """ Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
+    if threshold:
+      hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity)\
+           .filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9, Seq_types.evalue==0.0).all()
+    else:
+      hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid).all()
+
+    #Establish number of unique hits
+    uniqueDict = dict()
+    for hit in hits:
+      if hit.loci not in uniqueDict.keys():
+        uniqueDict[hit.loci] = list()
+        uniqueDict[hit.loci].append(hit.allele)
+      elif hit.allele not in uniqueDict[hit.loci]:
+        uniqueDict[hit.loci].append(hit.allele)
+
+    if 'clonal_complex' in self.profiles[organism].columns.keys():
+      non_allele_columns = 2
+    else:
+      non_allele_columns = 1
+    allele_overabundance = len(uniqueDict.keys()) - (len(self.profiles[organism].columns.values()) - non_allele_columns)
+
+    return [uniqueDict, allele_overabundance]

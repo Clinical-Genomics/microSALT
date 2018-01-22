@@ -1,5 +1,4 @@
 """Compares existing organism references with available and updates as needed
-   Heavy WIP
    By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python

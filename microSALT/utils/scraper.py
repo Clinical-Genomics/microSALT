@@ -1,5 +1,4 @@
-"""This initial script scrapes output files for data and add them to the database
-   Heavy WIP
+"""Scrapes output files for data and add them to the database
    By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python

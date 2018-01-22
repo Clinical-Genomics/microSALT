@@ -14,21 +14,20 @@ The microbial sequence analysis and loci-based typing pipeline (microSALT) is us
 * A mySQL server
 * A (clarity) LIMS server
 
-###Software
+### Software
 * Conda
 * Python 3.6
 
 ## Quick installation
-### Conda depdenency resolution
-`conda config --add channels bioconda`
-`conda config --add channels conda-forge`
-`conda create -n MLST python=3.6`
-`conda install blast trimmomatic spades`
-`source activate MLST`
-
-`git clone https://github.com/sylvinite/microSALT.git`
-Perform all steps under __Configuration__
-`cd microSALT && pip install -r requirements.txt && pip install -e . && cd ..`
+### Conda dependency resolution
+* `conda config --add channels bioconda`
+* `conda config --add channels conda-forge`
+* `conda create -n MLST python=3.6`
+* `conda install blast trimmomatic spades`
+* `source activate MLST`
+* `git clone https://github.com/sylvinite/microSALT.git`
+* Perform all steps under section  __Configuration__
+* `cd microSALT && pip install -r requirements.txt && pip install -e . && cd ..`
 
 ## Configuration
 ### Flask/Database configuration
