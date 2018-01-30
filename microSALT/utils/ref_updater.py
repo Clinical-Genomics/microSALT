@@ -49,7 +49,7 @@ class Ref_Updater():
           organ = organ[:-2]
         currver = self.db_access.get_version("profile_{}".format(organ))
         profile_no = re.search('\d+', sample[2]).group(0)
-        if organ in self.organisms and organ not in self.updated and profile_no > currver:
+        if organ in self.organisms and organ.replace("_", " ") not in self.updated and profile_no > currver:
           # Download definition files
           st_link = prefix + entry.find_all("a")[1]['href']
           output = "{}/{}".format(self.config['folders']['profiles'], organ)

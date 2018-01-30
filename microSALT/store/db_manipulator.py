@@ -141,29 +141,21 @@ class DB_Manipulator:
 
   def alleles2st(self, cg_sid):
     """ Takes a CG_ID_sample and predicts the correct ST """
-    thresholds = True
+    threshold = True
     organism = self.session.query(Samples.organism).filter(Samples.CG_ID_sample==cg_sid).scalar()
     if organism is None:
       self.logger.warning("No organism set for {}. Most likely control sample. Setting ST to -1".format(cg_sid))
       return -1
-    hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity)\
-           .filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9, Seq_types.evalue==0.0).all()
-
-    [alleles, allelediff] = self.get_unique_alleles(cg_sid, threshold)
-    if alleles >= 0:
-      hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity)\
-           .filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9, Seq_types.evalue==0.0).all()
-    else:
+    [alleles, allelediff] = self.get_unique_alleles(cg_sid, organism, threshold)
+    if not allelediff >= 0:
       threshold = False
-      [alleles, allelediff] = self.get_unique_alleles(cg_sid, threshold)
-      if alleles >= 0:
-        hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid).all()
-      else: 
+      [alleles, allelediff] = self.get_unique_alleles(cg_sid, organism, threshold)
+      if not allelediff >= 0:
         self.logger.warning("Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3"\
                             .format(cg_sid, organism))
         self.setPredictor(cg_sid)
         return -3
-    self.upd_rec({'CG_ID_sample':cg_sid}, 'Samples', {'Aux_alleles':allelediff})
+    self.upd_rec({'CG_ID_sample':cg_sid}, 'Samples', {'aux_alleles':allelediff})
 
     # Tests all allele combinations found to see if any of them result in ST
     filter = list()
@@ -184,8 +176,8 @@ class DB_Manipulator:
       for st in output:
         STlist.append(st.ST)
       best = self.bestST(cg_sid, STlist)
-      self.upd_rec({'CG_ID_sample':cg_sid}, 'Samples', {'Aux_ST':1})
-      if thresholds:   
+      self.upd_rec({'CG_ID_sample':cg_sid}, 'Samples', {'aux_ST':1})
+      if threshold:   
         self.logger.warning("Multiple ST within threshold found for sample {}, list: {}. Established ST{} as best hit.".format(cg_sid, STlist, best))
       return best
     elif len(output) == 1:
@@ -265,7 +257,7 @@ Either incorrectly called allele, or novel ST has been found. Setting ST to -2".
     self.setPredictor(cg_sid, bestalleles[topST])
     return topST
 
-  def get_unique_alleles(self, cg_sid, threshold=True):
+  def get_unique_alleles(self, cg_sid, organism, threshold=True):
     """ Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
     if threshold:
       hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity)\

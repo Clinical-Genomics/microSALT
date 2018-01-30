@@ -19,7 +19,7 @@ class Samples(db.Model):
    organism = db.Column(db.String(30))
    ST = db.Column(db.SmallInteger, default=-1)
    aux_ST = db.Column(db.Boolean, default=0)
-   aux_alleles = db.Column(db.SmallInteger, default=0)
+   aux_alleles = db.Column(db.SmallInteger, default=-1)
    date_analysis = db.Column(db.DateTime)
 
 
