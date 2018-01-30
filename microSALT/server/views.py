@@ -3,8 +3,8 @@ from flask import Flask, render_template
 
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
-from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
-from microSALT import app
+from microsalt.store.orm_models import Projects, Samples, Seq_types, Versions
+from microsalt import app
 from sqlalchemy.sql import *
 from sqlalchemy.sql.expression import case, func
 

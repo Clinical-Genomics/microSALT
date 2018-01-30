@@ -8,9 +8,9 @@ import sys
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 
-from microSALT import app
-from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
-from microSALT.store.models import Profiles
+from microsalt.cli import app
+from microsalt.store.orm_models import Projects, Samples, Seq_types, Versions
+from microsalt.store.models import Profiles
 
 class DB_Manipulator:
  

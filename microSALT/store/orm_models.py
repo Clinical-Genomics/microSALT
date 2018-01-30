@@ -3,9 +3,13 @@
 
 #!/usr/bin/env python
 
+from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import *
 from sqlalchemy.orm import relationship
-from microSALT import db
+
+from microsalt import app
+
+db = SQLAlchemy(app)
 
 class Samples(db.Model):
 
