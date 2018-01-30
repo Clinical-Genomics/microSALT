@@ -11,19 +11,20 @@ import yaml
 import logging
 
 from pkg_resources import iter_entry_points
-from microsalt import __version__, app
-from microsalt.utils.scraper import Scraper
-from microsalt.utils.job_creator import Job_Creator
-from microsalt.utils.ref_updater import Ref_Updater
+from microSALT import __version__, app
+from microSALT.utils.scraper import Scraper
+from microSALT.utils.job_creator import Job_Creator
+from microSALT.utils.ref_updater import Ref_Updater
 
 # Load configuration
 defaulto = os.path.join(os.environ['HOME'], '.microSALT/config.json')
 if os.path.exists(defaulto):
   try:
-    with open(default, 'r') as conf:
+    with open(defaulto, 'r') as conf:
       config = json.load(conf)
   except Exception as e:
-    print("ERROR: Config under default path ~/.microSALT/config.json improperly formatted. Exiting")
+    print("ERROR: Config under default path ~/.microSALT/config.json improperly formatted. Exiting.")
+    sys.exit(-1)
 elif 'MICROSALT_CONFIG' in os.environ:
   try:
     envvar = os.environ['MICROSALT_CONFIG']
@@ -31,15 +32,16 @@ elif 'MICROSALT_CONFIG' in os.environ:
       config = json.load(conf)
   except Exception as e:
     print("ERROR: Config under envvar MICROSALT_CONFIG improperly formatted. Exiting")
+    sys.exit(-1)
 else:
-  print("ERROR: No properly set-up config under neither ~/.microSALT/config.json nor envvar MICROSALT_CONFIG. Exiting")
+  print("ERROR: No properly set-up config under neither ~/.microSALT/config.json nor envvar MICROSALT_CONFIG. Exiting.")
   sys.exit(-1)
 
 # Load flask instance
 try:
   app.config.update(config['database'])
 except Exception as e:
-  logger.error("Config.json lacks 'database' section. Unable to call mySQL. Exiting")
+  print("ERROR: Config.json lacks 'database' section. Unable to call mySQL. Exiting.")
   sys.exit(-1)
 
 @click.group()

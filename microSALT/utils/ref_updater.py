@@ -9,7 +9,7 @@ import shutil
 import urllib.request
 
 from bs4 import BeautifulSoup
-from microsalt.store.db_manipulator import DB_Manipulator
+from microSALT.store.db_manipulator import DB_Manipulator
 
 class Ref_Updater():
 

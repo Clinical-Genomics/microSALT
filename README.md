@@ -44,8 +44,7 @@ MAIN_LOG=/home/glsai/your_main_log_file
 ```
 
 ### Genologics python3 support
-`ConfigParser` in `config.py` needs to be replaced with `configparser` for python3 support.
-
+Change line 5 of `config.py` to `import configparser as ConfigParser` for python3 support.
 Easiest way to find your `config.py` file is to run `microSALT` after all other configuration steps have been executed.
 
 ## Usage

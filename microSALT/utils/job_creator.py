@@ -12,7 +12,7 @@ import sys
 import time
 import yaml
 
-from microsalt.store.lims_fetcher import LIMS_Fetcher
+from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Job_Creator():
 

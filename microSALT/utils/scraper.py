@@ -11,8 +11,8 @@ import sys
 import time
 import yaml
 
-from microsalt.store.db_manipulator import DB_Manipulator
-from microsalt.store.lims_fetcher import LIMS_Fetcher
+from microSALT.store.db_manipulator import DB_Manipulator
+from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 # TODO: Rewrite so samples use seperate objects
 class Scraper():

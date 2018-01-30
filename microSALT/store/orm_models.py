@@ -7,7 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import *
 from sqlalchemy.orm import relationship
 
-from microsalt import app
+from microSALT import app
 
 db = SQLAlchemy(app)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from microsalt import __version__
+from microSALT import __version__
 from setuptools import setup, find_packages
 
 version = __version__
@@ -22,7 +22,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     entry_points={
-        'console_scripts': ['microsalt=microsalt.cli:root'],
+        'console_scripts': ['microsalt=microSALT.cli:root'],
     },
 )
 
