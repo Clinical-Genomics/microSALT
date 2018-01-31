@@ -34,7 +34,7 @@ class Job_Creator():
     """ Uses arg indir to return a list of PE fastq tuples fulfilling naming convention """
     files = os.listdir(self.indir)
     if files == []:
-      self.logger.error("No fastq files found in specified directory {}. Exited.".format(self.indir))
+      self.logger.error("Directory {} lacks fastq files. Exited.".format(self.indir))
       sys.exit()
     verified_files = list()
     for file in files:
@@ -55,7 +55,7 @@ class Job_Creator():
           self.logger.error("Some fastq files in directory have no mate in directory {}. Exited.".format(self.indir))
           sys.exit()
     if verified_files == []:
-      self.logger.error("No correctly named fastq files found in directory {}. Exited.".format(self.indir))
+      self.logger.error("No files in directory {} match file_pattern {}. Exited.".format(self.indir, self.config['regex']['file_pattern']))
       sys.exit()
     return verified_files
  
