@@ -32,18 +32,20 @@ class LIMS_Fetcher():
 
   def load_lims_sample_info(self, cg_sampleid):
     sample = Sample(self.lims, id=cg_sampleid)
-    organism = sample.udf['Strain']
-    if sample.udf['Strain'] == 'VRE':
-      if 'Reference Genome Microbial' in sample.udf:
-        if sample.udf['Reference Genome Microbial'] == 'NC_017960.1':
-          organism = 'Enterococcus faecium'
-        elif sample.udf['Reference Genome Microbial'] == 'NC_004668.1':
-          organism = 'Enterococcus faecalis'
-      elif 'Comment' in sample.udf:
-        organism = sample.udf['Comment']
-      else:
-        self.logger.warn("Unable to resolve ambigious organism found in sample {}."\
-        .format(cg_sampleid))
+    if 'Strain' in sample.udf: 
+      organism = sample.udf['Strain']
+      if sample.udf['Strain'] == 'VRE':
+        if 'Reference Genome Microbial' in sample.udf:
+          if sample.udf['Reference Genome Microbial'] == 'NC_017960.1':
+            organism = 'Enterococcus faecium'
+          elif sample.udf['Reference Genome Microbial'] == 'NC_004668.1':
+            organism = 'Enterococcus faecalis'
+        elif 'Comment' in sample.udf:
+          organism = sample.udf['Comment']
+    else:
+      organism = ""
+      self.logger.warn("Unable to resolve ambigious organism found in sample {}."\
+      .format(cg_sampleid))
     try:
       self.data.update({'CG_ID_project': sample.project.id,
                            'CG_ID_sample': cg_sampleid,

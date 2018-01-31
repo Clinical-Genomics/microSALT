@@ -20,7 +20,7 @@ class Job_Creator():
     self.config = config
     self.logger = log
     self.now = time.strftime("%Y.%m.%d_%H.%M.%S")
-    self.lims_fetcher = lims_fetcher=LIMS_Fetcher(config, log)
+    self.lims_fetcher = LIMS_Fetcher(config, log)
     if outdir == "":
       self.outdir="{}/{}_{}".format(config["folders"]["results"], os.path.basename(os.path.normpath(indir)), self.now)
     self.indir = os.path.abspath(indir)
