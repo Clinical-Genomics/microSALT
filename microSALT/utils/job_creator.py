@@ -34,8 +34,7 @@ class Job_Creator():
     """ Uses arg indir to return a list of PE fastq tuples fulfilling naming convention """
     files = os.listdir(self.indir)
     if files == []:
-      self.logger.error("Directory {} lacks fastq files. Exited.".format(self.indir))
-      sys.exit()
+      raise Exception("Directory {} lacks fastq files.".format(self.indir))
     verified_files = list()
     for file in files:
       file_match = re.match( self.config['regex']['file_pattern'], file)
@@ -52,11 +51,9 @@ class Job_Creator():
         elif file_match[1] == '2':
           pass
         else:
-          self.logger.error("Some fastq files in directory have no mate in directory {}. Exited.".format(self.indir))
-          sys.exit()
+          raise Exception("Some fastq files in directory have no mate in directory {}.".format(self.indir))
     if verified_files == []:
-      self.logger.error("No files in directory {} match file_pattern {}. Exited.".format(self.indir, self.config['regex']['file_pattern']))
-      sys.exit()
+      raise Exception("No files in directory {} match file_pattern '{}'.".format(self.indir, self.config['regex']['file_pattern']))
     return verified_files
  
   def create_header(self):
@@ -77,8 +74,8 @@ class Job_Creator():
       else:
         break
 
-    batchfile = open(self.batchfile, "a+")
     files = self.verify_fastq()
+    batchfile = open(self.batchfile, "a+")
     i=0
     j=1
     while i < len(files):
@@ -183,11 +180,11 @@ class Job_Creator():
   #TODO: Let project job spawn more job_creator objects rather than reassigning instance variables
   def project_job(self):
     proj_path = self.outdir
+    if not os.path.exists(self.outdir):
+      os.makedirs(self.outdir)
+    concat_file = "{}/concatinated.sbatch".format(self.outdir)
+    concat = open(concat_file, 'w+')
     try:
-      if not os.path.exists(self.outdir):
-        os.makedirs(self.outdir)
-      concat_file = "{}/concatinated.sbatch".format(self.outdir)
-      concat = open(concat_file, 'w+')
       concat.write("#!/bin/sh\n\n")
       for (dirpath, dirnames, filenames) in os.walk(self.indir):
         for dir in dirnames:
@@ -199,8 +196,9 @@ class Job_Creator():
           concat.write("sbatch {}\n".format(outfile))
       concat.close()
     except Exception as e:
-      self.logger.warning("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
-      shutil.rmtree(self.outdir)
+      concat.close()
+      self.logger.warning("Failed to spawn project at {}\nSource: {}".format(proj_path, str(e)))
+      shutil.rmtree(proj_path, ignore_errors=True)
 
   def sample_job(self):
     self.trimmed_files = dict()
@@ -217,5 +215,5 @@ class Job_Creator():
       self.create_blastjob_multi()
       self.logger.info("Created runfile for project {} in folder {}".format(self.indir, self.outdir))
     except Exception as e:
-      self.logger.warning("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
-      shutil.rmtree(self.outdir)
+      raise Exception("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
+      #shutil.rmtree(self.outdir, ignore_errors=True)
