@@ -43,7 +43,8 @@ class LIMS_Fetcher():
         elif 'Comment' in sample.udf:
           organism = sample.udf['Comment']
     else:
-      organism = ""
+      #Consistency
+      organism = "other"
       self.logger.warn("Unable to resolve ambigious organism found in sample {}."\
       .format(cg_sampleid))
     try:
