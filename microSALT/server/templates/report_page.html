@@ -1,5 +1,6 @@
 {% extends 'layout.html' %}
 {% block body %}
+{% set thres = dict() %}
     <div class="container-fluid">
         <div class="col-lg-16">
 <!-- Summary page  -->
@@ -45,17 +46,24 @@
                                       {% else %}
                                          <td>None</td>
                                       {% endif %}
+                                      <!-- Threshold determination -->
                                       {% if sample.seq_types|length == 0 %}
                                         <td>N/A</td>
+                                      {% elif sample.ST < 0 %}
+                                        <td>Failed</td>
+                                      {% else %}
+                                        {% set _dummy =  thres.update({sample.CG_ID_sample: True}) %} 
+                                        {% for seq_type in sample.seq_types %}
+                                          {% if seq_type.identity<100.00 %}
+                                           {% set _dummy =  thres.update({sample.CG_ID_sample: False}) %}
+                                          {% endif %}
+                                        {% endfor %}
+                                        {% if thres[sample.CG_ID_sample] %}
+                                          <td>Passed</td>
+                                        {% else %}
+                                          <td>Failed</td>
+                                        {% endif %}
                                       {% endif %}
-                                      {% for seq_type in sample.seq_types %}
-                                        {% if seq_type.identity < 100.00 or sample.ST < 0 %}
-                                          {% set miss=True %}
-                                        {% endif %}
-                                        {% if loop.last %}
-                                          {% if not miss %}<td>Passed</td>{% else %}<td>Failed</td>{% endif %}
-                                        {% endif %}
-                                      {% endfor %}
                                       <td>{{version[sample.organism]}}</td>
                                   </tr>
                                   {% endfor %}
@@ -105,17 +113,18 @@
                                         </tr>
                                         <tr>
                                             <th scope="row" >Thresholds</th>
-                                              {% if sample.seq_types|length == 0 %}
-                                                <td>N/A</td>
+                                            <!-- Threshold determination -->
+                                            {% if sample.seq_types|length == 0 %}
+                                              <td>N/A</td>
+                                            {% elif sample.ST < 0 %}
+                                              <td>Failed</td>
+                                            {% else %}
+                                              {% if thres[sample.CG_ID_sample] %}
+                                                <td>Passed</td>
+                                              {% else %}
+                                                <td>Failed</td>
                                               {% endif %}
-                                              {% for seq_type in sample.seq_types %}
-                                                {% if seq_type.identity < 100.00 or sample.ST < 0 %}
-                                                  {% set miss=True %}
-                                                {% endif %}
-                                                {% if loop.last %}
-                                                  {% if not miss %}<td>Passed</td>{% else %}<td>Failed</td>{% endif %}
-                                                {% endif %}
-                                              {% endfor %}
+                                            {% endif %}
                                         <tr>
                                             <th scope="row">Reference version</th>
                                               <td>{{version[sample.organism]}}</td>

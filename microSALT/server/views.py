@@ -12,8 +12,15 @@ engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
 Session = sessionmaker(bind=engine)
 session = Session()
 
-@app.route('/microSALT/')
+@app.route('/')
 def start_page():
+    projects = session.query(Projects).all()
+
+    return render_template('start_page.html',
+        projects = projects)
+
+@app.route('/microSALT/')
+def reroute_page():
     projects = session.query(Projects).all()
 
     return render_template('start_page.html',
