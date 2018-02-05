@@ -4,6 +4,7 @@
 #!/usr/bin/env python
 
 import sys
+import warnings
 
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
@@ -23,8 +24,10 @@ class DB_Manipulator:
     self.metadata = MetaData(self.engine)
     #TODO: Switch profiles to ORM format
     self.profiles = Profiles(self.metadata, self.config).tables
-
-    self.create_tables()
+    #Turns off pymysql deprecation warnings until they can update their code
+    with warnings.catch_warnings():
+      warnings.simplefilter("ignore")
+      self.create_tables()
 
   def create_tables(self):
     """Creates all tables individually. A bit more control than usual"""
