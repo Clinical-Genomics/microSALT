@@ -11,18 +11,18 @@ except IOError:
     install_requires = []
 
 setup(
-    name="microSALT",
+    name="microsalt",
     version=version,
     long_description=__doc__,
-    url="https://github.com/sylvinite/microSALT",
+    url="https://github.com/Clinical-Genomics/microSALT",
     author="Isak Sylvin",
     author_email='isak.sylvin@scilifelab.se',
     install_requires=install_requires,
-    packages=['microSALT'],
+    packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
     entry_points={
-        'console_scripts': ['microSALT=microSALT.cli:root'],
+        'console_scripts': ['microsalt=microSALT.cli:root'],
     },
 )
 
