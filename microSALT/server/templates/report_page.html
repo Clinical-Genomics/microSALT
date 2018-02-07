@@ -52,10 +52,10 @@
                                       {% elif sample.ST < 0 %}
                                         <td>Failed</td>
                                       {% else %}
-                                        {% set _dummy =  thres.update({sample.CG_ID_sample: True}) %} 
+                                        {% set thres = {sample.CG_ID_sample: True} %}
                                         {% for seq_type in sample.seq_types %}
                                           {% if seq_type.identity<100.00 %}
-                                           {% set _dummy =  thres.update({sample.CG_ID_sample: False}) %}
+                                           {% set thres = {sample.CG_ID_sample: False} %}
                                           {% endif %}
                                         {% endfor %}
                                         {% if thres[sample.CG_ID_sample] %}
@@ -113,18 +113,24 @@
                                         </tr>
                                         <tr>
                                             <th scope="row" >Thresholds</th>
-                                            <!-- Threshold determination -->
-                                            {% if sample.seq_types|length == 0 %}
-                                              <td>N/A</td>
-                                            {% elif sample.ST < 0 %}
-                                              <td>Failed</td>
-                                            {% else %}
-                                              {% if thres[sample.CG_ID_sample] %}
-                                                <td>Passed</td>
-                                              {% else %}
-                                                <td>Failed</td>
-                                              {% endif %}
+                                        <!-- Threshold determination -->
+                                        {% if sample.seq_types|length == 0 %}
+                                          <td>N/A</td>
+                                        {% elif sample.ST < 0 %}
+                                          <td>Failed</td>
+                                        {% else %}
+                                          {% set thres = {sample.CG_ID_sample: True} %}
+                                          {% for seq_type in sample.seq_types %}
+                                            {% if seq_type.identity<100.00 %}
+                                              {% set thres = {sample.CG_ID_sample: False} %}
                                             {% endif %}
+                                          {% endfor %}
+                                          {% if thres[sample.CG_ID_sample] %}
+                                            <td>Passed</td>
+                                          {% else %}
+                                            <td>Failed; No ST found</td>
+                                          {% endif %}
+                                        {% endif %}
                                         <tr>
                                             <th scope="row">Reference version</th>
                                               <td>{{version[sample.organism]}}</td>
