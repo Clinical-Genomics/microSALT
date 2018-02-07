@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import *
 from sqlalchemy.sql.expression import case, func
 
-from microSALT import app
+from microSALT.store.db_manipulator import app
 from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
 
 engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])

@@ -9,8 +9,7 @@ import warnings
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 
-from microSALT.cli import app
-from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
+from microSALT.store.orm_models import app, Projects, Samples, Seq_types, Versions
 from microSALT.store.models import Profiles
 
 class DB_Manipulator:
