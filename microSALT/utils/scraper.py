@@ -35,7 +35,6 @@ class Scraper():
     """Scrapes a project folder for information"""
     #Scrape order matters a lot!
     self.lims_fetcher.load_lims_project_info(self.name)
-    self.scrape_projectinfo()
     for dir in os.listdir(self.infolder):
      if os.path.isdir("{}/{}".format(self.infolder, dir)): 
        self.sampledir = "{}/{}".format(self.infolder, dir)
