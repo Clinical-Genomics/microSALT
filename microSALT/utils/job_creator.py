@@ -8,6 +8,7 @@ import glob
 import os
 import re
 import shutil
+import subprocess
 import sys
 import time
 import yaml
@@ -224,7 +225,11 @@ class Job_Creator():
           sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out) 
           sample_instance.sample_job()
           outfile = sample_instance.get_sbatch()
-          concat.write("sbatch {}\n".format(outfile))
+          bash_cmd="sbatch {}".format(outfile)
+          process = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+          output, error = process.communicate()
+          self.logger.warn("{} automatically, containing sample {}".format(output, dir))
+          concat.write("{}\n".format(bash_cmd))
       concat.close()
     except Exception as e:
       concat.close()
