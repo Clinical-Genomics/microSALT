@@ -11,7 +11,7 @@ except IOError:
     install_requires = []
 
 setup(
-    name="microsalt",
+    name="microSALT",
     version=version,
     long_description=__doc__,
     url="https://github.com/Clinical-Genomics/microSALT",
@@ -22,7 +22,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     entry_points={
-        'console_scripts': ['microsalt=microSALT.cli:root'],
+        'console_scripts': ['microSALT=microSALT.cli:root'],
     },
 )
 

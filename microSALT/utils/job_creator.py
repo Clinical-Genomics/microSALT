@@ -13,6 +13,7 @@ import time
 import yaml
 
 from microSALT.store.lims_fetcher import LIMS_Fetcher
+from microSALT.store.db_manipulator import DB_Manipulator
 
 class Job_Creator():
 
@@ -20,15 +21,17 @@ class Job_Creator():
     self.config = config
     self.logger = log
     self.now = time.strftime("%Y.%m.%d_%H.%M.%S")
-    self.lims_fetcher = LIMS_Fetcher(config, log)
-    if outdir == "":
-      self.outdir="{}/{}_{}".format(config["folders"]["results"], os.path.basename(os.path.normpath(indir)), self.now)
     self.indir = os.path.abspath(indir)
-
+    self.name = os.path.basename(os.path.normpath(indir))
+    self.outdir = outdir
+    if self.outdir == "":
+      self.outdir="{}/{}_{}".format(config["folders"]["results"], os.path.basename(os.path.normpath(self.indir)), self.now)
+    self.batchfile = "{}/runfile.sbatch".format(self.outdir)
+    
+    self.db_pusher=DB_Manipulator(config, log)
     self.trimmed_files = dict()
-    self.batchfile = ""
     self.organism = ""
-    self.sample_name = os.path.basename(os.path.normpath(indir))
+    self.lims_fetcher = LIMS_Fetcher(config, log)
 
   def verify_fastq(self):
     """ Uses arg indir to return a list of PE fastq tuples fulfilling naming convention """
@@ -43,7 +46,8 @@ class Job_Creator():
         if file_match[1] == '1':
           pairno = '2'
           #Construct mate name
-          pairname = "{}{}{}".format(file_match.string[:file_match.end(1)-1] , pairno, file_match.string[file_match.end(1):file_match.end()])
+          pairname = "{}{}{}".format(file_match.string[:file_match.end(1)-1] , pairno, \
+                      file_match.string[file_match.end(1):file_match.end()])
           if pairname in files:
             files.pop( files.index(pairname) )
             verified_files.append(file_match[0])
@@ -63,7 +67,7 @@ class Job_Creator():
     batchfile.write("#SBATCH -p {}\n".format(self.config["slurm_header"]["type"]))
     batchfile.write("#SBATCH -n {}\n".format(self.config["slurm_header"]["threads"]))
     batchfile.write("#SBATCH -t {}\n".format(self.config["slurm_header"]["time"]))
-    batchfile.write("#SBATCH -J {}_{}\n".format(self.config["slurm_header"]["job_prefix"], self.sample_name))
+    batchfile.write("#SBATCH -J {}_{}\n".format(self.config["slurm_header"]["job_prefix"], self.name))
     batchfile.write("#SBATCH --qos {}\n\n".format(self.config["slurm_header"]["qos"]))
     batchfile.close()
 
@@ -91,7 +95,8 @@ class Job_Creator():
       batchfile.write("trimmomatic PE -threads {} -phred33 {}/{} {}/{} {} {} {} {}\
       ILLUMINACLIP:{}NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n\n"\
       .format(self.config["slurm_header"]["threads"], self.indir, files[i], self.indir, files[i+1],\
-      self.trimmed_files[outfile]['fp'], self.trimmed_files[outfile]['fu'], self.trimmed_files[outfile]['rp'], self.trimmed_files[outfile]['ru'], self.config["folders"]["adapters"]))
+      self.trimmed_files[outfile]['fp'], self.trimmed_files[outfile]['fu'], self.trimmed_files[outfile]['rp'],\
+      self.trimmed_files[outfile]['ru'], self.config["folders"]["adapters"]))
       i=i+2
       j+=1
     batchfile.close()
@@ -143,11 +148,10 @@ class Job_Creator():
       batchfile.write("\n")
       batchfile.close()
     except Exception as e:
-      self.logger.error("No associated reference for {} for specified organism: {}".format(self.sample_name, self.organism))
+      self.logger.error("No associated reference for {} for specified organism: {}".format(self.name, self.organism))
 
   def create_blastjob_single(self):
     """ Creates a blast job for instances where the definitions file is one per organism"""
-
     self.index_db(self.config["folders"]["references"])
 
     #create run
@@ -155,7 +159,8 @@ class Job_Creator():
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send\""
     batchfile.write("# BLAST MLST alignment\n")
     batchfile.write("blastn -db {}/{} -query {}/assembly/contigs.fasta -out {}/loci_query_tab.txt -task megablast -num_threads {} -max_target_seqs 1 -outfmt {}\n\n".format(\
-    self.config["folders"]["references"], self.organism, self.outdir, self.outdir, self.config["slurm_header"]["threads"], blast_format))
+    self.config["folders"]["references"], self.organism, self.outdir, self.outdir,\
+    self.config["slurm_header"]["threads"], blast_format))
     batchfile.close()
 
   def create_blastjob_multi(self):
@@ -173,40 +178,65 @@ class Job_Creator():
     batchfile.write("\n")
     batchfile.close()
 
-
   def get_sbatch(self):
     return self.batchfile
 
-  #TODO: Let project job spawn more job_creator objects rather than reassigning instance variables
+  def create_project(self, name):
+    """Creates project in database"""
+    try:
+      self.lims_fetcher.load_lims_project_info(self.name)
+    except Exception as e:
+      self.logger.error("Unable to load LIMS info for project {}".format(self.name))
+    proj_col=dict()
+    proj_col['CG_ID_project'] = self.name
+    proj_col['Customer_ID_project'] = self.lims_fetcher.data['Customer_ID_project']
+    proj_col['date_ordered'] = self.lims_fetcher.data['date_received']
+    self.db_pusher.add_rec(proj_col, 'Projects')
+
+  def create_sample(self, name):
+    """Creates sample in database"""
+    try:
+      self.lims_fetcher.load_lims_sample_info(self.name)
+      sample_col = self.db_pusher.get_columns('Samples') 
+      sample_col['CG_ID_sample'] = self.lims_fetcher.data['CG_ID_sample']
+      sample_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
+      sample_col['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
+      sample_col["date_analysis"] = self.now
+      self.db_pusher.add_rec(sample_col, 'Samples')
+    except Exception as e:
+      self.logger.error("Unable to load LIMS info for sample {}".format(self.name))
+
   def project_job(self):
-    proj_path = self.outdir
     if not os.path.exists(self.outdir):
       os.makedirs(self.outdir)
     concat_file = "{}/concatinated.sbatch".format(self.outdir)
     concat = open(concat_file, 'w+')
     try:
+      self.create_project(self.name)
+    except Exception as e:
+      self.logger.error("LIMS interaction failed. Unable to read/write project {}".format(self.name))  
+    try:
       concat.write("#!/bin/sh\n\n")
       for (dirpath, dirnames, filenames) in os.walk(self.indir):
         for dir in dirnames:
-          self.outdir = "{}/{}".format(proj_path, dir) 
-          self.indir = "{}/{}".format(dirpath, dir) 
-          self.sample_name = dir 
-          self.sample_job()
-          outfile = self.get_sbatch()
+          sample_in = "{}/{}".format(dirpath, dir)
+          sample_out = "{}/{}".format(self.outdir, dir)
+          sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out) 
+          sample_instance.sample_job()
+          outfile = sample_instance.get_sbatch()
           concat.write("sbatch {}\n".format(outfile))
       concat.close()
     except Exception as e:
       concat.close()
-      self.logger.warning("Failed to spawn project at {}\nSource: {}".format(proj_path, str(e)))
-      shutil.rmtree(proj_path, ignore_errors=True)
+      self.logger.warning("Failed to spawn project at {}\nSource: {}".format(self.outdir, str(e)))
+      shutil.rmtree(self.outdir, ignore_errors=True)
 
   def sample_job(self):
     self.trimmed_files = dict()
     try:
-      self.organism = self.lims_fetcher.get_organism_refname(self.sample_name)
+      self.organism = self.lims_fetcher.get_organism_refname(self.name, external=False)
       if not os.path.exists(self.outdir):
         os.makedirs(self.outdir)
-      self.batchfile = "{}/runfile.sbatch".format(self.outdir)
       
       self.create_header()
       self.create_trimjob()
@@ -216,4 +246,7 @@ class Job_Creator():
       self.logger.info("Created runfile for project {} in folder {}".format(self.indir, self.outdir))
     except Exception as e:
       raise Exception("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
-      #shutil.rmtree(self.outdir, ignore_errors=True)
+    try: 
+      self.create_sample(self.name)
+    except Exception as e:
+      self.logger.error("LIMS interaction failed. Unable to read/write sample {}".format(self.name))

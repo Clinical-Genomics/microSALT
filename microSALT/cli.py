@@ -4,11 +4,11 @@
 #!/usr/bin/env python
 
 import click
+import logging
 import json
 import os
 import sys
 import yaml
-import logging
 
 from pkg_resources import iter_entry_points
 from microSALT import __version__, app

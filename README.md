@@ -25,7 +25,7 @@ The microbial sequence analysis and loci-based typing pipeline (microSALT) is us
 * `conda create -n MLST python=3.6`
 * `conda install blast trimmomatic spades`
 * `source activate MLST`
-* `git clone https://github.com/sylvinite/microSALT.git`
+* `git clone https://github.com/Clinical-Genomics/microSALT.git`
 * Perform all steps under section  __Configuration__
 * `cd microSALT && pip install -r requirements.txt && pip install -e . && cd ..`
 
