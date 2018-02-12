@@ -73,8 +73,10 @@ class Job_Creator():
         self.logger.error("Adapters folder at {} does not contain NexteraPE-PE.fa. Review paths.yml")
       else:
         break
-
+    trimdir = "{}/trimmed".format(self.outdir)
     files = self.verify_fastq()
+    if not os.path.exists(trimdir):
+      os.makedirs(trimdir)
     batchfile = open(self.batchfile, "a+")
     i=0
     j=1
@@ -82,10 +84,10 @@ class Job_Creator():
       outfile = files[i].split('.')[0][:-2]
       if not outfile in self.trimmed_files:
         self.trimmed_files[outfile] = dict()
-      self.trimmed_files[outfile]['fp'] = "{}/{}_trim_front_pair.fq".format(self.outdir, outfile)
-      self.trimmed_files[outfile]['fu'] = "{}/{}_trim_front_unpair.fq".format(self.outdir, outfile)
-      self.trimmed_files[outfile]['rp'] = "{}/{}_trim_rev_pair.fq".format(self.outdir, outfile)
-      self.trimmed_files[outfile]['ru'] = "{}/{}_trim_rev_unpair.fq".format(self.outdir, outfile)
+      self.trimmed_files[outfile]['fp'] = "{}/{}_trim_front_pair.fq".format(trimdir, outfile)
+      self.trimmed_files[outfile]['fu'] = "{}/{}_trim_front_unpair.fq".format(trimdir, outfile)
+      self.trimmed_files[outfile]['rp'] = "{}/{}_trim_rev_pair.fq".format(trimdir, outfile)
+      self.trimmed_files[outfile]['ru'] = "{}/{}_trim_rev_unpair.fq".format(trimdir, outfile)
       
       batchfile.write("# Trimmomatic set {}\n".format(j))
       batchfile.write("trimmomatic PE -threads {} -phred33 {}/{} {}/{} {} {} {} {}\
@@ -103,7 +105,7 @@ class Job_Creator():
     batchfile.write("# Interlaced unpaired reads file creation\n")
     suffix = "_unpaired_interlaced.fq"
     for name, v in self.trimmed_files.items():
-      interfile = "{}/{}{}".format(self.outdir, name, suffix)
+      interfile = "{}/trimmed/{}{}".format(self.outdir, name, suffix)
       self.logger.info("Creating unpaired interlace file for run {}".format(name))
       batchfile.write("touch {}\n".format(interfile))
       batchfile.write("cat {} >> {}\n".format(v['fu'], interfile))
@@ -149,6 +151,8 @@ class Job_Creator():
   def create_blastsection(self):
     """Creates a blast job for instances where many loci definition files make up an organism"""
     self.index_db("{}/{}".format(self.config["folders"]["references"], self.organism))
+    if not os.path.exists("{}/blast".format(self.outdir)):
+      os.makedirs("{}/blast".format(self.outdir))
  
     #Create run
     batchfile = open(self.batchfile, "a+")
@@ -156,7 +160,7 @@ class Job_Creator():
     tfa_list = glob.glob("{}/{}/*.tfa".format(self.config["folders"]["references"], self.organism))
     for entry in tfa_list:
       batchfile.write("# BLAST MLST alignment for {}, {}\n".format(self.organism, os.path.basename(entry[:-4])))
-      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/loci_query_{}.txt -task megablast -num_threads {} -max_target_seqs 1 -outfmt {}\n".format(\
+      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast/loci_query_{}.txt -task megablast -num_threads {} -max_target_seqs 1 -outfmt {}\n".format(\
       entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
     batchfile.close()
@@ -175,6 +179,15 @@ class Job_Creator():
     proj_col['Customer_ID_project'] = self.lims_fetcher.data['Customer_ID_project']
     proj_col['date_ordered'] = self.lims_fetcher.data['date_received']
     self.db_pusher.add_rec(proj_col, 'Projects')
+
+  def create_quastsection(self):
+    batchfile = open(self.batchfile, "a+")
+    batchfile.write("# QUAST QC metrics\n")
+    batchfile.write("python quast.py {}/assembly/contigs.fasta -o {}/quast\n".format(self.outdir, self.outdir)
+    batchfile.write("\n")
+    batchfile.close()
+    if not os.path.exists("{}/quast".format(self.outdir)):
+      os.makedirs("{}/quast".format(self.outdir))
 
   def create_sample(self, name):
     """Creates sample in database"""
