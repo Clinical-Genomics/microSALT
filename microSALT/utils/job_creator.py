@@ -61,18 +61,13 @@ class Job_Creator():
       raise Exception("No files in directory {} match file_pattern '{}'.".format(self.indir, self.config['regex']['file_pattern']))
     return verified_files
  
-  def create_header(self):
-    batchfile = open(self.batchfile, "w+")
-    batchfile.write("#!/bin/bash -l\n\n")
-    batchfile.write("#SBATCH -A {}\n".format(self.config["slurm_header"]["project"]))
-    batchfile.write("#SBATCH -p {}\n".format(self.config["slurm_header"]["type"]))
-    batchfile.write("#SBATCH -n {}\n".format(self.config["slurm_header"]["threads"]))
-    batchfile.write("#SBATCH -t {}\n".format(self.config["slurm_header"]["time"]))
-    batchfile.write("#SBATCH -J {}_{}\n".format(self.config["slurm_header"]["job_prefix"], self.name))
-    batchfile.write("#SBATCH --qos {}\n\n".format(self.config["slurm_header"]["qos"]))
-    batchfile.close()
+  def get_headerargs(self):
+    headerline = "-A {} -p {} -n {} -t {} -J {}_{} --qos {}".format(self.config["slurm_header"]["project"],\
+                 self.config["slurm_header"]["type"], self.config["slurm_header"]["threads"],self.config["slurm_header"]["time"],\
+                 self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"])
+    return headerline
 
-  def create_trimjob(self):
+  def create_trimsection(self):
     for root, dirs, files in os.walk(self.config["folders"]["adapters"]):
       if not "NexteraPE-PE.fa" in files: 
         self.logger.error("Adapters folder at {} does not contain NexteraPE-PE.fa. Review paths.yml")
@@ -117,7 +112,7 @@ class Job_Creator():
       batchfile.write("\n")
     batchfile.close()    
 
-  def create_spadesjob(self):
+  def create_spadessection(self):
     batchfile = open(self.batchfile, "a+")
     #memory is actually 128 per node regardless of cores.
     batchfile.write("# Spades assembly\n")
@@ -151,20 +146,7 @@ class Job_Creator():
     except Exception as e:
       self.logger.error("No associated reference for {} for specified organism: {}".format(self.name, self.organism))
 
-  def create_blastjob_single(self):
-    """ Creates a blast job for instances where the definitions file is one per organism"""
-    self.index_db(self.config["folders"]["references"])
-
-    #create run
-    batchfile = open(self.batchfile, "a+")
-    blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send\""
-    batchfile.write("# BLAST MLST alignment\n")
-    batchfile.write("blastn -db {}/{} -query {}/assembly/contigs.fasta -out {}/loci_query_tab.txt -task megablast -num_threads {} -max_target_seqs 1 -outfmt {}\n\n".format(\
-    self.config["folders"]["references"], self.organism, self.outdir, self.outdir,\
-    self.config["slurm_header"]["threads"], blast_format))
-    batchfile.close()
-
-  def create_blastjob_multi(self):
+  def create_blastsection(self):
     """Creates a blast job for instances where many loci definition files make up an organism"""
     self.index_db("{}/{}".format(self.config["folders"]["references"], self.organism))
  
@@ -208,16 +190,16 @@ class Job_Creator():
       self.logger.error("Unable to load LIMS info for sample {}".format(self.name))
 
   def project_job(self):
+    jobarray = list()
     if not os.path.exists(self.outdir):
       os.makedirs(self.outdir)
-    concat_file = "{}/concatinated.sbatch".format(self.outdir)
-    concat = open(concat_file, 'w+')
     try:
       self.create_project(self.name)
     except Exception as e:
       self.logger.error("LIMS interaction failed. Unable to read/write project {}".format(self.name))  
     try:
-      concat.write("#!/bin/sh\n\n")
+      #Start every sample job
+      headerargs = self.get_headerargs()
       for (dirpath, dirnames, filenames) in os.walk(self.indir):
         for dir in dirnames:
           sample_in = "{}/{}".format(dirpath, dir)
@@ -225,14 +207,15 @@ class Job_Creator():
           sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out) 
           sample_instance.sample_job()
           outfile = sample_instance.get_sbatch()
-          bash_cmd="sbatch {}".format(outfile)
+          bash_cmd="sbatch {} {}".format(headerargs, outfile)
           process = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
           output, error = process.communicate()
-          self.logger.warn("{} automatically, containing sample {}".format(output, dir))
-          concat.write("{}\n".format(bash_cmd))
-      concat.close()
+          jobarray.append(re.search('(\w+)', output))
+      #Mail job
+      mailline = "Project {} has finished analysis".format(self.indir)
+      mailargs = "--dependency=after:{} --mail-user={}".format(':'.join(jobarray), self.config['regex']['mail_recipient'])
+      bash_cmd="sbatch {} {} {}".format(headerargs, mailargs, mailline) 
     except Exception as e:
-      concat.close()
       self.logger.warning("Failed to spawn project at {}\nSource: {}".format(self.outdir, str(e)))
       shutil.rmtree(self.outdir, ignore_errors=True)
 
@@ -242,12 +225,11 @@ class Job_Creator():
       self.organism = self.lims_fetcher.get_organism_refname(self.name, external=False)
       if not os.path.exists(self.outdir):
         os.makedirs(self.outdir)
-      
-      self.create_header()
-      self.create_trimjob()
+      # This is one job 
+      self.create_trimsection()
       self.interlace_files()
-      self.create_spadesjob()
-      self.create_blastjob_multi()
+      self.create_spadessection()
+      self.create_blastsection()
       self.logger.info("Created runfile for project {} in folder {}".format(self.indir, self.outdir))
     except Exception as e:
       raise Exception("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
