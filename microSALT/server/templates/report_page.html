@@ -103,6 +103,8 @@
                                         </tr>
                                         <tr>
                                             <th scope="row" >Sequence Type</th>
+                                            {% if sample.ST > 0 and sample.aux_ST > 0%}
+                                              <td>{{sample.ST}}; additional ST found.</td>
                                             {% if sample.ST > 0 %}
                                               <td>{{sample.ST}}</td>
                                             {% elif sample.ST == -1 %}
@@ -111,6 +113,12 @@
                                               <td>No ST found. Displaying all allele hits.</td>
                                             {% endif %}
                                         </tr>
+                                        {% if sample.aux_alleles > 0 %}
+                                          <tr>
+                                            <th scope="row" >Additional non-determining alleles</th>
+                                              <td>{{sample.aux_alleles}}</td>
+                                          </tr>
+                                        {% endif %}
                                         <tr>
                                             <th scope="row" >Thresholds</th>
                                         <!-- Threshold determination -->
