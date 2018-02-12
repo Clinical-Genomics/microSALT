@@ -149,10 +149,10 @@ class DB_Manipulator:
       self.logger.warning("No organism set for {}. Most likely control sample. Setting ST to -1".format(cg_sid))
       return -1
     [alleles, allelediff] = self.get_unique_alleles(cg_sid, organism, threshold)
-    if not allelediff >= 0:
+    if allelediff < 0:
       threshold = False
       [alleles, allelediff] = self.get_unique_alleles(cg_sid, organism, threshold)
-      if not allelediff >= 0:
+      if allelediff < 0:
         self.logger.warning("Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3"\
                             .format(cg_sid, organism))
         self.setPredictor(cg_sid)
@@ -185,9 +185,12 @@ class DB_Manipulator:
     elif len(output) == 1:
       #Doing bestST only to establish best loci number combination
       return self.bestST(cg_sid, [output[0].ST])
+    elif threshold:
+      self.logger.warning("Sample {} on {} has an allele set but no ST. Novel ST found, setting ST to -4".format(cg_sid, organism))
+      return -4
     else:
-      self.logger.warning("Sample {} on {} has a single allele set but no matching ST.\
-Either incorrectly called allele, or novel ST has been found. Setting ST to -2".format(cg_sid, organism))
+      self.logger.warning("Sample {} on {} has an allele set but hits are low-quality and\
+ do not resolve to an ST. Setting ST to -2".format(cg_sid, organism))
       self.setPredictor(cg_sid)
       return -2
 

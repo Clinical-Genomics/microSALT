@@ -43,6 +43,8 @@
                                          <td>{{sample.ST}}</td>
                                       {% elif sample.ST == -1 %}
                                          <td>Control</td>
+                                      {% elif sample.ST == -4 %}
+                                         <td>Novel</td>
                                       {% else %}
                                          <td>None</td>
                                       {% endif %}
@@ -109,6 +111,8 @@
                                               <td>{{sample.ST}}</td>
                                             {% elif sample.ST == -1 %}
                                               <td>Control sample. No ST established.</td>
+                                            {% elif sample.ST == -4 %}
+                                              <td>Novel ST. High quality hits but no ST combination found.</td>
                                             {% else %}
                                               <td>No ST found. Displaying all allele hits.</td>
                                             {% endif %}
