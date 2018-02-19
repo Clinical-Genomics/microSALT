@@ -87,7 +87,7 @@ class DB_Manipulator:
     self.profiles[organism].drop()
     self.profiles[organism].create()
     self.init_profiletable(organism, table)
-    self.logger.warning("Profile table for {} updated to latest version".format(organism)) 
+    self.logger.info("Profile table for {} updated to latest version".format(organism)) 
  
   def init_profiletable(self, filename, table):
     """Creates profile tables by looping, since a lot of infiles exist"""

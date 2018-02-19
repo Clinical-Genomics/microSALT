@@ -35,7 +35,7 @@ def root(ctx):
   fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
   logger.addHandler(fh)
   ch = logging.StreamHandler()
-  ch.setLevel(logging.WARNING)
+  ch.setLevel(logging.INFO)
   ch.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
   logger.addHandler(ch)
   ctx.obj['log'] = logger

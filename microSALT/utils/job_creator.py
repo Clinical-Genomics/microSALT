@@ -18,16 +18,23 @@ from microSALT.store.db_manipulator import DB_Manipulator
 
 class Job_Creator():
 
-  def __init__(self, indir, config, log, outdir=""):
+  def __init__(self, indir, config, log, outdir="", timestamp=""):
     self.config = config
     self.logger = log
-    self.now = time.strftime("%Y.%m.%d_%H.%M.%S")
+    self.now = timestamp
+    if timestamp == "":
+      self.now = time.strftime("%Y.%m.%d_%H.%M.%S")
     self.indir = os.path.abspath(indir)
     self.name = os.path.basename(os.path.normpath(indir))
     self.outdir = outdir
     if self.outdir == "":
       self.outdir="{}/{}_{}".format(config["folders"]["results"], os.path.basename(os.path.normpath(self.indir)), self.now)
+    if not os.path.exists(self.outdir):
+      os.makedirs(self.outdir)
     self.batchfile = "{}/runfile.sbatch".format(self.outdir)
+    batchfile = open(self.batchfile, "w+")
+    batchfile.write("#!/bin/sh\n\n")
+    batchfile.close()
     
     self.db_pusher=DB_Manipulator(config, log)
     self.trimmed_files = dict()
@@ -106,7 +113,7 @@ class Job_Creator():
     suffix = "_unpaired_interlaced.fq"
     for name, v in self.trimmed_files.items():
       interfile = "{}/trimmed/{}{}".format(self.outdir, name, suffix)
-      self.logger.info("Creating unpaired interlace file for run {}".format(name))
+      self.logger.info("Created unpaired interlace file for run {}".format(name))
       batchfile.write("touch {}\n".format(interfile))
       batchfile.write("cat {} >> {}\n".format(v['fu'], interfile))
       batchfile.write("cat {} >> {}\n".format(v['ru'], interfile))
@@ -166,6 +173,7 @@ class Job_Creator():
     batchfile.close()
 
   def get_sbatch(self):
+    """ Returns sbatchfile, slightly superflous"""
     return self.batchfile
 
   def create_project(self, name):
@@ -183,7 +191,7 @@ class Job_Creator():
   def create_quastsection(self):
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# QUAST QC metrics\n")
-    batchfile.write("python quast.py {}/assembly/contigs.fasta -o {}/quast\n".format(self.outdir, self.outdir)
+    batchfile.write("python quast.py {}/assembly/contigs.fasta -o {}/quast\n".format(self.outdir, self.outdir))
     batchfile.write("\n")
     batchfile.close()
     if not os.path.exists("{}/quast".format(self.outdir)):
@@ -204,8 +212,6 @@ class Job_Creator():
 
   def project_job(self):
     jobarray = list()
-    if not os.path.exists(self.outdir):
-      os.makedirs(self.outdir)
     try:
       self.create_project(self.name)
     except Exception as e:
@@ -217,13 +223,14 @@ class Job_Creator():
         for dir in dirnames:
           sample_in = "{}/{}".format(dirpath, dir)
           sample_out = "{}/{}".format(self.outdir, dir)
-          sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out) 
+          sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now) 
           sample_instance.sample_job()
           outfile = sample_instance.get_sbatch()
           bash_cmd="sbatch {} {}".format(headerargs, outfile)
           process = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
           output, error = process.communicate()
-          jobarray.append(re.search('(\w+)', output))
+          jobno = re.search('(\d+)', str(output)).group(0)
+          jobarray.append(jobno)
       #Mail job
       mailline = "Project {} has finished analysis".format(self.indir)
       mailargs = "--dependency=after:{} --mail-user={}".format(':'.join(jobarray), self.config['regex']['mail_recipient'])
@@ -236,8 +243,6 @@ class Job_Creator():
     self.trimmed_files = dict()
     try:
       self.organism = self.lims_fetcher.get_organism_refname(self.name, external=False)
-      if not os.path.exists(self.outdir):
-        os.makedirs(self.outdir)
       # This is one job 
       self.create_trimsection()
       self.interlace_files()

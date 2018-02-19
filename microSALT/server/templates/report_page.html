@@ -1,187 +1,183 @@
 {% extends 'layout.html' %}
-{% block body %}
-{% set thres = dict() %}
-    <div class="container-fluid">
+  {% block body %}
+    {% set thres = dict() %}
+      <div class="container-fluid">
         <div class="col-lg-16">
-<!-- Summary page  -->
-                <footer>
-                    <div class="panel"><div class="panel-body">
-                    <h2 class="page-header"><strong>microSALT Results</strong><br>
-                        <small>Clinical Microbiology</small>
-                        <small><p align="right">{{date}}</p></small></h2>
-                        <h3><strong>Summary</strong><br></h3>
-                        <div class="table-responsive">
-                                <table  class="table table-bordered" >
-                                  <tr>
-                                      <td><b>Project ID <i>(CG Project ID)</i></b>
-                                      <td><b>Analysis date</b></td>
-                                  </tr>
-                                  <tr>
-                                      <td>{{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></td>
-                                      <td>{{samples[0].date_analysis.date()}}</td>
-                                  </tr>
-                                </table>
-                        </div>
-                        <div class="table-responsive">
-                                <table  class="table table-bordered" >
-                                  <tr>
-                                      </td><td><b>Sample ID <i>(CG Sample ID)</i></b></td>
-                                      <td><b>Organism</b></td>
-                                      <td><b>Sequence Type</b></td>
-                                      <td><b>Thresholds</b></td>
-                                      <td><b>Reference version</b></td>
-                                  </tr>
-                                  {% for sample in samples %}
-                                  <tr>
-                                      <td>{{sample.Customer_ID_sample}}  <i>({{sample.CG_ID_sample}})</i></td>
-                                      {% if sample.organism is not none %}
-                                        <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
-                                      {% else %}
-                                        <td><i>Control</i></td>
-                                      {% endif %}
-                                      {% if sample.ST > 0 %}
-                                         <td>{{sample.ST}}</td>
-                                      {% elif sample.ST == -1 %}
-                                         <td>Control</td>
-                                      {% elif sample.ST == -4 %}
-                                         <td>Novel</td>
-                                      {% else %}
-                                         <td>None</td>
-                                      {% endif %}
-                                      <!-- Threshold determination -->
-                                      {% if sample.seq_types|length == 0 %}
-                                        <td>N/A</td>
-                                      {% elif sample.ST < 0 %}
-                                        <td>Failed</td>
-                                      {% else %}
-                                        {% set thres = {sample.CG_ID_sample: True} %}
-                                        {% for seq_type in sample.seq_types %}
-                                          {% if seq_type.identity<100.00 %}
-                                           {% set thres = {sample.CG_ID_sample: False} %}
-                                          {% endif %}
-                                        {% endfor %}
-                                        {% if thres[sample.CG_ID_sample] %}
-                                          <td>Passed</td>
-                                        {% else %}
-                                          <td>Failed</td>
-                                        {% endif %}
-                                      {% endif %}
-                                      <td>{{version[sample.organism]}}</td>
-                                  </tr>
-                                  {% endfor %}
-                                </table>
-                         </div>
-                    </div></div>
-                </footer>
-<!-- Sample pages -->
+          <!-- Summary page  -->
+          <footer>
+            <div class="panel"><div class="panel-body">
+              <h2 class="page-header"><strong>microSALT Results</strong><br>
+                <small>Clinical Microbiology</small>
+              <small><p align="right">{{date}}</p></small></h2>
+              <h3><strong>Summary</strong><br></h3>
+              <div class="table-responsive">
+                <table  class="table table-bordered" >
+                  <tr>
+                    <td><b>Project ID <i>(CG Project ID)</i></b>
+                    <td><b>Analysis date</b></td>
+                  </tr>
+                  <tr>
+                    <td>{{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></td>
+                    <td>{{samples[0].date_analysis.date()}}</td>
+                  </tr>
+                </table>
+              </div>
+              <div class="table-responsive">
+                <table  class="table table-bordered" >
+                  <tr>
+                    </td><td><b>Sample ID <i>(CG Sample ID)</i></b></td>
+                    <td><b>Organism</b></td>
+                    <td><b>Sequence Type</b></td>
+                    <td><b>Thresholds</b></td>
+                  </tr>
                   {% for sample in samples %}
-                  <footer>
-                    <div class="panel"><div class="panel-body">
-                    <h2 class="page-header"><div class="row"></div><strong>microSALT Results</strong><br>
-                        <small>Clinical Microbiology</small>
-                        <small><p align="right">{{date}}</p></small></h2>
-                        <div class="table-responsive">
-                                <table  class="table table-bordered" >
-                                        <tr>
-                                            <td><b>Project ID <i>(CG Project ID)</i></b></td>
-                                            <td>{{sample.projects.Customer_ID_project}} <i>({{sample.projects.CG_ID_project}})</i></td>
-                                            
-                                        </tr>
-                                        <tr>
-                                            <td><b>Sample ID <i>(CG Sample ID)</i></b></td>
-                                            <td>{{sample.Customer_ID_sample}}  <i>({{sample.CG_ID_sample}})</i></td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" >Analysis date</th>
-                                            <td>{{sample.date_analysis.date()}}</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" >Organism</th>
-                                            {% if sample.organism is not none %}
-                                              <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
-                                            {% else %}
-                                              <td><i>Control</i></td>
-                                            {% endif %}
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" >Sequence Type</th>
-                                            {% if sample.ST > 0 and sample.aux_ST > 0%}
-                                              <td>{{sample.ST}}; additional ST found.</td>
-                                            {% if sample.ST > 0 %}
-                                              <td>{{sample.ST}}</td>
-                                            {% elif sample.ST == -1 %}
-                                              <td>Control sample. No ST established.</td>
-                                            {% elif sample.ST == -4 %}
-                                              <td>Novel ST. High quality hits but no ST combination found.</td>
-                                            {% else %}
-                                              <td>No ST found. Displaying all allele hits.</td>
-                                            {% endif %}
-                                        </tr>
-                                        {% if sample.aux_alleles > 0 %}
-                                          <tr>
-                                            <th scope="row" >Additional non-determining alleles</th>
-                                              <td>{{sample.aux_alleles}}</td>
-                                          </tr>
-                                        {% endif %}
-                                        <tr>
-                                            <th scope="row" >Thresholds</th>
-                                        <!-- Threshold determination -->
-                                        {% if sample.seq_types|length == 0 %}
-                                          <td>N/A</td>
-                                        {% elif sample.ST < 0 %}
-                                          <td>Failed</td>
-                                        {% else %}
-                                          {% set thres = {sample.CG_ID_sample: True} %}
-                                          {% for seq_type in sample.seq_types %}
-                                            {% if seq_type.identity<100.00 %}
-                                              {% set thres = {sample.CG_ID_sample: False} %}
-                                            {% endif %}
-                                          {% endfor %}
-                                          {% if thres[sample.CG_ID_sample] %}
-                                            <td>Passed</td>
-                                          {% else %}
-                                            <td>Failed; No ST found</td>
-                                          {% endif %}
-                                        {% endif %}
-                                        <tr>
-                                            <th scope="row">Reference version</th>
-                                              <td>{{version[sample.organism]}}</td>
-                                </table>
-                            </div>
-                            <div class="table-responsive">
-                                {% if not sample.seq_types|length == 0 %}
-                                <table  class="table table-bordered" >
-                                    <thead>
-                                        <tr>
-                                            <th>Loci</th>
-                                            <th width="18%">Allele</th>
-                                            <th>Contig Coverage</th>
-                                            <th>Haplotype</th>
-                                            <th>Identity</th>
-                                            <th>E-value</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for seq_type in sample.seq_types %}
-                                          {% if seq_type.st_predictor %}
-                                        <tr>
-                                            <td>{{seq_type.loci}}</td>
-                                            <td width="18%"> {{ seq_type.allele}}</td>
-                                            <td>{{ seq_type.contig_coverage|round(2)  }}</td>
-                                            <td>{{ seq_type.haplotype }}</td>
-                                            <td>{{ seq_type.identity|round(2) }}</td>
-                                            <td>{{ seq_type.evalue }}</td>
-                                        </tr>
-                                        {% endif %}
-                                      {% endfor %}
-                                    </tbody>
-                                </table>
-                                {% endif %}
-                            </div>
-                </div>
+                    <tr>
+                      <td>{{sample.Customer_ID_sample}}  <i>({{sample.CG_ID_sample}})</i></td>
+                      {% if sample.organism is not none %}
+                        <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
+                      {% else %}
+                        <td><i>Control</i></td>
+                      {% endif %}
+                      {% if sample.ST > 0 %}
+                        <td>{{sample.ST}}</td>
+                      {% elif sample.ST == -1 %}
+                        <td>Control</td>
+                      {% elif sample.ST == -4 %}
+                        <td>Novel</td>
+                      {% else %}
+                        <td>None</td>
+                      {% endif %}
+                      <!-- Threshold determination -->
+                      {% if sample.seq_types|length == 0 %}
+                        <td>N/A</td>
+                      {% elif sample.ST < 0 %}
+                        <td>Failed</td>
+                      {% else %}
+                        {% set thres = {sample.CG_ID_sample: True} %}
+                        {% for seq_type in sample.seq_types %}
+                          {% if seq_type.identity<100.00 %}
+                            {% set thres = {sample.CG_ID_sample: False} %}
+                          {% endif %}
+                        {% endfor %}
+                      {% endif %}
+                      {% if thres[sample.CG_ID_sample] %}
+                        <td>Passed</td>
+                      {% else %}
+                        <td>Failed</td>
+                      {% endif %}
+                    </tr>
+                  {% endfor %}
+                </table>
+              </div>
+              </div>
             </div>
           </footer>
+          <!-- Sample pages -->
+          {% for sample in samples %}
+            <footer>
+              <div class="panel">
+                <div class="panel-body">
+                  <h2 class="page-header"><div class="row"></div><strong>microSALT Results</strong><br>
+                    <small>Clinical Microbiology</small>
+                    <small><p align="right">{{date}}</p></small></h2>
+                   <div class="table-responsive">
+                   <table  class="table table-bordered" >
+                    <tr>
+                      <td><b>Project ID <i>(CG Project ID)</i></b></td>
+                      <td>{{sample.projects.Customer_ID_project}} <i>({{sample.projects.CG_ID_project}})</i></td>
+                    </tr>
+                    <tr>
+                      <td><b>Sample ID <i>(CG Sample ID)</i></b></td>
+                      <td>{{sample.Customer_ID_sample}}  <i>({{sample.CG_ID_sample}})</i></td>
+                    </tr>
+                    <tr>
+                      <th scope="row" >Analysis date</th>
+                      <td>{{sample.date_analysis.date()}}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row" >Organism</th>
+                      {% if sample.organism is not none %}
+                        <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
+                      {% else %}
+                        <td><i>Control</i></td>
+                      {% endif %}
+                    </tr>
+                    <tr>
+                      <th scope="row" >Sequence Type</th>
+                        {% if sample.ST > 0 and sample.aux_ST > 0%}
+                          <td>{{sample.ST}}; additional ST found.</td>
+                        {% elif sample.ST > 0 %}
+                          <td>{{sample.ST}}</td>
+                        {% elif sample.ST == -1 %}
+                          <td>Control sample. No ST established.</td>
+                        {% elif sample.ST == -4 %}
+                          <td>Novel ST. High quality hits but no ST combination found.</td>
+                        {% else %}
+                          <td>No ST found. Displaying all allele hits.</td>
+                        {% endif %}
+                    </tr>
+                    {% if sample.aux_alleles > 0 %}
+                      <tr>
+                        <th scope="row" >Additional non-determining alleles</th>
+                        <td>{{sample.aux_alleles}}</td>
+                      </tr>
+                    {% endif %}
+                      <tr>
+                        <th scope="row" >Thresholds</th>
+                        <!-- Threshold determination -->
+                        {% if sample.seq_types|length == 0 %}
+                          <td>N/A</td>
+                        {% elif sample.ST < 0 %}
+                          <td>Failed</td>
+                        {% else %}
+                          {% set thres = {sample.CG_ID_sample: True} %}
+                          {% for seq_type in sample.seq_types %}
+                            {% if seq_type.identity<100.00 %}
+                              {% set thres = {sample.CG_ID_sample: False} %}
+                            {% endif %}
+                          {% endfor %}
+                        {% endif %}
+                        {% if thres[sample.CG_ID_sample] %}
+                          <td>Passed</td>
+                        {% else %}
+                          <td>Failed; No ST found</td>
+                        {% endif %}
+                        <tr>
+                          <th scope="row">Reference version</th>
+                          <td>{{version[sample.organism]}}</td>
+                  </table>
+                </div>
+                <div class="table-responsive">
+                  {% if not sample.seq_types|length == 0 %}
+                    <table  class="table table-bordered" >
+                      <thead>
+                        <tr>
+                          <th>Loci</th>
+                          <th width="18%">Allele</th>
+                          <th>Contig Coverage</th>
+                          <th>Identity</th>
+                          <th>E-value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for seq_type in sample.seq_types %}
+                          {% if seq_type.st_predictor %}
+                            <tr>
+                              <td>{{seq_type.loci}}</td>
+                              <td width="18%"> {{ seq_type.allele}}</td>
+                              <td>{{ seq_type.contig_coverage|round(2)  }}</td>
+                              <td>{{ seq_type.identity|round(2) }}</td>
+                              <td>{{ seq_type.evalue }}</td>
+                            </tr>
+                          {% endif %}
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  {% endif %}
+                </div>
+              </div>
+            </footer>
           {% endfor %}
         </div>
-    </div>
-{% endblock %}
+      </div>
+  {% endblock %}
