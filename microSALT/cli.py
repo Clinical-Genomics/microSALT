@@ -35,7 +35,7 @@ def root(ctx):
   fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
   logger.addHandler(fh)
   ch = logging.StreamHandler()
-  ch.setLevel(logging.WARNING)
+  ch.setLevel(logging.INFO)
   ch.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
   logger.addHandler(ch)
   ctx.obj['log'] = logger
@@ -72,7 +72,7 @@ def sample(ctx, sample_dir):
     fixer.update_refs()
     print("Version check done. Creating sbatch job")
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
-    worker.sample_job()
+    worker.project_job(single_sample=True)
     done()
 
 @root.group()

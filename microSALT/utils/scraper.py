@@ -52,7 +52,7 @@ class Scraper():
 
   def scrape_all_loci(self):
     """Scrapes all BLAST output in a folder"""
-    q_list = glob.glob("{}/loci_query_*".format(self.sampledir))
+    q_list = glob.glob("{}/blast/loci_query_*".format(self.sampledir))
     organism = self.lims_fetcher.get_organism_refname(self.name)
     self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
     for file in q_list:
@@ -99,6 +99,6 @@ class Scraper():
               seq_col["contig_coverage"] = nodeinfo[5]
               self.db_pusher.add_rec(seq_col, 'Seq_types')
       
-      self.logger.info("Added a record to the database")
+      self.logger.info("Added allele {}={} of sample {} to table Seq_types".format(seq_col["loci"], seq_col["allele"], self.name))
     except Exception as e:
       self.logger.error("{}".format(str(e)))

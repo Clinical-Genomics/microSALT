@@ -4,14 +4,15 @@
     "project": "microbial",
     "type": "core",
     "threads": "10",
-    "time": "01:00:00",
+    "time": "02:00:00",
     "qos": "normal",
     "job_prefix": "MLST"
   },
 
   "_comment": "File finding patterns. Only single capture group accepted (for reverse/forward identifier)",
   "regex":  {
-    "file_pattern": "(?:\\d{1}_)?\\d{6}_\\w{9}_.{3,12}_(?:\\w{8,12}_)?(\\d{1}).fastq.gz"
+    "file_pattern": "(?:\\d{1}_)?\\d{6}_\\w{9}_.{3,12}_(?:\\w{8,12}_)?(\\d{1}).fastq.gz",
+    "mail_recipient": "examplegroup@scilifelab.se"
   },
 
   "_comment": "Folders",

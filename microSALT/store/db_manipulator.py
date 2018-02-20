@@ -64,7 +64,7 @@ class DB_Manipulator:
       self.session.add(newobj)
       self.session.commit()
     else:
-      self.logger.info("Failed to insert duplicate record into table {}".format(tablename))
+      self.logger.warn("Hindered insertion of existing record ({}) into table {}".format(data_dict, tablename))
 
   def upd_rec(self, req_dict, tablename, upd_dict):
     """Updates a record to the specified table through a dict with columns as keys."""
@@ -87,7 +87,7 @@ class DB_Manipulator:
     self.profiles[organism].drop()
     self.profiles[organism].create()
     self.init_profiletable(organism, table)
-    self.logger.warning("Profile table for {} updated to latest version".format(organism)) 
+    self.logger.info("Profile table for {} updated to latest version".format(organism)) 
  
   def init_profiletable(self, filename, table):
     """Creates profile tables by looping, since a lot of infiles exist"""
@@ -107,7 +107,7 @@ class DB_Manipulator:
     self.logger.info("Created profile table {}".format(table))
     # Set initial debug version
     self.add_rec({'name': 'profile_{}'.format(filename), 'version': '0'}, 'Versions')
-    self.logger.info("Added dummy version (0) for table profile_{}".format(filename)) 
+    self.logger.info("Profile table profile_{} initialized".format(filename)) 
  
   def get_columns(self, tablename):
     """ Returns all records for a given ORM table"""
