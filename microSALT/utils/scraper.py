@@ -35,13 +35,11 @@ class Scraper():
     """Scrapes a project folder for information"""
     #Scrape order matters a lot!
     self.lims_fetcher.load_lims_project_info(self.name)
-    self.scrape_projectinfo()
     for dir in os.listdir(self.infolder):
      if os.path.isdir("{}/{}".format(self.infolder, dir)): 
        self.sampledir = "{}/{}".format(self.infolder, dir)
        self.name = dir
        self.lims_fetcher.load_lims_sample_info(dir)
-       self.scrape_sampleinfo()
        self.scrape_all_loci()
 
   def scrape_sample(self):
@@ -50,14 +48,11 @@ class Scraper():
     self.sampledir = self.infolder
     self.lims_fetcher.load_lims_sample_info(self.name)
     self.lims_fetcher.load_lims_project_info(self.lims_fetcher.data['CG_ID_project'])
-
-    self.scrape_projectinfo()
-    self.scrape_sampleinfo()
     self.scrape_all_loci()
 
   def scrape_all_loci(self):
     """Scrapes all BLAST output in a folder"""
-    q_list = glob.glob("{}/loci_query_*".format(self.sampledir))
+    q_list = glob.glob("{}/blast/loci_query_*".format(self.sampledir))
     organism = self.lims_fetcher.get_organism_refname(self.name)
     self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
     for file in q_list:
@@ -66,26 +61,6 @@ class Scraper():
     try:
       ST = self.db_pusher.alleles2st(self.name)
       self.db_pusher.upd_rec({'CG_ID_sample':self.name}, 'Samples', {'ST':ST})
-    except Exception as e:
-      self.logger.error("{}".format(str(e)))
-
-  def scrape_projectinfo(self):
-    """Identifies project values"""
-    proj_col=dict()
-    proj_col['CG_ID_project'] = self.name
-    proj_col['Customer_ID_project'] = self.lims_fetcher.data['Customer_ID_project']
-    proj_col['date_ordered'] = self.lims_fetcher.data['date_received']
-    self.db_pusher.add_rec(proj_col, 'Projects')
-
-  def scrape_sampleinfo(self):
-    """Identifies sample values"""
-    try:
-      sample_col = self.db_pusher.get_columns('Samples') 
-      sample_col['CG_ID_sample'] = self.lims_fetcher.data['CG_ID_sample']
-      sample_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
-      sample_col['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
-      sample_col["date_analysis"] = self.date
-      self.db_pusher.add_rec(sample_col, 'Samples')
     except Exception as e:
       self.logger.error("{}".format(str(e)))
 
@@ -124,6 +99,6 @@ class Scraper():
               seq_col["contig_coverage"] = nodeinfo[5]
               self.db_pusher.add_rec(seq_col, 'Seq_types')
       
-      self.logger.info("Added a record to the database")
+      self.logger.info("Added allele {}={} of sample {} to table Seq_types".format(seq_col["loci"], seq_col["allele"], self.name))
     except Exception as e:
       self.logger.error("{}".format(str(e)))

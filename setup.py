@@ -14,11 +14,11 @@ setup(
     name="microSALT",
     version=version,
     long_description=__doc__,
-    url="https://github.com/sylvinite/microSALT",
+    url="https://github.com/Clinical-Genomics/microSALT",
     author="Isak Sylvin",
     author_email='isak.sylvin@scilifelab.se',
     install_requires=install_requires,
-    packages=['microSALT'],
+    packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
     entry_points={

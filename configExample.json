@@ -1,0 +1,35 @@
+{
+  "_comment": "SBATCH configuration",
+  "slurm_header": {
+    "project": "microbial",
+    "type": "core",
+    "threads": "10",
+    "time": "02:00:00",
+    "qos": "normal",
+    "job_prefix": "MLST"
+  },
+
+  "_comment": "File finding patterns. Only single capture group accepted (for reverse/forward identifier)",
+  "regex":  {
+    "file_pattern": "(?:\\d{1}_)?\\d{6}_\\w{9}_.{3,12}_(?:\\w{8,12}_)?(\\d{1}).fastq.gz",
+    "mail_recipient": "examplegroup@scilifelab.se"
+  },
+
+  "_comment": "Folders",
+  "folders":  {
+    "_comment": "Cutadapt adapters folder",
+    "adapters": "/home/isak.sylvin/CG_MLST/Trimmomatic-0.36/adapters/",
+    "_comment": "ST references. Each ST profile file under 'profiles' have an identicial namefolder under references. Each references sub-folder contains the .tfa file for each locus", 
+    "profiles": "/mnt/hds/proj/cust015/mlst/references/profiles",
+    "references": "/mnt/hds/proj/cust015/mlst/references/definitions_locisplit",
+    "_comment": "Root folder for ALL output",
+    "results": "/mnt/hds/proj/cust015/mlst/results"
+  },
+
+  "_comment": "Database/Flask configuration",
+  "database": {
+    "SQLALCHEMY_DATABASE_URI": "mysql+pymysql://DB_USER:DB_PASSWORD@DB_HOST:DB_PORT/DB_DATABASENAME",
+    "SQLALCHEMY_TRACK_MODIFICATIONS": "False",
+    "DEBUG": "True"
+  }
+}

@@ -30,8 +30,14 @@ class LIMS_Fetcher():
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for project {}\nSource: {}".format(cg_projid, str(e)))
 
-  def load_lims_sample_info(self, cg_sampleid):
-    sample = Sample(self.lims, id=cg_sampleid)
+  def load_lims_sample_info(self, cg_sampleid, external=False):
+    if external:
+      sample = self.lims.get_samples(name=cg_sampleid)
+      if len(sample) != 1:
+        self.logger.error("Sample ID {} resolves to multiple entries".format(cg_sampleid))
+      sample = sample[0]
+    else:
+      sample = Sample(self.lims, id=cg_sampleid)
     if 'Strain' in sample.udf: 
       organism = sample.udf['Strain']
       if sample.udf['Strain'] == 'VRE':
@@ -56,9 +62,9 @@ class LIMS_Fetcher():
       self.logger.warn("Unable to fetch LIMS info for sample {}. Review LIMS data.\nSource: {}"\
       .format(cg_sampleid, str(e)))
 
-  def get_organism_refname(self, sample_name):
+  def get_organism_refname(self, sample_name, external=False):
     """Gets organism/strain name, returns formatted name for mlst reference use"""
-    self.load_lims_sample_info(sample_name)
+    self.load_lims_sample_info(sample_name, external)
     lims_organ = self.data['organism'].lower()
     orgs = os.listdir(self.config["folders"]["references"])
     organism = re.split('\W+', lims_organ)
