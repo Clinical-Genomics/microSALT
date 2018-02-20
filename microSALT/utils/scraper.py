@@ -99,6 +99,6 @@ class Scraper():
               seq_col["contig_coverage"] = nodeinfo[5]
               self.db_pusher.add_rec(seq_col, 'Seq_types')
       
-      self.logger.info("Added record of {} to table Seq_types".format(self.name))
+      self.logger.info("Added allele {}={} of sample {} to table Seq_types".format(seq_col["loci"], seq_col["allele"], self.name))
     except Exception as e:
       self.logger.error("{}".format(str(e)))

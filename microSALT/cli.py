@@ -72,7 +72,7 @@ def sample(ctx, sample_dir):
     fixer.update_refs()
     print("Version check done. Creating sbatch job")
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
-    worker.sample_job()
+    worker.project_job(single_sample=True)
     done()
 
 @root.group()

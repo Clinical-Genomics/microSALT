@@ -21,20 +21,17 @@ class Job_Creator():
   def __init__(self, indir, config, log, outdir="", timestamp=""):
     self.config = config
     self.logger = log
+    self.indir = os.path.abspath(indir)
+    self.name = os.path.basename(os.path.normpath(indir))
+
     self.now = timestamp
     if timestamp == "":
       self.now = time.strftime("%Y.%m.%d_%H.%M.%S")
-    self.indir = os.path.abspath(indir)
-    self.name = os.path.basename(os.path.normpath(indir))
     self.outdir = outdir
     if self.outdir == "":
       self.outdir="{}/{}_{}".format(config["folders"]["results"], os.path.basename(os.path.normpath(self.indir)), self.now)
     if not os.path.exists(self.outdir):
       os.makedirs(self.outdir)
-    self.batchfile = "{}/runfile.sbatch".format(self.outdir)
-    batchfile = open(self.batchfile, "w+")
-    batchfile.write("#!/bin/sh\n\n")
-    batchfile.close()
     
     self.db_pusher=DB_Manipulator(config, log)
     self.trimmed_files = dict()
@@ -113,7 +110,7 @@ class Job_Creator():
     suffix = "_unpaired_interlaced.fq"
     for name, v in self.trimmed_files.items():
       interfile = "{}/trimmed/{}{}".format(self.outdir, name, suffix)
-      self.logger.info("Created unpaired interlace file for run {}".format(name))
+      self.logger.info("Created unpaired interlace file for sample {}".format(name))
       batchfile.write("touch {}\n".format(interfile))
       batchfile.write("cat {} >> {}\n".format(v['fu'], interfile))
       batchfile.write("cat {} >> {}\n".format(v['ru'], interfile))
@@ -179,11 +176,11 @@ class Job_Creator():
   def create_project(self, name):
     """Creates project in database"""
     try:
-      self.lims_fetcher.load_lims_project_info(self.name)
+      self.lims_fetcher.load_lims_project_info(name)
     except Exception as e:
-      self.logger.error("Unable to load LIMS info for project {}".format(self.name))
+      self.logger.error("Unable to load LIMS info for project {}".format(name))
     proj_col=dict()
-    proj_col['CG_ID_project'] = self.name
+    proj_col['CG_ID_project'] = name
     proj_col['Customer_ID_project'] = self.lims_fetcher.data['Customer_ID_project']
     proj_col['date_ordered'] = self.lims_fetcher.data['date_received']
     self.db_pusher.add_rec(proj_col, 'Projects')
@@ -191,7 +188,7 @@ class Job_Creator():
   def create_quastsection(self):
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# QUAST QC metrics\n")
-    batchfile.write("python quast.py {}/assembly/contigs.fasta -o {}/quast\n".format(self.outdir, self.outdir))
+    batchfile.write("quast.py {}/assembly/contigs.fasta -o {}/quast\n".format(self.outdir, self.outdir))
     batchfile.write("\n")
     batchfile.close()
     if not os.path.exists("{}/quast".format(self.outdir)):
@@ -208,33 +205,46 @@ class Job_Creator():
       sample_col["date_analysis"] = self.now
       self.db_pusher.add_rec(sample_col, 'Samples')
     except Exception as e:
-      self.logger.error("Unable to load LIMS info for sample {}".format(self.name))
+      self.logger.error("Unable to add sample {} to database".format(self.name))
 
-  def project_job(self):
+  def project_job(self, single_sample=False):
     jobarray = list()
+    if single_sample:
+      self.create_project(os.path.normpath(self.indir).split('/')[-2])
     try:
-      self.create_project(self.name)
+       if single_sample:
+         self.create_project(os.path.normpath(self.indir).split('/')[-2])
+       else:
+        self.create_project(self.name)
     except Exception as e:
       self.logger.error("LIMS interaction failed. Unable to read/write project {}".format(self.name))  
     try:
       #Start every sample job
       headerargs = self.get_headerargs()
-      for (dirpath, dirnames, filenames) in os.walk(self.indir):
-        for dir in dirnames:
-          sample_in = "{}/{}".format(dirpath, dir)
-          sample_out = "{}/{}".format(self.outdir, dir)
-          sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now) 
-          sample_instance.sample_job()
-          outfile = sample_instance.get_sbatch()
-          bash_cmd="sbatch {} {}".format(headerargs, outfile)
-          process = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
-          output, error = process.communicate()
-          jobno = re.search('(\d+)', str(output)).group(0)
-          jobarray.append(jobno)
+      if single_sample:
+        self.sample_job()
+        outfile = self.get_sbatch()
+        bash_cmd="sbatch {} {}".format(headerargs, outfile)
+        process = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+        output, error = process.communicate()
+        jobno = re.search('(\d+)', str(output)).group(0)
+        jobarray.append(jobno)
+      else:
+        for (dirpath, dirnames, filenames) in os.walk(self.indir):
+          for dir in dirnames:
+            sample_in = "{}/{}".format(dirpath, dir)
+            sample_out = "{}/{}".format(self.outdir, dir)
+            sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now) 
+            sample_instance.sample_job()
+            outfile = sample_instance.get_sbatch()
+            bash_cmd="sbatch {} {}".format(headerargs, outfile)
+            output, error = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE).communicate()
+            jobno = re.search('(\d+)', str(output)).group(0)
+            jobarray.append(jobno)
       #Mail job
-      mailline = "Project {} has finished analysis".format(self.indir)
-      mailargs = "--dependency=after:{} --mail-user={}".format(':'.join(jobarray), self.config['regex']['mail_recipient'])
-      bash_cmd="sbatch {} {} {}".format(headerargs, mailargs, mailline) 
+      mailline = "srun -A {} -p core -n 1 -t 00:00:10 -J {}_{} --qos {} --dependency=afterany:{} --mail-user={} --mail-type=ALL pwd".format(self.config["slurm_header"]["project"],\
+                 self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"], ':'.join(jobarray), self.config['regex']['mail_recipient'])
+      subprocess.Popen(mailline.split(), stdin=None, stdout=None, stderr=None)
     except Exception as e:
       self.logger.warning("Failed to spawn project at {}\nSource: {}".format(self.outdir, str(e)))
       shutil.rmtree(self.outdir, ignore_errors=True)
@@ -244,11 +254,17 @@ class Job_Creator():
     try:
       self.organism = self.lims_fetcher.get_organism_refname(self.name, external=False)
       # This is one job 
+      self.batchfile = "{}/runfile.sbatch".format(self.outdir)
+      batchfile = open(self.batchfile, "w+")
+      batchfile.write("#!/bin/sh\n\n")
+      batchfile.close()
+
       self.create_trimsection()
       self.interlace_files()
       self.create_spadessection()
+      self.create_quastsection()
       self.create_blastsection()
-      self.logger.info("Created runfile for project {} in folder {}".format(self.indir, self.outdir))
+      self.logger.info("Created runfile for sample {} in folder {}".format(self.name, self.outdir))
     except Exception as e:
       raise Exception("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
     try: 

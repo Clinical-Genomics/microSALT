@@ -50,8 +50,6 @@
                       <!-- Threshold determination -->
                       {% if sample.seq_types|length == 0 %}
                         <td>N/A</td>
-                      {% elif sample.ST < 0 %}
-                        <td>Failed</td>
                       {% else %}
                         {% set thres = {sample.CG_ID_sample: True} %}
                         {% for seq_type in sample.seq_types %}
@@ -59,11 +57,11 @@
                             {% set thres = {sample.CG_ID_sample: False} %}
                           {% endif %}
                         {% endfor %}
-                      {% endif %}
-                      {% if thres[sample.CG_ID_sample] %}
-                        <td>Passed</td>
-                      {% else %}
-                        <td>Failed</td>
+                        {% if thres[sample.CG_ID_sample] %}
+                          <td>Passed</td>
+                        {% else %}
+                          <td>Failed</td>
+                        {% endif %}
                       {% endif %}
                     </tr>
                   {% endfor %}
@@ -127,8 +125,6 @@
                         <!-- Threshold determination -->
                         {% if sample.seq_types|length == 0 %}
                           <td>N/A</td>
-                        {% elif sample.ST < 0 %}
-                          <td>Failed</td>
                         {% else %}
                           {% set thres = {sample.CG_ID_sample: True} %}
                           {% for seq_type in sample.seq_types %}
@@ -136,15 +132,19 @@
                               {% set thres = {sample.CG_ID_sample: False} %}
                             {% endif %}
                           {% endfor %}
+                          {% if thres[sample.CG_ID_sample] %}
+                            <td>Passed</td>
+                          {% else %}
+                            <td>Failed; No ST found</td>
+                          {% endif %}
                         {% endif %}
-                        {% if thres[sample.CG_ID_sample] %}
-                          <td>Passed</td>
-                        {% else %}
-                          <td>Failed; No ST found</td>
+                        </tr>
+                        {% if sample.organism in version %}
+                          <tr>
+                            <th scope="row">Reference version</th>
+                            <td>{{version[sample.organism]}}</td>
+                          </tr>
                         {% endif %}
-                        <tr>
-                          <th scope="row">Reference version</th>
-                          <td>{{version[sample.organism]}}</td>
                   </table>
                 </div>
                 <div class="table-responsive">
