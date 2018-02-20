@@ -86,7 +86,6 @@ class Scraper():
               seq_col["contig_end"] = elem_list[8]
               seq_col["loci_start"] = elem_list[9]
               seq_col["loci_end"] =  elem_list[10]
-              seq_col["haplotype"] = elem_list[1]
          
               # Split elem 3 in loci (name) and allele (number) 
               seq_col["loci"] = elem_list[3].split('_')[0]
