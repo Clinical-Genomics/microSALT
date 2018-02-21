@@ -68,33 +68,11 @@ def project(ctx, project_dir):
   manager.project_job()
   done() 
 
-@create.command()
-@click.argument('sample_dir')
-@click.pass_context
-def sample(ctx, sample_dir):
-    """Create a job for a single sample"""
-    print("Checking versions of references..")
-    fixer = Ref_Updater(ctx.obj['config'], ctx.obj['log'])
-    fixer.update_refs()
-    print("Version check done. Creating sbatch job")
-    worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
-    worker.sample_job()
-    done()
-
 @root.group()
 @click.pass_context
 def scrape(ctx):
   """Parses analysis results and uploads to database"""
   pass
-
-@scrape.command()
-@click.argument('sample_dir')
-@click.pass_context
-def sample(ctx, sample_dir):
-  """Parse results from analysing a single sample"""
-  garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
-  garbageman.scrape_sample()
-  done()
 
 @scrape.command()
 @click.argument('project_dir')
