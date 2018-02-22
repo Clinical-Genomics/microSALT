@@ -45,15 +45,15 @@ def done():
 
 @root.group()
 @click.pass_context
-def create(ctx):
-  """Produces sbatch jobs of the given input"""
+def start(ctx):
+  """Starts analysis of project/sample"""
   pass
 
-@create.command()
+@start.command()
 @click.argument('project_dir')
 @click.pass_context
 def project(ctx, project_dir):
-  """Create jobs for a project"""
+  """Analyze a whole project"""
   print("Checking versions of references..")
   fixer = Ref_Updater(ctx.obj['config'], ctx.obj['log'])
   fixer.update_refs()
@@ -62,11 +62,11 @@ def project(ctx, project_dir):
   manager.project_job()
   done() 
 
-@create.command()
+@start.command()
 @click.argument('sample_dir')
 @click.pass_context
 def sample(ctx, sample_dir):
-    """Create a job for a single sample"""
+    """Analyze a single sample"""
     print("Checking versions of references..")
     fixer = Ref_Updater(ctx.obj['config'], ctx.obj['log'])
     fixer.update_refs()
@@ -77,11 +77,11 @@ def sample(ctx, sample_dir):
 
 @root.group()
 @click.pass_context
-def scrape(ctx):
-  """Parses analysis results and uploads to database"""
+def finish(ctx):
+  """Uploads analysis and generates results"""
   pass
 
-@scrape.command()
+@finish.command()
 @click.argument('sample_dir')
 @click.pass_context
 def sample(ctx, sample_dir):
@@ -90,7 +90,7 @@ def sample(ctx, sample_dir):
   garbageman.scrape_sample()
   done()
 
-@scrape.command()
+@finish.command()
 @click.argument('project_dir')
 @click.pass_context
 def project(ctx, project_dir):
@@ -103,7 +103,7 @@ def project(ctx, project_dir):
 @click.argument('project_name')
 @click.pass_context
 def report(ctx, project_name):
-  """Generates report for given project"""
+  """Re-generates reports for a project"""
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
   codemonkey.gen_pdf(project_name)
   codemonkey.gen_csv(project_name)

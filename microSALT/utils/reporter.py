@@ -24,6 +24,7 @@ class Reporter():
     weasyprint.HTML('http://127.0.0.1:5000/microSALT/{}/all'.format(self.name))\
     .write_pdf('{}.pdf'.format(self.name))
     self.kill_flask()
+    self.logger.info("Created {}.pdf in current directory".format(name))
 
   def gen_csv(self, name):
     excel = open("{}.csv".format(name), "w+")
@@ -48,6 +49,7 @@ class Reporter():
       excel.write("{},{},{},{},{}\n".format(s.Customer_ID_sample, s.CG_ID_sample,\
                   s.organism.replace('_', ' ').capitalize(), s.ST,threshold))
     excel.close()
+    self.logger.info("Created {}.csv in current directory".format(name))
 
   def kill_flask(self):
     self.server.terminate()
