@@ -24,7 +24,7 @@
                   <tr>
                     <td><b>GC content</b></td>
                     {% if samples[0].projects.gc_percentage > 0.0 %}
-                      <td>{{samples[0].projects.gc_percentage}}%</td>
+                      <td>{{samples[0].projects.gc_percentage|round(2) }}%</td>
                     {% else %}
                       <td>Not available</td>
                     {% endif %}

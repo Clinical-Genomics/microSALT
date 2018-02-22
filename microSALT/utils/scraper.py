@@ -59,15 +59,15 @@ class Scraper():
 
     with open(report, 'r') as infile:
       for line in infile:
-        lsplit = line.split('\t')
+        lsplit = line.rstrip().split('\t')
         if lsplit[0] == '# contigs':
-          quast['contigs'] = lsplit[0]
+          quast['contigs'] = int(lsplit[1])
         elif lsplit[0] == 'Total length':
-          quast['genome_length'] = lsplit[0]
+          quast['genome_length'] = int(lsplit[1])
         elif lsplit[0] == 'GC (%)':
-          quast['gc_percentage'] = lsplit[0]
+          quast['gc_percentage'] = float(lsplit[1])
         elif lsplit[0] == 'N50':
-          quast['n50'] = lsplit[0]
+          quast['n50'] = int(lsplit[1])
 
     self.db_pusher.upd_rec({'CG_ID_project' : self.lims_fetcher.data['CG_ID_project']}, 'Projects', quast)
     self.logger.info("Project {} recieved quast stats: {}"\

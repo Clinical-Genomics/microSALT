@@ -2,6 +2,7 @@
    By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
+import time
 import weasyprint
 from multiprocessing import Process
 from microSALT.server.views import app
@@ -14,6 +15,8 @@ class Reporter():
     self.logger = log
     self.server = Process(target=app.run)
     self.server.start()
+    #Hinders requests before server goes up
+    time.sleep(0.05)
 
   def gen_pdf(self, name):
     self.name = name

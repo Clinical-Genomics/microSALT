@@ -55,8 +55,8 @@ class Projects(db.Model):
    date_ordered = db.Column(db.DateTime)
    genome_length = db.Column(db.Integer, default=-1)
    gc_percentage = db.Column(db.Float(3,2), default = 0.0)
-   n50 = db.Column(db.SmallInteger, default=-1)
-   contigs = db.Column(db.SmallInteger, default=-1)
+   n50 = db.Column(db.Integer, default=-1)
+   contigs = db.Column(db.Integer, default=-1)
 
 class Versions(db.Model):
   __tablename__ = 'versions'

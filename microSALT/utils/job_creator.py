@@ -242,7 +242,7 @@ class Job_Creator():
             jobno = re.search('(\d+)', str(output)).group(0)
             jobarray.append(jobno)
       #Mail job
-      mailline = "srun -A {} -p core -n 1 -t 00:00:10 -J {}__{}_MAIL --qos {} --dependency=afterany:{} --mail-user={} --mail-type=ALL pwd".format(self.config["slurm_header"]["project"],\
+      mailline = "srun -A {} -p core -n 1 -t 00:00:10 -J {}_{}_MAIL --qos {} --dependency=afterany:{} --mail-user={} --mail-type=ALL pwd".format(self.config["slurm_header"]["project"],\
                  self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"], ':'.join(jobarray), self.config['regex']['mail_recipient'])
       subprocess.Popen(mailline.split(), stdin=None, stdout=None, stderr=None)
     except Exception as e:

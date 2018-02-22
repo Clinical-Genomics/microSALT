@@ -32,7 +32,7 @@ class DB_Manipulator:
     """Creates all tables individually. A bit more control than usual"""
     if not self.engine.dialect.has_table(self.engine, 'projects'):
       Projects.__table__.create(self.engine)
-      self.logger.info("Created samples table")
+      self.logger.info("Created projects table")
     if not self.engine.dialect.has_table(self.engine, 'samples'):
       Samples.__table__.create(self.engine)
       self.logger.info("Created samples table")
