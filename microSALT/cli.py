@@ -12,9 +12,9 @@ import yaml
 
 from pkg_resources import iter_entry_points
 from microSALT import __version__, config
-from microSALT.server.views import app
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
+from microSALT.utils.reporter import Reporter
 from microSALT.utils.ref_updater import Ref_Updater
 
 if config == '':
@@ -100,15 +100,11 @@ def project(ctx, project_dir):
   done()
 
 @root.command()
+@click.argument('project_name')
 @click.pass_context
-def update(ctx):
-  """Verifies & updates all references"""
-  fixer = Ref_Updater(ctx.obj['config'], ctx.obj['log'])
-  fixer.update_refs()
-  done()
-
-@root.command()
-@click.pass_context
-def view(ctx):
-  """Starts a webserver at http://127.0.0.1:5000/microSALT"""
-  app.run()
+def report(ctx, project_name):
+  """Generates report for given project"""
+  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
+  codemonkey.gen_pdf(project_name)
+  codemonkey.kill_flask()
+  done() 
