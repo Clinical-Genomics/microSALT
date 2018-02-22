@@ -41,6 +41,7 @@ class Scraper():
        self.name = dir
        self.lims_fetcher.load_lims_sample_info(dir)
        self.scrape_all_loci()
+       self.scrape_quast()
 
   def scrape_sample(self):
     """Scrapes a sample folder for information"""
@@ -49,6 +50,28 @@ class Scraper():
     self.lims_fetcher.load_lims_sample_info(self.name)
     self.lims_fetcher.load_lims_project_info(self.lims_fetcher.data['CG_ID_project'])
     self.scrape_all_loci()
+    self.scrape_quast()
+
+  def scrape_quast(self):
+    """Scrapes a quast report for assembly information"""
+    quast = dict()
+    report = "{}/quast/report.tsv".format(self.sampledir)
+
+    with open(report, 'r') as infile:
+      for line in infile:
+        lsplit = line.split('\t')
+        if lsplit[0] == '# contigs':
+          quast['contigs'] = lsplit[0]
+        elif lsplit[0] == 'Total length':
+          quast['genome_length'] = lsplit[0]
+        elif lsplit[0] == 'GC (%)':
+          quast['gc_percentage'] = lsplit[0]
+        elif lsplit[0] == 'N50':
+          quast['n50'] = lsplit[0]
+
+    self.db_pusher.upd_rec({'CG_ID_project' : self.lims_fetcher.data['CG_ID_project']}, 'Projects', quast)
+    self.logger.info("Project {} recieved quast stats: {}"\
+                     .format(self.lims_fetcher.data['CG_ID_project'], quast))
 
   def scrape_all_loci(self):
     """Scrapes all BLAST output in a folder"""

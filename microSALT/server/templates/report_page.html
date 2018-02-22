@@ -3,25 +3,60 @@
     {% set thres = dict() %}
       <div class="container-fluid">
         <div class="col-lg-16">
-          <!-- Summary page  -->
+          <!-- Summary pages  -->
           <footer>
             <div class="panel"><div class="panel-body">
               <h2 class="page-header"><strong>microSALT Results</strong><br>
                 <small>Clinical Microbiology</small>
               <small><p align="right">{{date}}</p></small></h2>
-              <h3><strong>Summary</strong><br></h3>
+
+              <h3><strong>Project Summary</strong><br></h3>
               <div class="table-responsive">
                 <table  class="table table-bordered" >
                   <tr>
                     <td><b>Project ID <i>(CG Project ID)</i></b>
-                    <td><b>Analysis date</b></td>
+                    <td>{{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></td>
                   </tr>
                   <tr>
-                    <td>{{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></td>
+                    <td><b>Analysis date</b></td>
                     <td>{{samples[0].date_analysis.date()}}</td>
+                  </tr>
+                  <tr>
+                    <td><b>GC content</b></td>
+                    {% if samples[0].projects.gc_percentage > 0.0 %}
+                      <td>{{samples[0].projects.gc_percentage}}%</td>
+                    {% else %}
+                      <td>Not available</td>
+                    {% endif %}
+                  </tr>
+                  <tr>
+                    <td><b>N50 value</b></td>
+                    {% if samples[0].projects.n50 > 0 %}
+                      <td>{{samples[0].projects.n50}}</td>
+                    {% else %}
+                      <td>Not available</td>
+                    {% endif %}
+                  </tr>
+                  <tr>
+                    <td><b>Genome length</b></td>
+                    {% if samples[0].projects.genome_length > 0 %}
+                      <td>{{samples[0].projects.genome_length}}</td>
+                    {% else %}
+                      <td>Not available</td>
+                    {% endif %}
+                  </tr>
+                  <tr>
+                    <td><b>Contigs (> 500 bp)</b></td>
+                    {% if samples[0].projects.contigs > 0 %}
+                      <td>{{samples[0].projects.contigs}}</td>
+                    {% else %}
+                      <td>Not available</td>
+                    {% endif %}
                   </tr>
                 </table>
               </div>
+
+              <h3><strong>Sample Summary</strong><br></h3>
               <div class="table-responsive">
                 <table  class="table table-bordered" >
                   <tr>
