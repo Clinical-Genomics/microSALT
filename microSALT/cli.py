@@ -106,5 +106,5 @@ def report(ctx, project_name):
   """Generates report for given project"""
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
   codemonkey.gen_pdf(project_name)
-  codemonkey.kill_flask()
+  codemonkey.gen_csv(project_name)
   done() 
