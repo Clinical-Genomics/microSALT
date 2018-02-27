@@ -16,6 +16,7 @@ from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.reporter import Reporter
 from microSALT.utils.ref_updater import Ref_Updater
+from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 if config == '':
   print("ERROR: No properly set-up config under neither ~/.microSALT/config.json nor envvar MICROSALT_CONFIG. Exiting.")
@@ -86,8 +87,13 @@ def finish(ctx):
 @click.pass_context
 def sample(ctx, sample_dir):
   """Parse results from analysing a single sample"""
+  scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
   garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
+
+  scientist.load_lims_sample_info(os.path.normpath(sample_dir).split('_')[0])
   garbageman.scrape_sample()
+  codemonkey.gen_pdf(scientist.data['CG_ID_project'])
+  codemonkey.gen_csv(scientist.data['CG_ID_project'])
   done()
 
 @finish.command()
@@ -96,7 +102,12 @@ def sample(ctx, sample_dir):
 def project(ctx, project_dir):
   """Parse results from analysing a single project"""
   garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
+  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
+
   garbageman.scrape_project()
+  projname = os.path.basename(os.path.normpath(project_dir)).split('_')[0]
+  codemonkey.gen_pdf(projname)
+  codemonkey.gen_csv(projname)
   done()
 
 @root.command()

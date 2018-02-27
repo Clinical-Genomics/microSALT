@@ -1,4 +1,4 @@
-"""Scrapes output files for data and add them to the database
+"""Scrapes output files for data and adds them to the database
    By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
@@ -13,6 +13,7 @@ import yaml
 
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.store.lims_fetcher import LIMS_Fetcher
+from microSALT.utils.reporter import Reporter
 
 # TODO: Rewrite so samples use seperate objects
 class Scraper():
