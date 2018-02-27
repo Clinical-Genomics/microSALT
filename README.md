@@ -20,16 +20,19 @@ The microbial sequence analysis and loci-based typing pipeline (microSALT) is us
 
 ## Quick installation
 ### Conda dependency resolution
+* `git clone https://github.com/Clinical-Genomics/microSALT.git`
 * `conda config --add channels bioconda`
 * `conda create -n microSALT python=3.6`
 * `conda install blast quast spades trimmomatic`
-* `source activate microSALT`
-* `git clone https://github.com/Clinical-Genomics/microSALT.git`
+* `source activate microSALT && cd microSALT && pip install -r requirements.txt && pip install -e . && cd ..`
 * Perform all steps under section  __Configuration__
-* `cd microSALT && pip install -r requirements.txt && pip install -e . && cd ..`
 
-## microSALT Configuration
-Rename the configuration file `configExample.json` to `config.json` and modify the line `SQLALCHEMY_DATABASE_URI` to correctly point to your database. For production purposes, set the `DEBUG` flag to False. Review the paths in the file to accurately represent the file paths and sbatch headers required by your system.
+## Configuration
+Place a copy of the configuration file `configExample.json` name `config.json` under either $MICROSALT_CONFIG or ~/.microSALT/config.json. 
+
+Modify the line `SQLALCHEMY_DATABASE_URI` to correctly point to your database. For production purposes, set the `DEBUG` flag to False.
+
+Review the other fields to make sure they match your environment 
 
 ### LIMS Configuration
 Create `$HOME/.genologicsrc` with the following formatting:
@@ -42,9 +45,9 @@ PASSWORD=your_password
 MAIN_LOG=/home/glsai/your_main_log_file
 ```
 
-### Genologics python3 support
-Change line 5 of `config.py` to `import configparser as ConfigParser` for python3 support.
-Easiest way to find your `config.py` file is to run `microSALT` after all other configuration steps have been executed.
+### Genologics python3 bug fix
+Change line 5 of `config.py` to `import configparser as ConfigParser` to fix the bug.
+To find the path of the file, simply run `microSALT` and note where the log points to.
 
 ## Usage
 * Use the `create` function to generate sbatch job(s) defined under `folders['results']`. Manually start them via the `concatinated.sh` script.
