@@ -4,12 +4,12 @@
 #!/usr/bin/env python
 
 import sys
+import warnings
 
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 
-from microSALT import app
-from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
+from microSALT.store.orm_models import app, Projects, Samples, Seq_types, Versions
 from microSALT.store.models import Profiles
 
 class DB_Manipulator:
@@ -23,14 +23,16 @@ class DB_Manipulator:
     self.metadata = MetaData(self.engine)
     #TODO: Switch profiles to ORM format
     self.profiles = Profiles(self.metadata, self.config).tables
-
-    self.create_tables()
+    #Turns off pymysql deprecation warnings until they can update their code
+    with warnings.catch_warnings():
+      warnings.simplefilter("ignore")
+      self.create_tables()
 
   def create_tables(self):
     """Creates all tables individually. A bit more control than usual"""
     if not self.engine.dialect.has_table(self.engine, 'projects'):
       Projects.__table__.create(self.engine)
-      self.logger.info("Created samples table")
+      self.logger.info("Created projects table")
     if not self.engine.dialect.has_table(self.engine, 'samples'):
       Samples.__table__.create(self.engine)
       self.logger.info("Created samples table")
@@ -62,7 +64,7 @@ class DB_Manipulator:
       self.session.add(newobj)
       self.session.commit()
     else:
-      self.logger.info("Failed to insert duplicate record into table {}".format(tablename))
+      self.logger.warn("Hindered insertion of existing record ({}) into table {}".format(data_dict, tablename))
 
   def upd_rec(self, req_dict, tablename, upd_dict):
     """Updates a record to the specified table through a dict with columns as keys."""
@@ -85,7 +87,7 @@ class DB_Manipulator:
     self.profiles[organism].drop()
     self.profiles[organism].create()
     self.init_profiletable(organism, table)
-    self.logger.warning("Profile table for {} updated to latest version".format(organism)) 
+    self.logger.info("Profile table for {} updated to latest version".format(organism)) 
  
   def init_profiletable(self, filename, table):
     """Creates profile tables by looping, since a lot of infiles exist"""
@@ -105,7 +107,7 @@ class DB_Manipulator:
     self.logger.info("Created profile table {}".format(table))
     # Set initial debug version
     self.add_rec({'name': 'profile_{}'.format(filename), 'version': '0'}, 'Versions')
-    self.logger.info("Added dummy version (0) for table profile_{}".format(filename)) 
+    self.logger.info("Profile table profile_{} initialized".format(filename)) 
  
   def get_columns(self, tablename):
     """ Returns all records for a given ORM table"""
@@ -147,10 +149,10 @@ class DB_Manipulator:
       self.logger.warning("No organism set for {}. Most likely control sample. Setting ST to -1".format(cg_sid))
       return -1
     [alleles, allelediff] = self.get_unique_alleles(cg_sid, organism, threshold)
-    if not allelediff >= 0:
+    if allelediff < 0:
       threshold = False
       [alleles, allelediff] = self.get_unique_alleles(cg_sid, organism, threshold)
-      if not allelediff >= 0:
+      if allelediff < 0:
         self.logger.warning("Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3"\
                             .format(cg_sid, organism))
         self.setPredictor(cg_sid)
@@ -183,9 +185,12 @@ class DB_Manipulator:
     elif len(output) == 1:
       #Doing bestST only to establish best loci number combination
       return self.bestST(cg_sid, [output[0].ST])
+    elif threshold:
+      self.logger.warning("Sample {} on {} has an allele set but no ST. Novel ST found, setting ST to -4".format(cg_sid, organism))
+      return -4
     else:
-      self.logger.warning("Sample {} on {} has a single allele set but no matching ST.\
-Either incorrectly called allele, or novel ST has been found. Setting ST to -2".format(cg_sid, organism))
+      self.logger.warning("Sample {} on {} has an allele set but hits are low-quality and\
+ do not resolve to an ST. Setting ST to -2".format(cg_sid, organism))
       self.setPredictor(cg_sid)
       return -2
 

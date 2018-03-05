@@ -3,9 +3,13 @@
 
 #!/usr/bin/env python
 
+from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import *
 from sqlalchemy.orm import relationship
-from microSALT import db
+
+from microSALT import app
+
+db = SQLAlchemy(app)
 
 class Samples(db.Model):
 
@@ -30,18 +34,17 @@ class Seq_types(db.Model):
   CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
   loci = db.Column(db.String(10), primary_key=True)
   allele = db.Column(db.SmallInteger)
-  haplotype = db.Column(db.String(5))
   contig_name = db.Column(db.String(20), primary_key=True)
   contig_length = db.Column(db.Integer)
   contig_coverage = db.Column(db.Float(6,2))
-  identity = db.Column(db.Float(3,2))
+  identity = db.Column(db.Float(3,2), default= 0.0)
   evalue = db.Column(db.String(10))
   bitscore = db.Column(db.SmallInteger)
   contig_start = db.Column(db.Integer)
   contig_end = db.Column(db.Integer)
   loci_start = db.Column(db.Integer)
   loci_end = db.Column(db.Integer)
-  st_predictor = db.Column(db.Boolean)
+  st_predictor = db.Column(db.Boolean, default = 0)
 
 class Projects(db.Model):
    __tablename__ = 'projects'
@@ -50,7 +53,10 @@ class Projects(db.Model):
    CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
    Customer_ID_project = db.Column(db.String(15))
    date_ordered = db.Column(db.DateTime)
-   date_delivered = db.Column(db.DateTime)
+   genome_length = db.Column(db.Integer, default=-1)
+   gc_percentage = db.Column(db.Float(3,2), default = 0.0)
+   n50 = db.Column(db.Integer, default=-1)
+   contigs = db.Column(db.Integer, default=-1)
 
 class Versions(db.Model):
   __tablename__ = 'versions'

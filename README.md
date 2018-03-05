@@ -20,23 +20,21 @@ The microbial sequence analysis and loci-based typing pipeline (microSALT) is us
 
 ## Quick installation
 ### Conda dependency resolution
+* `git clone https://github.com/Clinical-Genomics/microSALT.git`
 * `conda config --add channels bioconda`
-* `conda config --add channels conda-forge`
-* `conda create -n MLST python=3.6`
-* `conda install blast trimmomatic spades`
-* `source activate MLST`
-* `git clone https://github.com/sylvinite/microSALT.git`
+* `conda create -n microSALT python=3.6`
+* `conda install blast quast spades trimmomatic`
+* `source activate microSALT && cd microSALT && pip install -r requirements.txt && pip install -e . && cd ..`
 * Perform all steps under section  __Configuration__
-* `cd microSALT && pip install -r requirements.txt && pip install -e . && cd ..`
 
 ## Configuration
-### Flask/Database configuration
-Rename the configuration file under folder `instance` to `sqlalchemy_config.py` and modify the line `SQLALCHEMY_DATABASE_URI` to correctly point to your database. For production purposes, set the `DEBUG` flag to False.
+Place a copy of the configuration file `configExample.json` name `config.json` under either $MICROSALT_CONFIG or ~/.microSALT/config.json. 
 
-### Paths file
-Rename the configuration file under folder `instance` to `paths.yml`. Review the file to accurately represent the file paths and sbatch headers required by your system.
+Modify the line `SQLALCHEMY_DATABASE_URI` to correctly point to your database. For production purposes, set the `DEBUG` flag to False.
 
-### LIMS
+Review the other fields to make sure they match your environment 
+
+### LIMS Configuration
 Create `$HOME/.genologicsrc` with the following formatting:
 ```
 [genologics]
@@ -47,13 +45,12 @@ PASSWORD=your_password
 MAIN_LOG=/home/glsai/your_main_log_file
 ```
 
-### Genologics python3 support
-`ConfigParser` in `config.py` needs to be replaced with `configparser` for python3 support.
-
-Easiest way to find your `config.py` file is to run `microSALT` after all other configuration steps have been executed.
+### Genologics python3 bug fix
+Change line 5 of `config.py` to `import configparser as ConfigParser` to fix the bug.
+To find the path of the file, simply run `microSALT` and note where the log points to.
 
 ## Usage
 * Use the `create` function to generate sbatch job(s) defined under `folders['results']`. Manually start them via the `concatinated.sh` script.
 * After the jobs have been finished. Use the `scrape` function to upload parsed results to the SQL backend.
-* Use the `view` function to start a flask instance to view the results. Point your browser at `http://127.0.0.1:5000/microSALT`
+* Use the `view` function to start a flask instance to view the results. Point your browser at `http://127.0.0.1:5000/`
 * Navigate to your run, and print the results to PDF format (Command/Ctrl + P) if requested.

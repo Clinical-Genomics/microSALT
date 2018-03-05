@@ -1,16 +1,21 @@
 from datetime import date
 from flask import Flask, render_template
+import logging
 
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
-from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
-from microSALT import app
 from sqlalchemy.sql import *
 from sqlalchemy.sql.expression import case, func
+
+from microSALT.store.db_manipulator import app
+from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
 
 engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
 Session = sessionmaker(bind=engine)
 session = Session()
+#Removes server start messages
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.CRITICAL)
 
 @app.route('/')
 def start_page():

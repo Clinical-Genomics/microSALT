@@ -6,3 +6,4 @@ genologics
 pymysql
 pyyaml
 sqlalchemy
+weasyprint
