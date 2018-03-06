@@ -23,26 +23,27 @@ The microbial sequence analysis and loci-based typing pipeline (microSALT) is us
 * `git clone https://github.com/Clinical-Genomics/microSALT.git`
 * `conda config --add channels bioconda`
 * `conda create -n microSALT python=3.6`
+* `source activate microSALT`
 * `conda install blast quast spades trimmomatic`
-* `source activate microSALT && cd microSALT && pip install -r requirements.txt && pip install -e . && cd ..`
+* `cd microSALT && pip install -r requirements.txt && pip install .`
 * Perform all steps under section  __Configuration__
 
 ## Configuration
-Place a copy of the configuration file `configExample.json` name `config.json` under either $MICROSALT_CONFIG or ~/.microSALT/config.json. 
+Copy the configuration file `configExample.json` to `~/.microSALT/config.json` _or_ place it wherever and point $MICROSALT_CONFIG to it.
 
-Modify the line `SQLALCHEMY_DATABASE_URI` to correctly point to your database. For production purposes, set the `DEBUG` flag to False.
+Modify the line `SQLALCHEMY_DATABASE_URI` to fill out your database credentials. For production purposes, set the `DEBUG` flag to False.
 
-Review the other fields to make sure they match your environment 
+Edit the other fields to match your environment.
 
 ### LIMS Configuration
 Create `$HOME/.genologicsrc` with the following formatting:
 ```
 [genologics]
-BASEURI=https://yourlims.example.com:8443
+BASEURI=https://yourlims.corporation.se:8443
 USERNAME=your_username
 PASSWORD=your_password
 [logging]
-MAIN_LOG=/home/glsai/your_main_log_file
+MAIN_LOG=/tmp/lims.log
 ```
 
 ### Genologics python3 bug fix
@@ -50,7 +51,6 @@ Change line 5 of `config.py` to `import configparser as ConfigParser` to fix the
 To find the path of the file, simply run `microSALT` and note where the log points to.
 
 ## Usage
-* Use the `create` function to generate sbatch job(s) defined under `folders['results']`. Manually start them via the `concatinated.sh` script.
-* After the jobs have been finished. Use the `scrape` function to upload parsed results to the SQL backend.
-* Use the `view` function to start a flask instance to view the results. Point your browser at `http://127.0.0.1:5000/`
-* Navigate to your run, and print the results to PDF format (Command/Ctrl + P) if requested.
+* Use the `start` function to start sbatch job(s), producing output to `folders['results']`.
+* After you have been informed of job completetion (through e-mail). Use the `finish` function to upload parsed results to the SQL back-end and produce reports (PDF & CSV).
+* If you need to re-generate an old report, use the `report` function
