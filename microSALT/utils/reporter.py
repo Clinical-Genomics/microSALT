@@ -2,8 +2,8 @@
    By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
+import requests
 import time
-import weasyprint
 from multiprocessing import Process
 from microSALT.server.views import app, session
 from microSALT.store.orm_models import Samples
@@ -16,13 +16,17 @@ class Reporter():
     self.logger = log
     self.server = Process(target=app.run)
 
+
   def gen_pdf(self, name):
     self.server.start()
     #Hinders requests before server goes up
     time.sleep(0.05)
     self.name = name
-    weasyprint.HTML('http://127.0.0.1:5000/microSALT/{}/all'.format(self.name))\
-    .write_pdf('{}.pdf'.format(self.name))
+ 
+    #Poke webpage
+    r= requests.get('http://127.0.0.1:5000/microSALT/{}/download'.format(name))
+    self.logger.info("Webserver yieled code {} on request".format(r.status_code))
+
     self.kill_flask()
     self.logger.info("Created {}.pdf in current directory".format(name))
 
