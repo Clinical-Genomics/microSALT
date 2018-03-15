@@ -31,6 +31,7 @@ class LIMS_Fetcher():
       self.logger.warn("Unable to fetch LIMS info for project {}\nSource: {}".format(cg_projid, str(e)))
 
   def load_lims_sample_info(self, cg_sampleid, external=False):
+    """ Loads all utilized LIMS info. Organism assumed to be written as binomial name """
     if external:
       sample = self.lims.get_samples(name=cg_sampleid)
       if len(sample) != 1:
@@ -40,6 +41,7 @@ class LIMS_Fetcher():
       sample = Sample(self.lims, id=cg_sampleid)
     if 'Strain' in sample.udf: 
       organism = sample.udf['Strain']
+      # Backwards compatibility
       if sample.udf['Strain'] == 'VRE':
         if 'Reference Genome Microbial' in sample.udf:
           if sample.udf['Reference Genome Microbial'] == 'NC_017960.1':
@@ -48,9 +50,11 @@ class LIMS_Fetcher():
             organism = 'Enterococcus faecalis'
         elif 'Comment' in sample.udf:
           organism = sample.udf['Comment']
+    elif 'Comment' in sample.udf:
+      organism = sample.udf['Comment']
+    # Consistent safe-guard
     else:
-      #Consistency
-      organism = "other"
+      organism = "Other"
       self.logger.warn("Unable to resolve ambigious organism found in sample {}."\
       .format(cg_sampleid))
     try:
