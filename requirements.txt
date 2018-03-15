@@ -6,4 +6,3 @@ genologics
 pymysql
 pyyaml
 sqlalchemy
-xhtml2pdf

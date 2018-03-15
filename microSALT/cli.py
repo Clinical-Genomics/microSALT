@@ -118,4 +118,11 @@ def report(ctx, project_name):
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
   codemonkey.gen_pdf(project_name)
   codemonkey.gen_csv(project_name)
-  done() 
+  done()
+
+@root.command()
+@click.pass_context
+def view(ctx):
+  """Starts a webserver at http://127.0.0.1:5000 for interactive viewing"""
+  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
+  codemonkey.start_web()

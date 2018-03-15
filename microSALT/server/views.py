@@ -1,5 +1,6 @@
 from datetime import date
 from flask import Flask, render_template
+from flask_mail import Mail, Message
 import logging
 from xhtml2pdf import pisa
 from io import StringIO, BytesIO
@@ -15,6 +16,9 @@ from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
 engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
 Session = sessionmaker(bind=engine)
 session = Session()
+mail_ext = Mail()
+app.debug = 0
+mail_ext.init_app(app)
 #Removes server start messages
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.CRITICAL)
@@ -64,26 +68,3 @@ def report_page(project, organism_group):
         samples = sample_info,
         date = date.today().isoformat(),
         version = versiondict)
-
-@app.route('/microSALT/<project>/download')
-def download_page(project):
-    #Data charging
-    sample_info = session.query(Samples).filter(Samples.CG_ID_project==project)
-    sample_info = sorted(sample_info, key=lambda sample: int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
-    versions = session.query(Versions).all()
-    versiondict = dict()
-    for version in versions:
-      name = version.name[8:]
-      versiondict[name] = version.version
-
-    create_pdf(render_template('report_page.html', samples = sample_info, date = date.today().isoformat(), version = versiondict))
-    return ('', 204)
-
-def create_pdf(pdf_data):
-  """Function to generate pdf files"""
-  file = open('example.pdf', 'w+b')
-  #These work but break template
-  #pisa.CreatePDF(BytesIO(pdf_data.encode('utf-8')).getvalue(), file)
-  pisa.CreatePDF(StringIO(pdf_data), file)
-  file.close()
-
