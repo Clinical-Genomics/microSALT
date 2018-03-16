@@ -8,7 +8,10 @@ import os
 import smtplib
 
 from os.path import basename
-from email.mime.*  import MIMEText, MIMEMultipart, MIMEApplication
+from email.mime.text  import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
+
 from multiprocessing import Process
 
 from microSALT.server.views import app, session, gen_reportdata
