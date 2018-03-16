@@ -6,13 +6,15 @@ import requests
 import time
 import os
 import smtplib
+
 from os.path import basename
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 from email.mime.application import MIMEApplication
 from multiprocessing import Process
-from microSALT.server.views import app, session
+
+from microSALT.server.views import app, session, gen_reportdata
 from microSALT.store.orm_models import Samples
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 
@@ -30,7 +32,6 @@ class Reporter():
     self.name = name
     ticketFinder = LIMS_Fetcher(self.config, self.logger)
     ticketFinder.load_lims_project_info(name)
-    #wget.download("http://127.0.0.1:5000/microSALT/{}/all -o {}_microSALT.html".format(name, ticketFinder.data['Customer_ID_project']))
     r = requests.get("http://127.0.0.1:5000/microSALT/{}/all".format(name), allow_redirects=True)
     outname = "{}_microSALT.html".format(ticketFinder.data['Customer_ID_project'])
     open(outname, 'wb').write(r.content)
@@ -48,7 +49,6 @@ class Reporter():
     part.add_header('Content-Disposition', 'attachment; filename="%s"' % os.path.basename(file_name))
     msg.attach(part)
 
-
     s = smtplib.SMTP('localhost')
     s.connect()
     s.sendmail(msg['From'], msg['To'], msg.as_string())
@@ -63,26 +63,11 @@ class Reporter():
 
   def gen_csv(self, name):
     excel = open("{}.csv".format(name), "w+")
-    sample_info = session.query(Samples).filter(Samples.CG_ID_project==name)
-    sample_info = sorted(sample_info, key=lambda sample: \
-                  int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
+    sample_info = gen_reportdata(name)
     excel.write("Customer_ID_sample,CG_ID_sample,organism,ST,Thresholds\n")
-    for s in sample_info:
-      if s.ST < 0:
-        if s.ST == -1:
-          s.ST = Control
-        elif s.ST == -4:
-          s.ST = Novel
-        else:
-          s.ST='None'
-
-      threshold = 'Passed'
-      for seq_type in s.seq_types:
-        if seq_type.identity < 100.0:
-          threshold = 'Failed'
-        
+    for s in sample_info['samples']:
       excel.write("{},{},{},{},{}\n".format(s.Customer_ID_sample, s.CG_ID_sample,\
-                  s.organism.replace('_', ' ').capitalize(), s.ST,threshold))
+                    s.organism.replace('_', ' ').capitalize(), s.ST,s.threshold))
     excel.close()
     self.logger.info("Created {}.csv in current directory".format(name))
 
@@ -90,4 +75,3 @@ class Reporter():
     self.server.terminate()
     self.server.join()
     self.logger.info("Closed webserver on http://127.0.0.1:5000/")
-
