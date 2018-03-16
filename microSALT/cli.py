@@ -15,7 +15,7 @@ from microSALT import __version__, config
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.reporter import Reporter
-from microSALT.utils.ref_updater import Ref_Updater
+from microSALT.utils.referencer import Referencer
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 if config == '':
@@ -56,7 +56,7 @@ def start(ctx):
 def project(ctx, project_dir):
   """Analyze a whole project"""
   print("Checking versions of references..")
-  fixer = Ref_Updater(ctx.obj['config'], ctx.obj['log'])
+  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
   fixer.update_refs()
   print("Version check done. Creating sbatch jobs")
   manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
@@ -69,7 +69,7 @@ def project(ctx, project_dir):
 def sample(ctx, sample_dir):
     """Analyze a single sample"""
     print("Checking versions of references..")
-    fixer = Ref_Updater(ctx.obj['config'], ctx.obj['log'])
+    fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
     fixer.update_refs()
     print("Version check done. Creating sbatch job")
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
@@ -110,7 +110,21 @@ def project(ctx, project_dir):
   codemonkey.gen_csv(projname)
   done()
 
-@root.command()
+@root.group()
+@click.pass_context
+def util(ctx):
+  """ Utilities for specific purposes """
+  pass
+
+@util.command()
+@click.argument('organism')
+@click.pass_context
+def refer(ctx, organism):
+  """ Adds a new internal organism from pubMLST """
+  refereee = Referencer(ctx.obj['config'], ctx.obj['log'])
+  referee.add_pubmlst(organism)
+
+@util.command()
 @click.argument('project_name')
 @click.pass_context
 def report(ctx, project_name):
@@ -120,9 +134,9 @@ def report(ctx, project_name):
   codemonkey.gen_csv(project_name)
   done()
 
-@root.command()
+@util.command()
 @click.pass_context
 def view(ctx):
-  """Starts a webserver at http://127.0.0.1:5000 for interactive viewing"""
+  """Starts an interactive webserver for viewing"""
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
   codemonkey.start_web()

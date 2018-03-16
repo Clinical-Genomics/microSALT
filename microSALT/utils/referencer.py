@@ -11,7 +11,7 @@ import urllib.request
 from bs4 import BeautifulSoup
 from microSALT.store.db_manipulator import DB_Manipulator
 
-class Ref_Updater():
+class Referencer():
 
   def __init__(self, config, log):
     self.config = config
@@ -73,18 +73,84 @@ class Ref_Updater():
     except StopIteration:
       pass
 
-  def fetch_pubmlst(self):
-    """ Updates reference for data that is stored on pubMLST """
+  def existing_organisms(self):
+    """ Returns list of all organisms currently added """
+    return self.organisms
+
+  def add_pubmlst(self, organism):
+    """ Checks pubmlst for references of given organism and downloads them """
+    #Organism must be in binomial format and only resolve to one hit
+    organism = organism.lower().replace(' ', '_')
+    if organism in self.organisms:
+      self.logger.info("Organism {} already stored in microSALT".format(organism))
+      return
+    db_query = self.query_pubmlst()
+
+    #Doublecheck organism name is correct and unique
+    counter = 0.0 
+    for item in db_query:
+      for subtype in item['databases']:
+        if name.replace('_', ' ') in subtype['description'].lower():
+          #Seqdef always appear after isolates, so this is fine
+          seqdef_url = subtype['href']
+          counter += 1.0
+    if counter > 2:
+      self.logger.info("Organism request resolved to {} organisms. Please be more stringent".format(counter/2))
+      return
+    elif counter < 2:
+      self.logger.info("Unable to find requested organism in pubMLST database")
+      return
+    self.download_pubmlst(organism, seqdef_url)
+
+  def query_pubmlst(self):
+    """ Returns a json object containing all organisms available via pubmlst.org """
     # Example request URI: http://rest.pubmlst.org/db/pubmlst_neisseria_seqdef/schemes/1/profiles_csv
     seqdef_url = dict()
     databases = "http://rest.pubmlst.org/db"
-    req = urllib.request.Request(databases)
+    db_req = urllib.request.Request(databases)
+    with urllib.request.urlopen(db_req) as response:
+      db_query = json.loads(response.read().decode('utf-8'))
+    return db_query
+
+  def download_pubmlst(self, organism, subtype_href):
+    """ Downloads ST and loci for a given organism stored on pubMLST if it is more recent. Returns update date """
+    organism = organism.lower().replace(' ', '_')
+    req = urllib.request.Request("{}/schemes/1".format(subtype_href))
     with urllib.request.urlopen(req) as response:
-      query = json.loads(response.read().decode('utf-8'))
+        query = json.loads(response.read().decode('utf-8'))
+    currver = self.db_access.get_version("profile_{}".format(organism))
+    if query['last_updated'] <= currver:
+      return currver
+
+    #Pull ST file
+    output = "{}/{}".format(self.config['folders']['profiles'], organism)
+    input = "{}/schemes/1/profiles_csv".format(subtype_href)
+    urllib.request.urlretrieve(input, output)
+    #Pull locus files
+    shutil.rmtree(output)
+    os.makedirs(output)
+    for locipath in query['loci']:
+          loci = os.path.basename(os.path.normpath(locipath))
+          urllib.request.urlretrieve("{}/alleles_fasta".format(locipath), "{}/{}.tfa".format(output, loci))
+
+    profilename = "profile_{}".format(organism)
+    if self.db_access.get_version(profilename) == "0":
+      #Add database entry
+      self.db_access.add_rec('Versions', {'name':profilename,'version':query['last_updated']})
+      self.logger.info("Added {} with version {} to microSALT".format(organism, update))
+    else:
+      self.db_access.upd_rec({'name':profilename}, 'Versions', {'version':query['last_updated']})
+      self.logger.info('Updated {} to version {}'.format(profilename, query['last_updated']))
+    self.db_access.reload_profiletable(key)
+    return query['last_updated']
+
+  def fetch_pubmlst(self):
+    """ Updates reference for data that is stored on pubMLST """
+    db_query = self.query_pubmlst()
     
     # Fetch seqdef locations 
     for name in self.organisms:
-      for item in query:
+      for item in db_query:
         for subtype in item['databases']:
           if name.replace('_', ' ') in subtype['description'].lower():
             #Seqdef always appear after isolates, so this is fine
@@ -92,32 +158,4 @@ class Ref_Updater():
             seqdef_url[name] = subtype['href']
 
     for key, val in seqdef_url.items():
-      pname = "profile_{}".format(key)
-      currver = self.db_access.get_version(pname)
-
-      # Fetch version
-      ver_input = "{}/schemes/1/profiles".format(val)
-      req = urllib.request.Request(ver_input)
-      with urllib.request.urlopen(req) as response:
-        query = json.loads(response.read().decode('utf-8'))
-      if query['last_updated'] > currver:
-        # Download definition files
-        output = "{}/{}".format(self.config['folders']['profiles'], key)
-        input = "{}/schemes/1/profiles_csv".format(val)
-        urllib.request.urlretrieve(input, output)
-        # Update database
-        self.db_access.upd_rec({'name':pname}, 'Versions', {'version':query['last_updated']})
-        self.db_access.reload_profiletable(key)
-
-        loci_input="{}/schemes/1".format(val)
-        req = urllib.request.Request(loci_input)
-        with urllib.request.urlopen(req) as response:
-          query = json.loads(response.read().decode('utf-8'))
-        # Clear existing directory and download allele files
-        out = "{}/{}".format(self.config['folders']['references'], key)
-        shutil.rmtree(out)
-        os.makedirs(out)
-        # Example request URI: http://rest.pubmlst.org/db/pubmlst_neisseria_seqdef/loci/abcZ/alleles_fasta
-        for locipath in query['loci']:
-          loci = os.path.basename(os.path.normpath(locipath))
-          urllib.request.urlretrieve("{}/alleles_fasta".format(locipath), "{}/{}.tfa".format(out, loci))
+      self.download_pubmlst(key, val)
