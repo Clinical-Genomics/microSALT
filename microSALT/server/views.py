@@ -73,7 +73,9 @@ def gen_reportdata(pid, organism_group='all'):
   sample_info = sorted(sample_info, key=lambda sample: \
                 int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
   for s in sample_info:
-    if s.ST < 0:
+    if s.ST > 0 and s.Customer_ID_sample.startswith('NTC'):
+      s.ST = 'Control'   
+    elif s.ST < 0:
       if s.ST == -1:
         s.ST = 'Control'
       elif s.ST == -4:
