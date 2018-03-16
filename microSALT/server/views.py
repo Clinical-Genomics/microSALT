@@ -1,8 +1,6 @@
 from datetime import date
 from flask import Flask, render_template
-from flask_mail import Mail, Message
 import logging
-from xhtml2pdf import pisa
 from io import StringIO, BytesIO
 
 from sqlalchemy import *
@@ -16,9 +14,7 @@ from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
 engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
 Session = sessionmaker(bind=engine)
 session = Session()
-mail_ext = Mail()
 app.debug = 0
-mail_ext.init_app(app)
 #Removes server start messages
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.CRITICAL)
