@@ -23,7 +23,9 @@
     "profiles": "/mnt/hds/proj/cust015/mlst/references/profiles",
     "references": "/mnt/hds/proj/cust015/mlst/references/definitions_locisplit",
     "_comment": "Root folder for ALL output",
-    "results": "/mnt/hds/proj/cust015/mlst/results"
+    "results": "/mnt/hds/proj/cust015/mlst/results",
+    "_comment": "Root folder for input project folders",
+    "input": "/home/isak.sylvin/CG_MLST/cust015/isak_dev/indata"
   },
 
   "_comment": "Database/Flask configuration",
