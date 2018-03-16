@@ -92,7 +92,7 @@ def sample(ctx, sample_dir):
 
   scientist.load_lims_sample_info(os.path.normpath(sample_dir).split('_')[0])
   garbageman.scrape_sample()
-  codemonkey.gen_pdf(scientist.data['CG_ID_project'])
+  codemonkey.gen_html(scientist.data['CG_ID_project'])
   codemonkey.gen_csv(scientist.data['CG_ID_project'])
   done()
 
@@ -106,7 +106,7 @@ def project(ctx, project_dir):
 
   garbageman.scrape_project()
   projname = os.path.basename(os.path.normpath(project_dir)).split('_')[0]
-  codemonkey.gen_pdf(projname)
+  codemonkey.gen_html(projname)
   codemonkey.gen_csv(projname)
   done()
 
@@ -116,7 +116,7 @@ def project(ctx, project_dir):
 def report(ctx, project_name):
   """Re-generates reports for a project"""
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
-  codemonkey.gen_pdf(project_name)
+  codemonkey.gen_html(project_name)
   codemonkey.gen_csv(project_name)
   done()
 

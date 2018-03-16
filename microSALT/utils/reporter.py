@@ -8,10 +8,7 @@ import os
 import smtplib
 
 from os.path import basename
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.image import MIMEImage
-from email.mime.application import MIMEApplication
+from email.mime.*  import MIMEText, MIMEMultipart, MIMEApplication
 from multiprocessing import Process
 
 from microSALT.server.views import app, session, gen_reportdata
@@ -25,21 +22,21 @@ class Reporter():
     self.config = config
     self.logger = log
     self.server = Process(target=app.run)
+    ticketFinder = LIMS_Fetcher(self.config, self.logger)
 
-  def gen_pdf(self, name):
+  def gen_html(self, name):
     self.name = name
     self.start_web()
     self.name = name
-    ticketFinder = LIMS_Fetcher(self.config, self.logger)
-    ticketFinder.load_lims_project_info(name)
+    self.ticketFinder.load_lims_project_info(name)
     r = requests.get("http://127.0.0.1:5000/microSALT/{}/all".format(name), allow_redirects=True)
-    outname = "{}_microSALT.html".format(ticketFinder.data['Customer_ID_project'])
+    outname = "{}_microSALT.html".format(self.ticketFinder.data['Customer_ID_project'])
     open(outname, 'wb').write(r.content)
-    self.logger.info("Generated project {} in file {}".format(name, outname))
     self.kill_flask()
-    self.mail_pdf(outname)
+    self.mail_html(outname)
+    os.remove(outname)
 
-  def mail_pdf(self, file_name):
+  def mail_html(self, file_name):
     msg = MIMEMultipart()
     msg['Subject'] = '{} Report'.format(file_name.split('_')[0])
     msg['From'] = 'microSALT'
@@ -62,6 +59,7 @@ class Reporter():
     time.sleep(0.05)
 
   def gen_csv(self, name):
+    self.ticketFinder.load_lims_project_info(name)
     excel = open("{}.csv".format(name), "w+")
     sample_info = gen_reportdata(name)
     excel.write("Customer_ID_sample,CG_ID_sample,organism,ST,Thresholds\n")
@@ -69,7 +67,10 @@ class Reporter():
       excel.write("{},{},{},{},{}\n".format(s.Customer_ID_sample, s.CG_ID_sample,\
                     s.organism.replace('_', ' ').capitalize(), s.ST,s.threshold))
     excel.close()
-    self.logger.info("Created {}.csv in current directory".format(name))
+    inpath = "{}/{}".format(name, os.getcwd())
+    outpath = "{}/{}/{}.csv".format(config['folders']['input'], name, self.ticketFinder.data['Customer_ID_project'])
+    os.rename(inpath, outpath)
+    self.logger.info("Created csv for {} at {}".format(name, outpath))
 
   def kill_flask(self):
     self.server.terminate()
