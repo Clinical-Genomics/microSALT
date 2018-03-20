@@ -53,4 +53,4 @@ To find the path of the file, simply run `microSALT` and note where the log poin
 ## Usage
 * Use the `start` function to start sbatch job(s), producing output to `folders['results']`.
 * After you have been informed of job completetion (through e-mail). Use the `finish` function to upload parsed results to the SQL back-end and produce reports (PDF & CSV).
-* If you need to re-generate an old report, use the `report` function
+* Various functionality, including adding new reference organisms and re-generating reports; are stored under the `util` command.
