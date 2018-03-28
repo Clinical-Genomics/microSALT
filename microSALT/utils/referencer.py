@@ -115,37 +115,42 @@ class Referencer():
   def download_pubmlst(self, organism, subtype_href):
     """ Downloads ST and loci for a given organism stored on pubMLST if it is more recent. Returns update date """
     organism = organism.lower().replace(' ', '_')
-    req = urllib.request.Request("{}/schemes/1".format(subtype_href))
-    with urllib.request.urlopen(req) as response:
-        query = json.loads(response.read().decode('utf-8'))
+
+    #Pull version
+    ver_req = urllib.request.Request("{}/schemes/1/profiles".format(subtype_href))
+    with urllib.request.urlopen(ver_req) as response:
+        ver_query = json.loads(response.read().decode('utf-8'))
     currver = self.db_access.get_version("profile_{}".format(organism))
-    if query['last_updated'] <= currver:
+    if ver_query['last_updated'] <= currver:
       return currver
 
     #Pull ST file
-    output = "{}/{}".format(self.config['folders']['profiles'], organism)
+    st_target = "{}/{}".format(self.config['folders']['profiles'], organism)
     input = "{}/schemes/1/profiles_csv".format(subtype_href)
-    urllib.request.urlretrieve(input, output)
+    urllib.request.urlretrieve(input, st_target)
     #Pull locus files
+    loci_input="{}/schemes/1".format(subtype_href)
+    loci_req = urllib.request.Request(loci_input)
+    with urllib.request.urlopen(loci_req) as response:
+     loci_query = json.loads(response.read().decode('utf-8'))
+
+    output = "{}/{}".format(self.config['folders']['references'], organism)
     shutil.rmtree(output)
     os.makedirs(output)
-    for locipath in query['loci']:
+
+    for locipath in loci_query['loci']:
           loci = os.path.basename(os.path.normpath(locipath))
           urllib.request.urlretrieve("{}/alleles_fasta".format(locipath), "{}/{}.tfa".format(output, loci))
 
     profilename = "profile_{}".format(organism)
-    if self.db_access.get_version(profilename) == "0":
-      #Add database entry
-      self.db_access.add_rec('Versions', {'name':profilename,'version':query['last_updated']})
-      self.logger.info("Added {} with version {} to microSALT".format(organism, update))
-    else:
-      self.db_access.upd_rec({'name':profilename}, 'Versions', {'version':query['last_updated']})
-      self.logger.info('Updated {} to version {}'.format(profilename, query['last_updated']))
-    self.db_access.reload_profiletable(key)
-    return query['last_updated']
+    self.db_access.upd_rec({'name':profilename}, 'Versions', {'version':ver_query['last_updated']})
+    self.logger.info('Updated {} to version {}'.format(profilename, ver_query['last_updated']))
+    self.db_access.reload_profiletable(organism)
+    return ver_query['last_updated']
 
   def fetch_pubmlst(self):
     """ Updates reference for data that is stored on pubMLST """
+    seqdef_url=dict()
     db_query = self.query_pubmlst()
     
     # Fetch seqdef locations 

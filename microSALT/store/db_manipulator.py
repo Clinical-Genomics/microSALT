@@ -46,18 +46,23 @@ class DB_Manipulator:
       if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
         self.profiles[k].create()
         self.init_profiletable(k, v)       
+        self.add_rec({'name': 'profile_{}'.format(k), 'version': '0'}, 'Versions', force=True)
+        self.logger.info("Profile table profile_{} initialized".format(k))
 
-  def add_rec(self, data_dict, tablename):
+  def add_rec(self, data_dict, tablename, force=False):
     """Adds a record to the specified table through a dict with columns as keys."""
-    table = eval(tablename)
-    #Check for existing entry
-    pk_list = table.__table__.primary_key.columns.keys()
+    try:
+      table = eval(tablename)
+      #Check for existing entry
+      pk_list = table.__table__.primary_key.columns.keys()
+    except Exception as e:
+      self.logger.error("Attempted to access table {} which has not been created".format(tablename))
     pk_values = list()
     for item in pk_list:
       pk_values.append(data_dict[item])
     existing = self.session.query(table).get(pk_values)
     #Add record
-    if not existing:
+    if not existing or force:
       newobj = table()
       for k, v in data_dict.items():
         setattr(newobj, k, v)
@@ -104,10 +109,6 @@ class DB_Manipulator:
           linedict[head[index]] = line[index]
           index = index+1
         data.execute(linedict)
-    self.logger.info("Created profile table {}".format(table))
-    # Set initial debug version
-    self.add_rec({'name': 'profile_{}'.format(filename), 'version': '0'}, 'Versions')
-    self.logger.info("Profile table profile_{} initialized".format(filename)) 
  
   def get_columns(self, tablename):
     """ Returns all records for a given ORM table"""
@@ -117,6 +118,19 @@ class DB_Manipulator:
   def get_profiles(self):
     """Returns non-orm profiles tables"""
     return self.profiles
+
+  def exists(self, table, item):
+    """ Takes a k-v pair and checks for the entrys existence in the given table """
+    filterstring = ""
+    for k, v in item.items():
+      filterstring += "{}.{}=='{}',".format(table, k, v)
+    filterstring = filterstring[:-1]
+    table = eval(table)
+    entry = self.session.query(table).filter(eval(filterstring)).scalar()
+    if entry is None:
+      return False
+    else:
+      return True
 
   def get_version(self, name):
     """ Gets the version from a given name. Should be generalized to return any value for any input"""

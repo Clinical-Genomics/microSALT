@@ -23,10 +23,14 @@ class Profiles:
           head = fh.readline()
           head = head.rstrip().split('\t')
           index = 0
+          header = "Table('profile_{}'.format(file), metadata,".format(file)
           while index < len(head):
+            # Set ST as PK
             if index == 0:
-              header = "Table('profile_{}'.format(file), metadata,".format(file)
               header +="Column(head[{}], SmallInteger, primary_key=True),".format(index)
+            # Set Clonal complex as string
+            elif index == len(head)-1:
+              header +="Column(head[{}], String(8)),".format(index)
             else:
               header +="Column(head[{}], SmallInteger),".format(index)
             index = index+1

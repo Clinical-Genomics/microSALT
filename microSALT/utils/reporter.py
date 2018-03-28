@@ -25,7 +25,7 @@ class Reporter():
     self.config = config
     self.logger = log
     self.server = Process(target=app.run)
-    ticketFinder = LIMS_Fetcher(self.config, self.logger)
+    self.ticketFinder = LIMS_Fetcher(self.config, self.logger)
 
   def gen_html(self, name):
     self.name = name
@@ -70,8 +70,8 @@ class Reporter():
       excel.write("{},{},{},{},{}\n".format(s.Customer_ID_sample, s.CG_ID_sample,\
                     s.organism.replace('_', ' ').capitalize(), s.ST,s.threshold))
     excel.close()
-    inpath = "{}/{}".format(name, os.getcwd())
-    outpath = "{}/{}/{}.csv".format(config['folders']['input'], name, self.ticketFinder.data['Customer_ID_project'])
+    inpath = "{}/{}.csv".format(os.getcwd(), name)
+    outpath = "{}/{}/{}.csv".format(self.config['folders']['input'], name, self.ticketFinder.data['Customer_ID_project'])
     os.rename(inpath, outpath)
     self.logger.info("Created csv for {} at {}".format(name, outpath))
 

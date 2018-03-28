@@ -21,6 +21,7 @@ class Job_Creator():
   def __init__(self, indir, config, log, outdir="", timestamp=""):
     self.config = config
     self.logger = log
+    self.batchfile = ""
     self.indir = os.path.abspath(indir)
     self.name = os.path.basename(os.path.normpath(indir))
 
@@ -110,7 +111,8 @@ class Job_Creator():
     suffix = "_unpaired_interlaced.fq"
     for name, v in self.trimmed_files.items():
       interfile = "{}/trimmed/{}{}".format(self.outdir, name, suffix)
-      self.logger.info("Created unpaired interlace file for sample {}".format(name))
+      # Spammed a bit too much
+      #self.logger.info("Created unpaired interlace file for sample {}".format(name))
       batchfile.write("touch {}\n".format(interfile))
       batchfile.write("cat {} >> {}\n".format(v['fu'], interfile))
       batchfile.write("cat {} >> {}\n".format(v['ru'], interfile))
@@ -197,7 +199,7 @@ class Job_Creator():
   def create_sample(self, name):
     """Creates sample in database"""
     try:
-      self.lims_fetcher.load_lims_sample_info(self.name)
+      self.lims_fetcher.load_lims_sample_info(name)
       sample_col = self.db_pusher.get_columns('Samples') 
       sample_col['CG_ID_sample'] = self.lims_fetcher.data['CG_ID_sample']
       sample_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
@@ -209,20 +211,18 @@ class Job_Creator():
 
   def project_job(self, single_sample=False):
     jobarray = list()
-    if single_sample:
-      self.create_project(os.path.normpath(self.indir).split('/')[-2])
     try:
        if single_sample:
          self.create_project(os.path.normpath(self.indir).split('/')[-2])
        else:
         self.create_project(self.name)
     except Exception as e:
-      self.logger.error("LIMS interaction failed. Unable to read/write project {}".format(self.name))  
+      self.logger.error("LIMS interaction failed. Unable to read/write project {}".format(self.name)) 
     try:
       #Start every sample job
-      headerargs = self.get_headerargs()
       if single_sample:
         self.sample_job()
+        headerargs = self.get_headerargs()
         outfile = self.get_sbatch()
         bash_cmd="sbatch {} {}".format(headerargs, outfile)
         process = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
@@ -236,6 +236,7 @@ class Job_Creator():
             sample_out = "{}/{}".format(self.outdir, dir)
             sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now) 
             sample_instance.sample_job()
+            headerargs = sample_instance.get_headerargs()
             outfile = sample_instance.get_sbatch()
             bash_cmd="sbatch {} {}".format(headerargs, outfile)
             output, error = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE).communicate()

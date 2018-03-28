@@ -25,7 +25,10 @@ class Samples(db.Model):
    aux_ST = db.Column(db.Boolean, default=0)
    aux_alleles = db.Column(db.SmallInteger, default=-1)
    date_analysis = db.Column(db.DateTime)
-
+   genome_length = db.Column(db.Integer, default=-1)
+   gc_percentage = db.Column(db.Float(3,2), default = 0.0)
+   n50 = db.Column(db.Integer, default=-1)
+   contigs = db.Column(db.Integer, default=-1)
 
 class Seq_types(db.Model):
   __tablename__ = 'seq_types'
@@ -53,10 +56,6 @@ class Projects(db.Model):
    CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
    Customer_ID_project = db.Column(db.String(15))
    date_ordered = db.Column(db.DateTime)
-   genome_length = db.Column(db.Integer, default=-1)
-   gc_percentage = db.Column(db.Float(3,2), default = 0.0)
-   n50 = db.Column(db.Integer, default=-1)
-   contigs = db.Column(db.Integer, default=-1)
 
 class Versions(db.Model):
   __tablename__ = 'versions'

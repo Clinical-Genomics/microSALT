@@ -5,4 +5,5 @@ flask_sqlalchemy
 genologics
 pymysql
 pyyaml
+quast
 sqlalchemy

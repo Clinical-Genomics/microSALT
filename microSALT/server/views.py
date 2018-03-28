@@ -69,20 +69,24 @@ def gen_reportdata(pid, organism_group='all'):
   sample_info = sorted(sample_info, key=lambda sample: \
                 int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
   for s in sample_info:
-    if s.ST > 0 and s.Customer_ID_sample.startswith('NTC'):
-      s.ST = 'Control'   
+    s.ST_status=str(s.ST)
+    if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-'):
+      s.ST_status = 'Control'   
     elif s.ST < 0:
       if s.ST == -1:
-        s.ST = 'Control'
+        s.ST_status = 'Control'
       elif s.ST == -4:
-        s.ST = 'Novel'
+        s.ST_status = 'Novel'
       else:
-        s.ST='None'
+        s.ST_status ='None'
 
-    s.threshold = 'Passed'
-    for seq_type in s.seq_types:
-      if seq_type.identity < 100.0:
-        s.threshold = 'Failed'
+    if hasattr(s, 'seq_types'):
+      s.threshold = 'Passed'
+      for seq_type in s.seq_types:
+        if seq_type.identity < 100.0:
+          s.threshold = 'Failed'
+    else:
+      s.threshold = 'Failed'
     output['samples'].append(s)
 
   versions = session.query(Versions).all()
