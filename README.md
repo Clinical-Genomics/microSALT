@@ -24,7 +24,7 @@ The microbial sequence analysis and loci-based typing pipeline (microSALT) is us
 * `conda config --add channels bioconda`
 * `conda create -n microSALT python=3.6`
 * `source activate microSALT`
-* `conda install blast quast spades trimmomatic`
+* `conda install blast spades trimmomatic`
 * `cd microSALT && pip install -r requirements.txt && pip install .`
 * Perform all steps under section  __Configuration__
 
