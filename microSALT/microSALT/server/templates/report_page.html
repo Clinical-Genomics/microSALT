@@ -1,0 +1,145 @@
+{% extends 'layout.html' %}
+  {% block body %}
+    {% set thres = dict() %}
+      <div class="container-fluid">
+        <div class="col-lg-16">
+          <!-- Summary pages  -->
+          <footer>
+            <div class="panel"><div class="panel-body">
+              <h2 class="page-header"><strong>microSALT Results</strong><br>
+                <small>Clinical Microbiology</small>
+              <small><p align="right">{{date}}</p></small></h2>
+
+              <h3><strong>Project Summary</strong><br></h3>
+              <div class="table-responsive">
+                <table  class="table table-bordered" >
+                  <tr>
+                    <td><b>Project ID <i>(CG Project ID)</i></b>
+                    <td>{{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></td>
+                  </tr>
+                  <tr>
+                    <td><b>Analysis date</b></td>
+                    <td>{{samples[0].date_analysis.date()}}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <h3><strong>Sample Summary</strong><br></h3>
+              <div class="table-responsive">
+                <table  class="table table-bordered" >
+                  <tr>
+                    </td><td><b>Sample ID <i>(CG Sample ID)</i></b></td>
+                    <td><b>Organism</b></td>
+                    <td><b>Sequence Type</b></td>
+                    <td><b>Thresholds</b></td>
+                  </tr>
+                  {% for sample in samples %}
+                    <tr>
+                      <td>{{sample.Customer_ID_sample}}  <i>({{sample.CG_ID_sample}})</i></td>
+                      {% if sample.organism is not none %}
+                        <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
+                      {% else %}
+                        <td><i>Control</i></td>
+                      {% endif %}
+                      <td>{{sample.ST_status }}</td>
+                      <td>{{sample.threshold }}</td>
+                    </tr>
+                  {% endfor %}
+                </table>
+              </div>
+              </div>
+            </div>
+          </footer>
+          <!-- Sample pages -->
+          {% for sample in samples %}
+            <footer>
+              <div class="panel">
+                <div class="panel-body">
+                  <h2 class="page-header"><div class="row"></div><strong>microSALT Results</strong><br>
+                    <small>Clinical Microbiology</small>
+                    <small><p align="right">{{date}}</p></small></h2>
+
+                   <div class="table-responsive"><table class="table table-bordered">
+                    <tr>
+                      <td><b>Project ID <i>(CG Project ID)</i></b></td>
+                      <td>{{sample.projects.Customer_ID_project}} <i>({{sample.projects.CG_ID_project}})</i></td>
+                    </tr>
+                    <tr>
+                      <td><b>Sample ID <i>(CG Sample ID)</i></b></td>
+                      <td>{{sample.Customer_ID_sample}}  <i>({{sample.CG_ID_sample}})</i></td>
+                    </tr>
+                    <tr>
+                      <th scope="row" >Analysis date</th>
+                      <td>{{sample.date_analysis.date()}}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row" >Organism</th>
+                      {% if sample.organism is not none %}
+                        <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
+                      {% else %}
+                        <td><i>Control</i></td>
+                      {% endif %}
+                    </tr>
+                    <tr><th scope="row" >Sequence Type</th><td>{{sample.ST_status }}</td></tr>
+                    {% if sample.aux_alleles > 0 %}
+                      <tr>
+                        <th scope="row" >Additional non-determining alleles</th>
+                        <td>{{sample.aux_alleles}}</td>
+                      </tr>
+                    {% endif %}
+                    <tr><th scope="row" >Thresholds</th><td>{{sample.threshold}}</td></tr>
+                    {% if sample.organism in version %}
+                      <tr>
+                        <th scope="row">Reference version</th>
+                        <td>{{version[sample.organism]}}</td>
+                      </tr>
+                    {% endif %}
+                  <!-- </table></div>
+
+                  <div class="table-responsive"><table class="table table-bordered"> -->
+                    {% if sample.genome_length > -1 %}
+                      <tr><th scope="row" >Estimated genome length</th><td>{{sample.genome_length}}</td></tr>
+                      <tr><th scope="row" >GC content</th><td>{{sample.gc_percentage| round(2)}}%</td></tr>
+                      <tr><th scope="row" >N50 (min. contig length for 50% of genome)</th><td>{{sample.n50}}</td></tr>
+                      <tr><th scope="row" >Necessary contigs</th><td>{{sample.contigs}}</td></tr>
+                    {% else %}
+                      <tr><th scope="row" >Estimated genome length</th><td>Insufficient data for QUAST</td></tr>
+                      <tr><th scope="row" >GC content</th><td>Insufficient data for QUAST</td></tr>
+                      <tr><th scope="row" >N50 (min. contig length for 50% of genome)</th><td>Insufficient data for QUAST</td></tr>
+                      <tr><th scope="row" >Necessary contigs</th><td>Insufficient data for QUAST</td></tr>
+                    {% endif %}
+                  </table></div>
+                <div class="table-responsive">
+                  {% if not sample.seq_types|length == 0 %}
+                    <table  class="table table-bordered" >
+                      <thead>
+                        <tr>
+                          <th>Loci</th>
+                          <th width="18%">Allele</th>
+                          <th>Contig Coverage</th>
+                          <th>Identity</th>
+                          <th>E-value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for seq_type in sample.seq_types %}
+                          {% if seq_type.st_predictor %}
+                            <tr>
+                              <td>{{seq_type.loci}}</td>
+                              <td width="18%"> {{ seq_type.allele}}</td>
+                              <td>{{ seq_type.contig_coverage|round(2)  }}</td>
+                              <td>{{ seq_type.identity|round(2) }}</td>
+                              <td>{{ seq_type.evalue }}</td>
+                            </tr>
+                          {% endif %}
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  {% endif %}
+                </div>
+              </div>
+            </footer>
+          {% endfor %}
+        </div>
+      </div>
+  {% endblock %}
