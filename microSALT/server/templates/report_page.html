@@ -97,10 +97,17 @@
                   <!-- </table></div>
 
                   <div class="table-responsive"><table class="table table-bordered"> -->
-                    <tr><th scope="row" >Genome length</th><td>{{sample.genome_length}}</td></tr>
-                    <tr><th scope="row" >GC content</th><td>{{sample.gc_percentage| round(2)}}%</td></tr>
-                    <tr><th scope="row" >N50 (min. contig length for 50% of genome)</th><td>{{sample.n50}}</td></tr>
-                    <tr><th scope="row" >Necessary contigs</th><td>{{sample.contigs}}</td></tr>
+                    {% if sample.genome_length > -1 %}
+                      <tr><th scope="row" >Estimated genome length</th><td>{{sample.genome_length}}</td></tr>
+                      <tr><th scope="row" >GC content</th><td>{{sample.gc_percentage| round(2)}}%</td></tr>
+                      <tr><th scope="row" >N50 (min. contig length for 50% of genome)</th><td>{{sample.n50}}</td></tr>
+                      <tr><th scope="row" >Necessary contigs</th><td>{{sample.contigs}}</td></tr>
+                    {% else %}
+                      <tr><th scope="row" >Estimated genome length</th><td>Insufficient data for QUAST</td></tr>
+                      <tr><th scope="row" >GC content</th><td>Insufficient data for QUAST</td></tr>
+                      <tr><th scope="row" >N50 (min. contig length for 50% of genome)</th><td>Insufficient data for QUAST</td></tr>
+                      <tr><th scope="row" >Necessary contigs</th><td>Insufficient data for QUAST</td></tr>
+                    {% endif %}
                   </table></div>
                 <div class="table-responsive">
                   {% if not sample.seq_types|length == 0 %}
