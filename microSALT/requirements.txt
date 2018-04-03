@@ -1,9 +1,0 @@
-bs4
-click
-flask
-flask_sqlalchemy
-genologics
-pymysql
-pyyaml
-quast
-sqlalchemy
