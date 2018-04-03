@@ -31,8 +31,6 @@ class Job_Creator():
     self.outdir = outdir
     if self.outdir == "":
       self.outdir="{}/{}_{}".format(config["folders"]["results"], os.path.basename(os.path.normpath(self.indir)), self.now)
-    if not os.path.exists(self.outdir):
-      os.makedirs(self.outdir)
     
     self.db_pusher=DB_Manipulator(config, log)
     self.trimmed_files = dict()
@@ -211,6 +209,9 @@ class Job_Creator():
 
   def project_job(self, single_sample=False):
     jobarray = list()
+    if not os.path.exists(self.outdir):
+      os.makedirs(self.outdir)
+
     try:
        if single_sample:
          self.create_project(os.path.normpath(self.indir).split('/')[-2])
@@ -252,6 +253,8 @@ class Job_Creator():
 
   def sample_job(self):
     self.trimmed_files = dict()
+    if not os.path.exists(self.outdir):
+      os.makedirs(self.outdir)
     try:
       self.organism = self.lims_fetcher.get_organism_refname(self.name, external=False)
       # This is one job 

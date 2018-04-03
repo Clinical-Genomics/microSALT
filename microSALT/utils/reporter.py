@@ -67,8 +67,12 @@ class Reporter():
     sample_info = gen_reportdata(name)
     excel.write("Customer_ID_sample,CG_ID_sample,organism,ST,Thresholds\n")
     for s in sample_info['samples']:
+      if s.organism != None:
+        organism_fix = s.organism.replace('_', ' ').capitalize()
+      else:
+        organism_fix= "None"
       excel.write("{},{},{},{},{}\n".format(s.Customer_ID_sample, s.CG_ID_sample,\
-                    s.organism.replace('_', ' ').capitalize(), s.ST,s.threshold))
+                    organism_fix, s.ST_status,s.threshold))
     excel.close()
     inpath = "{}/{}.csv".format(os.getcwd(), name)
     outpath = "{}/{}/{}.csv".format(self.config['folders']['input'], name, self.ticketFinder.data['Customer_ID_project'])

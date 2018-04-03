@@ -152,7 +152,11 @@ class DB_Manipulator:
       sample.update({Seq_types.st_predictor: None})
       #Set subset
       for loci, cn in pks.items():
-        sample.filter(Seq_types.loci==loci, Seq_types.contig_name==cn).update({Seq_types.st_predictor : 1})
+        if isinstance(cn, list):
+          for entry in cn:
+            sample.filter(Seq_types.loci==loci, Seq_types.allele==entry).update({Seq_types.st_predictor : 1})
+        else:
+          sample.filter(Seq_types.loci==loci, Seq_types.contig_name==cn).update({Seq_types.st_predictor : 1})
     self.session.commit()
 
   def alleles2st(self, cg_sid):
@@ -201,6 +205,7 @@ class DB_Manipulator:
       return self.bestST(cg_sid, [output[0].ST])
     elif threshold:
       self.logger.warning("Sample {} on {} has an allele set but no ST. Novel ST found, setting ST to -4".format(cg_sid, organism))
+      self.setPredictor(cg_sid, alleles)
       return -4
     else:
       self.logger.warning("Sample {} on {} has an allele set but hits are low-quality and\
@@ -280,7 +285,7 @@ class DB_Manipulator:
     """ Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
     if threshold:
       hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity)\
-           .filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9, Seq_types.evalue==0.0).all()
+           .filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9).all()
     else:
       hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid).all()
 
@@ -298,5 +303,4 @@ class DB_Manipulator:
     else:
       non_allele_columns = 1
     allele_overabundance = len(uniqueDict.keys()) - (len(self.profiles[organism].columns.values()) - non_allele_columns)
-
     return [uniqueDict, allele_overabundance]

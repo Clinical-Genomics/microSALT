@@ -80,8 +80,9 @@ class Scraper():
             quast['n50'] = int(lsplit[1])
 
       self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', quast)
-      self.logger.info("Project {} recieved quast stats: {}"\
-                     .format(self.name, quast))
+      # Too spammy
+      #self.logger.info("Project {} recieved quast stats: {}"\
+      #               .format(self.name, quast))
     except Exception as e:
       self.logger.warning("Cannot generate quast statistics for {}".format(self.name))
 
@@ -134,7 +135,7 @@ class Scraper():
               seq_col["contig_length"] = nodeinfo[3]
               seq_col["contig_coverage"] = nodeinfo[5]
               self.db_pusher.add_rec(seq_col, 'Seq_types')
-      
-      self.logger.info("Added allele {}={} of sample {} to table Seq_types".format(seq_col["loci"], seq_col["allele"], self.name))
+      # Too spammy
+      #self.logger.info("Added allele {}={} of sample {} to table Seq_types".format(seq_col["loci"], seq_col["allele"], self.name))
     except Exception as e:
       self.logger.error("{}".format(str(e)))
