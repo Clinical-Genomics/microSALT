@@ -60,5 +60,5 @@ class Projects(db.Model):
 class Versions(db.Model):
   __tablename__ = 'versions'
 
-  name = db.Column(db.String(30), primary_key=True, nullable=False)
+  name = db.Column(db.String(45), primary_key=True, nullable=False)
   version = db.Column(db.String(10))

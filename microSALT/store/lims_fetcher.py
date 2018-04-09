@@ -38,8 +38,11 @@ class LIMS_Fetcher():
         self.logger.error("Sample ID {} resolves to multiple entries".format(cg_sampleid))
       sample = sample[0]
     else:
-      sample = Sample(self.lims, id=cg_sampleid)
-    if 'Strain' in sample.udf: 
+      try:
+        sample = Sample(self.lims, id=cg_sampleid)
+      except Exception as e:
+        self.logger.error("LIMS connection timeout")
+    if 'Strain' in sample.udf:
       organism = sample.udf['Strain']
       # Backwards compatibility
       if sample.udf['Strain'] == 'VRE':

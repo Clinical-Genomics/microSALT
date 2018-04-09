@@ -87,13 +87,16 @@ def finish(ctx):
 @click.pass_context
 def sample(ctx, sample_dir):
   """Parse results from analysing a single sample"""
-  scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
-  garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
+  samplename = os.path.basename(os.path.normpath(sample_dir)).split('_')[0]
 
-  scientist.load_lims_sample_info(os.path.normpath(sample_dir).split('_')[0])
+  scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
+  scientist.load_lims_sample_info(samplename)
+
+  garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_sample()
-  codemonkey.gen_html(scientist.data['CG_ID_project'])
-  codemonkey.gen_csv(scientist.data['CG_ID_project'])
+
+  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], scientist.data['CG_ID_project'])
+  codemonkey.report()
   done()
 
 @finish.command()
@@ -101,13 +104,13 @@ def sample(ctx, sample_dir):
 @click.pass_context
 def project(ctx, project_dir):
   """Parse results from analysing a single project"""
-  garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
-  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
-
-  garbageman.scrape_project()
   projname = os.path.basename(os.path.normpath(project_dir)).split('_')[0]
-  codemonkey.gen_html(projname)
-  codemonkey.gen_csv(projname)
+
+  garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
+  garbageman.scrape_project()
+
+  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], projname)
+  codemonkey.report()
   done()
 
 @root.group()
@@ -121,17 +124,20 @@ def util(ctx):
 @click.pass_context
 def refer(ctx, organism):
   """ Adds a new internal organism from pubMLST """
-  refereee = Referencer(ctx.obj['config'], ctx.obj['log'])
+  referee = Referencer(ctx.obj['config'], ctx.obj['log'])
   referee.add_pubmlst(organism)
+  print("Checking versions of all references..")
+  referee = Referencer(ctx.obj['config'], ctx.obj['log'])
+  referee.update_refs()
+
 
 @util.command()
 @click.argument('project_name')
 @click.pass_context
 def report(ctx, project_name):
   """Re-generates reports for a project"""
-  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
-  codemonkey.gen_html(project_name)
-  codemonkey.gen_csv(project_name)
+  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_name)
+  codemonkey.report()
   done()
 
 @util.command()

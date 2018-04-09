@@ -205,12 +205,14 @@ class DB_Manipulator:
       return self.bestST(cg_sid, [output[0].ST])
     elif threshold:
       self.logger.warning("Sample {} on {} has an allele set but no ST. Novel ST found, setting ST to -4".format(cg_sid, organism))
-      self.setPredictor(cg_sid, alleles)
+      bestSet = self.bestAlleles(cg_sid)
+      self.setPredictor(cg_sid, bestSet)
       return -4
     else:
       self.logger.warning("Sample {} on {} has an allele set but hits are low-quality and\
  do not resolve to an ST. Setting ST to -2".format(cg_sid, organism))
-      self.setPredictor(cg_sid)
+      bestSet = self.bestAlleles(cg_sid)
+      self.setPredictor(cg_sid, bestSet)
       return -2
 
   def bestST(self, cg_sid, st_list):
@@ -281,11 +283,30 @@ class DB_Manipulator:
     self.setPredictor(cg_sid, bestalleles[topST])
     return topST
 
+  def bestAlleles(self, cg_sid):
+    """ Establishes which allele set (for novel ST) is most likely by criteria  id -> eval -> contig coverage"""
+    hits = self.session.query(Seq_types.contig_name, Seq_types.loci, Seq_types.identity, Seq_types.evalue, Seq_types.contig_coverage)\
+           .filter(Seq_types.CG_ID_sample==cg_sid).all()
+    bestHits = dict()
+    alleledict = dict()
+    for allele in hits:
+      if allele.loci not in bestHits.keys():
+        bestHits[allele.loci] = allele.contig_name
+        alleledict[allele.loci] = [allele.identity, allele.evalue, allele.contig_coverage]
+      else:
+        if (allele.identity > alleledict[allele.loci][0]) or\
+        (allele.identity == alleledict[allele.loci][0] and float(allele.evalue) < float(alleledict[allele.loci][1]))\
+        or (allele.identity == alleledict[allele.loci][0] and float(allele.evalue) == float(alleledict[allele.loci][1])\
+        and allele.contig_coverage > alleledict[allele.loci][2]):
+          bestHits[allele.loci] = allele.contig_name
+    return bestHits
+
+
   def get_unique_alleles(self, cg_sid, organism, threshold=True):
     """ Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
     if threshold:
       hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity)\
-           .filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity>=99.9).all()
+           .filter(Seq_types.CG_ID_sample==cg_sid).all()
     else:
       hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid).all()
 

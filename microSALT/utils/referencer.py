@@ -90,7 +90,7 @@ class Referencer():
     counter = 0.0 
     for item in db_query:
       for subtype in item['databases']:
-        if name.replace('_', ' ') in subtype['description'].lower():
+        if organism.replace('_', ' ') in subtype['description'].lower():
           #Seqdef always appear after isolates, so this is fine
           seqdef_url = subtype['href']
           counter += 1.0
@@ -135,17 +135,13 @@ class Referencer():
      loci_query = json.loads(response.read().decode('utf-8'))
 
     output = "{}/{}".format(self.config['folders']['references'], organism)
-    shutil.rmtree(output)
+    if(os.path.isdir(output)):
+      shutil.rmtree(output)
     os.makedirs(output)
 
     for locipath in loci_query['loci']:
           loci = os.path.basename(os.path.normpath(locipath))
           urllib.request.urlretrieve("{}/alleles_fasta".format(locipath), "{}/{}.tfa".format(output, loci))
-
-    profilename = "profile_{}".format(organism)
-    self.db_access.upd_rec({'name':profilename}, 'Versions', {'version':ver_query['last_updated']})
-    self.logger.info('Updated {} to version {}'.format(profilename, ver_query['last_updated']))
-    self.db_access.reload_profiletable(organism)
     return ver_query['last_updated']
 
   def fetch_pubmlst(self):
@@ -163,4 +159,6 @@ class Referencer():
             seqdef_url[name] = subtype['href']
 
     for key, val in seqdef_url.items():
-      self.download_pubmlst(key, val)
+      ver = self.download_pubmlst(key, val)
+      self.db_access.upd_rec({'name':'profile_{}'.format(key)}, 'Versions', {'version':ver})
+      self.logger.info('Table profile_{} set to version {}'.format(key, ver))

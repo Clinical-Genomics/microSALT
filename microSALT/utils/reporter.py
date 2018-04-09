@@ -5,6 +5,7 @@
 import requests
 import time
 import os
+import sys
 import smtplib
 
 from os.path import basename
@@ -20,34 +21,47 @@ from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Reporter():
 
-  def __init__(self, config, log):
-    self.name = ""
+  def __init__(self, config, log, name = ""):
+    self.name = name
     self.config = config
     self.logger = log
     self.server = Process(target=app.run)
     self.ticketFinder = LIMS_Fetcher(self.config, self.logger)
+    self.attachments = list()
 
-  def gen_html(self, name):
-    self.name = name
+  def report(self):
+    self.gen_html()
+    self.gen_csv()
+    self.mail()
+    for file in self.attachments:
+      os.remove(file)
+
+  def gen_html(self):
     self.start_web()
-    self.name = name
-    self.ticketFinder.load_lims_project_info(name)
+    name = self.name
+    try:
+      self.ticketFinder.load_lims_project_info(name)
+    except Exception as e:
+      self.logger.error("Project {} does not exist".format(name))
+      self.kill_flask()
+      sys.exit(-1)
     r = requests.get("http://127.0.0.1:5000/microSALT/{}/all".format(name), allow_redirects=True)
     outname = "{}_microSALT.html".format(self.ticketFinder.data['Customer_ID_project'])
     open(outname, 'wb').write(r.content)
     self.kill_flask()
-    self.mail_html(outname)
-    os.remove(outname)
+    self.attachments.append(outname)
 
-  def mail_html(self, file_name):
+  def mail(self):
+    file_name = self.attachments
     msg = MIMEMultipart()
-    msg['Subject'] = '{} Report'.format(file_name.split('_')[0])
+    msg['Subject'] = '{} ({}) Reports'.format(self.name, file_name[0].split('_')[0])
     msg['From'] = 'microSALT'
     msg['To'] = self.config['regex']['mail_recipient']
-    #msg.attach(MIMEText(open(file_name).read()))
-    part = MIMEApplication(open(file_name).read())
-    part.add_header('Content-Disposition', 'attachment; filename="%s"' % os.path.basename(file_name))
-    msg.attach(part)
+    
+    for file in self.attachments:
+      part = MIMEApplication(open(file).read())  
+      part.add_header('Content-Disposition', 'attachment; filename="%s"' % os.path.basename(file))
+      msg.attach(part)
 
     s = smtplib.SMTP('localhost')
     s.connect()
@@ -61,7 +75,8 @@ class Reporter():
     #Hinders requests before server goes up
     time.sleep(0.05)
 
-  def gen_csv(self, name):
+  def gen_csv(self):
+    name = self.name
     self.ticketFinder.load_lims_project_info(name)
     excel = open("{}.csv".format(name), "w+")
     sample_info = gen_reportdata(name)
@@ -75,9 +90,7 @@ class Reporter():
                     organism_fix, s.ST_status,s.threshold))
     excel.close()
     inpath = "{}/{}.csv".format(os.getcwd(), name)
-    outpath = "{}/{}/{}.csv".format(self.config['folders']['input'], name, self.ticketFinder.data['Customer_ID_project'])
-    os.rename(inpath, outpath)
-    self.logger.info("Created csv for {} at {}".format(name, outpath))
+    self.attachments.append(inpath)
 
   def kill_flask(self):
     self.server.terminate()

@@ -70,7 +70,7 @@ def gen_reportdata(pid, organism_group='all'):
                 int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
   for s in sample_info:
     s.ST_status=str(s.ST)
-    if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-'):
+    if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or s.Customer_ID_sample.startswith('NK-'):
       s.ST_status = 'Control'   
     elif s.ST < 0:
       if s.ST == -1:
