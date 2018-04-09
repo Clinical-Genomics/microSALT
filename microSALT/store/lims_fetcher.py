@@ -44,8 +44,10 @@ class LIMS_Fetcher():
         self.logger.error("LIMS connection timeout")
     if 'Strain' in sample.udf:
       organism = sample.udf['Strain']
+      if sample.udf['Strain'] == 'Other':
+        organism = sample.udf['Other species']
       # Backwards compatibility
-      if sample.udf['Strain'] == 'VRE':
+      elif sample.udf['Strain'] == 'VRE':
         if 'Reference Genome Microbial' in sample.udf:
           if sample.udf['Reference Genome Microbial'] == 'NC_017960.1':
             organism = 'Enterococcus faecium'
@@ -70,7 +72,8 @@ class LIMS_Fetcher():
       .format(cg_sampleid, str(e)))
 
   def get_organism_refname(self, sample_name, external=False):
-    """Gets organism/strain name, returns formatted name for mlst reference use"""
+    """Finds which reference contains the same words as the LIMS reference
+       and returns it in a format for database calls."""
     self.load_lims_sample_info(sample_name, external)
     lims_organ = self.data['organism'].lower()
     orgs = os.listdir(self.config["folders"]["references"])
