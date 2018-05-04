@@ -28,14 +28,16 @@
               <div class="table-responsive">
                 <table  class="table table-bordered" >
                   <tr>
-                    </td><td><b>Sample ID <i>(CG Sample ID)</i></b></td>
+                    </td><td><b>Sample ID</b></td>
+                    <td><b>CG Sample ID</b></td>
                     <td><b>Organism</b></td>
                     <td><b>Sequence Type</b></td>
                     <td><b>Thresholds</b></td>
                   </tr>
                   {% for sample in samples %}
                     <tr>
-                      <td>{{sample.Customer_ID_sample}}  <i>({{sample.CG_ID_sample}})</i></td>
+                      <td>{{sample.Customer_ID_sample}}</td>
+                      <td>{{sample.CG_ID_sample}}</td>
                       {% if sample.organism is not none %}
                         <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
                       {% else %}

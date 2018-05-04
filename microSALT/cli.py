@@ -87,7 +87,7 @@ def finish(ctx):
 @click.pass_context
 def sample(ctx, sample_dir):
   """Parse results from analysing a single sample"""
-  samplename = os.path.basename(os.path.normpath(sample_dir)).split('_')[0]
+  samplename = os.path.normpath(os.path.abspath(project_dir)).split('_')[0]
 
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
   scientist.load_lims_sample_info(samplename)
@@ -104,7 +104,7 @@ def sample(ctx, sample_dir):
 @click.pass_context
 def project(ctx, project_dir):
   """Parse results from analysing a single project"""
-  projname = os.path.basename(os.path.normpath(project_dir)).split('_')[0]
+  projname = os.path.normpath(os.path.abspath(project_dir)).split('_')[0]
 
   garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_project()

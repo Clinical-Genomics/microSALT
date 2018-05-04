@@ -19,7 +19,7 @@ class Samples(db.Model):
 
    CG_ID_sample = db.Column(db.String(15), primary_key=True, nullable=False)
    CG_ID_project = db.Column(db.String(15), ForeignKey('projects.CG_ID_project'))
-   Customer_ID_sample = db.Column(db.String(15))
+   Customer_ID_sample = db.Column(db.String(40))
    organism = db.Column(db.String(30))
    ST = db.Column(db.SmallInteger, default=-1)
    aux_ST = db.Column(db.Boolean, default=0)
