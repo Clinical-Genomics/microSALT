@@ -31,7 +31,8 @@ class Reporter():
 
   def report(self):
     self.gen_html()
-    self.gen_csv()
+    #Removed due to customer need inconsistency
+    #self.gen_csv()
     self.mail()
     for file in self.attachments:
       os.remove(file)

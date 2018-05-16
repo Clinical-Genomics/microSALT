@@ -49,6 +49,7 @@ class Scraper():
          self.logger.error("Sample {} does not exist. Recreating..".format(self.name))
          self.job_fallback.create_sample(self.name)
        self.scrape_all_loci()
+       self.scrape_resistances()
        self.scrape_quast()
 
   def scrape_sample(self):
@@ -60,6 +61,7 @@ class Scraper():
     #Scrape order matters a lot!
     self.sampledir = self.infolder
     self.scrape_all_loci()
+    self.scrape_resistances()
     self.scrape_quast()
 
   def scrape_quast(self):
@@ -86,6 +88,56 @@ class Scraper():
     except Exception as e:
       self.logger.warning("Cannot generate quast statistics for {}".format(self.name))
 
+  def get_locilength(self, analysis, reference, target):
+    alleles=dict()
+    targetPre = ">{}".format(target)
+    lastallele=""
+    if analysis=="Resistances":
+      filename="{}/{}.fsa".format(self.config["folders"]["resistances"], reference)
+    elif analysis=="Seq_types":
+      loci = target.split('_')[0]
+      filename="{}/{}/{}.tfa".format(self.config["folders"]["references"], reference, loci)
+
+    f = open(filename,"r")
+    for row in f:
+      if ">" in row:
+        lastallele = row.strip()
+        alleles[lastallele] = ""
+      else:
+        alleles[lastallele] = alleles[lastallele] + row.strip()
+    f.close()
+    return len(alleles[targetPre])
+
+  def scrape_resistances(self):
+    q_list = glob.glob("{}/resistance/*".format(self.sampledir))
+    for file in q_list:
+      res_col = self.db_pusher.get_columns('Resistances')
+      with open("{}".format(file), 'r') as sample:
+        res_col["CG_ID_sample"] = self.name
+        for line in sample:
+          #Ignore commented fields
+          if not line[0] == '#':
+            elem_list = line.rstrip().split("\t")
+            if not elem_list[1] == 'N/A':
+              res_col["identity"] = elem_list[4]
+              res_col["evalue"] = elem_list[5]
+              res_col["bitscore"] = elem_list[6]
+              res_col["contig_start"] = elem_list[7]
+              res_col["contig_end"] = elem_list[8]
+              res_col["subject_length"] =  elem_list[11]
+
+              # Split elem 3 in loci (name) and allele (number) 
+              res_col["gene"] = elem_list[3]
+              res_col["instance"] = os.path.basename(file[:-4])
+              res_col["span"] = float(res_col["subject_length"])/self.get_locilength('Resistances', res_col["instance"], res_col["gene"])
+
+              # split elem 2 into contig node_NO, length, cov
+              nodeinfo = elem_list[2].split('_')
+              res_col["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
+              res_col["contig_length"] = nodeinfo[3]
+              res_col["contig_coverage"] = nodeinfo[5]
+              self.db_pusher.add_rec(res_col, 'Resistances')
+
   def scrape_all_loci(self):
     """Scrapes all BLAST output in a folder"""
     q_list = glob.glob("{}/blast/loci_query_*".format(self.sampledir))
@@ -105,6 +157,7 @@ class Scraper():
   def scrape_single_loci(self, infile):
     """Scrapes a single blast output file for MLST results"""
     seq_col = self.db_pusher.get_columns('Seq_types') 
+    organism = self.lims_fetcher.get_organism_refname(self.name)
     if not os.path.exists(self.sampledir):
       self.logger.error("Invalid file path to infolder, {}".format(self.sampledir))
       sys.exit()
@@ -122,12 +175,12 @@ class Scraper():
               seq_col["bitscore"] = elem_list[6]
               seq_col["contig_start"] = elem_list[7]
               seq_col["contig_end"] = elem_list[8]
-              seq_col["loci_start"] = elem_list[9]
-              seq_col["loci_end"] =  elem_list[10]
+              seq_col["subject_length"] =  elem_list[11]
          
               # Split elem 3 in loci (name) and allele (number) 
               seq_col["loci"] = elem_list[3].split('_')[0]
               seq_col["allele"] = int(elem_list[3].split('_')[1])
+              seq_col["span"] = float(seq_col["subject_length"])/self.get_locilength('Seq_types', organism, "{}_{}".format(seq_col["loci"], seq_col["allele"]))
 
               # split elem 2 into contig node_NO, length, cov
               nodeinfo = elem_list[2].split('_')
