@@ -85,7 +85,7 @@ def gen_reportdata(pid, organism_group='all'):
     elif hasattr(s, 'seq_types') and s.seq_types != []:
       s.threshold = 'Passed'
       for seq_type in s.seq_types:
-        if seq_type.identity < 100.0 and seq_type.st_predictor:
+        if seq_type.identity < 100.0 and seq_type.st_predictor or seq_type.span < 1.0 and seq_type.st_predictor:
           s.threshold = 'Failed'
     else:
       s.threshold = 'Failed'

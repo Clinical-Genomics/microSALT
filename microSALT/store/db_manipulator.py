@@ -9,7 +9,7 @@ import warnings
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 
-from microSALT.store.orm_models import app, Projects, Samples, Seq_types, Versions
+from microSALT.store.orm_models import app, Projects, Resistances, Samples, Seq_types, Versions
 from microSALT.store.models import Profiles
 
 class DB_Manipulator:
@@ -42,6 +42,9 @@ class DB_Manipulator:
     if not self.engine.dialect.has_table(self.engine, 'seq_types'):
       Seq_types.__table__.create(self.engine)
       self.logger.info("Created sequencing types table")
+    if not self.engine.dialect.has_table(self.engine, 'resistances'):
+      Resistances.__table__.create(self.engine)
+      self.logger.info("Created resistance table")
     for k,v in self.profiles.items():
       if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
         self.profiles[k].create()
@@ -216,7 +219,7 @@ class DB_Manipulator:
       return -2
 
   def bestST(self, cg_sid, st_list):
-    """Takes in a list of ST and a sample. Establishes which ST is most likely by criteria  id -> eval -> contig coverage"""
+    """Takes in a list of ST and a sample. Establishes which ST is most likely by criteria id*span -> eval -> contig coverage"""
     profiles = list()
     scores = dict()
     bestalleles = dict()
@@ -224,9 +227,10 @@ class DB_Manipulator:
     for st in st_list:
       scores[st] = dict()
       bestalleles[st] = dict()
-      scores[st]['id'] = 0
+      scores[st]['spanid'] = 0
       scores[st]['eval'] = 0
       scores[st]['cc'] = 0
+      scores[st]['span'] = 0
       profiles.append(self.session.query(self.profiles[organism]).filter(text('ST={}'.format(st))).first())
 
     # Get values for each allele set that resolves an ST
@@ -251,15 +255,17 @@ class DB_Manipulator:
        if alleledict[allele.loci] == "":
          alleledict[allele.loci] = allele
        else:
-        if (allele.identity > alleledict[allele.loci].identity) or\
-        (allele.identity == alleledict[allele.loci].identity and float(allele.evalue) < float(alleledict[allele.loci].evalue))\
-        or (allele.identity == alleledict[allele.loci].identity and float(allele.evalue) == float(alleledict[allele.loci].evalue)\
-        and allele.contig_coverage > alleledict[allele.loci].contig_coverage):
+        if ((allele.span*allele.identity > alleledict[allele.loci].span*alleledict[allele.loci].identity) or\
+        (allele.span*allele.identity == alleledict[allele.loci].span*alleledict[allele.loci].identity and\
+        float(allele.evalue) < float(alleledict[allele.loci].evalue)) or\
+        (allele.span*allele.identity == alleledict[allele.loci].span*alleledict[allele.loci].identity and\
+        float(allele.evalue) == float(alleledict[allele.loci].evalue) and\
+        allele.contig_coverage > alleledict[allele.loci].contig_coverage)):
           alleledict[allele.loci] = allele
 
       #Create score dict for the ST
       for key, allele in alleledict.items():
-        scores[prof.ST]['id'] += allele.identity
+        scores[prof.ST]['spanid'] += allele.span*allele.identity
         scores[prof.ST]['eval'] += float(allele.evalue)
         scores[prof.ST]['cc'] += allele.contig_coverage
         bestalleles[prof.ST][allele.loci] = ""
@@ -271,44 +277,47 @@ class DB_Manipulator:
     topEval = 100
     topCC = 0
     for key, val in scores.items():
-      if scores[key]['id'] > topID:
-        topID = scores[key]['id']
+      if scores[key]['spanid'] > topID:
+        topID = scores[key]['spanid']
         topST = key
-      elif scores[key]['id'] == topID and scores[key]['eval'] < topEval:
+      elif scores[key]['spanid'] == topID and scores[key]['eval'] < topEval:
         topEval = scores[key]['eval']
         topST = key
-      elif scores[key]['id'] == topID and scores[key]['eval'] == topEval:
+      elif scores[key]['spanid'] == topID and scores[key]['eval'] == topEval:
         topCC = scores[key]['cc']
         topST = key
     self.setPredictor(cg_sid, bestalleles[topST])
     return topST
 
   def bestAlleles(self, cg_sid):
-    """ Establishes which allele set (for novel ST) is most likely by criteria  id -> eval -> contig coverage"""
-    hits = self.session.query(Seq_types.contig_name, Seq_types.loci, Seq_types.identity, Seq_types.evalue, Seq_types.contig_coverage)\
+    """ Establishes which allele set (for novel ST) is most likely by criteria span* id -> eval -> contig coverage"""
+    hits = self.session.query(Seq_types.contig_name, Seq_types.loci, Seq_types.span, Seq_types.identity, Seq_types.evalue, Seq_types.contig_coverage)\
            .filter(Seq_types.CG_ID_sample==cg_sid).all()
     bestHits = dict()
     alleledict = dict()
     for allele in hits:
       if allele.loci not in bestHits.keys():
         bestHits[allele.loci] = allele.contig_name
-        alleledict[allele.loci] = [allele.identity, allele.evalue, allele.contig_coverage]
+        alleledict[allele.loci] = [allele.identity, allele.evalue, allele.contig_coverage, allele.span]
       else:
-        if (allele.identity > alleledict[allele.loci][0]) or\
-        (allele.identity == alleledict[allele.loci][0] and float(allele.evalue) < float(alleledict[allele.loci][1]))\
-        or (allele.identity == alleledict[allele.loci][0] and float(allele.evalue) == float(alleledict[allele.loci][1])\
-        and allele.contig_coverage > alleledict[allele.loci][2]):
+        if ((allele.identity*allele.span > alleledict[allele.loci][0]*alleledict[allele.loci][3]) or\
+        (allele.identity*allele.span == alleledict[allele.loci][0]*alleledict[allele.loci][3] and\
+        float(allele.evalue) < float(alleledict[allele.loci][1])) or\
+        (allele.identity*allele.span == alleledict[allele.loci][0]*alleledict[allele.loci][3] and\
+        float(allele.evalue) == float(alleledict[allele.loci][1]) and\
+        allele.contig_coverage > alleledict[allele.loci][2])):
           bestHits[allele.loci] = allele.contig_name
+          alleledict[allele.loci] = [allele.identity, allele.evalue, allele.contig_coverage, allele.span]
     return bestHits
 
 
   def get_unique_alleles(self, cg_sid, organism, threshold=True):
     """ Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
     if threshold:
-      hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity)\
+      hits = self.session.query(Seq_types.loci, Seq_types.allele)\
            .filter(Seq_types.CG_ID_sample==cg_sid).all()
     else:
-      hits = self.session.query(Seq_types.loci, Seq_types.allele, Seq_types.identity).filter(Seq_types.CG_ID_sample==cg_sid).all()
+      hits = self.session.query(Seq_types.loci, Seq_types.allele).filter(Seq_types.CG_ID_sample==cg_sid).all()
 
     #Establish number of unique hits
     uniqueDict = dict()

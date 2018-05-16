@@ -64,7 +64,7 @@ class LIMS_Fetcher():
       .format(cg_sampleid))
     try:
       self.data.update({'CG_ID_project': sample.project.id,
-                           'CG_ID_sample': cg_sampleid,
+                           'CG_ID_sample': sample.id,
                            'Customer_ID_sample' : sample.name,
                            'organism' : organism})
     except KeyError as e:

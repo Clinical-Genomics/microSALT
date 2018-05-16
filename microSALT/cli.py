@@ -19,7 +19,7 @@ from microSALT.utils.referencer import Referencer
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 if config == '':
-  print("ERROR: No properly set-up config under neither ~/.microSALT/config.json nor envvar MICROSALT_CONFIG. Exiting.")
+  print("ERROR: No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
   sys.exit(-1)
 
 @click.group()
@@ -29,7 +29,6 @@ def root(ctx):
   """ microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline """
   ctx.obj = {}
   ctx.obj['config'] = config
-
   logger = logging.getLogger('main_logger')
   logger.setLevel(logging.DEBUG)
   fh = logging.FileHandler(os.path.join(os.environ['HOME'], "microSALT.log"))
@@ -87,7 +86,7 @@ def finish(ctx):
 @click.pass_context
 def sample(ctx, sample_dir):
   """Parse results from analysing a single sample"""
-  samplename = os.path.basename(os.path.normpath(sample_dir)).split('_')[0]
+  samplename = os.path.basename(os.path.abspath(sample_dir)).split('_')[0]
 
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
   scientist.load_lims_sample_info(samplename)
@@ -104,7 +103,7 @@ def sample(ctx, sample_dir):
 @click.pass_context
 def project(ctx, project_dir):
   """Parse results from analysing a single project"""
-  projname = os.path.basename(os.path.normpath(project_dir)).split('_')[0]
+  projname = os.path.basename(os.path.abspath(project_dir)).split('_')[0]
 
   garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_project()
