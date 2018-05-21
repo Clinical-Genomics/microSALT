@@ -22,6 +22,7 @@
     "_comment": "ST references. Each ST profile file under 'profiles' have an identicial namefolder under references. Each references sub-folder contains the .tfa file for each locus", 
     "profiles": "/mnt/hds/proj/cust015/mlst/references/profiles",
     "references": "/mnt/hds/proj/cust015/mlst/references/definitions_locisplit",
+    "resistances": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/resistances",
     "_comment": "Root folder for ALL output",
     "results": "/mnt/hds/proj/cust015/mlst/results"
   },
