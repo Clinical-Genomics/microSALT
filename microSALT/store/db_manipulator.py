@@ -89,6 +89,28 @@ class DB_Manipulator:
       self.session.query(table).filter(eval(filter)).update(upd_dict)
       self.session.commit()
 
+  def purge_rec(self, name, type):
+    """Removes seq_data, resistances, sample(s) and possibly project"""
+    entries = list()
+    if type == "project":
+      entries.append(self.session.query(Projects).filter(Projects.CG_ID_project==name).all())
+      entries.append(self.session.query(Seq_types).filter(Seq_types.CG_ID_sample.like('{}%'.format(name))).all())
+      entries.append(self.session.query(Resistances).filter(Resistances.CG_ID_sample.like('{}%'.format(name))).all())
+      entries.append(self.session.query(Samples).filter(Samples.CG_ID_sample.like('{}%'.format(name))).all())
+    elif type == "sample":
+      entries.append(self.session.query(Seq_types).filter(Seq_types.CG_ID_sample==name).all())
+      entries.append(self.session.query(Resistances).filter(Resistances.CG_ID_sample==name).all())
+      entries.append(self.session.query(Samples).filter(Samples.CG_ID_sample==name).all())
+      pass
+    else:
+      self.logger.error("Incorrect type {} specified for removal of {}. Check code".format(type, name))
+      sys.exit()
+    for entry in entries:
+      for instance in entry:
+        self.session.delete(instance)
+        self.session.commit()
+    self.logger.info("Removed information for {}".format(name))
+
   def reload_profiletable(self, organism):
     """Drop the named non-orm table, then load it with fresh data"""
     table = self.profiles[organism]
