@@ -66,6 +66,7 @@ def gen_reportdata(pid, organism_group='all'):
   else:
     sample_info = session.query(Samples).\
                   filter(Samples.organism==organism_group, Samples.CG_ID_project==project)
+  #Sorts sample names
   sample_info = sorted(sample_info, key=lambda sample: \
                 int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
   for s in sample_info:
@@ -89,6 +90,9 @@ def gen_reportdata(pid, organism_group='all'):
           s.threshold = 'Failed'
     else:
       s.threshold = 'Failed'
+    #Seq_type and resistance sorting
+    s.seq_types=sorted(s.seq_types, key=lambda x: x.loci)
+    s.resistances=sorted(s.resistances, key=lambda x: x.instance)
     output['samples'].append(s)
 
   versions = session.query(Versions).all()

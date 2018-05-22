@@ -50,10 +50,16 @@ def start(ctx):
   pass
 
 @start.command()
-@click.argument('project_dir')
+@click.argument('project_id')
+@click.option('--input', help='Full path to project folder',default="")
 @click.pass_context
-def project(ctx, project_dir):
+def project(ctx, project_id, input):
   """Analyze a whole project"""
+  if input != "":
+    project_dir = os.path.abspath(input)
+  else:
+    project_dir = "{}/{}".format(ctx.obj['config']['folders']['seqdata'], project_id)
+
   print("Checking versions of references..")
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
   fixer.update_refs()
@@ -63,17 +69,26 @@ def project(ctx, project_dir):
   done() 
 
 @start.command()
-@click.argument('sample_dir')
+@click.argument('sample_id')
+@click.option('--input', help='Full path to sample folder', default="")
 @click.pass_context
-def sample(ctx, sample_dir):
-    """Analyze a single sample"""
-    print("Checking versions of references..")
-    fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-    fixer.update_refs()
-    print("Version check done. Creating sbatch job")
-    worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
-    worker.project_job(single_sample=True)
-    done()
+def sample(ctx, sample_id, input):
+  """Analyze a single sample"""
+  scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
+  scientist.load_lims_sample_info(sample_id)
+
+  if input != "":
+    sample_dir = os.path.abspath(input)
+  else:
+    sample_dir = "{}/{}/{}".format(ctx.obj['config']['folders']['seqdata'], scientist.data['CG_ID_project'] ,sample_id)
+
+  print("Checking versions of references..")
+  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+  fixer.update_refs()
+  print("Version check done. Creating sbatch job")
+  worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
+  worker.project_job(single_sample=True)
+  done()
 
 @root.group()
 @click.pass_context
@@ -82,14 +97,32 @@ def finish(ctx):
   pass
 
 @finish.command()
-@click.argument('sample_dir')
+@click.argument('sample_id')
+@click.option('--rerun', is_flag=True, default=False, help='Overwrite existing data')
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.option('--input', help='Full path to result sample folder', default="")
 @click.pass_context
-def sample(ctx, sample_dir):
+def sample(ctx, sample_id, rerun, email, input):
   """Parse results from analysing a single sample"""
-  samplename = os.path.basename(os.path.abspath(sample_dir)).split('_')[0]
+  ctx.obj['config']['rerun'] = rerun
+  ctx.obj['config']['regex']['mail_recipient'] = email
+  
+  if input != "":
+    sample_dir = os.path.abspath(input)
+  else:
+    hits = 0
+    for i in os.listdir(ctx.obj['config']['folders']['results']):
+      if '{}_'.format(sample_id) in i:
+        hits = hits+1
+        fname = i
+    if hits > 1: #Doublechecks only 1 analysis exists
+      print("Multiple instances of that analysis exists. Specify full path using --input")
+      sys.exit(-1)
+    else:
+      sample_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], fname)
 
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
-  scientist.load_lims_sample_info(samplename)
+  scientist.load_lims_sample_info(sample_id)
 
   garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_sample()
@@ -99,16 +132,34 @@ def sample(ctx, sample_dir):
   done()
 
 @finish.command()
-@click.argument('project_dir')
+@click.argument('project_id')
+@click.option('--rerun', is_flag=True, default=False, help='Overwrite existing data')
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.option('--input', help='Full path to result project folder', default="")
 @click.pass_context
-def project(ctx, project_dir):
+def project(ctx, project_id, rerun, email, input):
   """Parse results from analysing a single project"""
-  projname = os.path.basename(os.path.abspath(project_dir)).split('_')[0]
-
+  ctx.obj['config']['rerun'] = rerun
+  ctx.obj['config']['regex']['mail_recipient'] = email
+ 
+  if input != "":
+    project_dir = os.path.abspath(input)
+  else:
+    hits = 0
+    for i in os.listdir(ctx.obj['config']['folders']['results']):
+      if '{}_'.format(project_id) in i:
+        hits = hits+1
+        fname = i
+    if hits > 1: #Doublechecks only 1 analysis exists
+      print("Multiple instances of that analysis exists. Specify full path using --input")
+      sys.exit(-1)
+    else:
+      project_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], fname)
+  
   garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_project()
 
-  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], projname)
+  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_id)
   codemonkey.report()
   done()
 
@@ -132,9 +183,11 @@ def refer(ctx, organism):
 
 @util.command()
 @click.argument('project_name')
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.pass_context
-def report(ctx, project_name):
+def report(ctx, project_name, email):
   """Re-generates reports for a project"""
+  ctx.obj['config']['regex']['mail_recipient'] = email
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_name)
   codemonkey.report()
   done()

@@ -36,8 +36,10 @@ class Scraper():
 
   def scrape_project(self):
     """Scrapes a project folder for information"""
+    if self.config['rerun']:
+      self.db_pusher.purge_rec(self.name, 'project')
     if not self.db_pusher.exists('Projects', {'CG_ID_project':self.name}):
-      self.logger.error("Project {} does not exist. Recreating..".format(self.name))
+      self.logger.error("Re-filling project {}".format(self.name))
       self.job_fallback.create_project(self.name)
 
     #Scrape order matters a lot!
@@ -46,7 +48,7 @@ class Scraper():
        self.sampledir = "{}/{}".format(self.infolder, dir)
        self.name = dir
        if not self.db_pusher.exists('Samples', {'CG_ID_sample':self.name}):
-         self.logger.error("Sample {} does not exist. Recreating..".format(self.name))
+         self.logger.error("Re-filling sample {}".format(self.name))
          self.job_fallback.create_sample(self.name)
        self.scrape_all_loci()
        self.scrape_resistances()
@@ -54,8 +56,16 @@ class Scraper():
 
   def scrape_sample(self):
     """Scrapes a sample folder for information"""
+    if self.config['rerun']:
+      self.db_pusher.purge_rec(self.name, 'sample')
+
+    self.lims_fetcher.load_lims_sample_info(self.name)
+    if not self.db_pusher.exists('Projects', {'CG_ID_project':self.lims_fetcher.data['CG_ID_project']}):
+      self.logger.error("Re-filling project {}".format(self.lims_fetcher.data['CG_ID_project']))
+      self.job_fallback.create_project(self.lims_fetcher.data['CG_ID_project'])
+
     if not self.db_pusher.exists('Samples', {'CG_ID_sample':self.name}):
-      self.logger.error("Sample {} does not exist. Recreating..".format(self.name))
+      self.logger.error("Re-filling sample {}".format(self.name))
       self.job_fallback.create_sample(self.name)
 
     #Scrape order matters a lot!

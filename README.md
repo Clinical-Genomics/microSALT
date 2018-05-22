@@ -20,11 +20,11 @@ The microbial sequence analysis and loci-based typing pipeline (microSALT) is us
 
 ## Quick installation
 ### Conda dependency resolution
-* `git clone https://github.com/Clinical-Genomics/microSALT.git`
 * `conda config --add channels bioconda`
 * `conda create -n microSALT python=3.6`
 * `source activate microSALT`
 * `conda install blast spades trimmomatic`
+* `git clone https://github.com/Clinical-Genomics/microSALT.git`
 * `cd microSALT && pip install -r requirements.txt && pip install .`
 * Perform all steps under section  __Configuration__
 
@@ -52,5 +52,15 @@ To find the path of the file, simply run `microSALT` and note where the log poin
 
 ## Usage
 * Use the `start` function to start sbatch job(s), producing output to `folders['results']`.
-* After you have been informed of job completetion (through e-mail). Use the `finish` function to upload parsed results to the SQL back-end and produce reports (HTML & CSV).
+* After you have been informed of job completetion (through e-mail). Use the `finish` function to upload parsed results to the SQL back-end and produce reports (HTML).
 * Various functionality, including adding new reference organisms and re-generating reports; are stored under the `util` command.
+
+## Databases
+###MLST Definitions
+microSALT is able to neatly download the MLST definitions for any organism on pubMLST (https://pubmlst.org/databases/).
+Other definitions may be used, as long as they retain the same format. 
+
+###Resistance genes
+microSALT relies on the resistance genes of resFinder (https://cge.cbs.dtu.dk/services/data.php).
+Make sure you download these, extract the zip and point the keyword 'resistances' in the configuration to the corresponding folder.
+Any definitions will work, as long as they retain the same formatting.

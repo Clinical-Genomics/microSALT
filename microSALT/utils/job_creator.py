@@ -42,9 +42,9 @@ class Job_Creator():
     return self.batchfile
 
   def get_headerargs(self):
-    headerline = "-A {} -p {} -n {} -t {} -J {}_{} --qos {}".format(self.config["slurm_header"]["project"],\
+    headerline = "-A {} -p {} -n {} -t {} -J {}_{} --qos {} --output {}/slurm_{}.log".format(self.config["slurm_header"]["project"],\
                  self.config["slurm_header"]["type"], self.config["slurm_header"]["threads"],self.config["slurm_header"]["time"],\
-                 self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"])
+                 self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"], self.outdir, self.name)
     return headerline
 
   def verify_fastq(self):
@@ -266,8 +266,9 @@ class Job_Creator():
             jobno = re.search('(\d+)', str(output)).group(0)
             jobarray.append(jobno)
       #Mail job
-      mailline = "srun -A {} -p core -n 1 -t 00:00:10 -J {}_{}_TRACKER --qos {} --dependency=afterany:{} --mail-user={} --mail-type=END pwd".format(self.config["slurm_header"]["project"],\
-                 self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"], ':'.join(jobarray), self.config['regex']['mail_recipient'])
+      mailline = "srun -A {} -p core -n 1 -t 00:00:10 -J {}_{}_TRACKER --qos {} --dependency=afterany:{} --output {}/run_complete.out --mail-user={} --mail-type=END pwd"\
+                 .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"],\
+                 ':'.join(jobarray), self.outdir,  self.config['regex']['mail_recipient'])
       subprocess.Popen(mailline.split(), stdin=None, stdout=None, stderr=None)
     except Exception as e:
       self.logger.warning("Failed to spawn project at {}\nSource: {}".format(self.outdir, str(e)))

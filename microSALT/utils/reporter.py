@@ -46,11 +46,16 @@ class Reporter():
       self.logger.error("Project {} does not exist".format(name))
       self.kill_flask()
       sys.exit(-1)
-    r = requests.get("http://127.0.0.1:5000/microSALT/{}/all".format(name), allow_redirects=True)
+    try:
+      r = requests.get("http://127.0.0.1:5000/microSALT/{}/all".format(name), allow_redirects=True)
+    except Exception as e:
+      self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
+      self.kill_flask()
+      sys.exit(-1)
     outname = "{}_microSALT.html".format(self.ticketFinder.data['Customer_ID_project'])
     open(outname, 'wb').write(r.content)
-    self.kill_flask()
     self.attachments.append(outname)
+    self.kill_flask()
 
   def mail(self):
     file_name = self.attachments
