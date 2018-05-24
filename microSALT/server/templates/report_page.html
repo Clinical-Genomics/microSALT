@@ -133,6 +133,7 @@
             </footer>
             <footer>
               <div class="panel">
+              <div class="panel-body"> 
                 <div class="table-responsive">
                   {% if not sample.resistances|length == 0 %}
                     <table  class="table table-bordered" style='table-layout:fixed;'>
@@ -181,7 +182,7 @@
                     <tr><th scope="row" >Necessary contigs</th><td>Insufficient data for QUAST</td></tr>
                   {% endif %}
                 </table></div>
-
+              </div>
               </div>
             </footer>
           {% endfor %}
