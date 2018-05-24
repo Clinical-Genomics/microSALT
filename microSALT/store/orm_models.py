@@ -53,7 +53,7 @@ class Resistances(db.Model):
   samples = relationship('Samples', back_populates='resistances')
 
   CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
-  gene = db.Column(db.String(30), primary_key=True)
+  gene = db.Column(db.String(50), primary_key=True)
   instance = db.Column(db.String(30), primary_key=True)
   contig_name = db.Column(db.String(20), primary_key=True)
   contig_length = db.Column(db.Integer)

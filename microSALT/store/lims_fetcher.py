@@ -55,6 +55,8 @@ class LIMS_Fetcher():
             organism = 'Enterococcus faecalis'
         elif 'Comment' in sample.udf:
           organism = sample.udf['Comment']
+      elif sample.udf['Reference Genome Microbial'] == 'NC_002163':
+        organism = "Campylobacter jejuni"
     elif 'Comment' in sample.udf:
       organism = sample.udf['Comment']
     # Consistent safe-guard
