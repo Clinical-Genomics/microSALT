@@ -72,7 +72,7 @@ def gen_reportdata(pid, organism_group='all'):
   for s in sample_info:
     s.ST_status=str(s.ST)
     if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or s.Customer_ID_sample.startswith('NK-'):
-      s.ST_status = 'Control'   
+      s.ST_status = 'Control'
     elif s.ST < 0:
       if s.ST == -1:
         s.ST_status = 'Control'
@@ -82,12 +82,19 @@ def gen_reportdata(pid, organism_group='all'):
         s.ST_status ='None'
 
     if -1 <= s.ST <= -3:
-      s.threshold = 'Failed' 
+      s.threshold = 'Failed'
     elif hasattr(s, 'seq_types') and s.seq_types != []:
+      near_hits=0
       s.threshold = 'Passed'
       for seq_type in s.seq_types:
-        if seq_type.identity < 100.0 and seq_type.st_predictor or seq_type.span < 1.0 and seq_type.st_predictor:
+        #Identify single deviating allele
+        if seq_type.st_predictor and seq_type.identity >= 99.5 and seq_type.identity < 100.0 and seq_type.span >= 1.0:
+          near_hits = near_hits + 1
+        elif seq_type.identity < 100.0 and seq_type.st_predictor or seq_type.span < 1.0 and seq_type.st_predictor:
           s.threshold = 'Failed'
+
+      if near_hits > 0 and s.threshold == 'Passed':
+        s.ST_status = 'Novel ({} alleles)'.format(near_hits)
     else:
       s.threshold = 'Failed'
     #Seq_type and resistance sorting
