@@ -57,8 +57,14 @@ def project(ctx, project_id, input):
   """Analyze a whole project"""
   if input != "":
     project_dir = os.path.abspath(input)
+    if not project_id in project_dir:
+      print("Path does not contain proejct id. Exiting.")
+      sys.exit(-1)
   else:
     project_dir = "{}/{}".format(ctx.obj['config']['folders']['seqdata'], project_id)
+    if not os.path.isdir(project_dir):
+      print("Sequence data folder for {} does not exist.".format(sample_id))
+      sys.exit(-1)
 
   print("Checking versions of references..")
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
@@ -79,8 +85,15 @@ def sample(ctx, sample_id, input):
 
   if input != "":
     sample_dir = os.path.abspath(input)
+    if not sample_id in sample_dir:
+      print("Path does not contain sample id. Exiting.")
+      sys.exit(-1)
   else:
+    sample_found = False
     sample_dir = "{}/{}/{}".format(ctx.obj['config']['folders']['seqdata'], scientist.data['CG_ID_project'] ,sample_id)
+    if not os.path.isdir(sample_dir):
+      print("Sequence data folder for {} does not exist.".format(sample_id))
+      sys.exit(-1)
 
   print("Checking versions of references..")
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
@@ -109,6 +122,9 @@ def sample(ctx, sample_id, rerun, email, input):
   
   if input != "":
     sample_dir = os.path.abspath(input)
+    if not sample_id in sample_dir:
+      print("Path does not contain sample id. Exiting.")
+      sys.exit(-1)
   else:
     hits = 0
     for i in os.listdir(ctx.obj['config']['folders']['results']):
@@ -117,6 +133,9 @@ def sample(ctx, sample_id, rerun, email, input):
         fname = i
     if hits > 1: #Doublechecks only 1 analysis exists
       print("Multiple instances of that analysis exists. Specify full path using --input")
+      sys.exit(-1)
+    elif hits < 1:
+      print("No analysis folder prefixed by {} found.".format(sample_id))
       sys.exit(-1)
     else:
       sample_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], fname)
@@ -144,6 +163,9 @@ def project(ctx, project_id, rerun, email, input):
  
   if input != "":
     project_dir = os.path.abspath(input)
+    if not project_id in project_dir:
+      print("Path does not contain proejct id. Exiting.")
+      sys.exit(-1)
   else:
     hits = 0
     for i in os.listdir(ctx.obj['config']['folders']['results']):
@@ -152,6 +174,9 @@ def project(ctx, project_id, rerun, email, input):
         fname = i
     if hits > 1: #Doublechecks only 1 analysis exists
       print("Multiple instances of that analysis exists. Specify full path using --input")
+      sys.exit(-1)
+    elif hits < 1:
+      print("No analysis folder prefixed by {} found.".format(project_id))
       sys.exit(-1)
     else:
       project_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], fname)
