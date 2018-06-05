@@ -26,16 +26,13 @@
               <h3><strong>Sample Summary</strong><br></h3>
               <div class="table-responsive">
                 <table  class="table table-bordered" style='table-layout:fixed;'>
-                  <thead>
                   <tr>
-                    <th width="30%">Sample ID</th>
-                    <th width="20%">CG Sample ID</th>
-                    <th width="20%">Organism</th>
+                    <th>Sample ID</th>
+                    <th>CG Sample ID</th>
+                    <th>Organism</th>
                     <th>Sequence Type</th>
                     <th>Thresholds</th>
                   </tr>
-                  </thead>
-                  <tbody>
                   {% for sample in samples %}
                     <tr>
                       <td>{{sample.Customer_ID_sample}}</td>
@@ -45,11 +42,18 @@
                       {% else %}
                         <td><i>Control</i></td>
                       {% endif %}
-                      <td>{{sample.ST_status }}</td>
-                      <td>{{sample.threshold }}</td>
+                      {% if sample.ST_status == 'None' %}
+                        <td><font color="red">{{sample.ST_status }}</font></td>
+                      {% else %}
+                        <td>{{sample.ST_status }}</td>
+                      {% endif %}
+                      {% if sample.threshold == 'Failed' %}
+                        <td><font color="red">{{sample.threshold }}</font></td>
+                      {% else %}
+                        <td>{{sample.threshold }}</td>
+                      {% endif %}
                     </tr>
                   {% endfor %}
-                  </tbody>
                 </table>
               </div>
               </div>
@@ -86,14 +90,26 @@
                         <td><i>Control</i></td>
                       {% endif %}
                     </tr>
-                    <tr><th scope="row" >Sequence Type</th><td>{{sample.ST_status }}</td></tr>
+                    <tr><th scope="row" >Sequence Type</th>
+                      {% if sample.ST_status == 'None' %}
+                        <td><font color="red">{{sample.ST_status }}</font></td>
+                      {% else %}
+                        <td>{{sample.ST_status }}</td>
+                      {% endif %}
+                    </tr>
                     {% if sample.aux_alleles > 0 %}
                       <tr>
                         <th scope="row" >Additional non-determining alleles</th>
                         <td>{{sample.aux_alleles}}</td>
                       </tr>
                     {% endif %}
-                    <tr><th scope="row" >Thresholds</th><td>{{sample.threshold}}</td></tr>
+                    <tr><th scope="row" >Thresholds</th>
+                      {% if sample.threshold=='Failed' %}
+                        <td><font color="red">{{sample.threshold }}</font></td>
+                      {% else %}
+                        <td>{{sample.threshold }}</td>
+                      {% endif %}
+                    </tr>
                     {% if sample.organism in version %}
                       <tr>
                         <th scope="row">Reference version</th>
@@ -131,6 +147,7 @@
                       <h4>MLST</h4>
                       <thead>
                         <tr>
+                          <th width="4%">#</th>
                           <th width="30%">Loci</th>
                           <th width="20%">Allele</th>
                           <th width="20%">Contig Coverage</th>
@@ -139,16 +156,15 @@
                         </tr>
                       </thead>
                       <tbody>
-                        {% for seq_type in sample.seq_types %}
-                          {% if seq_type.st_predictor %}
+                        {% for seq_type in sample.seq_types if seq_type.st_predictor%}
                             <tr>
+                              <td>{{loop.index}}</td>
                               <td>{{seq_type.loci}}</td>
                               <td> {{ seq_type.allele}}</td>
                               <td>{{ seq_type.contig_coverage|round(2)  }}</td>
                               <td>{{ seq_type.identity|round(2) }}</td>
                               <td>{{ seq_type.span|round(2) }}</td>
                             </tr>
-                          {% endif %}
                         {% endfor %}
                       </tbody>
                     </table>
@@ -161,6 +177,7 @@
                     <h4>Resistance</h4>
                       <thead>
                         <tr>
+                          <th width="4%">#</th>
                           <th width="30%">Gene</th>
                           <th width="20%">Type</th>
                           <th width="20%">Contig Coverage</th>
@@ -169,9 +186,9 @@
                         </tr>
                       </thead>
                       <tbody>
-                        {% for seq_type in sample.resistances %}
-                          {% if seq_type.identity >= 97.00 and seq_type.span >= 0.9 %}
+                        {% for seq_type in sample.resistances if seq_type.identity >= 97.00 and seq_type.span >= 0.9 %}
                             <tr>
+                              <td>{{loop.index}}</td>
                               <td>{{seq_type.gene}}</td>
                               <td>{{seq_type.instance|title}}</td>
                               <td>{{ seq_type.contig_coverage|round(2)  }}</td>
@@ -182,7 +199,6 @@
                                 <td>{{ seq_type.span|round(2) }}</td>
                               {% endif %}
                             </tr>
-                          {% endif %}
                         {% endfor %}
                       </tbody>
                     </table>
