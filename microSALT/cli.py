@@ -63,7 +63,7 @@ def project(ctx, project_id, input):
   else:
     project_dir = "{}/{}".format(ctx.obj['config']['folders']['seqdata'], project_id)
     if not os.path.isdir(project_dir):
-      print("Sequence data folder for {} does not exist.".format(sample_id))
+      print("Sequence data folder for {} does not exist.".format(project_id))
       sys.exit(-1)
 
   print("Checking versions of references..")
@@ -81,7 +81,11 @@ def project(ctx, project_id, input):
 def sample(ctx, sample_id, input):
   """Analyze a single sample"""
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
-  scientist.load_lims_sample_info(sample_id)
+  try:
+    scientist.load_lims_sample_info(sample_id)
+  except Exception as e:
+    print("Unable to load LIMS sample info.")
+    sys.exit(-1)
 
   if input != "":
     sample_dir = os.path.abspath(input)
@@ -140,7 +144,11 @@ def sample(ctx, sample_id, rerun, email, input):
       sample_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], fname)
 
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
-  scientist.load_lims_sample_info(sample_id)
+  try:
+    scientist.load_lims_sample_info(sample_id)
+  except Exception as e:
+    print("Unable to load LIMS sample info.")
+    sys.exit(-1)
 
   garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_sample()
