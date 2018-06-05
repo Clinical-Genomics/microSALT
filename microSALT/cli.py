@@ -58,7 +58,7 @@ def project(ctx, project_id, input):
   if input != "":
     project_dir = os.path.abspath(input)
     if not project_id in project_dir:
-      print("Path does not contain proejct id. Exiting.")
+      print("Path does not contain project id. Exiting.")
       sys.exit(-1)
   else:
     project_dir = "{}/{}".format(ctx.obj['config']['folders']['seqdata'], project_id)
@@ -89,7 +89,6 @@ def sample(ctx, sample_id, input):
       print("Path does not contain sample id. Exiting.")
       sys.exit(-1)
   else:
-    sample_found = False
     sample_dir = "{}/{}/{}".format(ctx.obj['config']['folders']['seqdata'], scientist.data['CG_ID_project'] ,sample_id)
     if not os.path.isdir(sample_dir):
       print("Sequence data folder for {} does not exist.".format(sample_id))
@@ -164,7 +163,7 @@ def project(ctx, project_id, rerun, email, input):
   if input != "":
     project_dir = os.path.abspath(input)
     if not project_id in project_dir:
-      print("Path does not contain proejct id. Exiting.")
+      print("Path does not contain project id. Exiting.")
       sys.exit(-1)
   else:
     hits = 0
