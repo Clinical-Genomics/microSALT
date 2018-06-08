@@ -9,7 +9,7 @@ import warnings
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 
-from microSALT.store.orm_models import app, Projects, Resistances, Samples, Seq_types, Versions
+from microSALT.store.orm_models import app, Projects, Resistances, Samples, Seq_types, Versions, Profile_cgmlst
 from microSALT.store.models import Profiles
 
 class DB_Manipulator:
@@ -45,6 +45,9 @@ class DB_Manipulator:
     if not self.engine.dialect.has_table(self.engine, 'resistances'):
       Resistances.__table__.create(self.engine)
       self.logger.info("Created resistance table")
+    if not self.engine.dialect.has_table(self.engine, 'profile_cgmlst'):
+      Cgmlst.__table__.create(self.engine)
+      self.logger.info("Created cgMLST profile table")
     for k,v in self.profiles.items():
       if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
         self.profiles[k].create()
@@ -110,6 +113,29 @@ class DB_Manipulator:
         self.session.delete(instance)
         self.session.commit()
     self.logger.info("Removed information for {}".format(name))
+
+  def query_rec(self, table, filters):
+    """Fetches records table, by applying a dict with columns as keys."""
+    table = eval(table)
+    args = list()
+    for k,v in filters.items():
+      if v != None:
+        args.append("table.{}=='{}'".format(k, v))
+    filter = ','.join(args)
+    entries = self.session.query(table).filter(eval(filter)).all()
+    return entries
+
+  def top_index(self, table, filters, column):
+    """Fetches the top index from column of table, by applying a dict with columns as keys."""
+    table = eval(table)
+    args = list()
+    for k,v in filters.items():
+      if v != None:
+        args.append("table.{}=='{}'".format(k, v))
+    filter = ','.join(args)
+
+    entry = self.session.query(table).filter(eval(filter)).order_by(desc(eval("{}.{}".format(table, column)))).limit(1).all()
+    return eval("entry.{}".format(column)) 
 
   def reload_profiletable(self, organism):
     """Drop the named non-orm table, then load it with fresh data"""

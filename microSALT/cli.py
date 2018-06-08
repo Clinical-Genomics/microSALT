@@ -230,3 +230,10 @@ def view(ctx):
   """Starts an interactive webserver for viewing"""
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
   codemonkey.start_web()
+
+@util.command()
+@click.argument('sample_list')
+@click.pass_context
+def cgmlst(ctx, sample_list):
+  """Produces sample distance matrix from sample list"""
+  done()

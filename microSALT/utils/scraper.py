@@ -53,6 +53,7 @@ class Scraper():
        self.scrape_all_loci()
        self.scrape_resistances()
        self.scrape_quast()
+       self.scrape_cgmlst()
 
   def scrape_sample(self):
     """Scrapes a sample folder for information"""
@@ -73,6 +74,7 @@ class Scraper():
     self.scrape_all_loci()
     self.scrape_resistances()
     self.scrape_quast()
+    self.scrape_cgmlst()
 
   def scrape_quast(self):
     """Scrapes a quast report for assembly information"""
@@ -148,6 +150,83 @@ class Scraper():
               res_col["contig_coverage"] = nodeinfo[5]
               self.db_pusher.add_rec(res_col, 'Resistances')
 
+  def scrape_cgmlst(self):
+    """Uploads cgmlst results to database and generates a fingerprint"""
+    #Create sequence lookup table
+    node_lookup = dict()
+    ref_file = glob.glob("{}/assembly/contigs.fasta".format(self.sampledir))
+    with open (ref_file, 'r') as infile:
+      for line in infile:
+        if line[0] == ">":
+          key = line[1:].rstrip()
+          value = ""
+        else:
+          value += line.rstrip()
+          node_lookup[key] = value
+
+    #Associate each hit with a sequence
+    allele_sequence = dict()
+    res_file = glob.glob("{}/cgmlst/*".format(self.sampledir))
+    if len(res_file) > 1:
+      self.logger.error("Multiple cgMLST gene lists detected for {}. Unable to continue".format(self.name))
+    else:
+      res_file=res_file[0]
+    with open(res_file, 'r') as infile:
+      for line in infile:
+        if line[0] == "[":
+          #Blast output seperated
+          la = line.split('\t')
+          title = la[0]
+          title = title.replace('[','')
+          title = title.replace(']','')
+          title = title.replace('=',' ')
+          #Title seperated
+          title = title.split(' ')
+          id = title[title.index('protein_id')+1]
+          #Adds id entry with highest e-value
+          if not id in allele_sequence:
+            #la[-1] contains gaps
+            if int(la[7]) < int(la[8]):
+              #Indexes might be 1 away. Be careful
+              allele_sequence[id] = node_lookup[la[2]][int(la[7]):int(la[8])]
+            else:
+              self.logger.error("Unhandled action. Index for {} come in reverse order".format(id))
+
+    #Generate basic fingerprint
+    fp = dict()
+    organism = self.lims_fetcher.get_organism_refname(self.name)
+    #Could use distinct here
+    all_alleles =self.db_pusher.session.query_rec('profile_cgmlst', {'organism': organism}) 
+    for entry in all_alleles:
+      fp[entry.protein_id] = "N/A"
+
+    #Upload results to database
+    for k,v in self.allele_sequence.items():
+      push_dict = self.db_pusher.get_columns('profile_cgmlst')
+      exists = False
+      organism = self.lims_fetcher.get_organism_refname(self.name)
+
+      push_dict['protein_id'] = k
+      push_dict['organism'] = organism
+
+      #Checks for existing sequence. Drops if found
+      similar = self.db_pusher.query_rec('profile_cgmlst', push_dict)
+      push_dict['sequence'] = v
+      push_dict['allele'] = self.db_pusher.top_index('profile_cgmlst', {'organism':organism}, allele) +1
+      fp[push_dict['protein_id']] = push_dict['allele']
+      for entry in similar:
+        if entry.sequence == v:
+          exists = True
+          break
+      if not exists:
+        self.db_handler.add_rec(push_dict, 'profile_cgmlst')
+
+    #Finish fingerprint
+    fingerprint = glob.glob("{}/cgmlst/fingerprint.txt".format(self.sampledir))
+    fp_pointer = open(fingerprint,'wb')
+    for k, v in fp.items():
+      fp_pointer.write("{}:{}\n".format(k,v))
+      
   def scrape_all_loci(self):
     """Scrapes all BLAST output in a folder"""
     q_list = glob.glob("{}/blast/loci_query_*".format(self.sampledir))

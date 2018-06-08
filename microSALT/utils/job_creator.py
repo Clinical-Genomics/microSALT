@@ -130,8 +130,25 @@ class Job_Creator():
     except Exception as e:
       self.logger.error("Unable to index {} of organism {} against reference {}".format(self.name, self.organism, file))
 
+  def create_cgmlstsection(self):
+    """Creates a blast job against a known reference/expanded geneset"""
+    self.index_db("{}/{}".format(self.config["folders"]["gene_set"], reference), '.fna')
+    if not os.path.exists("{}/gene_set".format(self.outdir)):
+      os.makedirs("{}/gene_set".format(self.outdir))
+
+    #Create run
+    batchfile = open(self.batchfile, "a+")
+    blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length qseq\""
+    res_list = glob.glob("{}/*.fsa".format(self.config["folders"]["resistances"]))
+    for entry in res_list:
+      batchfile.write("# BLAST cgMLST search in {} for {}\n".format(self.organism, os.path.basename(entry[:-4])))
+      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/gene_set/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
+      entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
+    batchfile.write("\n")
+    batchfile.close()
+
   def create_resistancesection(self):
-    """Creates a blast job for instances where many loci definition files make up an organism"""
+    """Creates a blast job for each resistance gene of an organism"""
     self.index_db("{}".format(self.config["folders"]["resistances"]), '.fsa')
     if not os.path.exists("{}/resistance".format(self.outdir)):
       os.makedirs("{}/resistance".format(self.outdir))
@@ -292,6 +309,7 @@ class Job_Creator():
       self.create_quastsection()
       self.create_blastsection()
       self.create_resistancesection()
+      self.create_cgmlstsection()
       self.logger.info("Created runfile for sample {} in folder {}".format(self.name, self.outdir))
     except Exception as e:
       raise Exception("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))

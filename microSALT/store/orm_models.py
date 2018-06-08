@@ -64,13 +64,20 @@ class Resistances(db.Model):
   bitscore = db.Column(db.SmallInteger)
   subject_length = db.Column(db.Integer)
 
-class Projects(db.Model):
-   __tablename__ = 'projects'
-   samples = relationship('Samples', back_populates='projects')
+class Profile_cgmlst(db.Model):
+   __tablename__ = 'profile_cgmlst'
+   protein_id = db.Column(db.String(30), primary_key=True)
+   organism = db.Column(db.String(30), primary_key=True)
+   allele = db.Column(db.SmallInteger, default=-1)
+   sequence = db.Column(db.String(5000))
 
-   CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
-   Customer_ID_project = db.Column(db.String(15))
-   date_ordered = db.Column(db.DateTime)
+class Projects(db.Model):
+  __tablename__ = 'projects'
+  samples = relationship('Samples', back_populates='projects')
+
+  CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
+  Customer_ID_project = db.Column(db.String(15))
+  date_ordered = db.Column(db.DateTime)
 
 class Versions(db.Model):
   __tablename__ = 'versions'
