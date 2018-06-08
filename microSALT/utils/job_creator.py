@@ -128,7 +128,7 @@ class Job_Creator():
       batchfile.write("\n")
       batchfile.close()
     except Exception as e:
-      self.logger.error("Unable to index {} of organism {} against reference {}".format(self.name, self.organism, file))
+      self.logger.error("Unable to index {} of organism {} against reference".format(self.name, self.organism))
 
   def create_resistancesection(self):
     """Creates a blast job for instances where many loci definition files make up an organism"""
