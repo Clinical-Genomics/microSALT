@@ -147,7 +147,7 @@ def sample(ctx, sample_id, rerun, email, input):
   try:
     scientist.load_lims_sample_info(sample_id)
   except Exception as e:
-    print("Unable to load LIMS sample info.")
+    print("Unable to load LIMS sample info in file cli.py -> lims_fetcher.py")
     sys.exit(-1)
 
   garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
@@ -232,8 +232,8 @@ def view(ctx):
   codemonkey.start_web()
 
 @util.command()
-@click.argument('sample_list')
+@click.argument('sample_list_file')
 @click.pass_context
-def cgmlst(ctx, sample_list):
-  """Produces sample distance matrix from sample list"""
+def cgmlst(ctx, sample_list_file):
+  """Produces sample distance matrix from sample list file"""
   done()

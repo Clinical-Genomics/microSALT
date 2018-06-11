@@ -46,7 +46,7 @@ class DB_Manipulator:
       Resistances.__table__.create(self.engine)
       self.logger.info("Created resistance table")
     if not self.engine.dialect.has_table(self.engine, 'profile_cgmlst'):
-      Cgmlst.__table__.create(self.engine)
+      Profile_cgmlst.__table__.create(self.engine)
       self.logger.info("Created cgMLST profile table")
     for k,v in self.profiles.items():
       if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
@@ -121,21 +121,23 @@ class DB_Manipulator:
     for k,v in filters.items():
       if v != None:
         args.append("table.{}=='{}'".format(k, v))
-    filter = ','.join(args)
+    filter = ' and '.join(args)
     entries = self.session.query(table).filter(eval(filter)).all()
     return entries
 
-  def top_index(self, table, filters, column):
+  def top_index(self, table_str, filters, column):
     """Fetches the top index from column of table, by applying a dict with columns as keys."""
-    table = eval(table)
+    table = eval(table_str)
     args = list()
     for k,v in filters.items():
       if v != None:
         args.append("table.{}=='{}'".format(k, v))
-    filter = ','.join(args)
-
-    entry = self.session.query(table).filter(eval(filter)).order_by(desc(eval("{}.{}".format(table, column)))).limit(1).all()
-    return eval("entry.{}".format(column)) 
+    filter = ' and '.join(args)
+    entry = self.session.query(table).filter(eval(filter)).order_by(desc(eval("{}.{}".format(table_str, column)))).limit(1).all()
+    if entry == []:
+      return int(0)
+    else:
+      return eval("entry[0].{}".format(column))
 
   def reload_profiletable(self, organism):
     """Drop the named non-orm table, then load it with fresh data"""
