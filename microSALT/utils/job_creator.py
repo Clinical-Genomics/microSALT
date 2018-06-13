@@ -286,7 +286,8 @@ class Job_Creator():
       mailline = "srun -A {} -p core -n 1 -t 00:00:10 -J {}_{}_TRACKER --qos {} --dependency=afterany:{} --output {}/run_complete.out --mail-user={} --mail-type=END pwd"\
                  .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"],\
                  ':'.join(jobarray), self.outdir,  self.config['regex']['mail_recipient'])
-      subprocess.Popen(mailline.split(), stdin=None, stdout=None, stderr=None)
+      mailarray = mailline.split()
+      subprocess.Popen(mailarray, stdin=None, stdout=None, stderr=None)
     except Exception as e:
       self.logger.warning("Failed to spawn project at {}\nSource: {}".format(self.outdir, str(e)))
       shutil.rmtree(self.outdir, ignore_errors=True)
