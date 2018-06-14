@@ -137,9 +137,10 @@ class Scraper():
               res_col["subject_length"] =  elem_list[11]
 
               # Split elem 3 in loci (name) and allele (number) 
-              res_col["gene"] = elem_list[3]
+              res_col["gene"] =  elem_list[3].split("_")[0]
+              res_col["reference"] =  elem_list[3].split("_")[2]
               res_col["instance"] = os.path.basename(file[:-4])
-              res_col["span"] = float(res_col["subject_length"])/self.get_locilength('Resistances', res_col["instance"], res_col["gene"])
+              res_col["span"] = float(res_col["subject_length"])/self.get_locilength('Resistances', res_col["instance"], elem_list[3])
 
               # split elem 2 into contig node_NO, length, cov
               nodeinfo = elem_list[2].split('_')

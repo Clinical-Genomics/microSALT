@@ -178,8 +178,9 @@
                       <thead>
                         <tr>
                           <th width="4%">#</th>
-                          <th width="30%">Gene</th>
+                          <th width="15%">Gene</th>
                           <th width="20%">Type</th>
+                          <th width="15%">Reference</th>
                           <th width="20%">Contig Coverage</th>
                           <th>Identity</th>
                           <th>Span</th>
@@ -191,6 +192,11 @@
                               <td>{{loop.index}}</td>
                               <td>{{seq_type.gene}}</td>
                               <td>{{seq_type.instance|title}}</td>
+                              {% if seq_type.reference is not none %}
+                                <td>{{seq_type.reference}}</td>
+                              {% else %}
+                                <td>Unknown</td>
+                              {% endif %}
                               <td>{{ seq_type.contig_coverage|round(2)  }}</td>
                               <td>{{ seq_type.identity|round(2) }}</td>
                               {% if seq_type.span == 999.0 %}

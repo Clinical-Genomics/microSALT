@@ -63,6 +63,7 @@ class Resistances(db.Model):
   evalue = db.Column(db.String(10))
   bitscore = db.Column(db.SmallInteger)
   subject_length = db.Column(db.Integer)
+  reference = db.Column(db.String(40))
 
 class Projects(db.Model):
    __tablename__ = 'projects'
