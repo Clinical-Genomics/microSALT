@@ -262,7 +262,7 @@ class DB_Manipulator:
       allconditions = ["Seq_types.CG_ID_sample=='{}'".format(cg_sid)]
 
       for index, allele in enumerate(prof):
-        if 'ST' not in prof.keys()[index] and 'clonal_complex' not in prof.keys()[index]:
+        if 'ST' not in prof.keys()[index] and 'clonal_complex' not in prof.keys()[index] and 'species' not in prof.keys()[index]:
           condition = "Seq_types.loci=='{}' , Seq_types.allele=='{}'".format(prof.keys()[index], allele)
           alleledict[prof.keys()[index]] = ""
           alleleconditions.append("and_({})".format(condition))
@@ -273,6 +273,7 @@ class DB_Manipulator:
       all_alleles = self.session.query(Seq_types).filter(eval(allconditions)).all()
 
       # Keep only best hit each loci
+      #import pdb; pdb.set_trace()
       for allele in all_alleles:
        if alleledict[allele.loci] == "":
          alleledict[allele.loci] = allele
@@ -349,10 +350,10 @@ class DB_Manipulator:
         uniqueDict[hit.loci].append(hit.allele)
       elif hit.allele not in uniqueDict[hit.loci]:
         uniqueDict[hit.loci].append(hit.allele)
-
+    non_allele_columns = 1
     if 'clonal_complex' in self.profiles[organism].columns.keys():
-      non_allele_columns = 2
-    else:
-      non_allele_columns = 1
+      non_allele_columns += 1
+    if 'species' in self.profiles[organism].columns.keys():
+      non_allele_columns += 1
     allele_overabundance = len(uniqueDict.keys()) - (len(self.profiles[organism].columns.values()) - non_allele_columns)
     return [uniqueDict, allele_overabundance]

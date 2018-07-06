@@ -1,12 +1,7 @@
 #!/usr/bin/env python
 
-import click
-import glob
 import os
 import re
-import sys
-import time
-import yaml
 
 from genologics.lims import Lims
 # Should probably call these items directly since we're now up to 3 config files

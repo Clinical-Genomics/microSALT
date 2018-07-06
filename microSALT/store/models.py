@@ -3,11 +3,8 @@
 
 #!/usr/bin/env python
 
-import click
 import os
-import re
 from sqlalchemy import *
-import yaml
 
 #TODO: Rewrite this implementation into orm format
 class Profiles:

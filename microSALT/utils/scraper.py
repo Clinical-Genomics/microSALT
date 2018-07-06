@@ -3,13 +3,11 @@
 
 #!/usr/bin/env python
 
-import click
 import glob
 import os
 import re
 import sys
 import time
-import yaml
 
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.store.lims_fetcher import LIMS_Fetcher
@@ -105,8 +103,8 @@ class Scraper():
     if analysis=="Resistances":
       filename="{}/{}.fsa".format(self.config["folders"]["resistances"], reference)
     elif analysis=="Seq_types":
-      loci = target.split('_')[0]
-      filename="{}/{}/{}.tfa".format(self.config["folders"]["references"], reference, loci)
+      target = re.search('(.+)_(\w+)', target).group(1)
+      filename="{}/{}/{}.tfa".format(self.config["folders"]["references"], reference, target)
 
     f = open(filename,"r")
     for row in f:
@@ -116,6 +114,7 @@ class Scraper():
       else:
         alleles[lastallele] = alleles[lastallele] + row.strip()
     f.close()
+    #import pdb; pdb.set_trace()
     return len(alleles[targetPre])
 
   def scrape_resistances(self):
@@ -136,11 +135,13 @@ class Scraper():
               res_col["contig_end"] = elem_list[8]
               res_col["subject_length"] =  elem_list[11]
 
-              # Split elem 3 in loci (name) and allele (number) 
-              res_col["gene"] =  elem_list[3].split("_")[0]
-              res_col["reference"] =  elem_list[3].split("_")[2]
+              # Split elem 3 in loci (name) and allele (number)
+              partials = re.search('(.+)_(\w+)_(\w+)', elem_list[3])
+              res_col["gene"] = partials.group(1)
+              res_col["reference"] = partials.group(3)
+
               res_col["instance"] = os.path.basename(file[:-4])
-              res_col["span"] = float(res_col["subject_length"])/self.get_locilength('Resistances', res_col["instance"], elem_list[3])
+              res_col["span"] = float(res_col["subject_length"])/self.get_locilength('Resistances', res_col["instance"], partials.group(0))
 
               # split elem 2 into contig node_NO, length, cov
               nodeinfo = elem_list[2].split('_')
@@ -167,6 +168,7 @@ class Scraper():
 
   def scrape_single_loci(self, infile):
     """Scrapes a single blast output file for MLST results"""
+
     seq_col = self.db_pusher.get_columns('Seq_types') 
     organism = self.lims_fetcher.get_organism_refname(self.name)
     if not os.path.exists(self.sampledir):
@@ -188,10 +190,12 @@ class Scraper():
               seq_col["contig_end"] = elem_list[8]
               seq_col["subject_length"] =  elem_list[11]
          
-              # Split elem 3 in loci (name) and allele (number) 
-              seq_col["loci"] = elem_list[3].split('_')[0]
-              seq_col["allele"] = int(elem_list[3].split('_')[1])
-              seq_col["span"] = float(seq_col["subject_length"])/self.get_locilength('Seq_types', organism, "{}_{}".format(seq_col["loci"], seq_col["allele"]))
+              # Split elem 3 in loci (name) and allele (number)
+              partials = re.search('(.+)_(\w+)', elem_list[3]) 
+              seq_col["loci"] = partials.group(1)
+              seq_col["allele"] = int(partials.group(2))
+              #import pdb; pdb.set_trace()
+              seq_col["span"] = float(seq_col["subject_length"])/self.get_locilength('Seq_types', organism, partials.group(0))
 
               # split elem 2 into contig node_NO, length, cov
               nodeinfo = elem_list[2].split('_')

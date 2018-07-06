@@ -3,15 +3,12 @@
 
 #!/usr/bin/env python
 
-import click
 import glob
 import os
 import re
 import shutil
 import subprocess
-import sys
 import time
-import yaml
 
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 from microSALT.store.db_manipulator import DB_Manipulator
