@@ -273,18 +273,20 @@ class DB_Manipulator:
       all_alleles = self.session.query(Seq_types).filter(eval(allconditions)).all()
 
       # Keep only best hit each loci
-      #import pdb; pdb.set_trace()
       for allele in all_alleles:
        if alleledict[allele.loci] == "":
          alleledict[allele.loci] = allele
        else:
-        if ((allele.span*allele.identity > alleledict[allele.loci].span*alleledict[allele.loci].identity) or\
-        (allele.span*allele.identity == alleledict[allele.loci].span*alleledict[allele.loci].identity and\
-        float(allele.evalue) < float(alleledict[allele.loci].evalue)) or\
-        (allele.span*allele.identity == alleledict[allele.loci].span*alleledict[allele.loci].identity and\
-        float(allele.evalue) == float(alleledict[allele.loci].evalue) and\
-        allele.contig_coverage > alleledict[allele.loci].contig_coverage)):
-          alleledict[allele.loci] = allele
+        old_al = alleledict[allele.loci]
+
+        if allele.span*allele.identity >= old_al.span*old_al.identity:
+          if allele.span*allele.identity > old_al.span*old_al.identity:
+            alleledict[allele.loci] = allele
+          elif float(allele.evalue) <= float(old_al.evalue):
+            if float(allele.evalue) < float(old_al.evalue):
+              alleledict[allele.loci] = allele
+            elif allele.contig_coverage > old_al.contig_coverage:
+              alleledict[allele.loci] = allele
 
       #Create score dict for the ST
       for key, allele in alleledict.items():
@@ -302,11 +304,17 @@ class DB_Manipulator:
     for key, val in scores.items():
       if scores[key]['spanid'] > topID:
         topID = scores[key]['spanid']
+        topEval = scores[key]['eval']
+        topCC = scores[key]['cc']
         topST = key
       elif scores[key]['spanid'] == topID and scores[key]['eval'] < topEval:
+        topID = scores[key]['spanid']
         topEval = scores[key]['eval']
+        topCC = scores[key]['cc']
         topST = key
-      elif scores[key]['spanid'] == topID and scores[key]['eval'] == topEval:
+      elif scores[key]['spanid'] == topID and scores[key]['eval'] == topEval and scores[key]['cc'] > topCC:
+        topID = scores[key]['spanid']
+        topEval = scores[key]['eval']
         topCC = scores[key]['cc']
         topST = key
     self.setPredictor(cg_sid, bestalleles[topST])
