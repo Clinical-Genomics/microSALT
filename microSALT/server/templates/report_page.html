@@ -191,7 +191,11 @@
                             <tr>
                               <td>{{loop.index}}</td>
                               <td>{{seq_type.gene}}</td>
-                              <td>{{seq_type.instance|title}}</td>
+                              {% if seq_type.resistance is not none %}
+                                <td>{{seq_type.resistance|title}}</td>
+                              {% else %}
+                                <td>{{seq_type.instance|title}}</td>
+                              {% endif %}
                               {% if seq_type.reference is not none %}
                                 <td>{{seq_type.reference}}</td>
                               {% else %}

@@ -92,13 +92,14 @@ def gen_reportdata(pid, organism_group='all'):
         #Identify single deviating allele
         if seq_type.st_predictor and seq_type.identity >= 99.5 and seq_type.identity < 100.0 and seq_type.span >= 1.0:
           near_hits = near_hits + 1
-        elif seq_type.identity < 100.0 and seq_type.st_predictor or seq_type.span < 1.0 and seq_type.st_predictor:
+        elif seq_type.identity < 99.5 and seq_type.st_predictor or seq_type.span < 1.0 and seq_type.st_predictor:
           s.threshold = 'Failed'
 
       if near_hits > 0 and s.threshold == 'Passed':
         s.ST_status = 'Novel ({} alleles)'.format(near_hits)
     else:
       s.threshold = 'Failed'
+
     #Seq_type and resistance sorting
     s.seq_types=sorted(s.seq_types, key=lambda x: x.loci)
     s.resistances=sorted(s.resistances, key=lambda x: x.instance)

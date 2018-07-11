@@ -64,6 +64,7 @@ class Resistances(db.Model):
   bitscore = db.Column(db.SmallInteger)
   subject_length = db.Column(db.Integer)
   reference = db.Column(db.String(40))
+  resistance = db.Column(db.String(120))
 
 class Projects(db.Model):
    __tablename__ = 'projects'

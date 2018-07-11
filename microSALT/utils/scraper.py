@@ -31,6 +31,7 @@ class Scraper():
     self.lims_fetcher=LIMS_Fetcher(config, log)
     self.job_fallback=Job_Creator("", config, log)
     self.lims_sample_info = {}
+    self.gene2resistance = self.load_resistances()
 
   def scrape_project(self):
     """Scrapes a project folder for information"""
@@ -114,7 +115,6 @@ class Scraper():
       else:
         alleles[lastallele] = alleles[lastallele] + row.strip()
     f.close()
-    #import pdb; pdb.set_trace()
     return len(alleles[targetPre])
 
   def scrape_resistances(self):
@@ -139,6 +139,7 @@ class Scraper():
               partials = re.search('(.+)_(\w+)_(\w+)', elem_list[3])
               res_col["gene"] = partials.group(1)
               res_col["reference"] = partials.group(3)
+              res_col["resistance"] = self.gene2resistance[res_col["gene"]]
 
               res_col["instance"] = os.path.basename(file[:-4])
               res_col["span"] = float(res_col["subject_length"])/self.get_locilength('Resistances', res_col["instance"], partials.group(0))
@@ -149,6 +150,17 @@ class Scraper():
               res_col["contig_length"] = nodeinfo[3]
               res_col["contig_coverage"] = nodeinfo[5]
               self.db_pusher.add_rec(res_col, 'Resistances')
+
+  def load_resistances(self):
+    """Loads common resistance names for genes"""
+    conversions = dict()
+    with open("{}/notes.txt".format(self.config["folders"]["resistances"])) as fh:
+      for line in fh:
+        if '#' not in line:
+          line = line.split(':')
+          cropped = re.sub(' resistance', '', line[1])
+          conversions[line[0]] = cropped
+    return conversions
 
   def scrape_all_loci(self):
     """Scrapes all BLAST output in a folder"""
