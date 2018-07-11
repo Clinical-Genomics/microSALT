@@ -187,7 +187,9 @@
                         </tr>
                       </thead>
                       <tbody>
-                        {% for seq_type in sample.resistances if seq_type.identity >= 97.00 and seq_type.span >= 0.9 %}
+                        {% for seq_type in sample.resistances %}
+                          {% if ((sample.ST > 0 or sample.ST_status == 'Novel') and (seq_type.identity >= 97.00 and seq_type.span >= 0.9))
+                             or (sample.ST < 0 and sample.ST_status != 'Novel')  %}
                             <tr>
                               <td>{{loop.index}}</td>
                               <td>{{seq_type.gene}}</td>
@@ -209,6 +211,7 @@
                                 <td>{{ seq_type.span|round(2) }}</td>
                               {% endif %}
                             </tr>
+                          {% endif %}
                         {% endfor %}
                       </tbody>
                     </table>
