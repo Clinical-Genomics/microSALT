@@ -203,7 +203,7 @@ class Scraper():
               seq_col["subject_length"] =  elem_list[11]
          
               # Split elem 3 in loci (name) and allele (number)
-              partials = re.search('(.+)_(\w+)', elem_list[3]) 
+              partials = re.search('(.+)_(\d+)(?:_(\w+)){1,2}', elem_list[3]) 
               seq_col["loci"] = partials.group(1)
               seq_col["allele"] = int(partials.group(2))
               #import pdb; pdb.set_trace()
