@@ -68,8 +68,8 @@ class Profile_cgmlst(db.Model):
    __tablename__ = 'profile_cgmlst'
    protein_id = db.Column(db.String(30), primary_key=True)
    organism = db.Column(db.String(30), primary_key=True)
-   allele = db.Column(db.SmallInteger, default=-1)
-   sequence = db.Column(db.String(8000))
+   allele = db.Column(db.SmallInteger, default=-1, primary_key=True)
+   sequence = db.Column(db.String(10000))
 
 class Projects(db.Model):
   __tablename__ = 'projects'

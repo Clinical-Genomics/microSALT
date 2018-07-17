@@ -16,6 +16,7 @@ from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.reporter import Reporter
 from microSALT.utils.referencer import Referencer
+from microSALT.utils.meta_analyzer import Meta_Analyzer
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 if config == '':
@@ -44,6 +45,88 @@ def done():
   print("Execution finished!")
 
 @root.group()
+@click.pass_context
+def type(ctx):
+  """Basic sequence and resistance typing"""
+  pass
+
+@root.group()
+@click.pass_context
+def cgmlst(ctx):
+  """In-depth sample relationship analysis"""
+  pass
+
+@cgmlst.group()
+@click.pass_context
+def fingerprint(ctx):
+  """Generate cgMLST profile for a project/sample"""
+  pass
+
+@fingerprint.command()
+@click.argument('project_id')
+@click.pass_context
+def project(ctx, project_id):
+  """Generate cgMLST profile for a project"""
+
+  hits = 0
+  for i in os.listdir(ctx.obj['config']['folders']['results']):
+    if '{}_'.format(project_id) in i:
+      hits = hits+1
+      fname = i
+  if hits > 1: #Doublechecks only 1 analysis exists
+    print("Multiple instances of that analysis exists. Specify full path using --input")
+    sys.exit(-1)
+  elif hits < 1:
+    print("No analysis folder prefixed by {} found.".format(project_id))
+    sys.exit(-1)
+  else:
+    project_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], fname)
+
+  garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
+  garbageman.form_fingerprint('project')
+  done()
+
+@fingerprint.command()
+@click.argument('sample_id')
+@click.pass_context
+def sample(ctx, sample_id):
+  """Generate cgMLST profile for a project"""
+  scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
+  try:
+    scientist.load_lims_sample_info(sample_id)
+  except Exception as e:
+    print("Unable to load LIMS sample info in file cli.py -> lims_fetcher.py")
+    sys.exit(-1)
+
+  hits=0
+  for i in os.listdir(ctx.obj['config']['folders']['results']):
+    if '{}_'.format(sample_id) in i:
+      hits = hits+1
+      fname = i
+  if hits > 1: #Doublechecks only 1 analysis exists
+    print("Multiple instances of that analysis exists. Specify full path using --input")
+    sys.exit(-1)
+  elif hits < 1:
+    print("No analysis folder prefixed by {} found.".format(sample_id))
+    sys.exit(-1)
+  else:
+    sample_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], fname)
+
+  garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
+  garbageman.form_fingerprint('sample')
+  done()
+
+
+@cgmlst.command()
+@click.argument('fingerprint_filelist')
+@click.pass_context
+def distance(ctx, fingerprint_filelist):
+  """Distance matrix between list of samples"""
+  predictor = Meta_Analyzer(os.path.abspath(fingerprint_filelist), ctx.obj['config'], ctx.obj['log'])
+  predictor.calc_dist()
+  done()
+
+@type.group()
 @click.pass_context
 def start(ctx):
   """Starts analysis of project/sample"""
@@ -106,7 +189,7 @@ def sample(ctx, sample_id, input):
   worker.project_job(single_sample=True)
   done()
 
-@root.group()
+@type.group()
 @click.pass_context
 def finish(ctx):
   """Uploads analysis and generates results"""

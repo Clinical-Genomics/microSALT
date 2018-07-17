@@ -142,7 +142,7 @@ class Job_Creator():
     entry = "{}/{}.fna".format(self.config["folders"]["gene_set"], self.organism)
     
     batchfile.write("# BLAST cgMLST search in {} for {}\n".format(self.organism, os.path.basename(entry[:-4])))
-    batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/cgmlst/loci_query_cgmlst.txt -task megablast -num_threads {} -outfmt {}\n".format(\
+    batchfile.write("blastn -db {} -query {}/assembly/contigs.fasta -out {}/cgmlst/loci_query_cgmlst.txt -task megablast -num_threads {} -perc_identity 95 -outfmt {}\n".format(\
     entry[:-4], self.outdir, self.outdir, self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
     batchfile.close()
