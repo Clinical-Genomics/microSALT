@@ -83,8 +83,8 @@ class DB_Manipulator:
     args = list()
     for k,v in req_dict.items():
       if v != None:
-        args.append("table.{}=='{}'".format(k, v))
-    filter = ','.join(args)
+        args.append("table.{}=='{}'".format( k, v))
+    filter = ' and '.join(args)
     if len(self.session.query(table).filter(eval(filter)).all()) > 1:
       self.logger.error("More than 1 record found when orm updating. Exited.")
       sys.exit()
@@ -135,7 +135,7 @@ class DB_Manipulator:
     filter = ' and '.join(args)
     entry = self.session.query(table).filter(eval(filter)).order_by(desc(eval("{}.{}".format(table_str, column)))).limit(1).all()
     if entry == []:
-      return int(0)
+      return int(-1)
     else:
       return eval("entry[0].{}".format(column))
 
