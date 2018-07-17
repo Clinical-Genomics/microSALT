@@ -234,7 +234,7 @@ class Scraper():
       top_index = self.db_pusher.top_index('Profile_cgmlst', {'protein_id':k, 'organism':organism}, 'allele')
 
       if top_index == -1:
-        self.db_pusher.add_rec({'protein_id':k, 'organism':organism, 'sequence':v, 'allele':top_index+1}, 'Profile_cgmlst')
+        self.db_pusher.add_rec({'protein_id':k, 'organism':organism, 'sequence':v, 'allele':1}, 'Profile_cgmlst')
         fp[k] = 1
       else:
         exists = False
