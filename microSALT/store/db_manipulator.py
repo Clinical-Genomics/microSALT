@@ -80,17 +80,19 @@ class DB_Manipulator:
   def upd_rec(self, req_dict, tablename, upd_dict):
     """Updates a record to the specified table through a dict with columns as keys."""
     table = eval(tablename)
-    args = list()
+    argy = list()
     for k,v in req_dict.items():
       if v != None:
-        args.append("table.{}=='{}'".format( k, v))
-    filter = ' and '.join(args)
-    if len(self.session.query(table).filter(eval(filter)).all()) > 1:
+        argy.append(".filter(table.{}=='{}')".format( k, v))
+    filter = ''.join(argy)
+    megastring = "self.session.query(table){}".format(filter)
+    if len(eval(megastring + ".all()")) > 1:
       self.logger.error("More than 1 record found when orm updating. Exited.")
       sys.exit()
     else:
-      self.session.query(table).filter(eval(filter)).update(upd_dict)
+      eval(megastring + ".update(upd_dict)")
       self.session.commit()
+
 
   def purge_rec(self, name, type):
     """Removes seq_data, resistances, sample(s) and possibly project"""

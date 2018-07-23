@@ -230,6 +230,7 @@ class Scraper():
 
     #Check if found result exists in database
     for k,v in allele_sequence.items():
+      span_threshold = 0.9
       push_dict = self.db_pusher.get_columns('Profile_cgmlst')
       top_index = self.db_pusher.top_index('Profile_cgmlst', {'protein_id':k, 'organism':organism}, 'allele')
 
@@ -239,10 +240,17 @@ class Scraper():
       else:
         exists = False
         for entry in self.db_pusher.query_rec('Profile_cgmlst', {'protein_id':k, 'organism':organism}):
-          if entry.sequence in v or v in entry.sequence:
+
+          if entry.sequence in v and len(entry.sequence) > span_threshold*len(v):
+            fp[k] = entry.allele
+            exists = True
+            self.db_pusher.upd_rec({'protein_id':k, 'organism':organism, 'allele':entry.allele}, 'Profile_cgmlst', {'sequence':v})
+            break
+          elif v in entry.sequence and len(v) > span_threshold*len(entry.sequence):
             fp[k] = entry.allele
             exists = True
             break
+           
         if not exists:
           self.db_pusher.add_rec({'protein_id':k, 'organism':organism, 'sequence':v, 'allele':top_index+1}, 'Profile_cgmlst')
           fp[k] = top_index+1
