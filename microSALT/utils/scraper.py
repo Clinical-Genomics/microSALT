@@ -160,6 +160,8 @@ class Scraper():
           line = line.split(':')
           cropped = re.sub(' resistance', '', line[1])
           conversions[line[0]] = cropped
+          #Workaround for case issues
+          conversions[line[0].lower()] = cropped
     return conversions
 
   def scrape_all_loci(self):
