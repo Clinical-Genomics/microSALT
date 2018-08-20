@@ -97,10 +97,11 @@ class Referencer():
     if counter > 2:
       self.logger.info("Organism request resolved to {} organisms. Please be more stringent".format(counter/2))
       return
-    elif counter < 2:
+    elif counter < 1:
       self.logger.info("Unable to find requested organism in pubMLST database")
       return
-    self.download_pubmlst(organism, seqdef_url)
+    else:
+      self.download_pubmlst(organism, seqdef_url)
 
   def query_pubmlst(self):
     """ Returns a json object containing all organisms available via pubmlst.org """
