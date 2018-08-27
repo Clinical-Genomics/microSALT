@@ -201,10 +201,16 @@ def util(ctx):
   """ Utilities for specific purposes """
   pass
 
-@util.command()
+@util.group()
+@click.pass_context
+def refer(ctx):
+  """ Manipulates MLST organisms """
+  pass
+
+@refer.command()
 @click.argument('organism')
 @click.pass_context
-def refer(ctx, organism):
+def add(ctx, organism):
   """ Adds a new internal organism from pubMLST """
   referee = Referencer(ctx.obj['config'], ctx.obj['log'])
   referee.add_pubmlst(organism)
@@ -212,6 +218,14 @@ def refer(ctx, organism):
   referee = Referencer(ctx.obj['config'], ctx.obj['log'])
   referee.update_refs()
 
+@refer.command()
+@click.pass_context
+def list(ctx):
+  """ Lists all stored organisms """
+  refe = Referencer(ctx.obj['config'], ctx.obj['log'])
+  print("Currently stored organisms:")
+  for org in sorted(refe.existing_organisms()):
+    print(org.replace("_"," ").capitalize())
 
 @util.command()
 @click.argument('project_name')
