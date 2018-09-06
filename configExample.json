@@ -24,6 +24,7 @@
     "profiles": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/profiles",
     "references": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/definitions_locisplit",
     "resistances": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/resistances",
+    "gene_set": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/gene_set",
     "_comment": "Root folder for ALL output",
     "results": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/results/"
   },
