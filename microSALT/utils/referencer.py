@@ -6,10 +6,12 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import urllib.request
 
 from bs4 import BeautifulSoup
 from microSALT.store.db_manipulator import DB_Manipulator
+from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Referencer():
 
@@ -21,12 +23,31 @@ class Referencer():
     #Fetch names of existing refs
     self.refs = self.db_access.get_profiles()
     organisms = self.refs.keys()
-    self.organisms = [*organisms] 
- 
+    self.organisms = [*organisms]
+    self.lims=LIMS_Fetcher(config, log)
+
+  def identify_new(self, cg_id, project=False):
+   neworgs = list()
+   if project:
+     samplenames = self.lims.samples_in_project(cg_id)
+     for cg_sampleid in samplenames:
+       self.lims.load_lims_sample_info(cg_sampleid)
+       refname = self.lims.get_organism_refname(cg_sampleid)
+       if refname not in self.organisms and refname not in neworgs:
+         neworgs.append(self.lims.data['organism'])
+     for org in neworgs:
+       self.add_pubmlst(org)
+   else:
+     self.lims.load_lims_sample_info(cg_id)
+     refname = self.lims.get_organism_refname(cg_id)
+     if refname not in self.organisms:
+       self.add_pubmlst(org)
+
   def update_refs(self):
     """Updates all references. Order is important, since no object is updated twice"""
     self.fetch_pubmlst()
     self.fetch_external()
+    self.fetch_resistances()
 
   def fetch_external(self):
     """ Updates reference for data that IS ONLY LINKED to pubMLST """
@@ -72,6 +93,27 @@ class Referencer():
           iterator.__next__()
     except StopIteration:
       pass
+
+  def fetch_resistances(self):
+    cwd = os.getcwd()
+    url = "https://bitbucket.org/genomicepidemiology/resfinder_db.git"
+    hiddensrc ="{}/.resfinder_db/".format(self.config['folders']['resistances'])
+    if not os.path.isdir(hiddensrc):
+      self.logger.info("resFinder database not found. Fetching..")
+      cmd = "git clone {} --quiet".format(url)
+      process = subprocess.Popen(cmd.split(),cwd=self.config['folders']['resistances'], stdout=subprocess.PIPE)
+      output, error = process.communicate()
+      cmd = "mv {}/resfinder_db {}".format(self.config['folders']['resistances'], hiddensrc)
+      process = subprocess.Popen(cmd.split())
+      output, error = process.communicate()
+    else:
+      cmd = "git pull"
+    process = subprocess.Popen(cmd.split(),cwd=hiddensrc, stdout=subprocess.PIPE)
+    output, error = process.communicate()
+    if 'Already up-to-date.' in str(output):
+      self.logger.info("resFinder database at latest version.")
+    else:
+      self.logger.info("resFinder database updated: {}".format(output))
 
   def existing_organisms(self):
     """ Returns list of all organisms currently added """

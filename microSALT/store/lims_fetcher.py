@@ -25,6 +25,14 @@ class LIMS_Fetcher():
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for project {}\nSource: {}".format(cg_projid, str(e)))
 
+  def samples_in_project(self, cg_projid):
+    """ Returns a list of sample names for a project"""
+    output = list()
+    samples = self.lims.get_samples(projectlimsid=cg_projid)
+    for s in samples:
+      output.append(s.id)
+    return output
+
   def load_lims_sample_info(self, cg_sampleid, external=False):
     """ Loads all utilized LIMS info. Organism assumed to be written as binomial name """
     if external:
@@ -72,7 +80,8 @@ class LIMS_Fetcher():
       self.data.update({'CG_ID_project': sample.project.id,
                            'CG_ID_sample': sample.id,
                            'Customer_ID_sample' : sample.name,
-                           'organism' : organism})
+                           'organism' : organism,
+                           'priority' : sample.udf['priority']})
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for sample {}. Review LIMS data.\nSource: {}"\
       .format(cg_sampleid, str(e)))
@@ -99,5 +108,5 @@ class LIMS_Fetcher():
         if hit == len(organism):
           return target
     except Exception as e:
-      self.logger.warn("Unable to find reference for {}, strain {} has no reference match\nSource: {}".format(sample_name, lims_organ, e))
+      self.logger.warn("Unable to find existing reference for {}, strain {} has no reference match\nSource: {}".format(sample_name, lims_organ, e))
 

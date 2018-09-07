@@ -200,7 +200,6 @@ class DB_Manipulator:
                             .format(cg_sid, organism))
         self.setPredictor(cg_sid)
         return -3
-    self.upd_rec({'CG_ID_sample':cg_sid}, 'Samples', {'aux_alleles':allelediff})
 
     # Tests all allele combinations found to see if any of them result in ST
     filter = list()
@@ -221,7 +220,6 @@ class DB_Manipulator:
       for st in output:
         STlist.append(st.ST)
       best = self.bestST(cg_sid, STlist)
-      self.upd_rec({'CG_ID_sample':cg_sid}, 'Samples', {'aux_ST':1})
       if threshold:   
         self.logger.warning("Multiple ST within threshold found for sample {}, list: {}. Established ST{} as best hit.".format(cg_sid, STlist, best))
       return best

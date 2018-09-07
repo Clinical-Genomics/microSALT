@@ -15,7 +15,7 @@ from microSALT.store.db_manipulator import DB_Manipulator
 
 class Job_Creator():
 
-  def __init__(self, indir, config, log, outdir="", timestamp=""):
+  def __init__(self, indir, config, log, finishdir="", timestamp=""):
     self.config = config
     self.logger = log
     self.batchfile = ""
@@ -25,9 +25,12 @@ class Job_Creator():
     self.now = timestamp
     if timestamp == "":
       self.now = time.strftime("%Y.%m.%d_%H.%M.%S")
-    self.outdir = outdir
-    if self.outdir == "":
-      self.outdir="{}/{}_{}".format(config["folders"]["results"], os.path.basename(os.path.normpath(self.indir)), self.now)
+
+    #Attempting writing on slurm
+    self.outdir = "/scratch/$SLURM_JOB_ID/workdir/{}_{}".format(self.name, self.now)
+    self.finishdir = finishdir
+    if self.finishdir == "":
+      self.finishdir="{}/{}_{}".format(config["folders"]["results"], self.name, self.now)
     
     self.db_pusher=DB_Manipulator(config, log)
     self.trimmed_files = dict()
@@ -41,7 +44,7 @@ class Job_Creator():
   def get_headerargs(self):
     headerline = "-A {} -p {} -n {} -t {} -J {}_{} --qos {} --output {}/slurm_{}.log".format(self.config["slurm_header"]["project"],\
                  self.config["slurm_header"]["type"], self.config["slurm_header"]["threads"],self.config["slurm_header"]["time"],\
-                 self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"], self.outdir, self.name)
+                 self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"], self.finishdir, self.name)
     return headerline
 
   def verify_fastq(self):
@@ -130,16 +133,15 @@ class Job_Creator():
   def create_resistancesection(self):
     """Creates a blast job for instances where many loci definition files make up an organism"""
     self.index_db("{}".format(self.config["folders"]["resistances"]), '.fsa')
-    if not os.path.exists("{}/resistance".format(self.outdir)):
-      os.makedirs("{}/resistance".format(self.outdir))
 
     #Create run
     batchfile = open(self.batchfile, "a+")
+    batchfile.write("mkdir {}/resistance\n\n".format(self.outdir))
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
     res_list = glob.glob("{}/*.fsa".format(self.config["folders"]["resistances"]))
     for entry in res_list:
       batchfile.write("# BLAST Resistance search in {} for {}\n".format(self.organism, os.path.basename(entry[:-4])))
-      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/resistance/{}.txt -task megablast -num_threads {} -max_target_seqs 1 -outfmt {}\n".format(\
+      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/resistance/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
       entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
     batchfile.close()
@@ -147,11 +149,10 @@ class Job_Creator():
   def create_blastsection(self):
     """Creates a blast job for instances where many loci definition files make up an organism"""
     self.index_db("{}/{}".format(self.config["folders"]["references"], self.organism), '.tfa')
-    if not os.path.exists("{}/blast".format(self.outdir)):
-      os.makedirs("{}/blast".format(self.outdir))
     
     #Create run
     batchfile = open(self.batchfile, "a+")
+    batchfile.write("mkdir {}/blast\n\n".format(self.outdir))
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
     tfa_list = glob.glob("{}/{}/*.tfa".format(self.config["folders"]["references"], self.organism))
     for entry in tfa_list:
@@ -169,9 +170,8 @@ class Job_Creator():
         break
     trimdir = "{}/trimmed".format(self.outdir)
     files = self.verify_fastq()
-    if not os.path.exists(trimdir):
-      os.makedirs(trimdir)
     batchfile = open(self.batchfile, "a+")
+    batchfile.write("mkdir {}\n\n".format(trimdir))
     i=0
     j=1
     while i < len(files):
@@ -195,11 +195,9 @@ class Job_Creator():
   def create_quastsection(self):
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# QUAST QC metrics\n")
-    batchfile.write("quast.py {}/assembly/contigs.fasta -o {}/quast\n".format(self.outdir, self.outdir))
-    batchfile.write("\n")
+    batchfile.write("mkdir {}/quast\n".format(self.outdir))
+    batchfile.write("quast.py {}/assembly/contigs.fasta -o {}/quast\n\n".format(self.outdir, self.outdir))
     batchfile.close()
-    if not os.path.exists("{}/quast".format(self.outdir)):
-      os.makedirs("{}/quast".format(self.outdir))
 
   def create_project(self, name):
     """Creates project in database"""
@@ -227,17 +225,20 @@ class Job_Creator():
       self.logger.error("Unable to add sample {} to database".format(self.name))
 
   def project_job(self, single_sample=False):
+    if 'dry' in self.config and self.config['dry']==True:
+      dry=True
+    else:
+      dry=False
     jobarray = list()
-    if not os.path.exists(self.outdir):
-      os.makedirs(self.outdir)
-
+    if not os.path.exists(self.finishdir):
+      os.makedirs(self.finishdir)
     try:
        if single_sample:
          self.create_project(os.path.normpath(self.indir).split('/')[-2])
        else:
         self.create_project(self.name)
     except Exception as e:
-      self.logger.error("LIMS interaction failed. Unable to read/write project {}".format(self.name)) 
+      self.logger.error("LIMS interaction failed. Unable to read/write project {}".format(self.name))
     try:
       #Start every sample job
       if single_sample:
@@ -245,42 +246,62 @@ class Job_Creator():
         headerargs = self.get_headerargs()
         outfile = self.get_sbatch()
         bash_cmd="sbatch {} {}".format(headerargs, outfile)
-        process = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
-        output, error = process.communicate()
-        jobno = re.search('(\d+)', str(output)).group(0)
-        jobarray.append(jobno)
+        if not dry:
+          samproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+          output, error = samproc.communicate()
+          jobno = re.search('(\d+)', str(output)).group(0)
+          jobarray.append(jobno)
+        else:
+          self.logger.info("Dry-run suppressed command: {}".format(bash_cmd))
       else:
         for (dirpath, dirnames, filenames) in os.walk(self.indir):
           for dir in dirnames:
             sample_in = "{}/{}".format(dirpath, dir)
-            sample_out = "{}/{}".format(self.outdir, dir)
+            sample_out = "{}/{}".format(self.finishdir, dir)
             sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now) 
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()
             outfile = sample_instance.get_sbatch()
             bash_cmd="sbatch {} {}".format(headerargs, outfile)
-            output, error = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE).communicate()
-            jobno = re.search('(\d+)', str(output)).group(0)
-            jobarray.append(jobno)
-      #Mail job
-      mailline = "srun -A {} -p core -n 1 -t 00:00:10 -J {}_{}_TRACKER --qos {} --dependency=afterany:{} --output {}/run_complete.out --mail-user={} --mail-type=END pwd"\
-                 .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"],\
-                 ':'.join(jobarray), self.outdir,  self.config['regex']['mail_recipient'])
-      subprocess.Popen(mailline.split(), stdin=None, stdout=None, stderr=None)
+            if not dry:
+              projproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+              output, error = projproc.communicate()
+              jobno = re.search('(\d+)', str(output)).group(0)
+              jobarray.append(jobno)
+            else:
+              self.logger.info("Dry-run suppressed command: {}".format(bash_cmd))
+      if not dry:
+        pass
+        #self.mail_job(jobarray)
     except Exception as e:
-      self.logger.warning("Failed to spawn project at {}\nSource: {}".format(self.outdir, str(e)))
-      shutil.rmtree(self.outdir, ignore_errors=True)
+      self.logger.warning("Failed to spawn project at {}\nSource: {}".format(self.finishdir, str(e)))
+      shutil.rmtree(self.finishdir, ignore_errors=True)
+
+  def mail_job(self, joblist):
+    mailfile = "{}/mailjob.sh".format(self.finishdir)
+    mb = open(mailfile, "w+")
+    mb.write("#!/bin/sh\n\n")
+    head = "-A {} -p core -n 1 -t 00:00:10 -J {}_{}_TRACKER --qos {} --dependency=afterany:{} --output {}/run_complete.out --mail-user={} --mail-type=END pwd"\
+                 .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"],\
+                 ':'.join(joblist), self.outdir,  self.config['regex']['mail_recipient'])
+    mb.close()
+    bash_cmd="sbatch {} {}".format(head, mailfile)
+    mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+    output, error = mailproc.communicate()
+
+
 
   def sample_job(self):
     self.trimmed_files = dict()
-    if not os.path.exists(self.outdir):
-      os.makedirs(self.outdir)
+    if not os.path.exists(self.finishdir):
+      os.makedirs(self.finishdir)
     try:
       self.organism = self.lims_fetcher.get_organism_refname(self.name, external=False)
       # This is one job 
-      self.batchfile = "{}/runfile.sbatch".format(self.outdir)
+      self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
       batchfile = open(self.batchfile, "w+")
       batchfile.write("#!/bin/sh\n\n")
+      batchfile.write("mkdir -p {}\n".format(self.outdir))
       batchfile.close()
 
       self.create_trimsection()
@@ -289,6 +310,10 @@ class Job_Creator():
       self.create_quastsection()
       self.create_blastsection()
       self.create_resistancesection()
+      batchfile = open(self.batchfile, "a+")
+      batchfile.write("cp -r {}/* {}".format(self.outdir, self.finishdir))
+      batchfile.close()
+
       self.logger.info("Created runfile for sample {} in folder {}".format(self.name, self.outdir))
     except Exception as e:
       raise Exception("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))

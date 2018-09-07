@@ -118,6 +118,7 @@ class Scraper():
     return len(alleles[targetPre])
 
   def scrape_resistances(self):
+    hypo = list()
     q_list = glob.glob("{}/resistance/*".format(self.sampledir))
     for file in q_list:
       res_col = self.db_pusher.get_columns('Resistances')
@@ -149,7 +150,25 @@ class Scraper():
               res_col["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
               res_col["contig_length"] = nodeinfo[3]
               res_col["contig_coverage"] = nodeinfo[5]
-              self.db_pusher.add_rec(res_col, 'Resistances')
+              hypo.append(res_col)
+
+        #Cleanup of overlapping hits
+        ind = 0
+        while ind < len(hypo):
+          targ = ind+1
+          while targ <= len(hypo):
+            if hypo[ind]["contig_name"] == hypo[targ]["contig_name"]:        
+              #Overlapping 
+              if hypo[ind]["contig_start"] >= hypo[targ]["contig_end"] and hypo[ind]["contig_end"] >= hypo[targ]["contig_start"]:
+                #Better hit
+                if hypo[ind]["identity"] > hypo[targ]["identity"] and hypo[ind]["span"] >= hypo[targ]["span"]:
+                  del hypo[targ]
+            else:
+              targ += 1
+          ind += 1
+
+        for hit in hypo_resist:
+          self.db_pusher.add_rec(hit, 'Resistances')
 
   def load_resistances(self):
     """Loads common resistance names for genes"""
