@@ -94,7 +94,7 @@ class Job_Creator():
     batchfile = open(self.batchfile, "a+")
     #memory is actually 128 per node regardless of cores.
     batchfile.write("# Spades assembly\n")
-    batchfile.write("spades.py --threads {} --memory {} -o {}/assembly"\
+    batchfile.write("spades.py --threads {} --careful --memory {} -o {}/assembly"\
     .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir))
     
     libno = 1
