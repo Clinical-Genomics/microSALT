@@ -30,10 +30,10 @@ class Referencer():
     self.parse_fastq(reference)
     self.filter_codon()
     self.filter_id()
-    outname = "{}/{}.gst".format(self.config["folders"]["gene_set"], os.path.basename(ref_path)[:-4]
+    outname = "{}/{}.gst".format(self.config["folders"]["gene_set"], os.path.basename(ref_path)[:-4])
     output = open(outname, "w+")
     for item in cgmlstset:
-      output.write("{}\n{}\n".format(item[0], item[1])
+      output.write("{}\n{}\n".format(item[0], item[1]))
     output.close()
     self.logger.info("cgMLST written to {} from {}".format(outname, ref_path))
 

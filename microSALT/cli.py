@@ -52,6 +52,12 @@ def type(ctx):
 
 @root.group()
 @click.pass_context
+def qc(ctx):
+  """MWGS QC placeholder"""
+  pass 
+
+@root.group()
+@click.pass_context
 def cgmlst(ctx):
   """In-depth sample relationship analysis"""
   pass
