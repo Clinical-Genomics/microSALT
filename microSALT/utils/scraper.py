@@ -213,10 +213,11 @@ class Scraper():
           title = title.replace('=',' ')
           #Title seperated
           title = title.split(' ')
+          #Only unique pids for each sample
           id = title[title.index('protein_id')+1]
-          #Adds id entry with highest e-value
           if not id in allele_sequence:
             #la[-1] contains gaps
+            #If competing PIDS, add one with lowest e-value
             if int(la[7]) < int(la[8]):
               #Indexes might be 1 away. Be careful
               allele_sequence[id] = node_lookup[la[2]][int(la[7]):int(la[8])]

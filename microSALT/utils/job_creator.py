@@ -132,14 +132,14 @@ class Job_Creator():
 
   def create_cgmlstsection(self):
     """Creates a blast job against a known reference/expanded geneset"""
-    self.index_db("{}".format(self.config["folders"]["gene_set"]), '.fna')
+    self.index_db("{}".format(self.config["folders"]["gene_set"]), '.gst')
     if not os.path.exists("{}/cgmlst".format(self.outdir)):
       os.makedirs("{}/cgmlst".format(self.outdir))
 
     #Create run
     batchfile = open(self.batchfile, "a+")
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length qseq\""
-    entry = "{}/{}.fna".format(self.config["folders"]["gene_set"], self.organism)
+    entry = "{}/{}.gst".format(self.config["folders"]["gene_set"], self.organism)
     
     batchfile.write("# BLAST cgMLST search in {} for {}\n".format(self.organism, os.path.basename(entry[:-4])))
     batchfile.write("blastn -db {} -query {}/assembly/contigs.fasta -out {}/cgmlst/loci_query_cgmlst.txt -task megablast -num_threads {} -perc_identity 95 -outfmt {}\n".format(\

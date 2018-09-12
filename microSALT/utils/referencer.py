@@ -22,7 +22,87 @@ class Referencer():
     self.refs = self.db_access.get_profiles()
     organisms = self.refs.keys()
     self.organisms = [*organisms] 
+    #cgmlst
+    self.cgmlstset = list()
+
+  def generate_cgmlst(self, ref_path):
+    """ Takes an input fastq and filters it to for an appropriate gene set """
+    self.parse_fastq(reference)
+    self.filter_codon()
+    self.filter_id()
+    outname = "{}/{}.gst".format(self.config["folders"]["gene_set"], os.path.basename(ref_path)[:-4]
+    output = open(outname, "w+")
+    for item in cgmlstset:
+      output.write("{}\n{}\n".format(item[0], item[1])
+    output.close()
+    self.logger.info("cgMLST written to {} from {}".format(outname, ref_path))
+
+  def parse_fastq(self, ref):
+    """ Parse fastq file and dump into necessary structure """
+    with open(ref, 'r') as infile:
+      lastkey = ""
+      for line in infile:
+        line = line.rstrip()
+        if '>' in line:
+          lastkey = line
+        else:
+          self.cgmlstset.append(dict())
+          self.cgmlstset[-1] = (lastkey , line)
+
+    self.logger.info("Sequences initially: {} items".format(len(self.cgmlstset)))
+
+  def filter_codon(self):
+    """ Filter fastq based on start/stop codons and hit length """
+    dropped = 0
+    for line in self.cgmlstset:
+      lastkey = ""
+      codons = ['ATG', 'TAG', 'TGA', 'TAA']
+      rv_codons = ['TAC', 'ATC', 'ACT', 'ATT']
+      #Length and codon filters
+      if len(line[1]) >= 50 and (line[1][0:3] in codons and line[1][-3:] in codons) or (line[1][0:3] in rv_codons and line[1][-3:] in rv_codons):
+        self.cgmlstset.append(dict())
+        self.cgmlstset[-1] = (lastkey , line)
+      else:
+        dropped += 1
+
+    self.logger.info("Sequences remaining after length and codon filter: {} items".format(len(self.cgmlstset)-dropped))
  
+  def filter_id(self):
+    """ Filter fastq based on identity to other hits """
+    refined = list()
+    while len(self.cgmlstset) > 1:
+      a = self.cgmlstset.pop(0)
+      with open('a', 'w') as temporary:
+        temporary.write("{}\n{}".format(a[0],a[1]))
+      with open('b', 'w') as temporary:
+        for item in self.cgmlstset:
+          temporary.write("{}\n{}\n".format(item[0], item[1]))
+      cmd = "water -asequence a -bsequence b -gapopen 10.0 -gapextend 0.5 -outfile out.water -datafile EDNAFULL"
+      subprocess.check_output(cmd.split(), stderr=subprocess.DEVNULL)
+      out = open("{}/out.water".format(os.getcwd()), 'r')
+      content = out.readlines()
+      #Read output
+      similar = False
+      for outl in content:
+        if 'Length' in outl:
+          length = int(re.search('\d+', outl).group(0))
+        elif 'Identity' in outl:
+          id = float(re.search('\(\ *(\d+.\d+)%\)', outl).group(1))
+          #Identity filter when id found (always after length)
+          if id >= 90 and length >= 100:
+            similar = True
+            break
+          #Reset
+          else:
+            length = 0
+            id = 0
+      if not similar:
+        refined.append(dict())
+        refined[-1]=(a[0], a[1])
+
+    self.logger.info("Sequences after similarity filter: {} items".format(len(refined)))
+    self.cgmlstset = refined
+
   def update_refs(self):
     """Updates all references. Order is important, since no object is updated twice"""
     self.fetch_pubmlst()

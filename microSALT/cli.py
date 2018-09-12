@@ -57,6 +57,18 @@ def cgmlst(ctx):
   pass
 
 @cgmlst.group()
+@click.argument('reference_path')
+@click.pass_context
+def geneset(ctx, reference_path):
+  """ Filter a fastq file of genes to fit cgMLST usage """
+  reference_path = os.path.abspath(reference_path)
+
+  referee = Referencer(ctx.obj['config'], ctx.obj['log'])
+  referee.generate_cgmlst(reference_path)
+  #Needs to output file somewhere
+  done()
+
+@cgmlst.group()
 @click.pass_context
 def fingerprint(ctx):
   """Generate cgMLST profile for a project/sample"""
@@ -90,7 +102,7 @@ def project(ctx, project_id):
 @click.argument('sample_id')
 @click.pass_context
 def sample(ctx, sample_id):
-  """Generate cgMLST profile for a project"""
+  """Generate cgMLST profile for a sample"""
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
   try:
     scientist.load_lims_sample_info(sample_id)
