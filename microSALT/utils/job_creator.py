@@ -246,7 +246,7 @@ class Job_Creator():
         headerargs = self.get_headerargs()
         outfile = self.get_sbatch()
         bash_cmd="sbatch {} {}".format(headerargs, outfile)
-        if not dry:
+        if not dry and outfile != "":
           samproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
           output, error = samproc.communicate()
           jobno = re.search('(\d+)', str(output)).group(0)
@@ -263,7 +263,7 @@ class Job_Creator():
             headerargs = sample_instance.get_headerargs()
             outfile = sample_instance.get_sbatch()
             bash_cmd="sbatch {} {}".format(headerargs, outfile)
-            if not dry:
+            if not dry and outfile != "":
               projproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
               output, error = projproc.communicate()
               jobno = re.search('(\d+)', str(output)).group(0)
@@ -274,8 +274,8 @@ class Job_Creator():
         pass
         #self.mail_job(jobarray)
     except Exception as e:
-      self.logger.warning("Failed to spawn project at {}\nSource: {}".format(self.finishdir, str(e)))
-      shutil.rmtree(self.finishdir, ignore_errors=True)
+      self.logger.error("Issues handling some samples of project at {}\nSource: {}".format(self.finishdir, str(e)))
+      #shutil.rmtree(self.finishdir, ignore_errors=True)
 
   def mail_job(self, joblist):
     mailfile = "{}/mailjob.sh".format(self.finishdir)
@@ -288,8 +288,6 @@ class Job_Creator():
     bash_cmd="sbatch {} {}".format(head, mailfile)
     mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
     output, error = mailproc.communicate()
-
-
 
   def sample_job(self):
     self.trimmed_files = dict()
@@ -316,7 +314,8 @@ class Job_Creator():
 
       self.logger.info("Created runfile for sample {} in folder {}".format(self.name, self.outdir))
     except Exception as e:
-      raise Exception("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
+      self.logger.error("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
+      shutil.rmtree(self.finishdir, ignore_errors=True) 
     try: 
       self.create_sample(self.name)
     except Exception as e:

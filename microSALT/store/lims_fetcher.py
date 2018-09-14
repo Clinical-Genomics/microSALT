@@ -18,10 +18,17 @@ class LIMS_Fetcher():
 
   def load_lims_project_info(self, cg_projid):
     project = Project(self.lims, id=cg_projid)
+
     try:
+      #Resolves old format
+      if ' ' in project.name:
+        realname = project.name.split(' ')[0]
+      else:
+        realname = project.name
+
       self.data.update({'date_received': project.open_date,
                                'CG_ID_project': cg_projid,
-                               'Customer_ID_project' : project.name})
+                               'Customer_ID_project' : realname})
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for project {}\nSource: {}".format(cg_projid, str(e)))
 
