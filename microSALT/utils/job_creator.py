@@ -271,8 +271,7 @@ class Job_Creator():
             else:
               self.logger.info("Dry-run suppressed command: {}".format(bash_cmd))
       if not dry:
-        pass
-        #self.mail_job(jobarray)
+        self.mail_job(jobarray)
     except Exception as e:
       self.logger.error("Issues handling some samples of project at {}\nSource: {}".format(self.finishdir, str(e)))
       #shutil.rmtree(self.finishdir, ignore_errors=True)

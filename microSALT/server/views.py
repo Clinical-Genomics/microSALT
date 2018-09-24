@@ -90,7 +90,7 @@ def gen_reportdata(pid, organism_group='all'):
       s.threshold = 'Passed'
       for seq_type in s.seq_types:
         #Identify single deviating allele
-        if seq_type.st_predictor and seq_type.identity >= 99.5 and seq_type.identity < 100.0 and seq_type.span >= 1.0:
+        if seq_type.st_predictor and seq_type.identity >= 99.5 and seq_type.identity < 100.0 and 1-abs(1-seq_type.span) >= 0.9:
           near_hits = near_hits + 1
         elif seq_type.identity < 99.5 and seq_type.st_predictor or seq_type.span < 1.0 and seq_type.st_predictor:
           s.threshold = 'Failed'

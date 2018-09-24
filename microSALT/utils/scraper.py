@@ -118,57 +118,77 @@ class Scraper():
     return len(alleles[targetPre])
 
   def scrape_resistances(self):
-    hypo = list()
     q_list = glob.glob("{}/resistance/*".format(self.sampledir))
+    hypo = list()
+    res_cols = self.db_pusher.get_columns('Resistances')
     for file in q_list:
-      res_col = self.db_pusher.get_columns('Resistances')
       with open("{}".format(file), 'r') as sample:
-        res_col["CG_ID_sample"] = self.name
         for line in sample:
           #Ignore commented fields
           if not line[0] == '#':
             elem_list = line.rstrip().split("\t")
             if not elem_list[1] == 'N/A':
-              res_col["identity"] = elem_list[4]
-              res_col["evalue"] = elem_list[5]
-              res_col["bitscore"] = elem_list[6]
-              res_col["contig_start"] = elem_list[7]
-              res_col["contig_end"] = elem_list[8]
-              res_col["subject_length"] =  elem_list[11]
+              #print("DEBUG: {}".format(line.rstrip()))
+              hypo.append(dict())
+              hypo[-1]["CG_ID_sample"] = self.name
+              hypo[-1]["identity"] = elem_list[4]
+              hypo[-1]["evalue"] = elem_list[5]
+              hypo[-1]["bitscore"] = elem_list[6]
+              if elem_list[7] < elem_list[8]:
+                hypo[-1]["contig_start"] = elem_list[7]
+                hypo[-1]["contig_end"] = elem_list[8]
+              else:
+                hypo[-1]["contig_start"] = elem_list[8]
+                hypo[-1]["contig_end"] = elem_list[7]
+              hypo[-1]["subject_length"] =  elem_list[11]
 
               # Split elem 3 in loci (name) and allele (number)
               partials = re.search('(.+)_(\d+){1,2}(?:_(\w+))*', elem_list[3])
-              res_col["gene"] = partials.group(1)
-              res_col["reference"] = partials.group(3)
-              res_col["resistance"] = self.gene2resistance[res_col["gene"]]
+              hypo[-1]["gene"] = partials.group(1)
+              hypo[-1]["reference"] = partials.group(3)
+              hypo[-1]["resistance"] = self.gene2resistance[hypo[-1]["gene"]]
 
-              res_col["instance"] = os.path.basename(file[:-4])
-              res_col["span"] = float(res_col["subject_length"])/self.get_locilength('Resistances', res_col["instance"], partials.group(0))
+              hypo[-1]["instance"] = os.path.basename(file[:-4])
+              hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('Resistances', hypo[-1]["instance"], partials.group(0))
 
               # split elem 2 into contig node_NO, length, cov
               nodeinfo = elem_list[2].split('_')
-              res_col["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
-              res_col["contig_length"] = nodeinfo[3]
-              res_col["contig_coverage"] = nodeinfo[5]
-              hypo.append(res_col)
+              hypo[-1]["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
+              hypo[-1]["contig_length"] = nodeinfo[3]
+              hypo[-1]["contig_coverage"] = nodeinfo[5]
 
-        #Cleanup of overlapping hits
-        ind = 0
-        while ind < len(hypo):
-          targ = ind+1
-          while targ <= len(hypo):
-            if hypo[ind]["contig_name"] == hypo[targ]["contig_name"]:        
-              #Overlapping 
-              if hypo[ind]["contig_start"] >= hypo[targ]["contig_end"] and hypo[ind]["contig_end"] >= hypo[targ]["contig_start"]:
-                #Better hit
-                if hypo[ind]["identity"] > hypo[targ]["identity"] and hypo[ind]["span"] >= hypo[targ]["span"]:
-                  del hypo[targ]
-            else:
-              targ += 1
-          ind += 1
+    self.logger.info("{} candidate resistance hits found".format(len(hypo)))
 
-        for hit in hypo_resist:
-          self.db_pusher.add_rec(hit, 'Resistances')
+    #HOLY SHIT REVIEW THIS LOGIC
+    #Cleanup of overlapping hits
+    ind = 0
+    while ind < len(hypo)-1:
+      targ = ind+1
+      while targ < len(hypo):
+        ignore = False
+        if hypo[ind]["contig_name"] == hypo[targ]["contig_name"]:      
+          #Overlapping or shared gene 
+          if (hypo[ind]["contig_start"] <= hypo[targ]["contig_end"] and hypo[ind]["contig_end"] >= hypo[targ]["contig_start"]) or hypo[ind]['gene'] == hypo[targ]['gene']:
+            #Rightmost is worse
+            if float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]["span"])) >= float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]["span"])):
+              del hypo[targ]
+              ignore = True
+            #Leftmost is worse
+            elif float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]['span'])) < float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]['span'])):
+              del hypo[ind]
+              targ = ind +1
+              ignore = True
+            ##Just different ref or hit shared between dbs
+            #elif len(set(hypo[ind].items() ^ hypo[targ].items())) == 2 and (hypo[ind]['reference'] != hypo[targ]['reference'] or hypo[ind]['instance'] != hypo[targ]['instance']):
+            #  del hypo[targ]
+            #  ignore = True
+        if not ignore:
+          targ += 1
+      ind += 1
+
+    self.logger.info("{} resistance hits were added after removing overlaps and duplicate hits".format( len(hypo)))
+    for hit in hypo:
+      self.db_pusher.add_rec(hit, 'Resistances')
 
   def load_resistances(self):
     """Loads common resistance names for genes"""
@@ -181,6 +201,10 @@ class Scraper():
           conversions[line[0]] = cropped
           #Workaround for case issues
           conversions[line[0].lower()] = cropped
+
+    #Exceptions
+    conversions['aacA4']='Aminoglycoside resistance'
+    conversions['blaNDM-13']='Beta-lactam resistance'
     return conversions
 
   def scrape_all_loci(self):
@@ -219,6 +243,13 @@ class Scraper():
               seq_col["identity"] = elem_list[4]
               seq_col["evalue"] = elem_list[5]
               seq_col["bitscore"] = elem_list[6]
+              if elem_list[7] < elem_list[8]:
+                seq_col["contig_start"] = elem_list[7]
+                seq_col["contig_end"] = elem_list[8]
+              else:
+                seq_col["contig_start"] = elem_list[8]
+                seq_col["contig_end"] = elem_list[7]
+
               seq_col["contig_start"] = elem_list[7]
               seq_col["contig_end"] = elem_list[8]
               seq_col["subject_length"] =  elem_list[11]
@@ -227,7 +258,6 @@ class Scraper():
               partials = re.search('(.+)_(\d+){1,2}(?:_(\w+))*', elem_list[3]) 
               seq_col["loci"] = partials.group(1)
               seq_col["allele"] = int(partials.group(2))
-              #import pdb; pdb.set_trace()
               seq_col["span"] = float(seq_col["subject_length"])/self.get_locilength('Seq_types', organism, partials.group(0))
 
               # split elem 2 into contig node_NO, length, cov

@@ -196,7 +196,6 @@ def project(ctx, project_id, rerun, email, input):
   
   garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_project()
-
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_id)
   codemonkey.report()
   done()
