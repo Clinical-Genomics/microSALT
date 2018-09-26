@@ -252,7 +252,7 @@ class Job_Creator():
           jobno = re.search('(\d+)', str(output)).group(0)
           jobarray.append(jobno)
         else:
-          self.logger.info("Dry-run suppressed command: {}".format(bash_cmd))
+          self.logger.info("Suppressed command: {}".format(bash_cmd))
       else:
         for (dirpath, dirnames, filenames) in os.walk(self.indir):
           for dir in dirnames:
@@ -261,7 +261,9 @@ class Job_Creator():
             sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now) 
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()
-            outfile = sample_instance.get_sbatch()
+            outfile = ""
+            if os.path.isfile(sample_instance.get_sbatch()):
+              outfile = sample_instance.get_sbatch()
             bash_cmd="sbatch {} {}".format(headerargs, outfile)
             if not dry and outfile != "":
               projproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
@@ -269,7 +271,7 @@ class Job_Creator():
               jobno = re.search('(\d+)', str(output)).group(0)
               jobarray.append(jobno)
             else:
-              self.logger.info("Dry-run suppressed command: {}".format(bash_cmd))
+              self.logger.info("Suppressed command: {}".format(bash_cmd))
       if not dry:
         self.mail_job(jobarray)
     except Exception as e:
@@ -277,13 +279,43 @@ class Job_Creator():
       #shutil.rmtree(self.finishdir, ignore_errors=True)
 
   def mail_job(self, joblist):
+    """ Sends an email once all analysis jobs are complete.
+        Sbatch > Srun to avoid issues with 50+ jobs """
+
     mailfile = "{}/mailjob.sh".format(self.finishdir)
     mb = open(mailfile, "w+")
     mb.write("#!/bin/sh\n\n")
-    head = "-A {} -p core -n 1 -t 00:00:10 -J {}_{}_TRACKER --qos {} --dependency=afterany:{} --output {}/run_complete.out --mail-user={} --mail-type=END pwd"\
-                 .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"],\
-                 ':'.join(joblist), self.outdir,  self.config['regex']['mail_recipient'])
     mb.close()
+
+    massagedJobs = list()
+    final = ':'.join(joblist)
+    #Create subtracker if more than 50 samples
+    maxlen = 50
+    if len(joblist) > maxlen:
+      i = 1
+      while i <= len(joblist):
+        if i+maxlen < len(joblist):
+          massagedJobs.append(':'.join(joblist[i-1:i+maxlen-1]))
+        else:
+          massagedJobs.append(':'.join(joblist[i-1:-1]))
+        i += maxlen
+      for entry in massagedJobs:
+        if massagedJobs.index(entry) < len(massagedJobs)-1:
+          head = "-A {} -p core -n 1 -t 00:00:10 -J {}_{}_SUBTRACKER --qos {} --dependency=afterany:{}"\
+                 .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"],\
+                 entry)
+          bash_cmd="sbatch {} {}".format(head, mailfile)
+          mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+          output, error = mailproc.communicate()
+          jobno = re.search('(\d+)', str(output)).group(0)
+          massagedJobs[massagedJobs.index(entry)+1] += ":{}".format(jobno)
+        else:
+          final = entry
+          break 
+
+    head = "-A {} -p core -n 1 -t 00:00:10 -J {}_{}_TRACKER --qos {} --dependency=afterany:{} --output {}/run_complete.out --mail-user={} --mail-type=END"\
+            .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"],\
+           final, self.finishdir,  self.config['regex']['mail_recipient'])
     bash_cmd="sbatch {} {}".format(head, mailfile)
     mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
     output, error = mailproc.communicate()

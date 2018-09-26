@@ -28,21 +28,24 @@ class Referencer():
 
   def identify_new(self, cg_id, project=False):
    neworgs = list()
-   if project:
-     samplenames = self.lims.samples_in_project(cg_id)
-     for cg_sampleid in samplenames:
-       self.lims.load_lims_sample_info(cg_sampleid)
-       refname = self.lims.get_organism_refname(cg_sampleid)
-       if refname not in self.organisms and refname not in neworgs:
-         neworgs.append(self.lims.data['organism'])
-     for org in neworgs:
-       self.add_pubmlst(org)
-   else:
-     self.lims.load_lims_sample_info(cg_id)
-     refname = self.lims.get_organism_refname(cg_id)
-     if refname not in self.organisms:
-       self.add_pubmlst(org)
-
+   try:
+     if project:
+       samplenames = self.lims.samples_in_project(cg_id)
+       for cg_sampleid in samplenames:
+         self.lims.load_lims_sample_info(cg_sampleid)
+         refname = self.lims.get_organism_refname(cg_sampleid)
+         if refname not in self.organisms and refname not in neworgs:
+           neworgs.append(self.lims.data['organism'])
+       for org in neworgs:
+         self.add_pubmlst(org)
+     else:
+       self.lims.load_lims_sample_info(cg_id)
+       refname = self.lims.get_organism_refname(cg_id)
+       if refname not in self.organisms:
+         self.add_pubmlst(self.lims.data['organism'])
+   except Exception as e:
+     raise Exception("Unable to add locate reference for organism '{}' in pubMLST. Manually compile the reference.".format(self.lims.data['organism']))
+ 
   def update_refs(self):
     """Updates all references. Order is important, since no object is updated twice"""
     self.fetch_pubmlst()
@@ -97,23 +100,39 @@ class Referencer():
   def fetch_resistances(self):
     cwd = os.getcwd()
     url = "https://bitbucket.org/genomicepidemiology/resfinder_db.git"
-    hiddensrc ="{}/.resfinder_db/".format(self.config['folders']['resistances'])
+    hiddensrc ="{}/.resfinder_db".format(self.config['folders']['resistances'])
+    wipeIndex = False
     if not os.path.isdir(hiddensrc):
       self.logger.info("resFinder database not found. Fetching..")
+      os.makedirs(hiddensrc)
       cmd = "git clone {} --quiet".format(url)
       process = subprocess.Popen(cmd.split(),cwd=self.config['folders']['resistances'], stdout=subprocess.PIPE)
       output, error = process.communicate()
-      cmd = "mv {}/resfinder_db {}".format(self.config['folders']['resistances'], hiddensrc)
-      process = subprocess.Popen(cmd.split())
+      os.rename("{}/resfinder_db".format(self.config['folders']['resistances']), hiddensrc)
+      wipeIndex = True
+
+    else:
+      cmd = "git pull origin master"
+      process = subprocess.Popen(cmd.split(),cwd=hiddensrc, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
       output, error = process.communicate()
-    else:
-      cmd = "git pull"
-    process = subprocess.Popen(cmd.split(),cwd=hiddensrc, stdout=subprocess.PIPE)
-    output, error = process.communicate()
-    if 'Already up-to-date.' in str(output):
-      self.logger.info("resFinder database at latest version.")
-    else:
-      self.logger.info("resFinder database updated: {}".format(output))
+      if not 'Already up-to-date.' in str(output):
+        self.logger.info("resFinder database updated!")
+        wipeIndex = True
+      else:
+        self.logger.info("resFinder database verified to be of latest version.")
+
+    if wipeIndex:
+      for file in os.listdir(hiddensrc):
+        if(os.path.isfile("{}/{}".format(hiddensrc, file))):
+          #Remove existing index
+          if file[-4] == '.':
+            fileWOsuf = file[:-4]
+            if fileWOsuf in os.listdir(self.config['folders']['resistances']):
+              self.logger.info("Removing existing index files for {}".format(fileWOsuf))
+              for tFile in os.listdir(self.config['folders']['resistances']):
+                os.remove("{}/{}".format(self.config['folders']['resistances'], tFile))
+          #Copy fresh
+          shutil.copy("{}/{}".format(hiddensrc, file), self.config['folders']['resistances'])
 
   def existing_organisms(self):
     """ Returns list of all organisms currently added """
@@ -122,28 +141,39 @@ class Referencer():
   def add_pubmlst(self, organism):
     """ Checks pubmlst for references of given organism and downloads them """
     #Organism must be in binomial format and only resolve to one hit
-    organism = organism.lower().replace(' ', '_')
-    if organism in self.organisms:
+    organism = organism.lower().replace('.',' ')
+    if organism.replace(' ', '_') in self.organisms:
       self.logger.info("Organism {} already stored in microSALT".format(organism))
       return
     db_query = self.query_pubmlst()
 
     #Doublecheck organism name is correct and unique
-    counter = 0.0 
+    orgparts = organism.split(' ')
+    counter = 0.0
     for item in db_query:
       for subtype in item['databases']:
-        if organism.replace('_', ' ') in subtype['description'].lower():
+        missingPart = False
+        for part in orgparts:
+          if not part in subtype['description'].lower():
+            missingPart = True
+        if not missingPart:
           #Seqdef always appear after isolates, so this is fine
           seqdef_url = subtype['href']
+          desc = subtype['description']
           counter += 1.0
-    if counter > 2:
-      self.logger.info("Organism request resolved to {} organisms. Please be more stringent".format(counter/2))
-      return
-    elif counter < 1:
-      self.logger.info("Unable to find requested organism in pubMLST database")
-      return
+          self.logger.info("Located pubMLST hit {} for sample".format(desc))
+    if counter > 2.0:
+      raise Exception("Organism request resolved to {} organisms. Please be more stringent".format(int(counter/2)))
+    elif counter < 1.0:
+      #add external
+      raise Exception("Unable to find requested organism in pubMLST database")  
     else:
-      self.download_pubmlst(organism, seqdef_url)
+      truename = desc.lower().split(' ')
+      truename = "{}_{}".format(truename[0], truename[1])
+      self.download_pubmlst(truename, seqdef_url)
+      #Update organism list
+      self.refs = self.db_access.get_profiles()
+      self.logger.info("Created table profile_{}".format(truename))
 
   def query_pubmlst(self):
     """ Returns a json object containing all organisms available via pubmlst.org """
@@ -165,6 +195,7 @@ class Referencer():
         ver_query = json.loads(response.read().decode('utf-8'))
     currver = self.db_access.get_version("profile_{}".format(organism))
     if ver_query['last_updated'] <= currver:
+      self.logger.info("Profile for {} already at latest version".format(organism.replace('_' ,' ').capitalize()))
       return currver
 
     #Pull ST file
@@ -204,4 +235,4 @@ class Referencer():
     for key, val in seqdef_url.items():
       ver = self.download_pubmlst(key, val)
       self.db_access.upd_rec({'name':'profile_{}'.format(key)}, 'Versions', {'version':ver})
-      self.logger.info('Table profile_{} set to version {}'.format(key, ver))
+      self.logger.info('pubMLST reference for {} set to version {}'.format(key.replace('_',' ').capitalize(), ver))

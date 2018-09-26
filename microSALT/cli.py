@@ -69,9 +69,12 @@ def project(ctx, project_id, input, dry):
       sys.exit(-1)
 
   print("Checking versions of references..")
-  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-  fixer.identify_new(project_id,project=True)
-  fixer.update_refs()
+  try:
+    fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+    fixer.identify_new(project_id,project=True)
+    fixer.update_refs()
+  except Exception as e:
+    print("{}".format(e))
   print("Version check done. Creating sbatch jobs")
   manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
   manager.project_job()
@@ -104,12 +107,15 @@ def sample(ctx, sample_id, input, dry):
       sys.exit(-1)
 
   print("Checking versions of references..")
-  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-  fixer.identify_new(sample_id,project=False) 
-  fixer.update_refs()
-  print("Version check done. Creating sbatch job")
-  worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
-  worker.project_job(single_sample=True)
+  try:
+    fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+    fixer.identify_new(sample_id,project=False) 
+    fixer.update_refs()
+    print("Version check done. Creating sbatch job")
+    worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
+    worker.project_job(single_sample=True)
+  except Exception as e:
+    print("Unable to process sample {} due to '{}'".format(sample_id,e))
   done()
 
 @root.group()
