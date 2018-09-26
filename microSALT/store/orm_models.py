@@ -23,13 +23,12 @@ class Samples(db.Model):
    Customer_ID_sample = db.Column(db.String(40))
    organism = db.Column(db.String(30))
    ST = db.Column(db.SmallInteger, default=-1)
-   aux_ST = db.Column(db.Boolean, default=0)
-   aux_alleles = db.Column(db.SmallInteger, default=-1)
    date_analysis = db.Column(db.DateTime)
    genome_length = db.Column(db.Integer, default=-1)
    gc_percentage = db.Column(db.Float(3,2), default = 0.0)
    n50 = db.Column(db.Integer, default=-1)
    contigs = db.Column(db.Integer, default=-1)
+   priority = db.Column(db.String(20))
 
 class Seq_types(db.Model):
   __tablename__ = 'seq_types'
@@ -48,6 +47,7 @@ class Seq_types(db.Model):
   subject_length = db.Column(db.Integer)
   st_predictor = db.Column(db.Boolean, default = 0)
 
+
 class Resistances(db.Model):
   __tablename__ = 'resistances'
   samples = relationship('Samples', back_populates='resistances')
@@ -65,6 +65,8 @@ class Resistances(db.Model):
   subject_length = db.Column(db.Integer)
   reference = db.Column(db.String(40))
   resistance = db.Column(db.String(120))
+  contig_start=db.Column(db.Integer)
+  contig_end=db.Column(db.Integer)
 
 class Projects(db.Model):
    __tablename__ = 'projects'

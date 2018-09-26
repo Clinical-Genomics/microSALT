@@ -6,8 +6,10 @@
           <!-- Summary pages  -->
           <footer>
             <div class="panel"><div class="panel-body">
-              <h2 class="page-header"><strong>microSALT Results</strong><br>
-                <small>Clinical Microbiology</small>
+              <a href="https://github.com/Clinical-Genomics/microSALT"><img src="/Users/isaksylvin/Desktop/microsalt.jpg" alt="MicroSALT Logo" align="left" style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
+              <img src="/Users/isaksylvin/Desktop/swedac.jpg" alt="Swedac Logo" align="right" style="display:flex;">
+              <h2 class="page-header">
+                <small><br><br>Clinical Microbiology</small>
               <small><p align="right">{{date}}</p></small></h2>
 
               <h3><strong>Project Summary</strong><br></h3>
@@ -97,12 +99,6 @@
                         <td>{{sample.ST_status }}</td>
                       {% endif %}
                     </tr>
-                    {% if sample.aux_alleles > 0 %}
-                      <tr>
-                        <th scope="row" >Additional non-determining alleles</th>
-                        <td>{{sample.aux_alleles}}</td>
-                      </tr>
-                    {% endif %}
                     <tr><th scope="row" >Thresholds</th>
                       {% if sample.threshold=='Failed' %}
                         <td><font color="red">{{sample.threshold }}</font></td>
@@ -114,6 +110,12 @@
                       <tr>
                         <th scope="row">Reference version</th>
                         <td>{{version[sample.organism]}}</td>
+                      </tr>
+                    {% endif %}
+                    {% if sample.priority is not none %}
+                      <tr>
+                        <th scope="row">Priority</th>
+                        <td>{{sample.priority}}</td>
                       </tr>
                     {% endif %}
                   </table></div>

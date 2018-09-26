@@ -72,10 +72,10 @@ def gen_reportdata(pid, organism_group='all'):
   for s in sample_info:
     s.ST_status=str(s.ST)
     if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or s.Customer_ID_sample.startswith('NK-'):
-      s.ST_status = 'Control'
+      s.ST_status = 'Control (prefix)'
     elif s.ST < 0:
       if s.ST == -1:
-        s.ST_status = 'Control'
+        s.ST_status = 'Control (auto)'
       elif s.ST == -4:
         s.ST_status = 'Novel'
       else:

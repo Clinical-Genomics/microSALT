@@ -52,9 +52,11 @@ def start(ctx):
 @start.command()
 @click.argument('project_id')
 @click.option('--input', help='Full path to project folder',default="")
+@click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
 @click.pass_context
-def project(ctx, project_id, input):
+def project(ctx, project_id, input, dry):
   """Analyze a whole project"""
+  ctx.obj['config']['dry'] = dry
   if input != "":
     project_dir = os.path.abspath(input)
     if not project_id in project_dir:
@@ -68,6 +70,7 @@ def project(ctx, project_id, input):
 
   print("Checking versions of references..")
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+  fixer.identify_new(project_id,project=True)
   fixer.update_refs()
   print("Version check done. Creating sbatch jobs")
   manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
@@ -77,9 +80,11 @@ def project(ctx, project_id, input):
 @start.command()
 @click.argument('sample_id')
 @click.option('--input', help='Full path to sample folder', default="")
+@click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
 @click.pass_context
-def sample(ctx, sample_id, input):
+def sample(ctx, sample_id, input, dry):
   """Analyze a single sample"""
+  ctx.obj['config']['dry'] = dry
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
   try:
     scientist.load_lims_sample_info(sample_id)
@@ -100,6 +105,7 @@ def sample(ctx, sample_id, input):
 
   print("Checking versions of references..")
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+  fixer.identify_new(sample_id,project=False) 
   fixer.update_refs()
   print("Version check done. Creating sbatch job")
   worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
