@@ -14,6 +14,16 @@
     "file_pattern": "\\w{8,12}_\\w{8,10}_L\\d_(?:R)*(\\d{1}).fastq.gz",
     "mail_recipient": "user@examplegroup.com"
   },
+  
+  "_comment": "Thresholds for Displayed results",
+  "threshold":  {
+    "mlst_id": 100,
+    "mlst_novel_id": 99.5,
+    "mlst_span": 0.9,
+    "res_id": 97,
+    "res_span": 0.9
+  },
+
   "_comment": "Folders",
   "folders":  {
     "_comment": "Root folder for fasta sequencing data",
