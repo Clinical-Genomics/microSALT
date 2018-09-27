@@ -3,7 +3,7 @@
   "slurm_header": {
     "project": "prod001",
     "type": "core",
-    "threads": "10",
+    "threads": "8",
     "time": "00:30:00",
     "qos": "normal",
     "job_prefix": "MLST"
