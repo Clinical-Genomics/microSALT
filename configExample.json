@@ -4,7 +4,7 @@
     "project": "prod001",
     "type": "core",
     "threads": "10",
-    "time": "02:00:00",
+    "time": "00:30:00",
     "qos": "normal",
     "job_prefix": "MLST"
   },
