@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import *
 from sqlalchemy.sql.expression import case, func
 
+from microSALT import config
 from microSALT.store.db_manipulator import app
 from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
 
@@ -90,15 +91,22 @@ def gen_reportdata(pid, organism_group='all'):
       s.threshold = 'Passed'
       for seq_type in s.seq_types:
         #Identify single deviating allele
-        if seq_type.st_predictor and seq_type.identity >= 99.5 and seq_type.identity < 100.0 and 1-abs(1-seq_type.span) >= 0.9:
+        if seq_type.st_predictor and seq_type.identity >= config["threshold"]["mlst_novel_id"] and config["threshold"]["mlst_id"] > seq_type.identity and 1-abs(1-seq_type.span) >= config["threshold"]["mlst_span"]:
           near_hits = near_hits + 1
-        elif seq_type.identity < 99.5 and seq_type.st_predictor or seq_type.span < 1.0 and seq_type.st_predictor:
+        elif (seq_type.identity < config["threshold"]["mlst_novel_id"] or seq_type.span < config["threshold"]["mlst_span"]) and seq_type.st_predictor:
           s.threshold = 'Failed'
 
       if near_hits > 0 and s.threshold == 'Passed':
         s.ST_status = 'Novel ({} alleles)'.format(near_hits)
     else:
       s.threshold = 'Failed'
+
+    #Resistence filter
+    for r in s.resistances:
+      if (s.ST > 0 or s.ST_status == 'Novel') and (r.identity >= config["threshold"]["res_id"] and r.span >= config["threshold"]["res_span"]) or (s.ST < 0 and s.ST_status != 'Novel'):
+        r.threshold = 'Passed'
+      else:
+        r.threshold = 'Failed'
 
     #Seq_type and resistance sorting
     s.seq_types=sorted(s.seq_types, key=lambda x: x.loci)

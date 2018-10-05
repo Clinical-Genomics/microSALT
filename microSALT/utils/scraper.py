@@ -128,13 +128,12 @@ class Scraper():
           if not line[0] == '#':
             elem_list = line.rstrip().split("\t")
             if not elem_list[1] == 'N/A':
-              #print("DEBUG: {}".format(line.rstrip()))
               hypo.append(dict())
               hypo[-1]["CG_ID_sample"] = self.name
               hypo[-1]["identity"] = elem_list[4]
               hypo[-1]["evalue"] = elem_list[5]
               hypo[-1]["bitscore"] = elem_list[6]
-              if elem_list[7] < elem_list[8]:
+              if int(elem_list[7]) < int(elem_list[8]):
                 hypo[-1]["contig_start"] = elem_list[7]
                 hypo[-1]["contig_end"] = elem_list[8]
               else:
@@ -144,9 +143,23 @@ class Scraper():
 
               # Split elem 3 in loci (name) and allele (number)
               partials = re.search('(.+)_(\d+){1,2}(?:_(\w+))*', elem_list[3])
-              hypo[-1]["gene"] = partials.group(1)
               hypo[-1]["reference"] = partials.group(3)
-              hypo[-1]["resistance"] = self.gene2resistance[hypo[-1]["gene"]]
+
+              hypo[-1]["gene"] = partials.group(1)
+              if hypo[-1]["gene"] in self.gene2resistance.keys():
+                hypo[-1]["resistance"] = self.gene2resistance[hypo[-1]["gene"]]
+              else:
+                #Due to ass backwards naming conventions in recent resFinder, checking backwards
+                trial = hypo[-1]["gene"]
+                while len(trial) > 0: 
+                  trial = trial[:-1]
+                  if trial in self.gene2resistance.keys(): 
+                    hypo[-1]['gene'] = trial
+                    hypo[-1]["resistance"] = self.gene2resistance[trial]
+                    break
+                if len(trial) == 0:
+                  raise Exception("Unable to associate resistance for {} of {} in {}".format(elem_list[3],hypo[-1]['CG_ID_sample'], os.path.basename(file)))
+                self.logger.warn("Alternerative split for  hit {} of {}. Resolved to {}".format(elem_list[3], hypo[-1]['CG_ID_sample'], hypo[-1]['gene']))
 
               hypo[-1]["instance"] = os.path.basename(file[:-4])
               hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('Resistances', hypo[-1]["instance"], partials.group(0))
@@ -159,7 +172,7 @@ class Scraper():
 
     self.logger.info("{} candidate resistance hits found".format(len(hypo)))
 
-    #HOLY SHIT REVIEW THIS LOGIC
+    #Keep track of this section. Bound to goof up
     #Cleanup of overlapping hits
     ind = 0
     while ind < len(hypo)-1:
@@ -168,6 +181,7 @@ class Scraper():
         ignore = False
         if hypo[ind]["contig_name"] == hypo[targ]["contig_name"]:      
           #Overlapping or shared gene 
+          debString = "{} ({}-{}) [id:{},span:{}] overlaps with (or shares name) {} ({}-{}) [id:{},span:{}].".format(hypo[ind]['gene'],hypo[ind]['contig_start'],hypo[ind]['contig_end'],hypo[ind]['identity'],hypo[ind]['span'],hypo[targ]['gene'],hypo[targ]['contig_start'],hypo[targ]['contig_end'],hypo[targ]['identity'],hypo[targ]['span'])
           if (hypo[ind]["contig_start"] <= hypo[targ]["contig_end"] and hypo[ind]["contig_end"] >= hypo[targ]["contig_start"]) or hypo[ind]['gene'] == hypo[targ]['gene']:
             #Rightmost is worse
             if float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]["span"])) >= float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]["span"])):
@@ -178,12 +192,11 @@ class Scraper():
               del hypo[ind]
               targ = ind +1
               ignore = True
-            ##Just different ref or hit shared between dbs
-            #elif len(set(hypo[ind].items() ^ hypo[targ].items())) == 2 and (hypo[ind]['reference'] != hypo[targ]['reference'] or hypo[ind]['instance'] != hypo[targ]['instance']):
-            #  del hypo[targ]
-            #  ignore = True
         if not ignore:
           targ += 1
+        else:
+          pass
+          #self.logger.info("Debug: {}".format(debString))
       ind += 1
 
     self.logger.info("{} resistance hits were added after removing overlaps and duplicate hits".format( len(hypo)))
@@ -203,8 +216,46 @@ class Scraper():
           conversions[line[0].lower()] = cropped
 
     #Exceptions
-    conversions['aacA4']='Aminoglycoside resistance'
-    conversions['blaNDM-13']='Beta-lactam resistance'
+    conversions["aac(6')-Ib3"]="Aminoglycoside"
+    conversions["aac(6')-30-aac(6')-Ib'"]="Aminoglycoside"
+    conversions["aac(3)-Ib-aac(6')-Ib'"]="Aminoglycoside"
+    conversions["aac(6')-Ib-11"]="Aminoglycoside"
+    conversions["aac(6')-Ib-Suzhou"]="Aminoglycoside"
+    conversions["aac(6')-Ib-Hangzhou"]="Aminoglycoside"
+    conversions["aph(3')-VI"]="Aminoglycoside"
+    conversions["aph(3')-VIj"]="Aminoglycoside"
+    conversions["ant(3'')-Ia"]="Aminoglycoside"
+    conversions["aph(3'')-Ib"]='Aminoglycoside'
+    conversions['aph(6)-Id']='Aminoglycoside'
+    conversions["aac(6')-30"]='Aminoglycoside' 
+    conversions['aacA4']='Aminoglycoside'
+
+    conversions["blaSHV-1b-b"]="Beta-lactam"
+    conversions['blaSHV-1b']='Beta-lactam'
+    conversions['blaCMY-2b']='Beta-lactam'
+    conversions['mdf(A)']='Macrolide'
+    qnrS = range(1, 10)
+    for num in qnrS:
+      conversions['qnrS{}'.format(num)] = 'Quinolone'
+      conversions['qepA{}'.format(num)] = 'Quinolone'
+      conversions['qnrA{}'.format(num)] = 'Quinolone'
+    bla = range(1, 300)
+    for num in bla:
+      conversions['qnrB{}'.format(num)] = 'Quinolone'
+      conversions['blaSHV-{}'.format(num)] = 'Beta-lactam'
+      conversions['blaCTX-M-{}'.format(num)] = 'Beta-lactam'
+      conversions['blaTEM-{}'.format(num)] = 'Beta-lactam'
+      conversions['blaVIM-{}'.format(num)] = 'Beta-lactam'
+      conversions['blaNDM-{}'.format(num)] = 'Beta-lactam'
+      conversions['blaDHA-{}'.format(num)] = 'Beta-lactam'
+      conversions['blaCMY-{}'.format(num)] = 'Beta-lactam'
+
+    oxa = range(1, 700)
+    for num in oxa:
+      conversions['blaOXA-{}'.format(num)] = 'Beta-lactam'
+      conversions['blaOXA{}'.format(num)] = 'Beta-lactam'
+
+
     return conversions
 
   def scrape_all_loci(self):
