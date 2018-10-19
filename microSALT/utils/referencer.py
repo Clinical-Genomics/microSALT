@@ -56,22 +56,25 @@ class Referencer():
 
   def index_db(self, full_dir, suffix):
     """Check for indexation, makeblastdb job if not enough of them."""
-    try:
-      files = os.listdir(full_dir)
-      sufx_files = glob.glob("{}/*{}".format(full_dir, suffix)) #List of source files
-      nin_suff = sum([1 for elem in files if 'nin' in elem]) #Total number of nin files 
-      if nin_suff < len(sufx_files):
-        for file in sufx_files:
+    files = os.listdir(full_dir)
+    sufx_files = glob.glob("{}/*{}".format(full_dir, suffix)) #List of source files
+    nin_suff = sum([1 for elem in files if 'nin' in elem]) #Total number of nin files 
+    if nin_suff < len(sufx_files):
+      for file in sufx_files:
+        #import pdb; pdb.set_trace()
+        try:
+          #Resistence files
           if '.fsa' in suffix:
-            bash_cmd = "cd {} && makeblastdb -in {}/{} -dbtype nucl -out {}\n".format(\
-            full_dir, full_dir, os.path.basename(file),  os.path.basename(file[:-4]))
+            bash_cmd = "makeblastdb -in {}/{} -dbtype nucl -out {}".format(\
+            full_dir, os.path.basename(file),  os.path.basename(file[:-4]))
+          #MLST locis
           else:
-            bash_cmd = "cd {} && makeblastdb -in {}/{} -dbtype nucl -parse_seqids -out {}\n".format(\
-            full_dir, full_dir, os.path.basename(file),  os.path.basename(file[:-4]))
-          proc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+            bash_cmd = "makeblastdb -in {}/{} -dbtype nucl -parse_seqids -out {}".format(\
+            full_dir, os.path.basename(file),  os.path.basename(file[:-4]))
+          proc = subprocess.Popen(bash_cmd.split(), cwd=full_dir, stdout=subprocess.PIPE)
           output, error = proc.communicate()
-    except Exception as e:
-      self.logger.error("Unable to index requested target {} in {}".format(file, full_dir))
+        except Exception as e:
+          self.logger.error("Unable to index requested target {} in {}".format(file, full_dir))
 
   def fetch_external(self):
     """ Updates reference for data that IS ONLY LINKED to pubMLST """

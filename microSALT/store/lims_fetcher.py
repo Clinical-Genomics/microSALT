@@ -3,6 +3,7 @@
 import os
 import re
 
+from datetime import datetime
 from genologics.lims import Lims
 # Should probably call these items directly since we're now up to 3 config files
 from genologics.config import BASEURI,USERNAME,PASSWORD
@@ -26,7 +27,9 @@ class LIMS_Fetcher():
       else:
         realname = project.name
 
-      self.data.update({'date_received': project.open_date,
+      tmp = project.open_date.split('-')
+      newdate = datetime(int(tmp[0]), int(tmp[1]), int(tmp[2]))
+      self.data.update({'date_received': newdate,
                                'CG_ID_project': cg_projid,
                                'Customer_ID_project' : realname})
     except KeyError as e:

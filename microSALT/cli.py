@@ -31,7 +31,7 @@ def root(ctx):
   ctx.obj['config'] = config
   logger = logging.getLogger('main_logger')
   logger.setLevel(logging.DEBUG)
-  fh = logging.FileHandler(os.path.join(os.environ['HOME'], "microSALT.log"))
+  fh = logging.FileHandler(os.path.expanduser(config['folders']['log_file']))
   fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
   logger.addHandler(fh)
   ch = logging.StreamHandler()

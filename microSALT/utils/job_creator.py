@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import time
 
+from datetime import datetime
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 from microSALT.store.db_manipulator import DB_Manipulator
 #from microSALT.utils.scraper import Scraper
@@ -25,8 +26,14 @@ class Job_Creator():
     self.name = os.path.basename(os.path.normpath(indir))
 
     self.now = timestamp
-    if timestamp == "":
-      self.now = time.strftime("%Y.%m.%d_%H.%M.%S")
+    if timestamp != "":
+      self.now = timestamp
+      temp = timestamp.replace('_','.').split('.')
+      self.dt = datetime(int(temp[0]),int(temp[1]),int(temp[2]),int(temp[3]),int(temp[4]),int(temp[5]))
+    else:
+      self.dt = datetime.now() 
+      self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
+      format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
     #Attempting writing on slurm
     self.outdir = "/scratch/$SLURM_JOB_ID/workdir/{}_{}".format(self.name, self.now)
@@ -198,7 +205,7 @@ class Job_Creator():
       sample_col['CG_ID_sample'] = self.lims_fetcher.data['CG_ID_sample']
       sample_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
       sample_col['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
-      sample_col["date_analysis"] = self.now
+      sample_col["date_analysis"] = self.dt
       self.db_pusher.add_rec(sample_col, 'Samples')
     except Exception as e:
       self.logger.error("Unable to add sample {} to database".format(self.name))
@@ -343,4 +350,4 @@ class Job_Creator():
     try: 
       self.create_sample(self.name)
     except Exception as e:
-      self.logger.error("LIMS interaction failed. Unable to read/write sample {}".format(self.name))
+      self.logger.error("Unable to access LIMS info for sample {}".format(self.name))
