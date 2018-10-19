@@ -26,6 +26,8 @@
 
   "_comment": "Folders",
   "folders":  {
+    "_comment": "Log file position and name",
+    "log_file": "~/microsalt.log",
     "_comment": "Root folder for fasta sequencing data",
     "seqdata": "/mnt/hds/proj/bioinfo/MICROBIAL/projects/",
     "_comment": "Cutadapt adapters folder",
@@ -41,7 +43,7 @@
 
   "_comment": "Database/Flask configuration",
   "database": {
-    "SQLALCHEMY_DATABASE_URI": "mysql+pymysql://DB_USER:DB_PASSWORD@DB_HOST:DB_PORT/DB_DATABASENAME",
+    "SQLALCHEMY_DATABASE_URI": "sqlite:////tmp/microsalt.db",
     "SQLALCHEMY_TRACK_MODIFICATIONS": "False",
     "DEBUG": "True"
   }
