@@ -11,8 +11,8 @@ The microbial sequence analysis and loci-based typing pipeline (microSALT) is us
 ## Requirements
 ### Hardware
 * A slurm enabled HPC
-* A mySQL server
 * A (clarity) LIMS server
+* A sqLite service
 
 ### Software
 * Conda
@@ -31,9 +31,7 @@ The microbial sequence analysis and loci-based typing pipeline (microSALT) is us
 ## Configuration
 Copy the configuration file `configExample.json` to `~/.microSALT/config.json` _or_ place it wherever and point $MICROSALT_CONFIG to it.
 
-Modify the line `SQLALCHEMY_DATABASE_URI` to fill out your database credentials. For production purposes, set the `DEBUG` flag to False.
-
-Edit the other fields to match your environment.
+Edit the fields to match your environment.
 
 ### LIMS Configuration
 Create `$HOME/.genologicsrc` with the following formatting:
