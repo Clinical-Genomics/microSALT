@@ -6,13 +6,13 @@
 
 microbial Sequence Analysis and Loci-based Typing pipeline
 
-The microbial sequence analysis and loci-based typing pipeline (microSALT) is used to determine a microbial samples organism specific sequence type. This is in turn defined from a set of six to eight organism specific allele types. microSALT also provides a database storage solution and pdf generation of these results.
+The microbial sequence analysis and loci-based typing pipeline (microSALT) is used to determine a microbial sample's organism specific sequence type and resistance profile. This is in turn defined from a set of six to eight organism specific allele types, and a huge set of resistance genes. microSALT also provides a database storage solution and pdf generation of these results.
 
 ## Requirements
 ### Hardware
 * A slurm enabled HPC
-* A mySQL server
 * A (clarity) LIMS server
+* A sqLite service
 
 ### Software
 * Conda
@@ -31,9 +31,7 @@ The microbial sequence analysis and loci-based typing pipeline (microSALT) is us
 ## Configuration
 Copy the configuration file `configExample.json` to `~/.microSALT/config.json` _or_ place it wherever and point $MICROSALT_CONFIG to it.
 
-Modify the line `SQLALCHEMY_DATABASE_URI` to fill out your database credentials. For production purposes, set the `DEBUG` flag to False.
-
-Edit the other fields to match your environment.
+Edit the fields to match your environment.
 
 ### LIMS Configuration
 Create `$HOME/.genologicsrc` with the following formatting:
@@ -51,16 +49,14 @@ Change line 5 of `config.py` to `import configparser as ConfigParser` to fix the
 To find the path of the file, simply run `microSALT` and note where the log points to.
 
 ## Usage
-* Use the `start` function to start sbatch job(s), producing output to `folders['results']`.
-* After you have been informed of job completetion (through e-mail). Use the `finish` function to upload parsed results to the SQL back-end and produce reports (HTML).
-* Various functionality, including adding new reference organisms and re-generating reports; are stored under the `util` command.
+* Use the `start` function to start sbatch job(s), producing output to `folders['results']`. Afterwards the parsed results  are uploaded to the SQL back-end and produce reports (HTML).
+* Various functionality, including adding manually new reference organisms and re-generating reports; are stored under the `util` command.
 
 ## Databases
 ### MLST Definitions
-microSALT is able to neatly download the MLST definitions for any organism on pubMLST (https://pubmlst.org/databases/).
+microSALT is able to neatly download the MLST definitions for any organism on pubMLST (https://pubmlst.org/databases/), and will attempt to automatically download these.
 Other definitions may be used, as long as they retain the same format. 
 
 ### Resistance genes
-microSALT relies on the resistance genes of resFinder (https://cge.cbs.dtu.dk/services/data.php).
-Make sure you download these, extract the zip and point the keyword 'resistances' in the configuration to the corresponding folder.
+microSALT relies on the resistance genes of resFinder (https://cge.cbs.dtu.dk/services/data.php), and will attempt to automatically download these.
 Any definitions will work, as long as they retain the same formatting.
