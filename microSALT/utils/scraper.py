@@ -134,12 +134,12 @@ class Scraper():
               hypo[-1]["evalue"] = elem_list[5]
               hypo[-1]["bitscore"] = elem_list[6]
               if int(elem_list[7]) < int(elem_list[8]):
-                hypo[-1]["contig_start"] = elem_list[7]
-                hypo[-1]["contig_end"] = elem_list[8]
+                hypo[-1]["contig_start"] = int(elem_list[7])
+                hypo[-1]["contig_end"] = int(elem_list[8])
               else:
-                hypo[-1]["contig_start"] = elem_list[8]
-                hypo[-1]["contig_end"] = elem_list[7]
-              hypo[-1]["subject_length"] =  elem_list[11]
+                hypo[-1]["contig_start"] = int(elem_list[8])
+                hypo[-1]["contig_end"] = int(elem_list[7])
+              hypo[-1]["subject_length"] =  int(elem_list[11])
 
               # Split elem 3 in loci (name) and allele (number)
               partials = re.search('(.+)_(\d+){1,2}(?:_(\w+))*', elem_list[3])
@@ -167,12 +167,11 @@ class Scraper():
               # split elem 2 into contig node_NO, length, cov
               nodeinfo = elem_list[2].split('_')
               hypo[-1]["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
-              hypo[-1]["contig_length"] = nodeinfo[3]
+              hypo[-1]["contig_length"] = int(nodeinfo[3])
               hypo[-1]["contig_coverage"] = nodeinfo[5]
 
     self.logger.info("{} candidate resistance hits found".format(len(hypo)))
 
-    #Keep track of this section. Bound to goof up
     #Cleanup of overlapping hits
     ind = 0
     while ind < len(hypo)-1:
@@ -182,7 +181,9 @@ class Scraper():
         if hypo[ind]["contig_name"] == hypo[targ]["contig_name"]:      
           #Overlapping or shared gene 
           debString = "{} ({}-{}) [id:{},span:{}] overlaps with (or shares name) {} ({}-{}) [id:{},span:{}].".format(hypo[ind]['gene'],hypo[ind]['contig_start'],hypo[ind]['contig_end'],hypo[ind]['identity'],hypo[ind]['span'],hypo[targ]['gene'],hypo[targ]['contig_start'],hypo[targ]['contig_end'],hypo[targ]['identity'],hypo[targ]['span'])
-          if (hypo[ind]["contig_start"] <= hypo[targ]["contig_end"] and hypo[ind]["contig_end"] >= hypo[targ]["contig_start"]) or hypo[ind]['gene'] == hypo[targ]['gene']:
+          if (hypo[ind]["contig_start"] >= hypo[targ]["contig_start"] and hypo[ind]["contig_start"] <= hypo[targ]["contig_end"]) or\
+              (hypo[ind]["contig_end"] >= hypo[targ]["contig_start"] and hypo[ind]["contig_end"] <= hypo[targ]["contig_end"]) or \
+              (hypo[ind]['gene'] == hypo[targ]['gene']):
             #Rightmost is worse
             if float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]["span"])) >= float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]["span"])):
               del hypo[targ]
@@ -295,15 +296,13 @@ class Scraper():
               seq_col["evalue"] = elem_list[5]
               seq_col["bitscore"] = elem_list[6]
               if elem_list[7] < elem_list[8]:
-                seq_col["contig_start"] = elem_list[7]
-                seq_col["contig_end"] = elem_list[8]
+                seq_col["contig_start"] = int(elem_list[7])
+                seq_col["contig_end"] = int(elem_list[8])
               else:
-                seq_col["contig_start"] = elem_list[8]
-                seq_col["contig_end"] = elem_list[7]
+                seq_col["contig_start"] = int(elem_list[8])
+                seq_col["contig_end"] = int(elem_list[7])
 
-              seq_col["contig_start"] = elem_list[7]
-              seq_col["contig_end"] = elem_list[8]
-              seq_col["subject_length"] =  elem_list[11]
+              seq_col["subject_length"] = int(elem_list[11])
          
               # Split elem 3 in loci (name) and allele (number)
               partials = re.search('(.+)_(\d+){1,2}(?:_(\w+))*', elem_list[3]) 
@@ -314,7 +313,7 @@ class Scraper():
               # split elem 2 into contig node_NO, length, cov
               nodeinfo = elem_list[2].split('_')
               seq_col["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
-              seq_col["contig_length"] = nodeinfo[3]
+              seq_col["contig_length"] = int(nodeinfo[3])
               seq_col["contig_coverage"] = nodeinfo[5]
               self.db_pusher.add_rec(seq_col, 'Seq_types')
       # Too spammy

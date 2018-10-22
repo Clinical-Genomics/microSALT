@@ -46,6 +46,8 @@ class Seq_types(db.Model):
   bitscore = db.Column(db.SmallInteger)
   subject_length = db.Column(db.Integer)
   st_predictor = db.Column(db.Boolean, default = 0)
+  contig_start=db.Column(db.Integer)
+  contig_end=db.Column(db.Integer)
 
 
 class Resistances(db.Model):
