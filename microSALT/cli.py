@@ -60,7 +60,11 @@ def project(ctx, project_id, input, dry, config, email):
   """Analyze a whole project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
-    ctx.obj['config'] = os.path.abspath(config) 
+    try:
+      with open(os.path.abspath(config), 'r') as conf:
+        ctx.obj['config'] = json.load(conf)
+    except Exception as e:
+      pass
 
   ctx.obj['config']['dry'] = dry
   if input != "":
@@ -97,7 +101,11 @@ def sample(ctx, sample_id, input, dry, config, email):
   """Analyze a single sample"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
-    ctx.obj['config'] = os.path.abspath(config)
+    try:
+      with open(os.path.abspath(config), 'r') as conf:
+        ctx.obj['config'] = json.load(conf)
+    except Exception as e:
+      pass
 
   ctx.obj['config']['dry'] = dry
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
@@ -146,7 +154,11 @@ def finish(ctx):
 def sample(ctx, sample_id, rerun, email, input, config):
   """Parse results from analysing a single sample"""
   if config != '':
-    ctx.obj['config'] = os.path.abspath(config)
+    try:
+      with open(os.path.abspath(config), 'r') as conf:
+        ctx.obj['config'] = json.load(conf)
+    except Exception as e:
+      pass
 
   ctx.obj['config']['rerun'] = rerun
   ctx.obj['config']['regex']['mail_recipient'] = email
@@ -195,7 +207,11 @@ def sample(ctx, sample_id, rerun, email, input, config):
 def project(ctx, project_id, rerun, email, input, config):
   """Parse results from analysing a single project"""
   if config != '':
-    ctx.obj['config'] = os.path.abspath(config)
+    try:
+      with open(os.path.abspath(config), 'r') as conf:
+        ctx.obj['config'] = json.load(conf)
+    except Exception as e:
+      pass
 
   ctx.obj['config']['rerun'] = rerun
   ctx.obj['config']['regex']['mail_recipient'] = email
