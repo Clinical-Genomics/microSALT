@@ -54,9 +54,11 @@ def start(ctx):
 @click.option('--input', help='Full path to project folder',default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.pass_context
-def project(ctx, project_id, input, dry, config):
+def project(ctx, project_id, input, dry, config, email):
   """Analyze a whole project"""
+  ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
     ctx.obj['config'] = os.path.abspath(config) 
 
@@ -89,9 +91,11 @@ def project(ctx, project_id, input, dry, config):
 @click.option('--input', help='Full path to sample folder', default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.pass_context
-def sample(ctx, sample_id, input, dry, config):
+def sample(ctx, sample_id, input, dry, config, email):
   """Analyze a single sample"""
+  ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
     ctx.obj['config'] = os.path.abspath(config)
 
