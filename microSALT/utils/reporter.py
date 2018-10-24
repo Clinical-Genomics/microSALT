@@ -29,10 +29,11 @@ class Reporter():
     self.ticketFinder = LIMS_Fetcher(self.config, self.logger)
     self.attachments = list()
 
-  def report(self):
-    self.gen_html()
-    #Removed due to customer need inconsistency
-    #self.gen_csv()
+  def report(self, has_csv=False):
+    if not has_csv:
+      self.gen_html()
+    else:
+      self.csv()
     self.mail()
     for file in self.attachments:
       os.remove(file)
@@ -81,19 +82,24 @@ class Reporter():
     #Hinders requests before server goes up
     time.sleep(0.05)
 
-  def gen_csv(self):
+  def csv(self):
     name = self.name
     self.ticketFinder.load_lims_project_info(name)
     excel = open("{}.csv".format(name), "w+")
     sample_info = gen_reportdata(name)
-    excel.write("Customer_ID_sample,CG_ID_sample,organism,ST,Thresholds\n")
+
+    targstring = "Aminoglycoside,Beta-lactam,Colistin,Fluoroquinolone and aminoglycoside,Fosfomycin,Fusidicacid,Macrolide,Nitroimidazole,Oxazolidione,Rifampicin,Phenicol,Quinolone,Sulphonamide,Tetracycline,Trimethoprim,Vancomycin"
+    targlist = targstring.split(',')
+    excel.write("CG Sample ID,Sample ID,Organism,Sequence Type,Thresholds,{}\n".format(targstring))
     for s in sample_info['samples']:
-      if s.organism != None:
-        organism_fix = s.organism.replace('_', ' ').capitalize()
-      else:
-        organism_fix= "None"
-      excel.write("{},{},{},{},{}\n".format(s.Customer_ID_sample, s.CG_ID_sample,\
-                    organism_fix, s.ST_status,s.threshold))
+      #Check the resistance types
+      reslist = [0] * len(targlist)
+      for r in s.resistances:
+        if r.resistance in targlist and r.threshold == 'Passed':
+          reslist[targlist.index(r.resistance)] = 1
+      reslist = [str(i) for i in reslist]
+      resstring = (',').join(reslist)
+      excel.write("{},{},{},{},{},{}\n".format(s.CG_ID_sample,s.Customer_ID_sample, s.organism, s.ST_status, s.threshold,resstring))
     excel.close()
     inpath = "{}/{}.csv".format(os.getcwd(), name)
     self.attachments.append(inpath)
