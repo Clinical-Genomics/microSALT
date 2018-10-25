@@ -53,9 +53,19 @@ def start(ctx):
 @click.argument('project_id')
 @click.option('--input', help='Full path to project folder',default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
+@click.option('--config', help="microSALT config to override default", default="")
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.pass_context
-def project(ctx, project_id, input, dry):
+def project(ctx, project_id, input, dry, config, email):
   """Analyze a whole project"""
+  ctx.obj['config']['regex']['mail_recipient'] = email
+  if config != '':
+    try:
+      with open(os.path.abspath(config), 'r') as conf:
+        ctx.obj['config'] = json.load(conf)
+    except Exception as e:
+      pass
+
   ctx.obj['config']['dry'] = dry
   if input != "":
     project_dir = os.path.abspath(input)
@@ -84,9 +94,19 @@ def project(ctx, project_id, input, dry):
 @click.argument('sample_id')
 @click.option('--input', help='Full path to sample folder', default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
+@click.option('--config', help="microSALT config to override default", default="")
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.pass_context
-def sample(ctx, sample_id, input, dry):
+def sample(ctx, sample_id, input, dry, config, email):
   """Analyze a single sample"""
+  ctx.obj['config']['regex']['mail_recipient'] = email
+  if config != '':
+    try:
+      with open(os.path.abspath(config), 'r') as conf:
+        ctx.obj['config'] = json.load(conf)
+    except Exception as e:
+      pass
+
   ctx.obj['config']['dry'] = dry
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
   try:
@@ -129,9 +149,17 @@ def finish(ctx):
 @click.option('--rerun', is_flag=True, default=False, help='Overwrite existing data')
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--input', help='Full path to result sample folder', default="")
+@click.option('--config', help="microSALT config to override default", default="")
 @click.pass_context
-def sample(ctx, sample_id, rerun, email, input):
+def sample(ctx, sample_id, rerun, email, input, config):
   """Parse results from analysing a single sample"""
+  if config != '':
+    try:
+      with open(os.path.abspath(config), 'r') as conf:
+        ctx.obj['config'] = json.load(conf)
+    except Exception as e:
+      pass
+
   ctx.obj['config']['rerun'] = rerun
   ctx.obj['config']['regex']['mail_recipient'] = email
   
@@ -174,9 +202,17 @@ def sample(ctx, sample_id, rerun, email, input):
 @click.option('--rerun', is_flag=True, default=False, help='Overwrite existing data')
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--input', help='Full path to result project folder', default="")
+@click.option('--config', help="microSALT config to override default", default="")
 @click.pass_context
-def project(ctx, project_id, rerun, email, input):
+def project(ctx, project_id, rerun, email, input, config):
   """Parse results from analysing a single project"""
+  if config != '':
+    try:
+      with open(os.path.abspath(config), 'r') as conf:
+        ctx.obj['config'] = json.load(conf)
+    except Exception as e:
+      pass
+
   ctx.obj['config']['rerun'] = rerun
   ctx.obj['config']['regex']['mail_recipient'] = email
  
@@ -241,12 +277,13 @@ def list(ctx):
 @util.command()
 @click.argument('project_name')
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.option('--csv', help="Generates custom csv output",default=False, is_flag=True)
 @click.pass_context
-def report(ctx, project_name, email):
-  """Re-generates reports for a project"""
+def report(ctx, project_name, email, csv):
+  """Re-generates report for a project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_name)
-  codemonkey.report()
+  codemonkey.report(csv)
   done()
 
 @util.command()
