@@ -59,7 +59,7 @@ class LIMS_Fetcher():
     if 'Strain' in sample.udf and organism == "Unset":
       if sample.udf['Strain'] != 'Other' and sample.udf['Strain'] != 'other':
         organism = sample.udf['Strain']
-      elif sample.udf['Strain'] == 'Other' and 'Other species' in sample.udf:
+      elif (sample.udf['Strain'] == 'Other' or sample.udf['Strain'] == 'other') and 'Other species' in sample.udf:
         organism = sample.udf['Other species']
       # Backwards compatibility
       elif sample.udf['Strain'] == 'VRE':
