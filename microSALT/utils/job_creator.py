@@ -95,11 +95,14 @@ class Job_Creator():
       batchfile.write("touch {}\n".format(interfile))
       batchfile.write("cat {} >> {}\n".format(v['fu'], interfile))
       batchfile.write("cat {} >> {}\n".format(v['ru'], interfile))
+      batchfile.write("rm {} {}".format(v['fu'], v['ru']) 
       self.trimmed_files[name]['i'] = "{}".format(interfile)
       batchfile.write("\n")
+
+    #DEBUG: Also interlace regular files to assist BWA
     batchfile.close()    
 
-  def create_spadessection(self):
+  def create_assemblysection(self):
     batchfile = open(self.batchfile, "a+")
     #memory is actually 128 per node regardless of cores.
     batchfile.write("# Spades assembly\n")
@@ -132,9 +135,8 @@ class Job_Creator():
     batchfile.write("\n")
     batchfile.close()
 
-  def create_blastsection(self):
+  def create_mlstsection(self):
     """Creates a blast job for instances where many loci definition files make up an organism"""
-    #self.index_db("{}/{}".format(self.config["folders"]["references"], self.organism), '.tfa')
     
     #Create run
     batchfile = open(self.batchfile, "a+")
@@ -147,6 +149,26 @@ class Job_Creator():
       entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
     batchfile.close()
+
+  def create_variantsection(self):
+    """ Creates a job for variant calling based on local alignment """
+
+    #Create run
+    batchfile = open(self.batchfile, "a+")
+    batchfile.write("mkdir {}/alignment\n\n".format(self.outdir))
+
+
+### Raw input
+#bwa mem -o runs/MIC3552A18_NC_011751.1_ec.sam installs/refers/NC_011751.1_ec.fasta /mnt/hds/proj/bioinfo/MICROBIAL/projects/MIC3552/MIC3552A18/MIC3552A18_H3KGVBCX2_L2_1.fastq.gz /mnt/hds/proj/bioinfo/MICROBIAL/projects/MIC3552/MIC3552A18/MIC3552A18_H3KGVBCX2_L2_1.fastq.gz 
+#samtools view -bT -o runs/MIC3552A18_NC_011751.1_ec.bam installs/refers/NC_011751.1_ec.fasta runs/MIC3552A18_NC_011751.1_ec.sam 
+#samtools sort -n -o runs/MIC3552A18_NC_011751.1_ec.bam_sort runs/MIC3552A18_NC_011751.1_ec.bam
+##Add MS tag
+#samtools fixmate -m runs/MIC3552A18_NC_011751.1_ec.bam_sort runs/MIC3552A18_NC_011751.1_ec.bam_sort_ms
+##Resort
+#samtools sort -o runs/MIC3552A18_NC_011751.1_ec.bam_sort runs/MIC3552A18_NC_011751.1_ec.bam_sort_ms
+#samtools markdup -r -s -threads 1 --reference installs/refers/NC_011751.1_ec.fasta --output-fmt bam
+#samtools rmdup --reference  installs/refers/NC_011751.1_ec.fasta runs/MIC3552A18_NC_011751.1_ec.bam_sort runs/MIC3552A18_NC_011751.1_ec.bam_sort.rmdup
+
 
   def create_trimsection(self):
     for root, dirs, files in os.walk(self.config["folders"]["adapters"]):
@@ -178,7 +200,7 @@ class Job_Creator():
       i=i+2
       j+=1
 
-  def create_quastsection(self):
+  def create_assembly_statssection(self):
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# QUAST QC metrics\n")
     batchfile.write("mkdir {}/quast\n".format(self.outdir))
@@ -335,9 +357,9 @@ class Job_Creator():
 
       self.create_trimsection()
       self.interlace_files()
-      self.create_spadessection()
-      self.create_quastsection()
-      self.create_blastsection()
+      self.create_assemblysection()
+      self.create_assemblystats_section()
+      self.create_mlstsection()
       self.create_resistancesection()
       batchfile = open(self.batchfile, "a+")
       batchfile.write("cp -r {}/* {}".format(self.outdir, self.finishdir))
