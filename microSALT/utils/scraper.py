@@ -227,10 +227,22 @@ class Scraper():
     conversions["aph(3')-VIj"]="Aminoglycoside"
     conversions["ant(3'')-Ia"]="Aminoglycoside"
     conversions["aph(3'')-Ib"]='Aminoglycoside'
-    conversions['aph(6)-Id']='Aminoglycoside'
+    conversions["aph(6)-Id"]='Aminoglycoside'
     conversions["aac(6')-30"]='Aminoglycoside' 
     conversions['aacA4']='Aminoglycoside'
-    conversions['tet(S/M)']='Tetracycline'
+    conversions["tet(S/M)"]='Tetracycline'
+    conversions["dfrA19"]='Trimethoprim'
+    conversions["ant(2'')-Ia"]="Aminoglycoside"
+    conversions["ant(6)-Ia"]="Aminoglycoside"
+    conversions["ant(3'')-Ia"]="Aminoglycoside"
+    conversions["ant(6)-Ia"]="Aminoglycoside"
+    conversions["ant(3'')-Ih-aac(6')-IId"]="Aminoglycoside"
+    conversions["ant(4')-Ib"]="Aminoglycoside"
+    conversions["ant(4')-IIa"]="Aminoglycoside"
+    conversions["ant(4')-IIb"]="Aminoglycoside"
+    conversions["ant(6)-Ia"]="Aminoglycoside"
+    conversions["ant(6)-Ib"]="Aminoglycoside"
+
 
     conversions["blaSHV-1b-b"]="Beta-lactam"
     conversions['blaSHV-1b']='Beta-lactam'
