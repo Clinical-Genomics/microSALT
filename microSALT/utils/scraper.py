@@ -230,6 +230,7 @@ class Scraper():
     conversions['aph(6)-Id']='Aminoglycoside'
     conversions["aac(6')-30"]='Aminoglycoside' 
     conversions['aacA4']='Aminoglycoside'
+    conversions['tet(S/M)']='Tetracycline'
 
     conversions["blaSHV-1b-b"]="Beta-lactam"
     conversions['blaSHV-1b']='Beta-lactam'
