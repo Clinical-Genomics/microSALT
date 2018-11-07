@@ -243,7 +243,6 @@ class Scraper():
     conversions["ant(6)-Ia"]="Aminoglycoside"
     conversions["ant(6)-Ib"]="Aminoglycoside"
 
-
     conversions["blaSHV-1b-b"]="Beta-lactam"
     conversions['blaSHV-1b']='Beta-lactam'
     conversions['blaCMY-2b']='Beta-lactam'
@@ -253,6 +252,9 @@ class Scraper():
       conversions['qnrS{}'.format(num)] = 'Quinolone'
       conversions['qepA{}'.format(num)] = 'Quinolone'
       conversions['qnrA{}'.format(num)] = 'Quinolone'
+      conversions['qnrS{}'.format(num)] = 'Quinolone'
+      conversions['qnrD{}'.format(num)] = 'Quinolone'
+      conversions['qnrVC{}'.format(num)] = 'Quinolone'
     bla = range(1, 300)
     for num in bla:
       conversions['qnrB{}'.format(num)] = 'Quinolone'
@@ -268,7 +270,110 @@ class Scraper():
     for num in oxa:
       conversions['blaOXA-{}'.format(num)] = 'Beta-lactam'
       conversions['blaOXA{}'.format(num)] = 'Beta-lactam'
-
+      
+    #Extensive fallback
+   
+    conversions["kamB"]="Aminoglycoside"
+    conversions["grmO"]="Aminoglycoside"
+    conversions["fmrO"]="Aminoglycoside"
+    conversions["grmB"]="Aminoglycoside"
+    conversions["grmA"]="Aminoglycoside"
+    conversions["kgmB"]="Aminoglycoside"
+    conversions["sgm"]="Aminoglycoside"
+    conversions["aph(3')-VI"]="Aminoglycoside"
+    conversions["aph(3')-IX"]="Aminoglycoside"
+    conversions["aph(7'')-Ia"]="Aminoglycoside"
+    conversions["aph(6)-Id"]="Aminoglycoside"
+    conversions["aph(3'')-Ib"]="Aminoglycoside"
+    conversions["ant(2'')-Ia"]="Aminoglycoside"
+    conversions["aph(3')-VI"]="Aminoglycoside"
+    conversions["aph(2'')-Ig"]="Aminoglycoside"
+    conversions["ant(3'')-Ia"]="Aminoglycoside"
+    conversions["rmtf"]="Aminoglycoside"
+    conversions["aph(3'')-Ib"]="Aminoglycoside"
+    conversions["aph(3'')-Ib"]="Aminoglycoside"
+    conversions["aph(6)-Id"]="Aminoglycoside"
+    conversions["aph(3')-VIj"]="Aminoglycoside"
+    conversions["blaOXA535"]="Beta-lactam"
+    conversions["mecB"]="Beta-lactam"
+    conversions["mecD"]="Beta-lactam"
+    conversions["blaDHA-9"]="Beta-lactam"
+    conversions["mcr-6.1"]="Colistin"
+    conversions["mcr-7.1"]="Colistin"
+    conversions["mcr-8"]="Colistin"
+    conversions["VanHAX"]="Glycopeptide"
+    conversions["VanH"]="Glycopeptide"
+    conversions["VanX"]="Glycopeptide"
+    conversions["dldHA2X"]="Glycopeptide"
+    conversions["VanHBX"]="Glycopeptide"
+    conversions["VanXY"]="Glycopeptide"
+    conversions["VanHDX"]="Glycopeptide"
+    conversions["VanHFX"]="Glycopeptide"
+    conversions["VanHMX"]="Glycopeptide"
+    conversions["VanHOX"]="Glycopeptide"
+    conversions["vanXmurFvanWI"]="Glycopeptide"
+    conversions["vanXmurFvanKWI"]="Glycopeptide"
+    conversions["ere(D)"]="Macrolide"
+    conversions["vga(D)"]="Macrolide"
+    conversions["erm(48)"]="Macrolide"
+    conversions["mph(F)"]="Macrolide"
+    conversions["erm(46)"]="Macrolide"
+    conversions["lnu(P)"]="Macrolide"
+    conversions["erm(43)"]="Macrolide"
+    conversions["mef(C)"]="Macrolide"
+    conversions["erm(47)"]="Macrolide"
+    conversions["mph(G)"]="Macrolide"
+    conversions["lnu(G)"]="Macrolide"
+    conversions["erm(44)v"]="Macrolide"
+    conversions["erm(44)"]="Macrolide"
+    conversions["sal(A)"]="Macrolide"
+    conversions["erm(45)"]="Macrolide"
+    conversions["lnu(E)"]="Macrolide"
+    conversions["vat(H)"]="Macrolide"
+    conversions["erm(37)"]="Macrolide"
+    conversions["tva(A)"]="Macrolide"
+    conversions["mph(N)"]="Macrolide"
+    conversions["mph(I)"]="Macrolide"
+    conversions["mph(J)"]="Macrolide"
+    conversions["mdf(A)"]="Macrolide"
+    conversions["mdt(A)"]="Macrolide"
+    conversions["mre(A)"]="Macrolide"
+    conversions["cmr"]="Macrolide"
+    conversions["poxtA"]="Oxazolidinone"
+    conversions["fexB"]="Phenicol"
+    conversions["EstDL136"]="Phenicol"
+    conversions["qnrC"]="Quinolone"
+    conversions["crpP"]="Quinolone"
+    conversions["sul4"]="Sulphonamide"
+    conversions["tet"]="Tetracycline"
+    conversions["tet(47)"]="Tetracycline"
+    conversions["tet(48)"]="Tetracycline"
+    conversions["tet(49)"]="Tetracycline"
+    conversions["tet(50)"]="Tetracycline"
+    conversions["tet(51)"]="Tetracycline"
+    conversions["tet(52)"]="Tetracycline"
+    conversions["tet(53)"]="Tetracycline"
+    conversions["tet(54)"]="Tetracycline"
+    conversions["tet(55)"]="Tetracycline"
+    conversions["otr(B)"]="Tetracycline"
+    conversions["tet(45)"]="Tetracycline"
+    conversions["tetA(46)"]="Tetracycline"
+    conversions["tetB(46)"]="Tetracycline"
+    conversions["tet(57)"]="Tetracycline"
+    conversions["tet(59)"]="Tetracycline"
+    conversions["tetA(60)"]="Tetracycline"
+    conversions["tetB(60)"]="Tetracycline"
+    conversions["tet(O/W)"]="Tetracycline"
+    conversions["tet(O/W)-2"]="Tetracycline"
+    conversions["tet(O/W)-1"]="Tetracycline"
+    conversions["tet(O/W/O)-3"]="Tetracycline"
+    conversions["tet(O/W/O)-2"]="Tetracycline"
+    conversions["tet(O/W/O)-1"]="Tetracycline"
+    conversions["tet(O/W/32/O)"]="Tetracycline"
+    conversions["tet(O/W/32/O/W/O)"]="Tetracycline"
+    conversions["tet(O/32/O)"]="Tetracycline"
+    conversions["tet(S/M)"]="Tetracycline"
+    conversions["tet(W/32/O)"]="Tetracycline"
 
     return conversions
 
