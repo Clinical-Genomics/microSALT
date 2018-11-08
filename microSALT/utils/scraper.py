@@ -246,6 +246,10 @@ class Scraper():
     conversions["blaSHV-1b-b"]="Beta-lactam"
     conversions['blaSHV-1b']='Beta-lactam'
     conversions['blaCMY-2b']='Beta-lactam'
+    conversions['blaACC-1a']='Beta-lactam'
+    conversions['blaACC-1b']='Beta-lactam'
+    conversions['blaACC-1c']='Beta-lactam'
+    conversions['blaACC-1d']='Beta-lactam'
     conversions['mdf(A)']='Macrolide'
     qnrS = range(1, 10)
     for num in qnrS:
@@ -255,6 +259,7 @@ class Scraper():
       conversions['qnrS{}'.format(num)] = 'Quinolone'
       conversions['qnrD{}'.format(num)] = 'Quinolone'
       conversions['qnrVC{}'.format(num)] = 'Quinolone'
+      conversions['blaACC-{}'.format(num)]='Beta-lactam'
     bla = range(1, 300)
     for num in bla:
       conversions['qnrB{}'.format(num)] = 'Quinolone'
