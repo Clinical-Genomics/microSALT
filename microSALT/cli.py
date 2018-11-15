@@ -257,12 +257,13 @@ def refer(ctx):
 @refer.command()
 @click.argument('organism')
 @click.pass_context
-def add(ctx, organism):
+@click.option('--force', help="Redownloads existing organism", default=False, is_flag=True)
+def add(ctx, organism, force):
   """ Adds a new internal organism from pubMLST """
-  referee = Referencer(ctx.obj['config'], ctx.obj['log'])
+  referee = Referencer(ctx.obj['config'], ctx.obj['log'],force=force)
   referee.add_pubmlst(organism)
   print("Checking versions of all references..")
-  referee = Referencer(ctx.obj['config'], ctx.obj['log'])
+  referee = Referencer(ctx.obj['config'], ctx.obj['log'],force=force)
   referee.update_refs()
 
 @refer.command()

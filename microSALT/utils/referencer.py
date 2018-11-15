@@ -16,7 +16,7 @@ from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Referencer():
 
-  def __init__(self, config, log):
+  def __init__(self, config, log, force=False):
     self.config = config
     self.logger = log
     self.db_access = DB_Manipulator(config, log)
@@ -26,6 +26,7 @@ class Referencer():
     organisms = self.refs.keys()
     self.organisms = [*organisms]
     self.lims=LIMS_Fetcher(config, log)
+    self.force=force
 
   def identify_new(self, cg_id, project=False):
    """ Automatically downloads pubMLST organisms not already downloaded """
@@ -61,7 +62,6 @@ class Referencer():
     nin_suff = sum([1 for elem in files if 'nin' in elem]) #Total number of nin files 
     if nin_suff < len(sufx_files):
       for file in sufx_files:
-        #import pdb; pdb.set_trace()
         try:
           #Resistence files
           if '.fsa' in suffix:
@@ -97,7 +97,7 @@ class Referencer():
           organ = organ[:-2]
         currver = self.db_access.get_version("profile_{}".format(organ))
         profile_no = re.search('\d+', sample[2]).group(0)
-        if organ in self.organisms and organ.replace("_", " ") not in self.updated and profile_no > currver:
+        if organ in self.organisms and organ.replace("_", " ") not in self.updated and (profile_no > currver or self.force):
           # Download definition files
           st_link = prefix + entry.find_all("a")[1]['href']
           output = "{}/{}".format(self.config['folders']['profiles'], organ)
@@ -170,7 +170,7 @@ class Referencer():
     """ Checks pubmlst for references of given organism and downloads them """
     #Organism must be in binomial format and only resolve to one hit
     organism = organism.lower().replace('.',' ')
-    if organism.replace(' ', '_') in self.organisms:
+    if organism.replace(' ', '_') in self.organisms and not self.force:
       self.logger.info("Organism {} already stored in microSALT".format(organism))
       return
     db_query = self.query_pubmlst()
@@ -213,7 +213,7 @@ class Referencer():
       db_query = json.loads(response.read().decode('utf-8'))
     return db_query
 
-  def download_pubmlst(self, organism, subtype_href):
+  def download_pubmlst(self, organism, subtype_href, force=False):
     """ Downloads ST and loci for a given organism stored on pubMLST if it is more recent. Returns update date """
     organism = organism.lower().replace(' ', '_')
 
@@ -222,8 +222,8 @@ class Referencer():
     with urllib.request.urlopen(ver_req) as response:
         ver_query = json.loads(response.read().decode('utf-8'))
     currver = self.db_access.get_version("profile_{}".format(organism))
-    if ver_query['last_updated'] <= currver:
-      self.logger.info("Profile for {} already at latest version".format(organism.replace('_' ,' ').capitalize()))
+    if ver_query['last_updated'] <= currver and not force:
+      #self.logger.info("Profile for {} already at latest version".format(organism.replace('_' ,' ').capitalize()))
       return currver
 
     #Pull ST file
