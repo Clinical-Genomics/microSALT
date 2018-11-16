@@ -6,6 +6,7 @@
 import glob
 import os
 import re
+import string
 import sys
 import time
 
@@ -215,48 +216,145 @@ class Scraper():
           conversions[line[0]] = cropped
           #Workaround for case issues
           conversions[line[0].lower()] = cropped
+ 
+    ten = range(1, 10)
+    for num in ten:
+         conversions['qepA{}'.format(num)] = 'Quinolone'
+         conversions['qnrA{}'.format(num)] = 'Quinolone'
+         conversions['qnrD{}'.format(num)] = 'Quinolone'
+         conversions['qnrE{}'.format(num)] = 'Quinolone'
+         conversions['qnrS{}'.format(num)] = 'Quinolone'
+         conversions['qnrVC{}'.format(num)] = 'Quinolone'
+         conversions['blaACC-{}'.format(num)] = 'Beta-lactam'
+         conversions["VanC{}XY".format(num)]="Glycopeptide"
+         
+    hun = range(1, 100)
+    for num in hun:
+         conversions['qnrB{}'.format(num)] = 'Quinolone'
+         conversions['blaVIM-{}'.format(num)] = 'Beta-lactam'
+         conversions['blaDHA-{}'.format(num)] = 'Beta-lactam'
+         conversions['blaKPC-{}'.format(num)] = 'Beta-lactam'
+         conversions['blaIMP-{}'.format(num)] = 'Beta-lactam'
+         conversions['blaNDM-{}'.format(num)] = 'Beta-lactam'
+         conversions['tet({})'.format(num)] = 'Tetracycline'
+         conversions['tetA({})'.format(num)] = 'Tetracycline'
+         conversions['tetB({})'.format(num)] = 'Tetracycline'
+         conversions['erm({})'.format(num)]= 'Macrolide'
+         conversions['mcr-{}.{}'.format(int(num)/10, num)] = 'Colistin'
 
-    #Exceptions
-    conversions["aac(6')-Ib3"]="Aminoglycoside"
-    conversions["aac(6')-30-aac(6')-Ib'"]="Aminoglycoside"
+    tho = range(1, 1000)
+    for num in tho:
+         conversions['blaOXA-{}'.format(num)] = 'Beta-lactam'
+         conversions['blaCMY-{}'.format(num)] = 'Beta-lactam'
+         conversions['blaSHV-{}'.format(num)] = 'Beta-lactam'
+         conversions['blaTEM-{}'.format(num)] = 'Beta-lactam'
+         conversions['blaCTX-M-{}'.format(num)] = 'Beta-lactam'
+                                        
+    letters = list(string.ascii_lowercase)
+    for al in letters:
+         conversions["mph({})".format(al.capitalize())]="Macrolide"
+         conversions["VanH{}X".format(al.capitalize())]="Glycopeptide"
+         conversions["blaOXA-114{}".format(al)]="Beta-lactam"
+         conversions["blaACC-1{}".format(al)]="Beta-lactam"
+        
+    conversions["EstDL136"]="Phenicol"
+    conversions["VanC2"]="Glycopeptide"
+    conversions["VanEXY"]="Glycopeptide"
+    conversions["VanG2XY"]="Glycopeptide"
+    conversions["VanGXY"]="Glycopeptide"
+    conversions["VanH"]="Glycopeptide"
+    conversions["VanLXY"]="Glycopeptide"
+    conversions["VanNXY"]="Glycopeptide"
+    conversions["VanX"]="Glycopeptide"
+    conversions["VanXY"]="Glycopeptide"
+    conversions["aac(2')-IIa"]="Aminoglycoside"
     conversions["aac(3)-Ib-aac(6')-Ib'"]="Aminoglycoside"
+    conversions["aac(6')-29a"]="Aminoglycoside"
+    conversions["aac(6')-29b"]="Aminoglycoside"
+    conversions["aac(6')-30-aac(6')-Ib'"]="Aminoglycoside"
+    conversions["aac(6')-Iag"]="Aminoglycoside"
+    conversions["aac(6')-Iaj"]="Aminoglycoside"
+    conversions["aac(6')-Iak"]="Aminoglycoside"
+    conversions["aac(6')-Ian"]="Aminoglycoside"
     conversions["aac(6')-Ib-11"]="Aminoglycoside"
-    conversions["aac(6')-Ib-Suzhou"]="Aminoglycoside"
     conversions["aac(6')-Ib-Hangzhou"]="Aminoglycoside"
+    conversions["aac(6')-Ib-Suzhou"]="Aminoglycoside"
+    conversions["aac(6')-Ib3"]="Aminoglycoside"
+    conversions["aac(6')-Iid"]="Aminoglycoside"
+    conversions["aac(6')-Iih"]="Aminoglycoside"
+    conversions["aac(6')-Ip"]="Aminoglycoside"
+    conversions["aac(6')-Ix"]="Aminoglycoside"
+    conversions["aadE-Cc"]="Aminoglycoside"
+    conversions["ant(2'')-Ia"]="Aminoglycoside"
+    conversions["ant(3'')-Ia"]="Aminoglycoside"
+    conversions["aph(2'')-Ig"]="Aminoglycoside"
+    conversions["aph(3'')-Ib"]="Aminoglycoside"
+    conversions["aph(3')-IIIa"]="Aminoglycoside"
+    conversions["aph(3')-IX"]="Aminoglycoside"
     conversions["aph(3')-VI"]="Aminoglycoside"
     conversions["aph(3')-VIj"]="Aminoglycoside"
-    conversions["ant(3'')-Ia"]="Aminoglycoside"
-    conversions["aph(3'')-Ib"]='Aminoglycoside'
-    conversions['aph(6)-Id']='Aminoglycoside'
-    conversions["aac(6')-30"]='Aminoglycoside' 
-    conversions['aacA4']='Aminoglycoside'
-
+    conversions["aph(6)-Id"]="Aminoglycoside"
+    conversions["aph(7'')-Ia"]="Aminoglycoside"
+    conversions["blaCMY-2b"]="Beta-lactam"
+    conversions["blaCMY-8b"]="Beta-lactam"
+    conversions["blaOXA535"]="Beta-lactam"
     conversions["blaSHV-1b-b"]="Beta-lactam"
-    conversions['blaSHV-1b']='Beta-lactam'
-    conversions['blaCMY-2b']='Beta-lactam'
-    conversions['mdf(A)']='Macrolide'
-    qnrS = range(1, 10)
-    for num in qnrS:
-      conversions['qnrS{}'.format(num)] = 'Quinolone'
-      conversions['qepA{}'.format(num)] = 'Quinolone'
-      conversions['qnrA{}'.format(num)] = 'Quinolone'
-    bla = range(1, 300)
-    for num in bla:
-      conversions['qnrB{}'.format(num)] = 'Quinolone'
-      conversions['blaSHV-{}'.format(num)] = 'Beta-lactam'
-      conversions['blaCTX-M-{}'.format(num)] = 'Beta-lactam'
-      conversions['blaTEM-{}'.format(num)] = 'Beta-lactam'
-      conversions['blaVIM-{}'.format(num)] = 'Beta-lactam'
-      conversions['blaNDM-{}'.format(num)] = 'Beta-lactam'
-      conversions['blaDHA-{}'.format(num)] = 'Beta-lactam'
-      conversions['blaCMY-{}'.format(num)] = 'Beta-lactam'
-
-    oxa = range(1, 700)
-    for num in oxa:
-      conversions['blaOXA-{}'.format(num)] = 'Beta-lactam'
-      conversions['blaOXA{}'.format(num)] = 'Beta-lactam'
-
-
+    conversions["cfr(B)"]="Phenicol"
+    conversions["cfr(C)"]="Phenicol"
+    conversions["cmlB1"]="Phenicol"
+    conversions["cmr"]="Macrolide"
+    conversions["crpP"]="Quinolone"
+    conversions["dfrA19"]="Trimethoprim"
+    conversions["dldHA2X"]="Glycopeptide"
+    conversions["ere(D)"]="Macrolide"
+    conversions["erm(44)v"]="Macrolide"
+    conversions["fexB"]="Phenicol"
+    conversions["fmrO"]="Aminoglycoside"
+    conversions["grmA"]="Aminoglycoside"
+    conversions["grmB"]="Aminoglycoside"
+    conversions["grmO"]="Aminoglycoside"
+    conversions["kamB"]="Aminoglycoside"
+    conversions["kgmB"]="Aminoglycoside"
+    conversions["lnu(E)"]="Macrolide"
+    conversions["lnu(G)"]="Macrolide"
+    conversions["lnu(P)"]="Macrolide"
+    conversions["mcr-8"]="Colistin"
+    conversions["mdf(A)"]="Macrolide"
+    conversions["mdt(A)"]="Macrolide"
+    conversions["mecA1"]="Beta-lactam"
+    conversions["mecA2"]="Beta-lactam"
+    conversions["mecB"]="Beta-lactam"
+    conversions["mecC2"]="Beta-lactam"
+    conversions["mecD"]="Beta-lactam"
+    conversions["mef(C)"]="Macrolide"
+    conversions["mre(A)"]="Macrolide"
+    conversions["otr(B)"]="Tetracycline"
+    conversions["poxtA"]="Oxazolidinone"
+    conversions["qnrC"]="Quinolone"
+    conversions["rmtf"]="Aminoglycoside"
+    conversions["sal(A)"]="Macrolide"
+    conversions["sgm"]="Aminoglycoside"
+    conversions["sul4"]="Sulphonamide"
+    conversions["tcr3"]="Tetracycline"
+    conversions["tet"]="Tetracycline"
+    conversions["tet(O/32/O)"]="Tetracycline"
+    conversions["tet(O/W)"]="Tetracycline"
+    conversions["tet(O/W)-1"]="Tetracycline"
+    conversions["tet(O/W)-2"]="Tetracycline"
+    conversions["tet(O/W/32/O)"]="Tetracycline"
+    conversions["tet(O/W/32/O/W/O)"]="Tetracycline"
+    conversions["tet(O/W/O)-1"]="Tetracycline"
+    conversions["tet(O/W/O)-2"]="Tetracycline"
+    conversions["tet(O/W/O)-3"]="Tetracycline"
+    conversions["tet(S/M)"]="Tetracycline"
+    conversions["tet(W/32/O)"]="Tetracycline"
+    conversions["tva(A)"]="Macrolide"
+    conversions["vanXmurFvanKWI"]="Glycopeptide"
+    conversions["vanXmurFvanWI"]="Glycopeptide"
+    conversions["vat(H)"]="Macrolide"
+    conversions["vga(A)V"]="Macrolide"
+    conversions["vga(D)"]="Macrolide"
+     
     return conversions
 
   def scrape_all_loci(self):
