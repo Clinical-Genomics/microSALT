@@ -11,19 +11,21 @@ The microbial sequence analysis and loci-based typing pipeline (microSALT) is us
 ## Quick installation
 ### Conda dependency resolution
 ```
-* conda config --add channels bioconda
-* conda create -n microSALT python=3.6
-* source activate microSALT
-* conda install -c bioconda blast=2.5.0=h3727419_3 spades=3.12.0=py36_0 trimmomatic=0.38=1 bwa=0.7.17=ha92aebf_3 samtools=1.6=0
-* git clone https://github.com/Clinical-Genomics/microSALT.git
-* cd microSALT && pip install -r requirements.txt && pip install.
+conda config --add channels bioconda
+conda create -n microSALT python=3.6
+source activate microSALT
+conda install -c bioconda blast=2.5.0=h3727419_3 spades=3.12.0=py36_0 \
+trimmomatic=0.38=1 bwa=0.7.17=ha92aebf_3 samtools=1.6=0
+git clone https://github.com/Clinical-Genomics/microSALT.git
+cd microSALT && pip install -r requirements.txt && pip install.
 ```
 * Perform all steps under section  __Configuration__
 
 ## Configuration
 Copy the configuration file `configExample.json` to `$HOME/.microSALT/config.json`
 _or_
-Copy the configuration file `configExample.json` to `/MY/FAV/FOLDER/config.json` and write `export MICROSALT_CONFIG=/MY/FAV/FOLDER/config.json`
+Copy the configuration file `configExample.json` to `/MY/FAV/FOLDER/config.json` 
+and write `export MICROSALT_CONFIG=/MY/FAV/FOLDER/config.json`
 
 Edit the fields to match your environment.
 
