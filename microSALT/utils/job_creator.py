@@ -94,7 +94,7 @@ class Job_Creator():
  
     for name, v in self.trimmed_files.items():
       fplist.append( v['fp'] )
-      kplist.append( v['kp'] )
+      kplist.append( v['rp'] )
       ilist.append( v['fu'] )
       ilist.append( v['ru'] )
 
@@ -110,6 +110,7 @@ class Job_Creator():
     batchfile.write("cat {} >> {}\n".format(' '.join(kplist), self.concat_files['r']))
     batchfile.write("cat {} >> {}\n".format(' '.join(ilist), self.concat_files['i']))
     batchfile.write("rm {} {} {}\n".format(' '.join(fplist), ' '.join(kplist), ' '.join(ilist)))
+    batchfile.write("\n")
     batchfile.close()    
 
   def create_assemblysection(self):
@@ -119,9 +120,9 @@ class Job_Creator():
     batchfile.write("spades.py --threads {} --careful --memory {} -o {}/assembly"\
     .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir))
     
-    batchfile.write(" --pe1-1 {}".format(libno, self.concat_files['f']))
-    batchfile.write(" --pe1-2 {}".format(libno, self.concat_files['r']))
-    batchfile.write(" --pe1-s {}".format(libno, self.concat_files['i']))
+    batchfile.write(" --pe1-1 {}".format(self.concat_files['f']))
+    batchfile.write(" --pe1-2 {}".format(self.concat_files['r']))
+    batchfile.write(" --pe1-s {}".format(self.concat_files['i']))
 
     batchfile.write("\n\n")
     batchfile.close()
@@ -159,20 +160,21 @@ class Job_Creator():
 
   def create_variantsection(self):
     """ Creates a job for variant calling based on local alignment """
-    ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher['reference'])
-    outbase = "{}/alignment/{}_{}".format(self.outdir, self.name, self.lims_fetcher['reference'])
+    ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
+    outbase = "{}/alignment/{}_{}".format(self.outdir, self.name, self.lims_fetcher.data['reference'])
 
     #Create run
     batchfile = open(self.batchfile, "a+")
-    batchfile.write("mkdir {}/alignment\n\n".format(self.outdir))
-
+    batchfile.write("# Variant calling based on local alignment\n")
+    batchfile.write("mkdir {}/alignment\n".format(self.outdir))
     batchfile.write("bwa mem -t {} -o {}.sam {} {} {}\n".format(self.config["slurm_header"]["threads"], outbase, ref ,self.concat_files['f'], self.concat_files['r']))
     batchfile.write("samtools view --threads {} -b -o {}.bam -T {} {}.sam\n".format(self.config["slurm_header"]["threads"], outbase, ref, outbase))
-    batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam".format(self.config["slurm_header"]["threads"], outbase, outbase))
-    batchfile.write("samtools fixmate --threads {} -m {}.bam_sort {}.bam_sort_ms".format(self.config["slurm_header"]["threads"], outbase, outbase))
-    batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam_sort_ms".format(self.config["slurm_header"]["threads"], outbase, outbase))
-    batchfile.write("samtools markdup -r -s --threads {} --reference {} --output-fmt bam {}.bam_sort {}.bam_sort_mkdup".format(self.config["slurm_header"]["threads"], ref, outbase, outbase))
-    batchfile.write("samtools rmdup --reference {} {}.bam_sort_mkdup {}.bam_sort_rmdup".format(ref, outbase, outbase))
+    batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
+    batchfile.write("samtools fixmate --threads {} -m {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
+    batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
+    batchfile.write("samtools markdup -r -s --threads {} --reference {} --output-fmt bam {}.bam_sort {}.bam_sort_mkdup\n".format(self.config["slurm_header"]["threads"], ref, outbase, outbase))
+    batchfile.write("samtools rmdup --reference {} {}.bam_sort_mkdup {}.bam_sort_rmdup\n".format(ref, outbase, outbase))
+    batchfile.write("\n")
     batchfile.close()
 
   def create_trimsection(self):
@@ -205,7 +207,7 @@ class Job_Creator():
       i=i+2
       j+=1
 
-  def create_assembly_statssection(self):
+  def create_assemblystats_section(self):
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# QUAST QC metrics\n")
     batchfile.write("mkdir {}/quast\n".format(self.outdir))
