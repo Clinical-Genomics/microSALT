@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import urllib.request
 
+from Bio import Entrez
 from bs4 import BeautifulSoup
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.store.lims_fetcher import LIMS_Fetcher
@@ -29,8 +30,9 @@ class Referencer():
     self.force=force
 
   def identify_new(self, cg_id, project=False):
-   """ Automatically downloads pubMLST organisms not already downloaded """
+   """ Automatically downloads pubMLST & NCBI organisms not already downloaded """
    neworgs = list()
+   newrefs = list()
    try:
      if project:
        samplenames = self.lims.samples_in_project(cg_id)
@@ -39,8 +41,12 @@ class Referencer():
          refname = self.lims.get_organism_refname(cg_sampleid)
          if refname not in self.organisms and refname not in neworgs:
            neworgs.append(self.lims.data['organism'])
+         if not "{}.fasta".format(self.lims.data['reference']) in os.listdir(self.config['folders']['genomes']):
+           newrefs.append(self.lims.data['reference']) 
        for org in neworgs:
          self.add_pubmlst(org)
+       for org in newrefs:
+         self.download_ncbi(org)
      else:
        self.lims.load_lims_sample_info(cg_id)
        refname = self.lims.get_organism_refname(cg_id)
@@ -165,6 +171,16 @@ class Referencer():
   def existing_organisms(self):
     """ Returns list of all organisms currently added """
     return self.organisms
+
+  def download_ncbi(self, reference):
+    """ Checks available references, downloads from NCBI if not present """
+    record = Entrez.efetch(db='nucleotide', id=reference, rettype='fasta', retmod='text')
+    sequence = record.read()
+    output = "{}/{}.fasta".format(self.config['folders']['genomes'], reference)
+    with open(output, 'w') as f:
+      f.write(sequence)
+    self.logger.info('Downloaded reference {}'.format(reference))
+
 
   def add_pubmlst(self, organism):
     """ Checks pubmlst for references of given organism and downloads them """

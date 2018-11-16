@@ -35,8 +35,11 @@
     "_comment": "ST references. Each ST profile file under 'profiles' have an identicial namefolder under references. Each references sub-folder contains the .tfa file for each locus",
     "profiles": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/profiles",
     "references": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/definitions_locisplit",
+    "_comment": "Download path for resFinder resistance database",
     "resistances": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/resistances",
     "gene_set": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/gene_set",
+    "_comment": "Download path for NCBI genomes, for alignment usage",
+    "genomes": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/genomes",
     "_comment": "Root folder for ALL output",
     "results": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/results/"
   },

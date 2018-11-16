@@ -43,6 +43,7 @@ class Job_Creator():
     
     self.db_pusher=DB_Manipulator(config, log)
     self.trimmed_files = dict()
+    self.concat_files = dict()
     self.organism = ""
     self.lims_fetcher = LIMS_Fetcher(config, log)
 
@@ -84,22 +85,31 @@ class Job_Creator():
     return verified_files
  
   def interlace_files(self):
-    """Interlaces all unpaired files"""
+    """Interlaces all trimmed files"""
+    fplist = list()
+    kplist = list()
+    ilist = list()
     batchfile = open(self.batchfile, "a+")
-    batchfile.write("# Interlaced unpaired reads file creation\n")
-    suffix = "_unpaired_interlaced.fq"
+    batchfile.write("# Interlaced trimmed files\n")
+ 
     for name, v in self.trimmed_files.items():
-      interfile = "{}/trimmed/{}{}".format(self.outdir, name, suffix)
-      # Spammed a bit too much
-      #self.logger.info("Created unpaired interlace file for sample {}".format(name))
-      batchfile.write("touch {}\n".format(interfile))
-      batchfile.write("cat {} >> {}\n".format(v['fu'], interfile))
-      batchfile.write("cat {} >> {}\n".format(v['ru'], interfile))
-      batchfile.write("rm {} {}".format(v['fu'], v['ru']) 
-      self.trimmed_files[name]['i'] = "{}".format(interfile)
-      batchfile.write("\n")
+      fplist.append( v['fp'] )
+      kplist.append( v['kp'] )
+      ilist.append( v['fu'] )
+      ilist.append( v['ru'] )
 
-    #DEBUG: Also interlace regular files to assist BWA
+    if len(kplist) != len(fplist) or len(ilist)/2 != len(kplist):
+      raise Exception("Uneven distribution of trimmed files. Invalid trimming step {}".format(name))
+    self.concat_files['f'] = "{}/trimmed/{}{}".format(self.outdir,self.name, "_trim_front_pair.fq")
+    self.concat_files['r'] = "{}/trimmed/{}{}".format(self.outdir,self.name, "_trim_rev_pair.fq")
+    self.concat_files['i'] = "{}/trimmed/{}{}".format(self.outdir,self.name, "_trim_unpaired.fq")
+    for k, v in self.concat_files.items():
+      batchfile.write("touch {}\n".format(v))
+    
+    batchfile.write("cat {} >> {}\n".format(' '.join(fplist), self.concat_files['f']))
+    batchfile.write("cat {} >> {}\n".format(' '.join(kplist), self.concat_files['r']))
+    batchfile.write("cat {} >> {}\n".format(' '.join(ilist), self.concat_files['i']))
+    batchfile.write("rm {} {} {}\n".format(' '.join(fplist), ' '.join(kplist), ' '.join(ilist)))
     batchfile.close()    
 
   def create_assemblysection(self):
@@ -109,12 +119,9 @@ class Job_Creator():
     batchfile.write("spades.py --threads {} --careful --memory {} -o {}/assembly"\
     .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir))
     
-    libno = 1
-    for k,v in self.trimmed_files.items():
-      batchfile.write(" --pe{}-1 {}".format(libno, self.trimmed_files[k]['fp']))
-      batchfile.write(" --pe{}-2 {}".format(libno, self.trimmed_files[k]['rp']))
-      batchfile.write(" --pe{}-s {}".format(libno, self.trimmed_files[k]['i']))
-      libno += 1
+    batchfile.write(" --pe1-1 {}".format(libno, self.concat_files['f']))
+    batchfile.write(" --pe1-2 {}".format(libno, self.concat_files['r']))
+    batchfile.write(" --pe1-s {}".format(libno, self.concat_files['i']))
 
     batchfile.write("\n\n")
     batchfile.close()
@@ -152,23 +159,21 @@ class Job_Creator():
 
   def create_variantsection(self):
     """ Creates a job for variant calling based on local alignment """
+    ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher['reference'])
+    outbase = "{}/alignment/{}_{}".format(self.outdir, self.name, self.lims_fetcher['reference'])
 
     #Create run
     batchfile = open(self.batchfile, "a+")
     batchfile.write("mkdir {}/alignment\n\n".format(self.outdir))
 
-
-### Raw input
-#bwa mem -o runs/MIC3552A18_NC_011751.1_ec.sam installs/refers/NC_011751.1_ec.fasta /mnt/hds/proj/bioinfo/MICROBIAL/projects/MIC3552/MIC3552A18/MIC3552A18_H3KGVBCX2_L2_1.fastq.gz /mnt/hds/proj/bioinfo/MICROBIAL/projects/MIC3552/MIC3552A18/MIC3552A18_H3KGVBCX2_L2_1.fastq.gz 
-#samtools view -bT -o runs/MIC3552A18_NC_011751.1_ec.bam installs/refers/NC_011751.1_ec.fasta runs/MIC3552A18_NC_011751.1_ec.sam 
-#samtools sort -n -o runs/MIC3552A18_NC_011751.1_ec.bam_sort runs/MIC3552A18_NC_011751.1_ec.bam
-##Add MS tag
-#samtools fixmate -m runs/MIC3552A18_NC_011751.1_ec.bam_sort runs/MIC3552A18_NC_011751.1_ec.bam_sort_ms
-##Resort
-#samtools sort -o runs/MIC3552A18_NC_011751.1_ec.bam_sort runs/MIC3552A18_NC_011751.1_ec.bam_sort_ms
-#samtools markdup -r -s -threads 1 --reference installs/refers/NC_011751.1_ec.fasta --output-fmt bam
-#samtools rmdup --reference  installs/refers/NC_011751.1_ec.fasta runs/MIC3552A18_NC_011751.1_ec.bam_sort runs/MIC3552A18_NC_011751.1_ec.bam_sort.rmdup
-
+    batchfile.write("bwa mem -t {} -o {}.sam {} {} {}\n".format(self.config["slurm_header"]["threads"], outbase, ref ,self.concat_files['f'], self.concat_files['r']))
+    batchfile.write("samtools view --threads {} -b -o {}.bam -T {} {}.sam\n".format(self.config["slurm_header"]["threads"], outbase, ref, outbase))
+    batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam".format(self.config["slurm_header"]["threads"], outbase, outbase))
+    batchfile.write("samtools fixmate --threads {} -m {}.bam_sort {}.bam_sort_ms".format(self.config["slurm_header"]["threads"], outbase, outbase))
+    batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam_sort_ms".format(self.config["slurm_header"]["threads"], outbase, outbase))
+    batchfile.write("samtools markdup -r -s --threads {} --reference {} --output-fmt bam {}.bam_sort {}.bam_sort_mkdup".format(self.config["slurm_header"]["threads"], ref, outbase, outbase))
+    batchfile.write("samtools rmdup --reference {} {}.bam_sort_mkdup {}.bam_sort_rmdup".format(ref, outbase, outbase))
+    batchfile.close()
 
   def create_trimsection(self):
     for root, dirs, files in os.walk(self.config["folders"]["adapters"]):
@@ -287,8 +292,7 @@ class Job_Creator():
       #shutil.rmtree(self.finishdir, ignore_errors=True)
 
   def finish_job(self, joblist):
-    """ Uploads data and sends an email once all analysis jobs are complete.
-        Sbatch > Srun to avoid issues with 50+ jobs """
+    """ Uploads data and sends an email once all analysis jobs are complete. """
 
     startfile = "{}/run_started.out".format(self.finishdir)
     mailfile = "{}/mailjob.sh".format(self.finishdir)
@@ -343,7 +347,7 @@ class Job_Creator():
     output, error = mailproc.communicate()
 
   def sample_job(self):
-    self.trimmed_files = dict()
+    """ Writes necessary sbatch job for each individual sample """
     if not os.path.exists(self.finishdir):
       os.makedirs(self.finishdir)
     try:
@@ -357,6 +361,7 @@ class Job_Creator():
 
       self.create_trimsection()
       self.interlace_files()
+      self.create_variantsection()
       self.create_assemblysection()
       self.create_assemblystats_section()
       self.create_mlstsection()
