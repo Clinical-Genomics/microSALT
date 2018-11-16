@@ -52,8 +52,10 @@ class Referencer():
        refname = self.lims.get_organism_refname(cg_id)
        if refname not in self.organisms:
          self.add_pubmlst(self.lims.data['organism'])
+       if not "{}.fasta".format(self.lims.data['reference']) in os.listdir(self.config['folders']['genomes']):
+         self.download_ncbi(self.lims.data['reference'])
    except Exception as e:
-     raise Exception("Unable to add locate reference for organism '{}' in pubMLST. Manually compile the reference.".format(self.lims.data['organism']))
+     raise Exception("Unable to add reference for sample {}. pubMLST lacks organism {} or NCBI ref {}".format(cg_id, self.lims.data['organism'], self.lims.data['reference']))
  
   def update_refs(self):
     """Updates all references. Order is important, since no object is updated twice"""
@@ -174,11 +176,19 @@ class Referencer():
 
   def download_ncbi(self, reference):
     """ Checks available references, downloads from NCBI if not present """
+    Entrez.email="2@2.com"
     record = Entrez.efetch(db='nucleotide', id=reference, rettype='fasta', retmod='text')
     sequence = record.read()
     output = "{}/{}.fasta".format(self.config['folders']['genomes'], reference)
     with open(output, 'w') as f:
       f.write(sequence)
+    bwaindex = "bwa index {}i &> /dev/null".format(output)
+    proc = subprocess.Popen(bwaindex.split(), cwd=self.config['folders']['genomes'], stdout=subprocess.PIPE)
+    output, error = proc.communicate()
+    samindex = "samtools faidx {} &> /dev/null".format(output)
+    proc = subprocess.Popen(samindex.split(), cwd=self.config['folders']['genomes'], stdout=subprocess.)
+    output, error = proc.communicate()
+    
     self.logger.info('Downloaded reference {}'.format(reference))
 
 

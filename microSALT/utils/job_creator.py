@@ -167,7 +167,7 @@ class Job_Creator():
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# Variant calling based on local alignment\n")
     batchfile.write("mkdir {}/alignment\n".format(self.outdir))
-    batchfile.write("bwa mem -t {} -o {}.sam {} {} {}\n".format(self.config["slurm_header"]["threads"], outbase, ref ,self.concat_files['f'], self.concat_files['r']))
+    batchfile.write("bwa mem -t {} {} {} {} > {}.sam\n".format(self.config["slurm_header"]["threads"], ref ,self.concat_files['f'], self.concat_files['r'], outbase))
     batchfile.write("samtools view --threads {} -b -o {}.bam -T {} {}.sam\n".format(self.config["slurm_header"]["threads"], outbase, ref, outbase))
     batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
     batchfile.write("samtools fixmate --threads {} -m {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
