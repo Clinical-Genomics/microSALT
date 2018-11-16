@@ -176,18 +176,19 @@ class Referencer():
 
   def download_ncbi(self, reference):
     """ Checks available references, downloads from NCBI if not present """
+    DEVNULL = open(os.devnull, 'wb')
     Entrez.email="2@2.com"
     record = Entrez.efetch(db='nucleotide', id=reference, rettype='fasta', retmod='text')
     sequence = record.read()
     output = "{}/{}.fasta".format(self.config['folders']['genomes'], reference)
     with open(output, 'w') as f:
       f.write(sequence)
-    bwaindex = "bwa index {}i &> /dev/null".format(output)
-    proc = subprocess.Popen(bwaindex.split(), cwd=self.config['folders']['genomes'], stdout=subprocess.PIPE)
-    output, error = proc.communicate()
-    samindex = "samtools faidx {} &> /dev/null".format(output)
-    proc = subprocess.Popen(samindex.split(), cwd=self.config['folders']['genomes'], stdout=subprocess.)
-    output, error = proc.communicate()
+    bwaindex = "bwa index {}".format(output)
+    proc = subprocess.Popen(bwaindex.split(), cwd=self.config['folders']['genomes'], stdout=DEVNULL, stderr=DEVNULL)
+    out, err = proc.communicate()
+    samindex = "samtools faidx {}".format(output)
+    proc = subprocess.Popen(samindex.split(), cwd=self.config['folders']['genomes'], stdout=DEVNULL, stderr=DEVNULL)
+    out, err = proc.communicate()
     
     self.logger.info('Downloaded reference {}'.format(reference))
 
