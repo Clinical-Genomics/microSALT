@@ -261,7 +261,11 @@ def refer(ctx):
 def add(ctx, organism, force):
   """ Adds a new internal organism from pubMLST """
   referee = Referencer(ctx.obj['config'], ctx.obj['log'],force=force)
-  referee.add_pubmlst(organism)
+  try:
+    referee.add_pubmlst(organism)
+  except Exception as e:
+    print(e.args[0])
+    sys.exit(-1)
   print("Checking versions of all references..")
   referee = Referencer(ctx.obj['config'], ctx.obj['log'],force=force)
   referee.update_refs()
