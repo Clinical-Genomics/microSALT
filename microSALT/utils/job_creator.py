@@ -259,12 +259,12 @@ class Job_Creator():
             else:
               self.logger.info("Suppressed command: {}".format(bash_cmd))
       if not dry:
-        self.finish_job(jobarray)
+        self.finish_job(jobarray, single_sample)
     except Exception as e:
       self.logger.error("Issues handling some samples of project at {}\nSource: {}".format(self.finishdir, str(e)))
       #shutil.rmtree(self.finishdir, ignore_errors=True)
 
-  def finish_job(self, joblist):
+  def finish_job(self, joblist, single_sample=False):
     """ Uploads data and sends an email once all analysis jobs are complete.
         Sbatch > Srun to avoid issues with 50+ jobs """
 
@@ -280,11 +280,11 @@ class Job_Creator():
     if 'MICROSALT_CONFIG' in os.environ:
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
-    if not len(joblist) == 1:
+    if not single_sample:
       mb.write("microSALT finish project {} --input {} --rerun\n".format(self.name, self.finishdir))
     else:
       mb.write("microSALT finish sample {} --input {} --rerun\n".format(self.name, self.finishdir))
-    mb.write("Analysis done!\n")
+    mb.write("touch {}/run_complete.out".format(self.finishdir))
     mb.close()
 
     massagedJobs = list()
@@ -313,9 +313,9 @@ class Job_Creator():
           final = entry
           break 
 
-    head = "-A {} -p core -n 1 -t 06:00:00 -J {}_{}_MAILJOB --qos {} --dependency=afterany:{} --output {}/run_complete.out"\
+    head = "-A {} -p core -n 1 -t 06:00:00 -J {}_{}_MAILJOB --qos {} --dependency=afterany:{} --output {}"\
             .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"],\
-           final, self.finishdir,  self.config['regex']['mail_recipient'])
+           final, self.config['folders']['log_file'],  self.config['regex']['mail_recipient'])
     bash_cmd="sbatch {} {}".format(head, mailfile)
     mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
     output, error = mailproc.communicate()
