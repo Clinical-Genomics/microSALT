@@ -4,12 +4,11 @@
   </a>
 </p>
 
-microbial Sequence Analysis and Loci-based Typing pipeline
+__Microbial Sequence Analysis and Loci-based Typing pipeline__
 
-The microbial sequence analysis and loci-based typing pipeline (microSALT) is used to determine a microbial sample's organism specific sequence type and resistance profile. This is in turn defined from a set of six to eight organism specific allele types, and a huge set of resistance genes. microSALT also provides a database storage solution and pdf generation of these results.
+_The microbial sequence analysis and loci-based typing pipeline (microSALT) is used to determine a microbial sample's organism specific sequence type and resistance profile. This is in turn defined from a set of six to eight organism specific allele types, and a huge set of resistance genes. microSALT also provides a database storage solution and pdf generation of these results._
 
 ## Quick installation
-### Conda dependency resolution
 ```
 conda config --add channels bioconda
 conda create -n microSALT python=3.6
@@ -19,15 +18,27 @@ trimmomatic=0.38=1 bwa=0.7.17=ha92aebf_3 samtools=1.6=0
 git clone https://github.com/Clinical-Genomics/microSALT.git
 cd microSALT && pip install -r requirements.txt && pip install.
 ```
-* Perform all steps under section  __Configuration__
+
+Then continue with __Configuration__
+
+_Optional SNP-calling support:_
+
+`conda install -c bioconda freebayes=1.2.0=py36h82df9c4_3 bcftools=1.3.1=ha92aebf_3 \
+vcftools=0.1.16=he941832_2 vcflib=1.0.0_rc1=h82df9c4_3`
+
 
 ## Configuration
-Copy the configuration file `configExample.json` to `$HOME/.microSALT/config.json`
-_or_
-Copy the configuration file `configExample.json` to `/MY/FAV/FOLDER/config.json` 
-and write `export MICROSALT_CONFIG=/MY/FAV/FOLDER/config.json`
+Copy the configuration file to microSALTs hidden home directory, _or_ copy the configuration file anywhere and direct the envvar MICROSALT_CONFIG to it. See examples: 
 
-Edit the fields to match your environment.
+`cp configExample.json $HOME/.microSALT/config.json`
+
+_or_
+```
+cp configExample.json /MY/FAV/FOLDER/config.json
+export MICROSALT_CONFIG=/MY/FAV/FOLDER/config.json
+```
+
+__Then edit the fields to match your environment__.
 
 ### LIMS Configuration
 Create `$HOME/.genologicsrc` with the following formatting:
@@ -46,11 +57,11 @@ MAIN_LOG=/tmp/lims.log
 
 ## Databases
 ### MLST Definitions
-microSALT is able to neatly download the MLST definitions for any organism on pubMLST (https://pubmlst.org/databases/), and will attempt to automatically download these.
+microSALT will automatically download & use the MLST definitions for any organism on pubMLST (https://pubmlst.org/databases/).
 Other definitions may be used, as long as they retain the same format. 
 
 ### Resistance genes
-microSALT relies on the resistance genes of resFinder (https://cge.cbs.dtu.dk/services/data.php), and will attempt to automatically download these.
+microSALT will automatically download & use the resistance genes of resFinder (https://cge.cbs.dtu.dk/services/data.php).
 Any definitions will work, as long as they retain the same formatting.
 
 ## Requirements
