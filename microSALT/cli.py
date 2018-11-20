@@ -19,7 +19,7 @@ from microSALT.utils.referencer import Referencer
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 if config == '':
-  print("ERROR: No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
+  click.echo("ERROR: No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
   sys.exit(-1)
 
 @click.group()
@@ -41,9 +41,78 @@ def root(ctx):
   ctx.obj['log'] = logger
 
 def done():
-  print("Execution finished!")
+  click.echo("Execution finished!")
 
 @root.group()
+@click.pass_context
+def type(ctx):
+  """MLST & Resistance typing"""
+
+#@root.group()
+#@click.pass_context
+#def qc(ctx):
+#  """Alignment Quality Control"""
+
+@root.command()
+@click.argument('file_type', type=click.Choice(['ids', 'paths'], help="Use either CG IDs or sample folder paths", required=True)
+@click.argument('input_type', type=click.Choice(['list', 'file'], help="Use either list or static file for input", required=True)
+@click.option('--file', help="File containing list of samples to analyse, one per row")
+@click.option('--sample', '-s', multiple=True, Help="List of samples, one per variable invocation")
+@click.option('--config', help="microSALT config to override default", default="")
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.pass_context()
+def snp(ctx, file_type, input_type, file, sample, config, email):
+  """Pair-wise SNP distance"""
+  ctx.obj['config']['snp'] = list()
+  ctx.obj['config']['regex']['mail_recipient'] = email
+  if config != '':
+    try:
+      with open(os.path.abspath(config), 'r') as conf:
+        ctx.obj['config'] = json.load(conf)
+    except Exception as e:
+      pass
+
+  snplist = list()
+  if input_type=='file':
+    sh = open(os.path.abspath(sample), 'r')
+    sf = sh.readlines()
+    for line in sf:
+      snplist.append(line.rstrip())
+  elif input_type=='list':
+    snplist = sample
+
+  if file_type == 'paths':
+    for line in snplist:
+      if not os.path.isdir("{}/alignment".format(line)):
+        click.echo("ERROR: {} does not contain an alignment folder + file".format(line))
+        sys.exit(-1)
+  else:
+    scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
+    for line in snplist:
+      try:
+        scientist.load_lims_sample_info(line)
+      except Exception as e:
+        click.echo("Unable to load LIMS sample info for {}".format(line))
+        sys.exit(-1) 
+      project = scientist.data['CG_ID_project']
+      samhits = ctx.obj['config']['folders']['results'].startswith("{}_".format(line))
+      prohits = ctx.obj['config']['folders']['results'].startswith("{}_".format(project))
+      if len(samhits) >= 1:
+        snplist.append("{}/{}/alignment".format(ctx.obj['config']['folders']['results'], samhits[-1]))
+      elif len(prohits) >= 1:
+        snplist.append("{}/{}/alignment".format(ctx.obj['config']['folders']['results'], prohits[-1]))
+
+      if len(samhits) + len(prohits) > 1:
+        click.echo("WARNING: Multiple hits for {}. Selecting {}".format(line,ctx.obj['config']['snp'][-1])
+      elif len(samhits) + len(prohits) == 0:
+        click.echo("ERROR: {} does not contain an alignment folder + file".format(line))
+        sys.exit(-1)
+
+    overlord = Job_Creator(snplist, ctx.obj['config'], ctx.obj['log'])
+    overlord.snp_job() 
+
+
+@type.group()
 @click.pass_context
 def start(ctx):
   """Starts analysis of project/sample"""
@@ -70,22 +139,22 @@ def project(ctx, project_id, input, dry, config, email):
   if input != "":
     project_dir = os.path.abspath(input)
     if not project_id in project_dir:
-      print("Path does not contain project id. Exiting.")
+      click.echo("Path does not contain project id. Exiting.")
       sys.exit(-1)
   else:
     project_dir = "{}/{}".format(ctx.obj['config']['folders']['seqdata'], project_id)
     if not os.path.isdir(project_dir):
-      print("Sequence data folder for {} does not exist.".format(project_id))
+      click.echo("Sequence data folder for {} does not exist.".format(project_id))
       sys.exit(-1)
 
-  print("Checking versions of references..")
+  click.echo("Checking versions of references..")
   try:
     fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
     fixer.identify_new(project_id,project=True)
     fixer.update_refs()
   except Exception as e:
-    print("{}".format(e))
-  print("Version check done. Creating sbatch jobs")
+    click.echo("{}".format(e))
+  click.echo("Version check done. Creating sbatch jobs")
   manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
   manager.project_job()
   done() 
@@ -112,33 +181,33 @@ def sample(ctx, sample_id, input, dry, config, email):
   try:
     scientist.load_lims_sample_info(sample_id)
   except Exception as e:
-    print("Unable to load LIMS sample info.")
+    click.echo("Unable to load LIMS sample info.")
     sys.exit(-1)
 
   if input != "":
     sample_dir = os.path.abspath(input)
     if not sample_id in sample_dir:
-      print("Path does not contain sample id. Exiting.")
+      click.echo("Path does not contain sample id. Exiting.")
       sys.exit(-1)
   else:
     sample_dir = "{}/{}/{}".format(ctx.obj['config']['folders']['seqdata'], scientist.data['CG_ID_project'] ,sample_id)
     if not os.path.isdir(sample_dir):
-      print("Sequence data folder for {} does not exist.".format(sample_id))
+      click.echo("Sequence data folder for {} does not exist.".format(sample_id))
       sys.exit(-1)
 
-  print("Checking versions of references..")
+  click.echo("Checking versions of references..")
   try:
     fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
     fixer.identify_new(sample_id,project=False) 
     fixer.update_refs()
-    print("Version check done. Creating sbatch job")
+    click.echo("Version check done. Creating sbatch job")
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
     worker.project_job(single_sample=True)
   except Exception as e:
-    print("Unable to process sample {} due to '{}'".format(sample_id,e))
+    click.echo("Unable to process sample {} due to '{}'".format(sample_id,e))
   done()
 
-@root.group()
+@type.group()
 @click.pass_context
 def finish(ctx):
   """Uploads analysis and generates results"""
@@ -166,28 +235,25 @@ def sample(ctx, sample_id, rerun, email, input, config):
   if input != "":
     sample_dir = os.path.abspath(input)
     if not sample_id in sample_dir:
-      print("Path does not contain sample id. Exiting.")
+      click.echo("Path does not contain sample id. Exiting.")
       sys.exit(-1)
   else:
-    hits = 0
-    for i in os.listdir(ctx.obj['config']['folders']['results']):
-      if '{}_'.format(sample_id) in i:
-        hits = hits+1
-        fname = i
-    if hits > 1: #Doublechecks only 1 analysis exists
-      print("Multiple instances of that analysis exists. Specify full path using --input")
+    prohits = ctx.obj['config']['folders']['results'].startswith("{}_".format(sample_id))
+    if len(prohits) > 1:
+      click.echo("Multiple instances of that analysis exists. Specify full path using --input")
       sys.exit(-1)
+    elif len(prohits) <1:
     elif hits < 1:
-      print("No analysis folder prefixed by {} found.".format(sample_id))
+      click.echo("No analysis folder prefixed by {} found.".format(project_id))
       sys.exit(-1)
     else:
-      sample_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], fname)
+      sample_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
 
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
   try:
     scientist.load_lims_sample_info(sample_id)
   except Exception as e:
-    print("Unable to load LIMS sample info.")
+    click.echo("Unable to load LIMS sample info.")
     sys.exit(-1)
 
   garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
@@ -219,23 +285,20 @@ def project(ctx, project_id, rerun, email, input, config):
   if input != "":
     project_dir = os.path.abspath(input)
     if not project_id in project_dir:
-      print("Path does not contain project id. Exiting.")
+      click.echo("Path does not contain project id. Exiting.")
       sys.exit(-1)
   else:
-    hits = 0
-    for i in os.listdir(ctx.obj['config']['folders']['results']):
-      if '{}_'.format(project_id) in i:
-        hits = hits+1
-        fname = i
-    if hits > 1: #Doublechecks only 1 analysis exists
-      print("Multiple instances of that analysis exists. Specify full path using --input")
+    prohits = ctx.obj['config']['folders']['results'].startswith("{}_".format(project_id))
+    if len(prohits) > 1:
+      click.echo("Multiple instances of that analysis exists. Specify full path using --input")
       sys.exit(-1)
+    elif len(prohits) <1:
     elif hits < 1:
-      print("No analysis folder prefixed by {} found.".format(project_id))
+      click.echo("No analysis folder prefixed by {} found.".format(project_id))
       sys.exit(-1)
     else:
-      project_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], fname)
-  
+      project_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
+
   garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_project()
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_id)
@@ -264,9 +327,9 @@ def add(ctx, organism, force):
   try:
     referee.add_pubmlst(organism)
   except Exception as e:
-    print(e.args[0])
+    click.echo(e.args[0])
     sys.exit(-1)
-  print("Checking versions of all references..")
+  click.echo("Checking versions of all references..")
   referee = Referencer(ctx.obj['config'], ctx.obj['log'],force=force)
   referee.update_refs()
 
@@ -275,9 +338,9 @@ def add(ctx, organism, force):
 def list(ctx):
   """ Lists all stored organisms """
   refe = Referencer(ctx.obj['config'], ctx.obj['log'])
-  print("Currently stored organisms:")
+  click.echo("Currently stored organisms:")
   for org in sorted(refe.existing_organisms()):
-    print(org.replace("_"," ").capitalize())
+    click.echo(org.replace("_"," ").capitalize())
 
 @util.command()
 @click.argument('project_name')

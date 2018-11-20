@@ -13,17 +13,22 @@ import time
 from datetime import datetime
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 from microSALT.store.db_manipulator import DB_Manipulator
-#from microSALT.utils.scraper import Scraper
-#from microSALT.utils.reporter import Reporter
 
 class Job_Creator():
 
-  def __init__(self, indir, config, log, finishdir="", timestamp=""):
+  def __init__(self, input, config, log, finishdir="", timestamp=""):
     self.config = config
     self.logger = log
     self.batchfile = ""
-    self.indir = os.path.abspath(indir)
-    self.name = os.path.basename(os.path.normpath(indir))
+    self.filelist = list()
+    self.indir = ""
+
+    if isinstance(input, str):
+      self.indir = os.path.abspath(input)
+      self.name = os.path.basename(os.path.normpath(indir))
+    elif type(input) == list:
+      self.filelist = input
+      self.name = "Extended"
 
     self.now = timestamp
     if timestamp != "":
@@ -35,7 +40,6 @@ class Job_Creator():
       self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
       format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
-    #Attempting writing on slurm
     self.outdir = "/scratch/$SLURM_JOB_ID/workdir/{}_{}".format(self.name, self.now)
     self.finishdir = finishdir
     if self.finishdir == "":
@@ -208,11 +212,40 @@ class Job_Creator():
       j+=1
 
   def create_assemblystats_section(self):
+    snplist = self.filelist.copy()
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# QUAST QC metrics\n")
     batchfile.write("mkdir {}/quast\n".format(self.outdir))
     batchfile.write("quast.py {}/assembly/contigs.fasta -o {}/quast\n\n".format(self.outdir, self.outdir))
     batchfile.close()
+
+  def create_snpsection(self):
+    batchfile = open(self.batchfile, "a+")
+
+    for item in snplist:
+      batchfile.write('# Individual basecalling, could be ran as standard\n')
+      name = item.split('/')[-2]
+      self.lims_fetcher.load_lims_sample_info(name) 
+      ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
+      outbase = "{}/alignment/{}_{}".format(self.outdir, self.name, self.lims_fetcher.data['reference'])
+      batchfile.write('freebayes -= --pvar 0.7 --standard-filters -C 6 --min-coverage 30 --no-indels -no-mnps --no-complex --ploidy 1 -f {} -b {}.bam_sort_rmdup -v {}/{}.vcf\n'.format(ref, outbase, self.outdir, name))
+      batchfile.write('bcftools view {}/{}.vcf -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, name, self.outdir, name))
+      batchfile.write('bcftools index {}/{}.bcf.gz\n'.format(self.outdir, name))
+      batchfile.write('\n')
+
+    batchfile.write('# SNP pair-wise distance\n')
+    batchfile.write('touch {}/stats.out'.format(self.outdir))
+    while len(snplist) > 1:
+      top = snplist.pop(0)
+      for entry in snplist:
+        pair = "{}_{}".format(top.split('/')[-2], entry.split('/')[-2])
+        batchfile.write('bcftools isec {}/{} {}/{} -n=1 -c all -p tmp -O -b\n'.format(self.outdir, top.split('/')[-2], self.outdir, entry.split('/')[-2]))
+        batchfile.write('bcftools merge -O v -o {}/{}.vcf --force-samples {}/tmp/0000.bcf {}/tmp/0001.bcf\n'.format(self.outdir, pair, self.outdir, self.outdir))
+        batchfile.write('vcftools {}/{}.vcf --minQ 30  --thin 50 --minDP 3 --min-meanDP 20 --remove-filtered-all --recode-INFO-all --recode\n'.format(self.outdir, pair))
+        batchfile.write('bcftools view {}/{}.recode.vcf -i "QUAL>20 & DP>5 & MQM / MQMR > 0.9 & MQM / MQMR < 1.05 & QUAL / DP > 0.25" -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps'.format(self.outdir, pair, self.outdir, pair))
+        batchfile.write("echo {} $( bcftools stats {}.bcf.gz |grep SNPs: | cut -d $'\t' -f4 ) >> {}/stats.out".format(pair, self.outdir, pair, self.outdir) 
+        batchfile.close()
+
 
   def create_project(self, name):
     """Creates project in database"""
@@ -309,9 +342,9 @@ class Job_Creator():
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
     if not len(joblist) == 1:
-      mb.write("microSALT finish project {} --input {} --rerun\n".format(self.name, self.finishdir))
+      mb.write("microSALT type finish project {} --input {} --rerun\n".format(self.name, self.finishdir))
     else:
-      mb.write("microSALT finish sample {} --input {} --rerun\n".format(self.name, self.finishdir))
+      mb.write("microSALT type finish sample {} --input {} --rerun\n".format(self.name, self.finishdir))
     mb.write("Analysis done!\n")
     mb.close()
 
@@ -380,3 +413,27 @@ class Job_Creator():
       self.create_sample(self.name)
     except Exception as e:
       self.logger.error("Unable to access LIMS info for sample {}".format(self.name))
+
+  def snp_job(self):
+    """ Writes a SNP calling job for a set of samples """
+    if not os.path.exists(self.finishdir):
+      os.makedirs(self.finishdir)
+
+    self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
+    batchfile = open(self.batchfile, "w+")
+    batchfile.write("#!/bin/sh\n\n")
+    batchfile.write("mkdir -p {}\n".format(self.outdir))
+    batchfile.close()
+
+    self.create_snpsection()
+    batchfile = open(self.batchfile, "a+")
+    batchfile.write("cp -r {}/* {}".format(self.outdir, self.finishdir))
+    batchfile.close()
+
+    headerline = "-A {} -p {} -n 1 -t 24:00:00 -J {}_{} --qos {} --output {}/slurm_{}.log".format(self.config["slurm_header"]["project"],\
+                 self.config["slurm_header"]["type"],\
+                 self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"], self.finishdir, self.name)
+    outfile = self.get_sbatch()
+    bash_cmd="sbatch {} {}".format(headerline, outfile)
+    samproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+    output, error = samproc.communicate()
