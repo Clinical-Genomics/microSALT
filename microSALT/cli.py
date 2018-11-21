@@ -122,10 +122,11 @@ def start(ctx):
 @click.argument('project_id')
 @click.option('--input', help='Full path to project folder',default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
+@click.option('--qc-only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.pass_context
-def project(ctx, project_id, input, dry, config, email):
+def project(ctx, project_id, input, dry, config, email, qc-only):
   """Analyze a whole project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
@@ -156,17 +157,18 @@ def project(ctx, project_id, input, dry, config, email):
     click.echo("{}".format(e))
   click.echo("Version check done. Creating sbatch jobs")
   manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
-  manager.project_job()
+  manager.project_job(qc-only)
   done() 
 
 @start.command()
 @click.argument('sample_id')
 @click.option('--input', help='Full path to sample folder', default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
+@click.option('--qc-only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.pass_context
-def sample(ctx, sample_id, input, dry, config, email):
+def sample(ctx, sample_id, input, dry, config, email, qc-only):
   """Analyze a single sample"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
@@ -202,7 +204,7 @@ def sample(ctx, sample_id, input, dry, config, email):
     fixer.update_refs()
     click.echo("Version check done. Creating sbatch job")
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
-    worker.project_job(single_sample=True)
+    worker.project_job(single_sample=True, qc-only)
   except Exception as e:
     click.echo("Unable to process sample {} due to '{}'".format(sample_id,e))
   done()

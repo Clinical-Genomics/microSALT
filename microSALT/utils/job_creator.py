@@ -272,7 +272,7 @@ class Job_Creator():
     except Exception as e:
       self.logger.error("Unable to add sample {} to database".format(self.name))
 
-  def project_job(self, single_sample=False):
+  def project_job(self, single_sample=False, qc_only=False):
     if 'dry' in self.config and self.config['dry']==True:
       dry=True
     else:
@@ -290,7 +290,7 @@ class Job_Creator():
     try:
       #Start every sample job
       if single_sample:
-        self.sample_job()
+        self.sample_job(qc_only=qc_only)
         headerargs = self.get_headerargs()
         outfile = self.get_sbatch()
         bash_cmd="sbatch {} {}".format(headerargs, outfile)
@@ -307,7 +307,7 @@ class Job_Creator():
             sample_in = "{}/{}".format(dirpath, dir)
             sample_out = "{}/{}".format(self.finishdir, dir)
             sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now) 
-            sample_instance.sample_job()
+            sample_instance.sample_job(qc_only=qc_only)
             headerargs = sample_instance.get_headerargs()
             outfile = ""
             if os.path.isfile(sample_instance.get_sbatch()):
@@ -381,7 +381,7 @@ class Job_Creator():
     mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
     output, error = mailproc.communicate()
 
-  def sample_job(self):
+  def sample_job(self, qc_only=False):
     """ Writes necessary sbatch job for each individual sample """
     if not os.path.exists(self.finishdir):
       os.makedirs(self.finishdir)
@@ -397,10 +397,11 @@ class Job_Creator():
       self.create_trimsection()
       self.interlace_files()
       self.create_variantsection()
-      self.create_assemblysection()
-      self.create_assemblystats_section()
-      self.create_mlstsection()
-      self.create_resistancesection()
+      if not qc_only:
+        self.create_assemblysection()
+        self.create_assemblystats_section()
+        self.create_mlstsection()
+        self.create_resistancesection()
       batchfile = open(self.batchfile, "a+")
       batchfile.write("cp -r {}/* {}".format(self.outdir, self.finishdir))
       batchfile.close()
@@ -413,6 +414,7 @@ class Job_Creator():
       self.create_sample(self.name)
     except Exception as e:
       self.logger.error("Unable to access LIMS info for sample {}".format(self.name))
+
 
   def snp_job(self):
     """ Writes a SNP calling job for a set of samples """
