@@ -14,7 +14,7 @@ conda config --add channels bioconda
 conda create -n microSALT python=3.6
 source activate microSALT
 conda install -c bioconda blast=2.5.0=h3727419_3 spades=3.12.0=py36_0 \
-trimmomatic=0.38=1 bwa=0.7.17=ha92aebf_3 samtools=1.6=0
+trimmomatic=0.38=1 bwa==0.7.15=1 samtools=1.6=0
 git clone https://github.com/Clinical-Genomics/microSALT.git
 cd microSALT && pip install -r requirements.txt && pip install.
 ```
@@ -23,8 +23,8 @@ Then continue with __Configuration__
 
 _Optional SNP-calling support:_
 
-`conda install -c bioconda freebayes=1.2.0=py36h82df9c4_3 bcftools=1.3.1=ha92aebf_3 \
-vcftools=0.1.16=he941832_2`
+`conda install -c bioconda freebayes=1.1.0=py36_2 bcftools=1.3.1=0 \
+vcftools=0.1.15=0`
 
 
 ## Configuration
