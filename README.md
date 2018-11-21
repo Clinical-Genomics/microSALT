@@ -24,7 +24,7 @@ Then continue with __Configuration__
 _Optional SNP-calling support:_
 
 `conda install -c bioconda freebayes=1.2.0=py36h82df9c4_3 bcftools=1.3.1=ha92aebf_3 \
-vcftools=0.1.16=he941832_2 vcflib=1.0.0_rc1=h82df9c4_3`
+vcftools=0.1.16=he941832_2`
 
 
 ## Configuration
