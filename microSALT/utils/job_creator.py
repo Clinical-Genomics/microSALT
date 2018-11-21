@@ -25,7 +25,7 @@ class Job_Creator():
 
     if isinstance(input, str):
       self.indir = os.path.abspath(input)
-      self.name = os.path.basename(os.path.normpath(indir))
+      self.name = os.path.basename(os.path.normpath(self.indir))
     elif type(input) == list:
       self.filelist = input
       self.name = "Extended"
