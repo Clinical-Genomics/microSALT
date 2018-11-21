@@ -243,7 +243,7 @@ class Job_Creator():
         batchfile.write('bcftools merge -O v -o {}/{}.vcf --force-samples {}/tmp/0000.bcf {}/tmp/0001.bcf\n'.format(self.outdir, pair, self.outdir, self.outdir))
         batchfile.write('vcftools {}/{}.vcf --minQ 30  --thin 50 --minDP 3 --min-meanDP 20 --remove-filtered-all --recode-INFO-all --recode\n'.format(self.outdir, pair))
         batchfile.write('bcftools view {}/{}.recode.vcf -i "QUAL>20 & DP>5 & MQM / MQMR > 0.9 & MQM / MQMR < 1.05 & QUAL / DP > 0.25" -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps'.format(self.outdir, pair, self.outdir, pair))
-        batchfile.write("echo {} $( bcftools stats {}.bcf.gz |grep SNPs: | cut -d $'\t' -f4 ) >> {}/stats.out".format(pair, self.outdir, pair, self.outdir) 
+        batchfile.write("echo {} $( bcftools stats {}.bcf.gz |grep SNPs: | cut -d $'\t' -f4 ) >> {}/stats.out\n".format(pair, self.outdir, pair, self.outdir)) 
         batchfile.close()
 
 

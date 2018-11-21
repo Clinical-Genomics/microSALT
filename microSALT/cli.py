@@ -54,13 +54,13 @@ def type(ctx):
 #  """Alignment Quality Control"""
 
 @root.command()
-@click.argument('file_type', type=click.Choice(['ids', 'paths'], help="Use either CG IDs or sample folder paths", required=True)
-@click.argument('input_type', type=click.Choice(['list', 'file'], help="Use either list or static file for input", required=True)
+@click.option('--file_type', type=click.Choice(['ids', 'paths']), help="Use either CG IDs or sample folder paths", required=True)
+@click.option('--input_type', type=click.Choice(['list', 'file']), help="Use either list or static file for input", required=True)
 @click.option('--file', help="File containing list of samples to analyse, one per row")
-@click.option('--sample', '-s', multiple=True, Help="List of samples, one per variable invocation")
+@click.option('--sample', '-s', help="List of samples, one per variable invocation", multiple=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.pass_context()
+@click.pass_context
 def snp(ctx, file_type, input_type, file, sample, config, email):
   """Pair-wise SNP distance"""
   ctx.obj['config']['snp'] = list()
@@ -103,7 +103,7 @@ def snp(ctx, file_type, input_type, file, sample, config, email):
         snplist.append("{}/{}/alignment".format(ctx.obj['config']['folders']['results'], prohits[-1]))
 
       if len(samhits) + len(prohits) > 1:
-        click.echo("WARNING: Multiple hits for {}. Selecting {}".format(line,ctx.obj['config']['snp'][-1])
+        click.echo("WARNING: Multiple hits for {}. Selecting {}".format(line,ctx.obj['config']['snp'][-1]))
       elif len(samhits) + len(prohits) == 0:
         click.echo("ERROR: {} does not contain an alignment folder + file".format(line))
         sys.exit(-1)
@@ -122,11 +122,11 @@ def start(ctx):
 @click.argument('project_id')
 @click.option('--input', help='Full path to project folder',default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
-@click.option('--qc-only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
+@click.option('--qc_only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.pass_context
-def project(ctx, project_id, input, dry, config, email, qc-only):
+def project(ctx, project_id, input, dry, config, email, qc_only):
   """Analyze a whole project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
@@ -157,18 +157,18 @@ def project(ctx, project_id, input, dry, config, email, qc-only):
     click.echo("{}".format(e))
   click.echo("Version check done. Creating sbatch jobs")
   manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
-  manager.project_job(qc-only)
+  manager.project_job(qc_only=qc_only)
   done() 
 
 @start.command()
 @click.argument('sample_id')
 @click.option('--input', help='Full path to sample folder', default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
-@click.option('--qc-only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
+@click.option('--qc_only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.pass_context
-def sample(ctx, sample_id, input, dry, config, email, qc-only):
+def sample(ctx, sample_id, input, dry, config, email, qc_only):
   """Analyze a single sample"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
@@ -204,7 +204,7 @@ def sample(ctx, sample_id, input, dry, config, email, qc-only):
     fixer.update_refs()
     click.echo("Version check done. Creating sbatch job")
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
-    worker.project_job(single_sample=True, qc-only)
+    worker.project_job(single_sample=True, qc_only=qc_only)
   except Exception as e:
     click.echo("Unable to process sample {} due to '{}'".format(sample_id,e))
   done()
@@ -245,7 +245,6 @@ def sample(ctx, sample_id, rerun, email, input, config):
       click.echo("Multiple instances of that analysis exists. Specify full path using --input")
       sys.exit(-1)
     elif len(prohits) <1:
-    elif hits < 1:
       click.echo("No analysis folder prefixed by {} found.".format(project_id))
       sys.exit(-1)
     else:
@@ -295,7 +294,6 @@ def project(ctx, project_id, rerun, email, input, config):
       click.echo("Multiple instances of that analysis exists. Specify full path using --input")
       sys.exit(-1)
     elif len(prohits) <1:
-    elif hits < 1:
       click.echo("No analysis folder prefixed by {} found.".format(project_id))
       sys.exit(-1)
     else:
