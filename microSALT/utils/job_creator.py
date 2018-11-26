@@ -118,7 +118,6 @@ class Job_Creator():
 
   def create_resistancesection(self):
     """Creates a blast job for instances where many loci definition files make up an organism"""
-    #self.index_db("{}".format(self.config["folders"]["resistances"]), '.fsa')
 
     #Create run
     batchfile = open(self.batchfile, "a+")
@@ -134,7 +133,6 @@ class Job_Creator():
 
   def create_blastsection(self):
     """Creates a blast job for instances where many loci definition files make up an organism"""
-    #self.index_db("{}/{}".format(self.config["folders"]["references"], self.organism), '.tfa')
     
     #Create run
     batchfile = open(self.batchfile, "a+")

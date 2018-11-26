@@ -287,6 +287,7 @@ class Scraper():
     conversions["aadE-Cc"]="Aminoglycoside"
     conversions["ant(2'')-Ia"]="Aminoglycoside"
     conversions["ant(3'')-Ia"]="Aminoglycoside"
+    conversions["ant(9)-Ia"]="Aminoglycoside"
     conversions["aph(2'')-Ig"]="Aminoglycoside"
     conversions["aph(3'')-Ib"]="Aminoglycoside"
     conversions["aph(3')-IIIa"]="Aminoglycoside"
