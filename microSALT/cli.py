@@ -43,27 +43,18 @@ def root(ctx):
 def done():
   click.echo("Execution finished!")
 
-@root.group()
-@click.pass_context
-def type(ctx):
-  """MLST & Resistance typing"""
-
-#@root.group()
-#@click.pass_context
-#def qc(ctx):
-#  """Alignment Quality Control"""
-
 @root.command()
-@click.option('--file_type', type=click.Choice(['ids', 'paths']), help="Use either CG IDs or sample folder paths", required=True)
+@click.option('--ref_type', type=click.Choice(['ids', 'paths']), help="Use either CG IDs or sample folder paths", required=True)
 @click.option('--input_type', type=click.Choice(['list', 'file']), help="Use either list or static file for input", required=True)
 @click.option('--file', help="File containing list of samples to analyse, one per row")
 @click.option('--sample', '-s', help="List of samples, one per variable invocation", multiple=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.pass_context
-def snp(ctx, file_type, input_type, file, sample, config, email):
+def snp(ctx, ref_type, input_type, file, sample, config, email):
   """Pair-wise SNP distance"""
-  ctx.obj['config']['snp'] = list()
+  allpresent = True
+  ctx.obj['config']['snp'] = []
   ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
     try:
@@ -72,7 +63,7 @@ def snp(ctx, file_type, input_type, file, sample, config, email):
     except Exception as e:
       pass
 
-  snplist = list()
+  snplist = []
   if input_type=='file':
     sh = open(os.path.abspath(sample), 'r')
     sf = sh.readlines()
@@ -81,7 +72,7 @@ def snp(ctx, file_type, input_type, file, sample, config, email):
   elif input_type=='list':
     snplist = sample
 
-  if file_type == 'paths':
+  if ref_type == 'paths':
     for line in snplist:
       if not os.path.isdir("{}/alignment".format(line)):
         click.echo("ERROR: {} does not contain an alignment folder + file".format(line))
@@ -95,8 +86,8 @@ def snp(ctx, file_type, input_type, file, sample, config, email):
         click.echo("Unable to load LIMS sample info for {}".format(line))
         sys.exit(-1) 
       project = scientist.data['CG_ID_project']
-      samhits = ctx.obj['config']['folders']['results'].startswith("{}_".format(line))
-      prohits = ctx.obj['config']['folders']['results'].startswith("{}_".format(project))
+      samhits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(line))]
+      prohits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(project))]
       if len(samhits) >= 1:
         snplist.append("{}/{}/alignment".format(ctx.obj['config']['folders']['results'], samhits[-1]))
       elif len(prohits) >= 1:
@@ -105,14 +96,14 @@ def snp(ctx, file_type, input_type, file, sample, config, email):
       if len(samhits) + len(prohits) > 1:
         click.echo("WARNING: Multiple hits for {}. Selecting {}".format(line,ctx.obj['config']['snp'][-1]))
       elif len(samhits) + len(prohits) == 0:
-        click.echo("ERROR: {} does not contain an alignment folder + file".format(line))
-        sys.exit(-1)
+        allpresent = False
+        click.echo("{} does not contain an alignment folder + file. Run analysis for sample".format(line))
 
-    overlord = Job_Creator(snplist, ctx.obj['config'], ctx.obj['log'])
-    overlord.snp_job() 
+    if allpresent:
+      overlord = Job_Creator(snplist, ctx.obj['config'], ctx.obj['log'])
+      overlord.snp_job() 
 
-
-@type.group()
+@root.group()
 @click.pass_context
 def start(ctx):
   """Starts analysis of project/sample"""
@@ -209,10 +200,16 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only):
     click.echo("Unable to process sample {} due to '{}'".format(sample_id,e))
   done()
 
-@type.group()
+@root.group()
+@click.pass_context
+def util(ctx):
+  """ Utilities for specific purposes """
+  pass
+
+@util.group()
 @click.pass_context
 def finish(ctx):
-  """Uploads analysis and generates results"""
+  """Manually upload analysis and generate results"""
   pass
 
 @finish.command()
@@ -233,7 +230,7 @@ def sample(ctx, sample_id, rerun, email, input, config):
 
   ctx.obj['config']['rerun'] = rerun
   ctx.obj['config']['regex']['mail_recipient'] = email
-  
+
   if input != "":
     sample_dir = os.path.abspath(input)
     if not sample_id in sample_dir:
@@ -282,7 +279,7 @@ def project(ctx, project_id, rerun, email, input, config):
 
   ctx.obj['config']['rerun'] = rerun
   ctx.obj['config']['regex']['mail_recipient'] = email
- 
+
   if input != "":
     project_dir = os.path.abspath(input)
     if not project_id in project_dir:
@@ -304,12 +301,6 @@ def project(ctx, project_id, rerun, email, input, config):
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_id)
   codemonkey.report()
   done()
-
-@root.group()
-@click.pass_context
-def util(ctx):
-  """ Utilities for specific purposes """
-  pass
 
 @util.group()
 @click.pass_context

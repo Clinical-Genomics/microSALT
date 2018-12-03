@@ -175,7 +175,7 @@ class Job_Creator():
     batchfile.write("samtools view --threads {} -b -o {}.bam -T {} {}.sam\n".format(self.config["slurm_header"]["threads"], outbase, ref, outbase))
     batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
     batchfile.write("samtools fixmate --threads {} -r -m {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
-    batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
+    batchfile.write("samtools sort --threads {} -o {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
     batchfile.write("samtools markdup -r -s --threads {} --reference {} --output-fmt bam {}.bam_sort {}.bam_sort_mkdup\n".format(self.config["slurm_header"]["threads"], ref, outbase, outbase))
     batchfile.write("samtools rmdup --reference {} {}.bam_sort_mkdup {}.bam_sort_rmdup\n".format(ref, outbase, outbase))
     batchfile.write("\n")
@@ -320,7 +320,7 @@ class Job_Creator():
               jobarray.append(jobno)
             else:
               self.logger.info("Suppressed command: {}".format(bash_cmd))
-      if not dry:
+      if (not dry and not qc_only):
         self.finish_job(jobarray)
     except Exception as e:
       self.logger.error("Issues handling some samples of project at {}\nSource: {}".format(self.finishdir, str(e)))
@@ -342,9 +342,9 @@ class Job_Creator():
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
     if not len(joblist) == 1:
-      mb.write("microSALT type finish project {} --input {} --rerun\n".format(self.name, self.finishdir))
+      mb.write("microSALT util finish project {} --input {} --rerun\n".format(self.name, self.finishdir))
     else:
-      mb.write("microSALT type finish sample {} --input {} --rerun\n".format(self.name, self.finishdir))
+      mb.write("microSALT util finish sample {} --input {} --rerun\n".format(self.name, self.finishdir))
     mb.write("Analysis done!\n")
     mb.close()
 
