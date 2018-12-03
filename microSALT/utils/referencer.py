@@ -45,6 +45,7 @@ class Referencer():
            newrefs.append(self.lims.data['reference']) 
        for org in neworgs:
          self.add_pubmlst(org)
+         self.download_external(org)
        for org in newrefs:
          self.download_ncbi(org)
      else:
@@ -52,6 +53,7 @@ class Referencer():
        refname = self.lims.get_organism_refname(cg_id)
        if refname not in self.organisms:
          self.add_pubmlst(self.lims.data['organism'])
+         self.download_external(self.lims.data['organism'])
        if not "{}.fasta".format(self.lims.data['reference']) in os.listdir(self.config['folders']['genomes']):
          self.download_ncbi(self.lims.data['reference'])
    except Exception as e:
@@ -83,6 +85,55 @@ class Referencer():
           output, error = proc.communicate()
         except Exception as e:
           self.logger.error("Unable to index requested target {} in {}".format(file, full_dir))
+
+  def download_external(self, reference):
+    """ Downloads reference data that IS ONLY LINKED to pubMLST """
+    prefix = "https://pubmlst.org"
+    query = urllib.request.urlopen("{}/data/".format(prefix))
+    soup = BeautifulSoup(query, 'html.parser')
+    tr_sub = soup.find_all("tr", class_="td1")
+    reference = reference.replace(' ', '_').lower()
+
+    # Only search every other instance
+    iterator = iter(tr_sub)
+    unfound = True
+    try:
+      while unfound:
+        entry = iterator.__next__()
+        # Gather general info from first object
+        sample = entry.get_text().split('\n')
+        organ = sample[1].lower().replace(' ', '_')
+        # In order to get ecoli #1
+        if "escherichia_coli" in organ and "#1" in organ:
+          organ = organ[:-2]
+        currver = self.db_access.get_version("profile_{}".format(organ))
+        profile_no = re.search('\d+', sample[2]).group(0)
+        if organ in reference and organ.replace("_", " ") not in self.updated and (not currver or self.force):
+          self.logger.info("Downloaded {} as reference!".format(organ))
+          # Download definition files
+          st_link = prefix + entry.find_all("a")[1]['href']
+          output = "{}/{}".format(self.config['folders']['profiles'], organ)
+          urllib.request.urlretrieve(st_link, output)
+          # Update database
+          self.db_access.upd_rec({'name':"profile_{}".format(organ)}, 'Versions', {'version':profile_no})
+          self.db_access.reload_profiletable(organ)
+          # Gather loci from second object
+          entry = iterator.__next__()
+          # Clear existing directory and download allele files
+          out = "{}/{}".format(self.config['folders']['references'], organ)
+          shutil.rmtree(out)
+          os.makedirs(out)
+          for loci in entry.find_all("a"):
+            loci = loci['href']
+            lociname = os.path.basename(os.path.normpath(loci))
+            input = prefix + loci
+            urllib.request.urlretrieve(input, "{}/{}".format(out, lociname))
+          # Create new indexes
+          self.index_db(out, '.tfa')
+        else:
+          iterator.__next__()
+    except StopIteration:
+      pass
 
   def fetch_external(self):
     """ Updates reference for data that IS ONLY LINKED to pubMLST """
