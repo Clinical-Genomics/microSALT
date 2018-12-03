@@ -79,6 +79,7 @@ def snp(ctx, ref_type, input_type, file, sample, config, email):
         sys.exit(-1)
   else:
     scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
+    tlist = []
     for line in snplist:
       try:
         scientist.load_lims_sample_info(line)
@@ -88,20 +89,21 @@ def snp(ctx, ref_type, input_type, file, sample, config, email):
       project = scientist.data['CG_ID_project']
       samhits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(line))]
       prohits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(project))]
-      if len(samhits) >= 1:
-        snplist.append("{}/{}/alignment".format(ctx.obj['config']['folders']['results'], samhits[-1]))
-      elif len(prohits) >= 1:
-        snplist.append("{}/{}/alignment".format(ctx.obj['config']['folders']['results'], prohits[-1]))
-
       if len(samhits) + len(prohits) > 1:
-        click.echo("WARNING: Multiple hits for {}. Selecting {}".format(line,ctx.obj['config']['snp'][-1]))
+        click.echo("WARNING: Multiple hits for {}. Selecting latest".format(line))
       elif len(samhits) + len(prohits) == 0:
         allpresent = False
         click.echo("{} does not contain an alignment folder + file. Run analysis for sample".format(line))
 
-    if allpresent:
-      overlord = Job_Creator(snplist, ctx.obj['config'], ctx.obj['log'])
-      overlord.snp_job() 
+      if len(samhits) >= 1:
+        tlist.append("{}/{}/alignment".format(ctx.obj['config']['folders']['results'], samhits[-1]))
+      elif len(prohits) >= 1:
+        tlist.append("{}/{}/{}/alignment".format(ctx.obj['config']['folders']['results'], prohits[-1], line))
+    snplist = tlist
+
+  if allpresent:
+    overlord = Job_Creator(snplist, ctx.obj['config'], ctx.obj['log'])
+    overlord.snp_job() 
 
 @root.group()
 @click.pass_context

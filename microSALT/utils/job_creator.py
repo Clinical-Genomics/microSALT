@@ -28,7 +28,7 @@ class Job_Creator():
       self.name = os.path.basename(os.path.normpath(self.indir))
     elif type(input) == list:
       self.filelist = input
-      self.name = "Extended"
+      self.name = "SNP"
 
     self.now = timestamp
     if timestamp != "":
@@ -212,7 +212,6 @@ class Job_Creator():
       j+=1
 
   def create_assemblystats_section(self):
-    snplist = self.filelist.copy()
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# QUAST QC metrics\n")
     batchfile.write("mkdir {}/quast\n".format(self.outdir))
@@ -220,21 +219,24 @@ class Job_Creator():
     batchfile.close()
 
   def create_snpsection(self):
+    snplist = self.filelist.copy()
     batchfile = open(self.batchfile, "a+")
 
     for item in snplist:
-      batchfile.write('# Individual basecalling, could be ran as standard\n')
       name = item.split('/')[-2]
-      self.lims_fetcher.load_lims_sample_info(name) 
+      if '_' in name:
+        name = name.split('_')[0]
+      self.lims_fetcher.load_lims_sample_info(name)
+      batchfile.write('# Basecalling for sample {}\n'.format(name))
       ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
-      outbase = "{}/alignment/{}_{}".format(self.outdir, self.name, self.lims_fetcher.data['reference'])
-      batchfile.write('freebayes -= --pvar 0.7 --standard-filters -C 6 --min-coverage 30 --no-indels -no-mnps --no-complex --ploidy 1 -f {} -b {}.bam_sort_rmdup -v {}/{}.vcf\n'.format(ref, outbase, self.outdir, name))
+      outbase = "{}/{}_{}".format(item, name, self.lims_fetcher.data['reference'])
+      batchfile.write('freebayes -= --pvar 0.7 --standard-filters -C 6 --min-coverage 30 --no-indels --no-mnps --no-complex --ploidy 1 -f {} -b {}.bam_sort_rmdup -v {}/{}.vcf\n'.format(ref, outbase , self.outdir, name))
       batchfile.write('bcftools view {}/{}.vcf -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, name, self.outdir, name))
       batchfile.write('bcftools index {}/{}.bcf.gz\n'.format(self.outdir, name))
       batchfile.write('\n')
 
     batchfile.write('# SNP pair-wise distance\n')
-    batchfile.write('touch {}/stats.out'.format(self.outdir))
+    batchfile.write('touch {}/stats.out\n'.format(self.outdir))
     while len(snplist) > 1:
       top = snplist.pop(0)
       for entry in snplist:
@@ -242,9 +244,10 @@ class Job_Creator():
         batchfile.write('bcftools isec {}/{} {}/{} -n=1 -c all -p tmp -O -b\n'.format(self.outdir, top.split('/')[-2], self.outdir, entry.split('/')[-2]))
         batchfile.write('bcftools merge -O v -o {}/{}.vcf --force-samples {}/tmp/0000.bcf {}/tmp/0001.bcf\n'.format(self.outdir, pair, self.outdir, self.outdir))
         batchfile.write('vcftools {}/{}.vcf --minQ 30  --thin 50 --minDP 3 --min-meanDP 20 --remove-filtered-all --recode-INFO-all --recode\n'.format(self.outdir, pair))
-        batchfile.write('bcftools view {}/{}.recode.vcf -i "QUAL>20 & DP>5 & MQM / MQMR > 0.9 & MQM / MQMR < 1.05 & QUAL / DP > 0.25" -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps'.format(self.outdir, pair, self.outdir, pair))
+        batchfile.write('bcftools view {}/{}.recode.vcf -i "QUAL>20 & DP>5 & MQM / MQMR > 0.9 & MQM / MQMR < 1.05 & QUAL / DP > 0.25" -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, pair, self.outdir, pair))
         batchfile.write("echo {} $( bcftools stats {}.bcf.gz |grep SNPs: | cut -d $'\t' -f4 ) >> {}/stats.out\n".format(pair, self.outdir, pair, self.outdir)) 
-        batchfile.close()
+        batchfile.write('\n')
+    batchfile.close()
 
 
   def create_project(self, name):
