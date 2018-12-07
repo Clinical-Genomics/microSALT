@@ -107,11 +107,11 @@ def snp(ctx, ref_type, input_type, file, sample, config, email):
 
 @root.group()
 @click.pass_context
-def start(ctx):
+def type(ctx):
   """Starts analysis of project/sample"""
   pass
 
-@start.command()
+@type.command()
 @click.argument('project_id')
 @click.option('--input', help='Full path to project folder',default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
@@ -153,7 +153,7 @@ def project(ctx, project_id, input, dry, config, email, qc_only):
   manager.project_job(qc_only=qc_only)
   done() 
 
-@start.command()
+@type.command()
 @click.argument('sample_id')
 @click.option('--input', help='Full path to sample folder', default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)

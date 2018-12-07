@@ -239,13 +239,20 @@ class Job_Creator():
     batchfile.write('touch {}/stats.out\n'.format(self.outdir))
     while len(snplist) > 1:
       top = snplist.pop(0)
+      nameOne = top.split('/')[-2]
+      if '_' in nameOne:
+        nameOne = nameOne.split('_')[0]
       for entry in snplist:
-        pair = "{}_{}".format(top.split('/')[-2], entry.split('/')[-2])
-        batchfile.write('bcftools isec {}/{} {}/{} -n=1 -c all -p tmp -O -b\n'.format(self.outdir, top.split('/')[-2], self.outdir, entry.split('/')[-2]))
-        batchfile.write('bcftools merge -O v -o {}/{}.vcf --force-samples {}/tmp/0000.bcf {}/tmp/0001.bcf\n'.format(self.outdir, pair, self.outdir, self.outdir))
-        batchfile.write('vcftools {}/{}.vcf --minQ 30  --thin 50 --minDP 3 --min-meanDP 20 --remove-filtered-all --recode-INFO-all --recode\n'.format(self.outdir, pair))
-        batchfile.write('bcftools view {}/{}.recode.vcf -i "QUAL>20 & DP>5 & MQM / MQMR > 0.9 & MQM / MQMR < 1.05 & QUAL / DP > 0.25" -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, pair, self.outdir, pair))
-        batchfile.write("echo {} $( bcftools stats {}.bcf.gz |grep SNPs: | cut -d $'\t' -f4 ) >> {}/stats.out\n".format(pair, self.outdir, pair, self.outdir)) 
+        nameTwo = entry.split('/')[-2]
+        if '_' in nameTwo:
+          nameTwo = nameTwo.split('_')[0]
+
+        pair = "{}_{}".format(nameOne, nameTwo)
+        batchfile.write('bcftools isec {}/{}.bcf.gz {}/{}.bcf.gz -n=1 -c all -p {}/tmp -O b\n'.format(self.outdir, nameOne, self.outdir, nameTwo, self.outdir))
+        batchfile.write('bcftools merge -O b -o {}/{}.bcf --force-samples {}/tmp/0000.bcf {}/tmp/0001.bcf\n'.format(self.outdir, pair, self.outdir, self.outdir))
+        batchfile.write('vcftools --bcf {}/{}.bcf --minQ 30  --thin 50 --minDP 3 --min-meanDP 20 --remove-filtered-all --recode-INFO-all --recode-bcf --out {}\n'.format(self.outdir, pair, pair))
+        batchfile.write('bcftools view {}/{}.recode.bcf -i "QUAL>20 & DP>5 & MQM / MQMR > 0.9 & MQM / MQMR < 1.05 & QUAL / DP > 0.25" -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, pair, self.outdir, pair))
+        batchfile.write("echo {} $( bcftools stats {}/{}.bcf.gz |grep SNPs: | cut -d $'\t' -f4 ) >> {}/stats.out\n".format(pair, self.outdir, pair, self.outdir)) 
         batchfile.write('\n')
     batchfile.close()
 
