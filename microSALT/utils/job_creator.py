@@ -230,7 +230,7 @@ class Job_Creator():
       batchfile.write('# Basecalling for sample {}\n'.format(name))
       ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
       outbase = "{}/{}_{}".format(item, name, self.lims_fetcher.data['reference'])
-      batchfile.write('freebayes -= --pvar 0.7 --standard-filters -C 6 --min-coverage 30 --no-indels --no-mnps --no-complex --ploidy 1 -f {} -b {}.bam_sort_rmdup -v {}/{}.vcf\n'.format(ref, outbase , self.outdir, name))
+      batchfile.write('freebayes -= --pvar 0.7 -j -J --standard-filters -C 6 --min-coverage 30 --no-indels --no-mnps --no-complex --ploidy 1 -f {} -b {}.bam_sort_rmdup -v {}/{}.vcf\n'.format(ref, outbase , self.outdir, name))
       batchfile.write('bcftools view {}/{}.vcf -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, name, self.outdir, name))
       batchfile.write('bcftools index {}/{}.bcf.gz\n'.format(self.outdir, name))
       batchfile.write('\n')
@@ -248,11 +248,15 @@ class Job_Creator():
           nameTwo = nameTwo.split('_')[0]
 
         pair = "{}_{}".format(nameOne, nameTwo)
+        batchfile.write('vcftools --bcf {}/{}.bcf.gz --minQ 30  --thin 50 --minDP 3 --min-meanDP 20 --remove-filtered-all --recode-INFO-all --recode-bcf --out {}/{}\n'.format(self.outdir, nameOne, self.outdir, nameOne))
+        batchfile.write('vcftools --bcf {}/{}.bcf.gz --minQ 30  --thin 50 --minDP 3 --min-meanDP 20 --remove-filtered-all --recode-INFO-all --recode-bcf --out {}/{}\n'.format(self.outdir, nameTwo, self.outdir, nameTwo))
+        batchfile.write('bcftools view {}/{}.recode.bcf -i "QUAL>20 & DP>5 & MQM / MQMR > 0.9 & MQM / MQMR < 1.05 & QUAL / DP > 0.25" -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, nameOne, self.outdir, nameOne))
+        batchfile.write('bcftools view {}/{}.recode.bcf -i "QUAL>20 & DP>5 & MQM / MQMR > 0.9 & MQM / MQMR < 1.05 & QUAL / DP > 0.25" -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, nameTwo, self.outdir, nameTwo))
+
         batchfile.write('bcftools isec {}/{}.bcf.gz {}/{}.bcf.gz -n=1 -c all -p {}/tmp -O b\n'.format(self.outdir, nameOne, self.outdir, nameTwo, self.outdir))
         batchfile.write('bcftools merge -O b -o {}/{}.bcf --force-samples {}/tmp/0000.bcf {}/tmp/0001.bcf\n'.format(self.outdir, pair, self.outdir, self.outdir))
-        batchfile.write('vcftools --bcf {}/{}.bcf --minQ 30  --thin 50 --minDP 3 --min-meanDP 20 --remove-filtered-all --recode-INFO-all --recode-bcf --out {}\n'.format(self.outdir, pair, pair))
-        batchfile.write('bcftools view {}/{}.recode.bcf -i "QUAL>20 & DP>5 & MQM / MQMR > 0.9 & MQM / MQMR < 1.05 & QUAL / DP > 0.25" -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, pair, self.outdir, pair))
-        batchfile.write("echo {} $( bcftools stats {}/{}.bcf.gz |grep SNPs: | cut -d $'\t' -f4 ) >> {}/stats.out\n".format(pair, self.outdir, pair, self.outdir)) 
+
+        batchfile.write("echo {} $( bcftools stats {}/{}.bcf.gz |grep SNPs: | cut -d $'\\t' -f4 ) >> {}/stats.out\n".format(pair, self.outdir, pair, self.outdir))
         batchfile.write('\n')
     batchfile.close()
 
