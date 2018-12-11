@@ -50,9 +50,13 @@ class Reporter():
       sys.exit(-1)
     try:
       r = requests.get("http://127.0.0.1:5000/microSALT/typing/{}/all".format(name), allow_redirects=True)
-      outname = "{}_microSALT.html".format(self.ticketFinder.data['Customer_ID_project'])
-      open(outname, 'wb').write(r.content)
-      self.attachments.append(outname)
+      outtype = "{}_Typing.html".format(self.ticketFinder.data['Customer_ID_project'])
+      open(outtype, 'wb').write(r.content)
+      self.attachments.append(outtype)
+      q = requests.get("http://127.0.0.1:5000/microSALT/qc/{}".format(name), allow_redirects=True)
+      outqc = "{}_QC.html".format(self.ticketFinder.data['Customer_ID_project'])
+      open(outqc, 'wb').write(q.content)
+      self.attachments.append(outqc)  
     except Exception as e:
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.error = True
