@@ -30,6 +30,16 @@ class Samples(db.Model):
    contigs = db.Column(db.Integer, default=-1)
    priority = db.Column(db.String(20))
 
+   total_reads = db.Column(db.Integer) #Fetch from bcl2fastq
+   insert_size = db.Column(db.Integer)
+   duplication_rate = db.Column(db.Float)
+   mapped_rate = db.Column(db.Float)
+   coverage_10x = db.Column(db.Float)
+   coverage_30x = db.Column(db.Float)
+   coverage_50x = db.Column(db.Float)
+   coverage_100x = db.Column(db.Float)
+   average_coverage = db.Column(db.Float)
+
 class Seq_types(db.Model):
   __tablename__ = 'seq_types'
   samples = relationship('Samples', back_populates='seq_types')
@@ -77,6 +87,7 @@ class Projects(db.Model):
    CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
    Customer_ID_project = db.Column(db.String(15))
    date_ordered = db.Column(db.DateTime)
+   reference_genome = db.Column(db.String(32))
 
 class Versions(db.Model):
   __tablename__ = 'versions'

@@ -52,6 +52,7 @@ class Scraper():
          self.job_fallback.create_sample(self.name)
        self.scrape_all_loci()
        self.scrape_resistances()
+       self.scrape_alignment()
        self.scrape_quast()
 
   def scrape_sample(self):
@@ -418,3 +419,52 @@ class Scraper():
       #self.logger.info("Added allele {}={} of sample {} to table Seq_types".format(seq_col["loci"], seq_col["allele"], self.name))
     except Exception as e:
       self.logger.error("{}".format(str(e)))
+
+  def scrape_alignment(self):
+    """Scrapes a single alignment result"""
+    ins_list = list()
+
+    q_list = glob.glob("{}/alignment/*.stats".format(self.sampledir))
+    for file in q_list:
+      with open(file, 'r') as fh:
+       type = file.split('.')[-1]
+       for line in fh.readlines():
+         lsplit = line.split('\t')
+         if type == 'ins':
+           ins_list.append(int(lsplit[1]))
+         elif type == 'cov':
+           cov_dict[lsplit[1]]] = int(lsplit[2])
+         elif type == 'ref':
+           if int(lsplit[1]) > 0:
+             ref_len = int(lsplit[1])
+           if int(lsplit[2]) > 0:
+             map_len = int(lsplit[2])
+             map_rate = int(lsplit[2])/float(ref_len)
+         elif type == 'dup':
+           if lsplit[0] == 'DUPLICATE' and lsplit[1] == 'TOTAL'
+             dup_bp = int(lsplit[3])
+
+    #Post mangle
+    median_ins = ins_list.index(max(ins_list))
+    sum, plus10, plus30, plus50, plus100 = 0, 0, 0, 0, 0
+    for k, v in cov_dict.items():
+      sum += int(k)*v
+      if int(k) > 10:
+        plus10 += int(k)*v
+      if int(k) > 30:
+        plus30 += int(k)*v
+      if int(k) > 50:
+        plus50 += int(k)*v
+      if int(k) > 100:
+        plus100 += int(k)*v
+
+    align_dict = dict()
+    align_dict['coverage_10x'] = plus10/float(ref_len)
+    align_dict['coverage_30x'] = plus30/float(ref_len)
+    align_dict['coverage_50x'] = plus50/float(ref_len)
+    align_dict['coverage_100x'] = plus100/float(ref_len) 
+    align_dict['mapped_rate'] = map_rate
+    align_dict['insert_size'] = median_ins
+    align_dict['duplication_rate'] = dup_bp/float(ref_len)
+    align_dict['average_coverage'] = sum/float(ref_len)
+    self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', align_dict)
