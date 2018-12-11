@@ -433,7 +433,7 @@ class Scraper():
          if type == 'ins':
            ins_list.append(int(lsplit[1]))
          elif type == 'cov':
-           cov_dict[lsplit[1]]] = int(lsplit[2])
+           cov_dict[lsplit[1]] = int(lsplit[2])
          elif type == 'ref':
            if int(lsplit[1]) > 0:
              ref_len = int(lsplit[1])
@@ -441,7 +441,7 @@ class Scraper():
              map_len = int(lsplit[2])
              map_rate = int(lsplit[2])/float(ref_len)
          elif type == 'dup':
-           if lsplit[0] == 'DUPLICATE' and lsplit[1] == 'TOTAL'
+           if lsplit[0] == 'DUPLICATE' and lsplit[1] == 'TOTAL':
              dup_bp = int(lsplit[3])
 
     #Post mangle

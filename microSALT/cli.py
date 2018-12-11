@@ -108,7 +108,7 @@ def snp(ctx, ref_type, input_type, file, sample, config, email):
 @root.group()
 @click.pass_context
 def type(ctx):
-  """Starts analysis of project/sample"""
+  """Standard QC and typing of project/sample"""
   pass
 
 @type.command()
