@@ -25,7 +25,6 @@ _Optional SNP-calling support:_
 
 `conda install -c bioconda freebayes=1.1.0=py36_2 bcftools=1.3.1=0 \
 vcftools=0.1.15=0`
->>>>>>> origin/dev
 
 ## Configuration
 Copy the configuration file to microSALTs hidden home directory, _or_ copy the configuration file anywhere and direct the envvar MICROSALT_CONFIG to it. See examples: 
