@@ -368,6 +368,121 @@ class Scraper():
      
     return conversions
 
+  def form_fingerprint(self, type):
+    self.logger.info("Start cgMLST fingerprint generation. ETA 1-4 minutes per sample")
+    if type == 'sample':
+      self.lims_fetcher.load_lims_sample_info(self.name)
+      self.sampledir = self.infolder
+      self.scrape_cgmlst()
+    elif type == 'project':
+      for dir in os.listdir(self.infolder):
+       if os.path.isdir("{}/{}".format(self.infolder, dir)):
+         self.sampledir = "{}/{}".format(self.infolder, dir)
+         self.name = dir
+         start = time.time()
+         self.scrape_cgmlst()
+         self.logger.info("Time used for fingerprinting {}: {} seconds".format(self.name, int(time.time()-start)))
+    else:
+     self.logger.error("Invalid type programmed for cgMLST analysis")
+     sys.exit(-1)
+
+  def init_cgmlst(self):
+    """Add downloaded gene list as default to database (if not already existing)"""
+    organism = self.lims_fetcher.get_organism_refname(self.name)
+    gene_list = "{}/{}.fna".format(self.config['folders']['gene_set'], organism)
+    with open(gene_list, 'r') as gfile:
+      for title in gfile:
+        if title[0] == ">":
+          title = title.replace('[','')
+          title = title.replace(']','')
+          title = title.replace('=',' ')
+          #Title seperated
+          title = title.split(' ')
+          id = title[title.index('protein_id')+1]
+          existing = self.db_pusher.query_rec('Profile_cgmlst', {'protein_id':id, 'organism':organism})
+          if len(existing) < 1:
+            self.db_pusher.add_rec({'protein_id':id, 'organism':organism, 'sequence':"Unassigned", 'allele':0}, 'Profile_cgmlst')
+
+  def scrape_cgmlst(self):
+    """Uploads cgmlst results to database and generates a fingerprint"""
+
+    # self.init_cgmlst() <-- Unnecessary, only used for debugging. Even so needs revision, good idea though
+    #Create sample specific node lookup table
+    node_lookup = dict()
+    ref_file = "{}/assembly/contigs.fasta".format(self.sampledir)
+    with open (ref_file, 'r') as infile:
+      for line in infile:
+        if line[0] == ">":
+          key = line[1:].rstrip()
+          value = ""
+        else:
+          value += line.rstrip()
+          node_lookup[key] = value
+
+    #Associate each hit with it's sequence. BLAST displayed has some issues.
+    allele_sequence = dict()
+    res_file = "{}/cgmlst/loci_query_cgmlst.txt".format(self.sampledir)
+    with open(res_file, 'r') as infile:
+      for line in infile:
+        if line[0] == "[":
+          #Blast output seperated
+          la = line.split('\t')
+          title = la[0]
+          title = title.replace('[','')
+          title = title.replace(']','')
+          title = title.replace('=',' ')
+          #Title seperated
+          title = title.split(' ')
+          #Only unique pids for each sample
+          id = title[title.index('protein_id')+1]
+          if not id in allele_sequence:
+            #la[-1] contains gaps
+            #If competing PIDS, add one with lowest e-value
+            if int(la[7]) < int(la[8]):
+              #Indexes might be 1 away. Be careful
+              allele_sequence[id] = node_lookup[la[2]][int(la[7]):int(la[8])]
+            else:
+              self.logger.error("Unhandled action. Index for {} come in reverse order".format(id))
+
+
+    #Set all existing loci entries to N/A
+    fp = dict()
+    organism = self.lims_fetcher.get_organism_refname(self.name)
+
+    #Check if found result exists in database
+    for k,v in allele_sequence.items():
+      span_threshold = 0.9
+      push_dict = self.db_pusher.get_columns('Profile_cgmlst')
+      top_index = self.db_pusher.top_index('Profile_cgmlst', {'protein_id':k, 'organism':organism}, 'allele')
+
+      if top_index == -1:
+        self.db_pusher.add_rec({'protein_id':k, 'organism':organism, 'sequence':v, 'allele':1}, 'Profile_cgmlst')
+        fp[k] = 1
+      else:
+        exists = False
+        for entry in self.db_pusher.query_rec('Profile_cgmlst', {'protein_id':k, 'organism':organism}):
+
+          if entry.sequence in v and len(entry.sequence) > span_threshold*len(v):
+            fp[k] = entry.allele
+            exists = True
+            self.db_pusher.upd_rec({'protein_id':k, 'organism':organism, 'allele':entry.allele}, 'Profile_cgmlst', {'sequence':v})
+            break
+          elif v in entry.sequence and len(v) > span_threshold*len(entry.sequence):
+            fp[k] = entry.allele
+            exists = True
+            break
+           
+        if not exists:
+          self.db_pusher.add_rec({'protein_id':k, 'organism':organism, 'sequence':v, 'allele':top_index+1}, 'Profile_cgmlst')
+          fp[k] = top_index+1
+
+    #Write fingerprint file
+    fingerprint = "{}/cgmlst/fingerprint.txt".format(self.sampledir)
+    fp_pointer = open(fingerprint,'w')
+    for k, v in fp.items():
+      fp_pointer.write("{}:{}\n".format(k,v))
+    self.logger.info("Finished generating cgmlst results for {}".format(self.name)) 
+  
   def scrape_all_loci(self):
     """Scrapes all BLAST output in a folder"""
     q_list = glob.glob("{}/blast/loci_query_*".format(self.sampledir))

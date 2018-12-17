@@ -9,7 +9,7 @@ import warnings
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 
-from microSALT.store.orm_models import app, Projects, Resistances, Samples, Seq_types, Versions
+from microSALT.store.orm_models import app, Projects, Resistances, Samples, Seq_types, Versions, Profile_cgmlst
 from microSALT.store.models import Profiles
 
 class DB_Manipulator:
@@ -45,6 +45,9 @@ class DB_Manipulator:
     if not self.engine.dialect.has_table(self.engine, 'resistances'):
       Resistances.__table__.create(self.engine)
       self.logger.info("Created resistance table")
+    if not self.engine.dialect.has_table(self.engine, 'profile_cgmlst'):
+      Profile_cgmlst.__table__.create(self.engine)
+      self.logger.info("Created cgMLST profile table")
     for k,v in self.profiles.items():
       if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
         self.profiles[k].create()
@@ -77,17 +80,19 @@ class DB_Manipulator:
   def upd_rec(self, req_dict, tablename, upd_dict):
     """Updates a record to the specified table through a dict with columns as keys."""
     table = eval(tablename)
-    args = list()
+    argy = list()
     for k,v in req_dict.items():
       if v != None:
-        args.append("table.{}=='{}'".format(k, v))
-    filter = ','.join(args)
-    if len(self.session.query(table).filter(eval(filter)).all()) > 1:
+        argy.append(".filter(table.{}=='{}')".format( k, v))
+    filter = ''.join(argy)
+    megastring = "self.session.query(table){}".format(filter)
+    if len(eval(megastring + ".all()")) > 1:
       self.logger.error("More than 1 record found when orm updating. Exited.")
       sys.exit()
     else:
-      self.session.query(table).filter(eval(filter)).update(upd_dict)
+      eval(megastring + ".update(upd_dict)")
       self.session.commit()
+
 
   def purge_rec(self, name, type):
     """Removes seq_data, resistances, sample(s) and possibly project"""
@@ -110,6 +115,31 @@ class DB_Manipulator:
         self.session.delete(instance)
         self.session.commit()
     self.logger.info("Removed information for {}".format(name))
+
+  def query_rec(self, table, filters):
+    """Fetches records table, by applying a dict with columns as keys."""
+    table = eval(table)
+    args = list()
+    for k,v in filters.items():
+      if v != None:
+        args.append("table.{}=='{}'".format(k, v))
+    filter = ' and '.join(args)
+    entries = self.session.query(table).filter(eval(filter)).all()
+    return entries
+
+  def top_index(self, table_str, filters, column):
+    """Fetches the top index from column of table, by applying a dict with columns as keys."""
+    table = eval(table_str)
+    args = list()
+    for k,v in filters.items():
+      if v != None:
+        args.append("table.{}=='{}'".format(k, v))
+    filter = ' and '.join(args)
+    entry = self.session.query(table).filter(eval(filter)).order_by(desc(eval("{}.{}".format(table_str, column)))).limit(1).all()
+    if entry == []:
+      return int(-1)
+    else:
+      return eval("entry[0].{}".format(column))
 
   def reload_profiletable(self, organism):
     """Drop the named non-orm table, then load it with fresh data"""
