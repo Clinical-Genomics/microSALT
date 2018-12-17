@@ -49,11 +49,11 @@ class Reporter():
       self.kill_flask()
       sys.exit(-1)
     try:
-      r = requests.get("http://127.0.0.1:5000/microSALT/typing/{}/all".format(name), allow_redirects=True)
+      r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(name), allow_redirects=True)
       outtype = "{}_Typing.html".format(self.ticketFinder.data['Customer_ID_project'])
       open(outtype, 'wb').write(r.content)
       self.attachments.append(outtype)
-      q = requests.get("http://127.0.0.1:5000/microSALT/qc/{}".format(name), allow_redirects=True)
+      q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(name), allow_redirects=True)
       outqc = "{}_QC.html".format(self.ticketFinder.data['Customer_ID_project'])
       open(outqc, 'wb').write(q.content)
       self.attachments.append(outqc)  

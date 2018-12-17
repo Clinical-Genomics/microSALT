@@ -177,11 +177,11 @@ class Job_Creator():
     batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
     batchfile.write("samtools fixmate --threads {} -r -m {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
     batchfile.write("samtools sort --threads {} -o {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
-    batchfile.write("samtools rmdup --reference {} {}.bam_sort_mkdup {}.bam_sort_rmdup\n".format(ref, outbase, outbase))
     #Markdup and duplicate stats
     batchfile.write("samtools markdup -r -s --threads {} --reference {} --output-fmt bam {}.bam_sort {}.bam_sort_mkdup &> {}.stats.dup\n".format(self.config["slurm_header"]["threads"], ref, outbase, outbase, outbase))
+    batchfile.write("samtools rmdup --reference {} {}.bam_sort_mkdup {}.bam_sort_rmdup\n".format(ref, outbase, outbase))
     #Ref stats
-    batchfile.write("samtools index {}.bam_sort_rmdup".format(outbase))
+    batchfile.write("samtools index {}.bam_sort_rmdup\n".format(outbase))
     batchfile.write("samtools idxstats {}.bam_sort_rmdup &> {}.stats.ref\n".format(outbase, outbase))
     #Insert stats
     batchfile.write("samtools stats {}.bam_sort_rmdup |grep ^IS | cut -f 2- &> {}.stats.ins\n".format(outbase, outbase))

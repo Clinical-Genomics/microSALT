@@ -239,7 +239,7 @@ def sample(ctx, sample_id, rerun, email, input, config):
       click.echo("Path does not contain sample id. Exiting.")
       sys.exit(-1)
   else:
-    prohits = ctx.obj['config']['folders']['results'].startswith("{}_".format(sample_id))
+    prohits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(sample_id))]
     if len(prohits) > 1:
       click.echo("Multiple instances of that analysis exists. Specify full path using --input")
       sys.exit(-1)

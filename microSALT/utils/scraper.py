@@ -73,6 +73,7 @@ class Scraper():
     self.sampledir = self.infolder
     self.scrape_all_loci()
     self.scrape_resistances()
+    self.scrape_alignment()
     self.scrape_quast()
 
   def scrape_quast(self):
@@ -423,46 +424,50 @@ class Scraper():
   def scrape_alignment(self):
     """Scrapes a single alignment result"""
     ins_list = list()
+    cov_dict = dict()
 
-    q_list = glob.glob("{}/alignment/*.stats".format(self.sampledir))
+    q_list = glob.glob("{}/alignment/*.stats.*".format(self.sampledir))
     for file in q_list:
       with open(file, 'r') as fh:
        type = file.split('.')[-1]
        for line in fh.readlines():
-         lsplit = line.split('\t')
+         lsplit = line.rstrip().split('\t')
          if type == 'ins':
            ins_list.append(int(lsplit[1]))
          elif type == 'cov':
            cov_dict[lsplit[1]] = int(lsplit[2])
          elif type == 'ref':
-           if int(lsplit[1]) > 0:
+           if lsplit[0] != '*':
              ref_len = int(lsplit[1])
-           if int(lsplit[2]) > 0:
-             map_len = int(lsplit[2])
-             map_rate = int(lsplit[2])/float(ref_len)
+         elif type == 'map':
+           dsplit = line.rstrip().split(' ')
+           if len(dsplit)>= 5 and dsplit[4] == 'total':
+             tot_map = int(dsplit[0])
+           elif len(dsplit)>=4 and dsplit[3] == 'mapped':
+             map_rate = int(dsplit[0])/float(tot_map)
          elif type == 'dup':
-           if lsplit[0] == 'DUPLICATE' and lsplit[1] == 'TOTAL':
-             dup_bp = int(lsplit[3])
-
+           dsplit = line.rstrip().split(' ')
+           if dsplit[0] == 'DUPLICATE' and dsplit[1] == 'TOTAL':
+             dup_bp = int(dsplit[2])
     #Post mangle
     median_ins = ins_list.index(max(ins_list))
-    sum, plus10, plus30, plus50, plus100 = 0, 0, 0, 0, 0
+    sum, plus10, plus30, plus50, plus100, total = 0, 0, 0, 0, 0, 0
     for k, v in cov_dict.items():
       sum += int(k)*v
+      total += v
       if int(k) > 10:
-        plus10 += int(k)*v
+        plus10 += v
       if int(k) > 30:
-        plus30 += int(k)*v
+        plus30 += v
       if int(k) > 50:
-        plus50 += int(k)*v
+        plus50 += v
       if int(k) > 100:
-        plus100 += int(k)*v
-
+        plus100 += v
     align_dict = dict()
-    align_dict['coverage_10x'] = plus10/float(ref_len)
-    align_dict['coverage_30x'] = plus30/float(ref_len)
-    align_dict['coverage_50x'] = plus50/float(ref_len)
-    align_dict['coverage_100x'] = plus100/float(ref_len) 
+    align_dict['coverage_10x'] = plus10/float(total)
+    align_dict['coverage_30x'] = plus30/float(total)
+    align_dict['coverage_50x'] = plus50/float(total)
+    align_dict['coverage_100x'] = plus100/float(total) 
     align_dict['mapped_rate'] = map_rate
     align_dict['insert_size'] = median_ins
     align_dict['duplication_rate'] = dup_bp/float(ref_len)

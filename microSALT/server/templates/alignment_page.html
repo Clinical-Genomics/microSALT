@@ -1,6 +1,6 @@
-{% extends "layout.html" %}
+{% extends 'layout.html' %}
 
-{% block content %}
+{% block body %}
   <div class="container-fluid">
     <div class="jumbotron">
       <h1>Project: {{ samples[0].projects.CG_ID_project }}</h1>
@@ -66,25 +66,37 @@
               <td>{{ samples[0].projects.Customer_ID_project }}</td>
               <td>{{ sample.CG_ID_sample }}</td>
               <td>{{ sample.reference_genome }}</td>
-              <td class="text-right">{{ "{:,}".format(sample.total_reads) }}</td>
+              <td class="text-right">{{ sample.total_reads }}</td>
               <td class="text-right">{{ sample.insert_size }}</td>
-              <td class="text-right {% if sample.duplication_rate > 0.2 %}bg-warning{% endif %}">
-                {{ sample.duplication_rate|percent }}%
+              <td class="text-right">
+                {% if sample.duplication_rate is not none %} 
+                  {{ (sample.duplication_rate*100)|round(2) }}% 
+                {% else %} Unknown {% endif %}
               </td>
-              <td class="text-right {% if sample.mapped_rate < 0.5 %}bg-warning{% endif %}">
-                {{ sample.mapped_rate|percent }}%
+              <td class="text-right">
+                {% if sample.mapped_rate is not none %}
+                  {{ (sample.mapped_rate*100)|round(2)}}%
+                {% else %} Unknown {% endif %}
               </td>
-              <td class="text-right {% if sample.coverage_10x < 0.9 %}bg-warning{% endif %}">
-                {{ sample.coverage_10x|percent }}%
+              <td class="text-right">
+                {% if sample.coverage_10x is not none %}
+                  {{ (sample.coverage_10x*100)|round(2)}}%
+                {% else %} Unknown {% endif %}
               </td>
-              <td class="text-right {% if (sample.coverage_30x or 0) < 0.9 %}bg-warning{% endif %}">
-                {{ (sample.coverage_30x or 0)|percent }}%
+              <td class="text-right">
+                {% if sample.coverage_30x is not none %}
+                  {{ (sample.coverage_30x*100)|round(2) }}%
+                {% else %} Unknown {% endif %}
               </td>
-              <td class="text-right {% if (sample.coverage_50x or 0) < 0.9 %}bg-warning{% endif %}">
-                {{ (sample.coverage_50x or 0)|percent }}%
+              <td class="text-right">
+                {% if sample.coverage_50x is not none %}
+                  {{ (sample.coverage_50x*100)|round(2) }}%
+                {% else %} Unknown {% endif %}
               </td>
-              <td class="text-right {% if (sample.coverage_100x or 0) < 0.9 %}bg-warning{% endif %}">
-                {{ (sample.coverage_100x or 0)|percent }}%
+              <td class="text-right">
+                {% if sample.coverage_100x is not none %}
+                  {{ (sample.coverage_100x*100)|round(2) }}%
+                {% else %} Unknown {% endif %}
               </td>
             </tr>
           {% endfor %}
