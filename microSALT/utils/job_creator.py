@@ -133,7 +133,6 @@ class Job_Creator():
 
   def create_resistancesection(self):
     """Creates a blast job for instances where many loci definition files make up an organism"""
-    #self.index_db("{}".format(self.config["folders"]["resistances"]), '.fsa')
 
     #Create run
     batchfile = open(self.batchfile, "a+")
@@ -340,6 +339,7 @@ class Job_Creator():
               jobarray.append(jobno)
             else:
               self.logger.info("Suppressed command: {}".format(bash_cmd))
+              
       if (not dry and not qc_only):
         self.finish_job(jobarray)
     except Exception as e:
@@ -361,11 +361,11 @@ class Job_Creator():
     if 'MICROSALT_CONFIG' in os.environ:
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
-    if not len(joblist) == 1:
-      mb.write("microSALT util finish project {} --input {} --rerun\n".format(self.name, self.finishdir))
+    if not single_sample:
+      mb.write("microSALT finish project {} --input {} --rerun\n".format(self.name, self.finishdir))
     else:
-      mb.write("microSALT util finish sample {} --input {} --rerun\n".format(self.name, self.finishdir))
-    mb.write("Analysis done!\n")
+      mb.write("microSALT finish sample {} --input {} --rerun\n".format(self.name, self.finishdir))
+    mb.write("touch {}/run_complete.out".format(self.finishdir))
     mb.close()
 
     massagedJobs = list()
@@ -394,9 +394,9 @@ class Job_Creator():
           final = entry
           break 
 
-    head = "-A {} -p core -n 1 -t 06:00:00 -J {}_{}_MAILJOB --qos {} --dependency=afterany:{} --output {}/run_complete.out"\
+    head = "-A {} -p core -n 1 -t 06:00:00 -J {}_{}_MAILJOB --qos {} --open-mode append --dependency=afterany:{} --output {}"\
             .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"],\
-           final, self.finishdir,  self.config['regex']['mail_recipient'])
+           final, self.config['folders']['log_file'],  self.config['regex']['mail_recipient'])
     bash_cmd="sbatch {} {}".format(head, mailfile)
     mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
     output, error = mailproc.communicate()

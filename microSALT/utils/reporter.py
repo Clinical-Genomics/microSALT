@@ -29,11 +29,13 @@ class Reporter():
     self.ticketFinder = LIMS_Fetcher(self.config, self.logger)
     self.attachments = list()
 
-  def report(self, has_csv=False):
-    if not has_csv:
+  def report(self, type='html'):
+    if type == 'html':
       self.gen_html()
-    else:
+    elif type == 'csv':
       self.csv()
+    else:
+      raise Exception("Report function recieved invalid format")
     self.mail()
     for file in self.attachments:
       os.remove(file)
@@ -87,22 +89,60 @@ class Reporter():
     self.ticketFinder.load_lims_project_info(name)
     excel = open("{}.csv".format(name), "w+")
     sample_info = gen_reportdata(name)
+    resdict = dict()
 
-    targstring = "Aminoglycoside,Beta-lactam,Colistin,Fluoroquinolone and aminoglycoside,Fosfomycin,Fusidicacid,Macrolide,Nitroimidazole,Oxazolidione,Rifampicin,Phenicol,Quinolone,Sulphonamide,Tetracycline,Trimethoprim,Vancomycin"
-    targlist = targstring.split(',')
-    excel.write("CG Sample ID,Sample ID,Organism,Sequence Type,Thresholds,{}\n".format(targstring))
+
+    #Load ALL resistance & genes
     for s in sample_info['samples']:
-      #Check the resistance types
-      reslist = [0] * len(targlist)
       for r in s.resistances:
-        if r.resistance in targlist and r.threshold == 'Passed':
-          reslist[targlist.index(r.resistance)] = 1
-      reslist = [str(i) for i in reslist]
-      resstring = (',').join(reslist)
-      excel.write("{},{},{},{},{},{}\n".format(s.CG_ID_sample,s.Customer_ID_sample, s.organism, s.ST_status, s.threshold,resstring))
+        if not (r.resistance in resdict.keys()) and r.threshold == 'Passed':
+          resdict[r.resistance] =list()
+        if r.threshold == 'Passed' and not r.gene in resdict[r.resistance]:
+          resdict[r.resistance].append(r.gene)          
+    for k, v in resdict.items():
+      resdict[k] = sorted(v)   
+
+    #Header
+    topline = ",,,"
+    botline = "CG Sample ID,Sample ID,Organism,Sequence Type,Thresholds"
+    for k in sorted(resdict.keys()):
+      genes = [''] * len(resdict[k])
+      topline += ",,{}{}".format(k.replace(',',';'),','.join(genes))     
+      botline += ",,{}".format(','.join(sorted(resdict[k])))
+    excel.write("{}\n".format(topline))
+    excel.write("{}\n".format(botline))
+
+    #Individual searches
+    for s in sample_info['samples']:
+      tdict = dict()
+      pref = "{},{},{},{},{}".format(s.CG_ID_sample,s.Customer_ID_sample, s.organism, s.ST_status, s.threshold)
+      #Load single sample
+      for r in s.resistances:
+        if not (r.resistance in tdict.keys()) and r.threshold == 'Passed':
+          tdict[r.resistance] =list()
+        if r.threshold == 'Passed' and not r.gene in tdict[r.resistance]:
+          tdict[r.resistance].append(r.gene)
+      #Compare single sample to all
+      hits = ""
+      for res in sorted(resdict.keys()):
+        if res in tdict.keys():
+          hits += ",1"
+          for gen in sorted(resdict[res]):
+            hits += ","
+            if gen in tdict[res]:
+              hits +="1"
+        else:
+          #Commas eq to res + gen length
+          hits += ",,"
+          pad = [''] * len(resdict[res])       
+          hits += ','.join(pad) 
+ 
+      excel.write("{}{}\n".format(pref, hits))
+       
     excel.close()
     inpath = "{}/{}.csv".format(os.getcwd(), name)
     self.attachments.append(inpath)
+
 
   def kill_flask(self):
     self.server.terminate()
