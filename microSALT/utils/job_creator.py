@@ -13,17 +13,22 @@ import time
 from datetime import datetime
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 from microSALT.store.db_manipulator import DB_Manipulator
-#from microSALT.utils.scraper import Scraper
-#from microSALT.utils.reporter import Reporter
 
 class Job_Creator():
 
-  def __init__(self, indir, config, log, finishdir="", timestamp=""):
+  def __init__(self, input, config, log, finishdir="", timestamp=""):
     self.config = config
     self.logger = log
     self.batchfile = ""
-    self.indir = os.path.abspath(indir)
-    self.name = os.path.basename(os.path.normpath(indir))
+    self.filelist = list()
+    self.indir = ""
+
+    if isinstance(input, str):
+      self.indir = os.path.abspath(input)
+      self.name = os.path.basename(os.path.normpath(self.indir))
+    elif type(input) == list:
+      self.filelist = input
+      self.name = "SNP"
 
     self.now = timestamp
     if timestamp != "":
@@ -35,7 +40,6 @@ class Job_Creator():
       self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
       format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
-    #Attempting writing on slurm
     self.outdir = "/scratch/$SLURM_JOB_ID/workdir/{}_{}".format(self.name, self.now)
     self.finishdir = finishdir
     if self.finishdir == "":
@@ -43,6 +47,7 @@ class Job_Creator():
     
     self.db_pusher=DB_Manipulator(config, log)
     self.trimmed_files = dict()
+    self.concat_files = dict()
     self.organism = ""
     self.lims_fetcher = LIMS_Fetcher(config, log)
 
@@ -84,34 +89,44 @@ class Job_Creator():
     return verified_files
  
   def interlace_files(self):
-    """Interlaces all unpaired files"""
+    """Interlaces all trimmed files"""
+    fplist = list()
+    kplist = list()
+    ilist = list()
     batchfile = open(self.batchfile, "a+")
-    batchfile.write("# Interlaced unpaired reads file creation\n")
-    suffix = "_unpaired_interlaced.fq"
+    batchfile.write("# Interlaced trimmed files\n")
+ 
     for name, v in self.trimmed_files.items():
-      interfile = "{}/trimmed/{}{}".format(self.outdir, name, suffix)
-      # Spammed a bit too much
-      #self.logger.info("Created unpaired interlace file for sample {}".format(name))
-      batchfile.write("touch {}\n".format(interfile))
-      batchfile.write("cat {} >> {}\n".format(v['fu'], interfile))
-      batchfile.write("cat {} >> {}\n".format(v['ru'], interfile))
-      self.trimmed_files[name]['i'] = "{}".format(interfile)
-      batchfile.write("\n")
+      fplist.append( v['fp'] )
+      kplist.append( v['rp'] )
+      ilist.append( v['fu'] )
+      ilist.append( v['ru'] )
+
+    if len(kplist) != len(fplist) or len(ilist)/2 != len(kplist):
+      raise Exception("Uneven distribution of trimmed files. Invalid trimming step {}".format(name))
+    self.concat_files['f'] = "{}/trimmed/{}{}".format(self.outdir,self.name, "_trim_front_pair.fq")
+    self.concat_files['r'] = "{}/trimmed/{}{}".format(self.outdir,self.name, "_trim_rev_pair.fq")
+    self.concat_files['i'] = "{}/trimmed/{}{}".format(self.outdir,self.name, "_trim_unpaired.fq")
+    for k, v in self.concat_files.items():
+      batchfile.write("touch {}\n".format(v))
+    
+    batchfile.write("cat {} >> {}\n".format(' '.join(fplist), self.concat_files['f']))
+    batchfile.write("cat {} >> {}\n".format(' '.join(kplist), self.concat_files['r']))
+    batchfile.write("cat {} >> {}\n".format(' '.join(ilist), self.concat_files['i']))
+    batchfile.write("rm {} {} {}\n".format(' '.join(fplist), ' '.join(kplist), ' '.join(ilist)))
+    batchfile.write("\n")
     batchfile.close()    
 
-  def create_spadessection(self):
+  def create_assemblysection(self):
     batchfile = open(self.batchfile, "a+")
     #memory is actually 128 per node regardless of cores.
     batchfile.write("# Spades assembly\n")
     batchfile.write("spades.py --threads {} --careful --memory {} -o {}/assembly"\
     .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir))
     
-    libno = 1
-    for k,v in self.trimmed_files.items():
-      batchfile.write(" --pe{}-1 {}".format(libno, self.trimmed_files[k]['fp']))
-      batchfile.write(" --pe{}-2 {}".format(libno, self.trimmed_files[k]['rp']))
-      batchfile.write(" --pe{}-s {}".format(libno, self.trimmed_files[k]['i']))
-      libno += 1
+    batchfile.write(" --pe1-1 {}".format(self.concat_files['f']))
+    batchfile.write(" --pe1-2 {}".format(self.concat_files['r']))
+    batchfile.write(" --pe1-s {}".format(self.concat_files['i']))
 
     batchfile.write("\n\n")
     batchfile.close()
@@ -131,7 +146,7 @@ class Job_Creator():
     batchfile.write("\n")
     batchfile.close()
 
-  def create_blastsection(self):
+  def create_mlstsection(self):
     """Creates a blast job for instances where many loci definition files make up an organism"""
     
     #Create run
@@ -143,6 +158,25 @@ class Job_Creator():
       batchfile.write("# BLAST MLST alignment for {}, {}\n".format(self.organism, os.path.basename(entry[:-4])))
       batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast/loci_query_{}.txt -task megablast -num_threads {} -max_target_seqs 1 -outfmt {}\n".format(\
       entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
+    batchfile.write("\n")
+    batchfile.close()
+
+  def create_variantsection(self):
+    """ Creates a job for variant calling based on local alignment """
+    ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
+    outbase = "{}/alignment/{}_{}".format(self.outdir, self.name, self.lims_fetcher.data['reference'])
+
+    #Create run
+    batchfile = open(self.batchfile, "a+")
+    batchfile.write("# Variant calling based on local alignment\n")
+    batchfile.write("mkdir {}/alignment\n".format(self.outdir))
+    batchfile.write("bwa mem -t {} {} {} {} > {}.sam\n".format(self.config["slurm_header"]["threads"], ref ,self.concat_files['f'], self.concat_files['r'], outbase))
+    batchfile.write("samtools view --threads {} -b -o {}.bam -T {} {}.sam\n".format(self.config["slurm_header"]["threads"], outbase, ref, outbase))
+    batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
+    batchfile.write("samtools fixmate --threads {} -r -m {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
+    batchfile.write("samtools sort --threads {} -o {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
+    batchfile.write("samtools markdup -r -s --threads {} --reference {} --output-fmt bam {}.bam_sort {}.bam_sort_mkdup\n".format(self.config["slurm_header"]["threads"], ref, outbase, outbase))
+    batchfile.write("samtools rmdup --reference {} {}.bam_sort_mkdup {}.bam_sort_rmdup\n".format(ref, outbase, outbase))
     batchfile.write("\n")
     batchfile.close()
 
@@ -176,12 +210,61 @@ class Job_Creator():
       i=i+2
       j+=1
 
-  def create_quastsection(self):
+  def create_assemblystats_section(self):
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# QUAST QC metrics\n")
     batchfile.write("mkdir {}/quast\n".format(self.outdir))
     batchfile.write("quast.py {}/assembly/contigs.fasta -o {}/quast\n\n".format(self.outdir, self.outdir))
     batchfile.close()
+
+  def create_snpsection(self):
+    snplist = self.filelist.copy()
+    batchfile = open(self.batchfile, "a+")
+
+    #VCFTools filters:
+    vcffilter="--minQ 30 --thin 50 --minDP 3 --min-meanDP 20"
+    #BCFTools filters:
+    bcffilter = "GL[0]<-500 & GL[1]=0 & QR/RO>30 & QA/AO>30 & QUAL>5000 & ODDS>1100 & GQ>140 & DP>100 & MQM>59 & SAP<15 & PAIRED>0.9 & EPP>3"
+
+    for item in snplist:
+      name = item.split('/')[-2]
+      if '_' in name:
+        name = name.split('_')[0]
+      self.lims_fetcher.load_lims_sample_info(name)
+      batchfile.write('# Basecalling for sample {}\n'.format(name))
+      ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
+      outbase = "{}/{}_{}".format(item, name, self.lims_fetcher.data['reference'])
+      batchfile.write("samtools view -h -q 1 -F 4 -F 256 {}.bam_sort_rmdup | grep -v XA:Z | grep -v SA:Z| samtools view -b - > {}/{}.unique\n".format(outbase, self.outdir, name))
+      batchfile.write('freebayes -= --pvar 0.7 -j -J --standard-filters -C 6 --min-coverage 30 --ploidy 1 -f {} -b {}/{}.unique -v {}/{}.vcf\n'.format(ref, self.outdir, name , self.outdir, name))
+      batchfile.write('bcftools view {}/{}.vcf -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, name, self.outdir, name))
+      batchfile.write('bcftools index {}/{}.bcf.gz\n'.format(self.outdir, name))
+      batchfile.write('\n')
+
+      batchfile.write('vcftools --bcf {}/{}.bcf.gz {} --remove-filtered-all --recode-INFO-all --recode-bcf --out {}/{}\n'.format(self.outdir, name, vcffilter, self.outdir, name))
+      batchfile.write('bcftools view {}/{}.recode.bcf -i "{}" -o {}/{}.recode.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, name, bcffilter, self.outdir, name))
+      batchfile.write('bcftools index {}/{}.recode.bcf.gz\n\n'.format(self.outdir, name))
+
+    batchfile.write('# SNP pair-wise distance\n')
+    batchfile.write('touch {}/stats.out\n'.format(self.outdir))
+    while len(snplist) > 1:
+      top = snplist.pop(0)
+      nameOne = top.split('/')[-2]
+      if '_' in nameOne:
+        nameOne = nameOne.split('_')[0]
+      for entry in snplist:
+        nameTwo = entry.split('/')[-2]
+        if '_' in nameTwo:
+          nameTwo = nameTwo.split('_')[0]
+
+        pair = "{}_{}".format(nameOne, nameTwo)
+        batchfile.write('bcftools isec {}/{}.recode.bcf.gz {}/{}.recode.bcf.gz -n=1 -c all -p {}/tmp -O b\n'.format(self.outdir, nameOne, self.outdir, nameTwo, self.outdir))
+        batchfile.write('bcftools merge -O b -o {}/{}.bcf.gz --force-samples {}/tmp/0000.bcf {}/tmp/0001.bcf\n'.format(self.outdir, pair, self.outdir, self.outdir))
+        batchfile.write('bcftools index {}/{}.bcf.gz\n'.format(self.outdir, pair))
+
+        batchfile.write("echo {} $( bcftools stats {}/{}.bcf.gz |grep SNPs: | cut -d $'\\t' -f4 ) >> {}/stats.out\n".format(pair, self.outdir, pair, self.outdir))
+        batchfile.write('\n')
+    batchfile.close()
+
 
   def create_project(self, name):
     """Creates project in database"""
@@ -208,7 +291,7 @@ class Job_Creator():
     except Exception as e:
       self.logger.error("Unable to add sample {} to database".format(self.name))
 
-  def project_job(self, single_sample=False):
+  def project_job(self, single_sample=False, qc_only=False):
     if 'dry' in self.config and self.config['dry']==True:
       dry=True
     else:
@@ -226,7 +309,7 @@ class Job_Creator():
     try:
       #Start every sample job
       if single_sample:
-        self.sample_job()
+        self.sample_job(qc_only=qc_only)
         headerargs = self.get_headerargs()
         outfile = self.get_sbatch()
         bash_cmd="sbatch {} {}".format(headerargs, outfile)
@@ -243,7 +326,7 @@ class Job_Creator():
             sample_in = "{}/{}".format(dirpath, dir)
             sample_out = "{}/{}".format(self.finishdir, dir)
             sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now) 
-            sample_instance.sample_job()
+            sample_instance.sample_job(qc_only=qc_only)
             headerargs = sample_instance.get_headerargs()
             outfile = ""
             if os.path.isfile(sample_instance.get_sbatch()):
@@ -256,15 +339,15 @@ class Job_Creator():
               jobarray.append(jobno)
             else:
               self.logger.info("Suppressed command: {}".format(bash_cmd))
-      if not dry:
-        self.finish_job(jobarray, single_sample)
+              
+      if (not dry and not qc_only):
+        self.finish_job(jobarray)
     except Exception as e:
       self.logger.error("Issues handling some samples of project at {}\nSource: {}".format(self.finishdir, str(e)))
       #shutil.rmtree(self.finishdir, ignore_errors=True)
 
-  def finish_job(self, joblist, single_sample=False):
-    """ Uploads data and sends an email once all analysis jobs are complete.
-        Sbatch > Srun to avoid issues with 50+ jobs """
+  def finish_job(self, joblist):
+    """ Uploads data and sends an email once all analysis jobs are complete. """
 
     startfile = "{}/run_started.out".format(self.finishdir)
     mailfile = "{}/mailjob.sh".format(self.finishdir)
@@ -318,8 +401,8 @@ class Job_Creator():
     mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
     output, error = mailproc.communicate()
 
-  def sample_job(self):
-    self.trimmed_files = dict()
+  def sample_job(self, qc_only=False):
+    """ Writes necessary sbatch job for each individual sample """
     if not os.path.exists(self.finishdir):
       os.makedirs(self.finishdir)
     try:
@@ -333,10 +416,12 @@ class Job_Creator():
 
       self.create_trimsection()
       self.interlace_files()
-      self.create_spadessection()
-      self.create_quastsection()
-      self.create_blastsection()
-      self.create_resistancesection()
+      self.create_variantsection()
+      if not qc_only:
+        self.create_assemblysection()
+        self.create_assemblystats_section()
+        self.create_mlstsection()
+        self.create_resistancesection()
       batchfile = open(self.batchfile, "a+")
       batchfile.write("cp -r {}/* {}".format(self.outdir, self.finishdir))
       batchfile.close()
@@ -349,3 +434,28 @@ class Job_Creator():
       self.create_sample(self.name)
     except Exception as e:
       self.logger.error("Unable to access LIMS info for sample {}".format(self.name))
+
+
+  def snp_job(self):
+    """ Writes a SNP calling job for a set of samples """
+    if not os.path.exists(self.finishdir):
+      os.makedirs(self.finishdir)
+
+    self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
+    batchfile = open(self.batchfile, "w+")
+    batchfile.write("#!/bin/sh\n\n")
+    batchfile.write("mkdir -p {}\n".format(self.outdir))
+    batchfile.close()
+
+    self.create_snpsection()
+    batchfile = open(self.batchfile, "a+")
+    batchfile.write("cp -r {}/* {}".format(self.outdir, self.finishdir))
+    batchfile.close()
+
+    headerline = "-A {} -p {} -n 1 -t 24:00:00 -J {}_{} --qos {} --output {}/slurm_{}.log".format(self.config["slurm_header"]["project"],\
+                 self.config["slurm_header"]["type"],\
+                 self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"], self.finishdir, self.name)
+    outfile = self.get_sbatch()
+    bash_cmd="sbatch {} {}".format(headerline, outfile)
+    samproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+    output, error = samproc.communicate()
