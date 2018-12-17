@@ -3,11 +3,8 @@
 
 #!/usr/bin/env python
 
-import click
 import os
-import re
 from sqlalchemy import *
-import yaml
 
 #TODO: Rewrite this implementation into orm format
 class Profiles:
@@ -29,11 +26,11 @@ class Profiles:
       header = "Table('profile_{}'.format(file), self.metadata,".format(file)
       while index < len(head):
         # Set ST as PK
-        if index == 0:
+        if head[index]=='ST':
           header +="Column(head[{}], SmallInteger, primary_key=True),".format(index)
         # Set Clonal complex as string
-        elif index == len(head)-1:
-          header +="Column(head[{}], String(16)),".format(index)
+        elif head[index]=='clonal_complex' or head[index]=='species':
+          header +="Column(head[{}], String(40)),".format(index)
         else:
           header +="Column(head[{}], SmallInteger),".format(index)
         index = index+1

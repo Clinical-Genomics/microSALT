@@ -230,7 +230,6 @@ class DB_Manipulator:
                             .format(cg_sid, organism))
         self.setPredictor(cg_sid)
         return -3
-    self.upd_rec({'CG_ID_sample':cg_sid}, 'Samples', {'aux_alleles':allelediff})
 
     # Tests all allele combinations found to see if any of them result in ST
     filter = list()
@@ -251,7 +250,6 @@ class DB_Manipulator:
       for st in output:
         STlist.append(st.ST)
       best = self.bestST(cg_sid, STlist)
-      self.upd_rec({'CG_ID_sample':cg_sid}, 'Samples', {'aux_ST':1})
       if threshold:   
         self.logger.warning("Multiple ST within threshold found for sample {}, list: {}. Established ST{} as best hit.".format(cg_sid, STlist, best))
       return best
@@ -292,7 +290,7 @@ class DB_Manipulator:
       allconditions = ["Seq_types.CG_ID_sample=='{}'".format(cg_sid)]
 
       for index, allele in enumerate(prof):
-        if 'ST' not in prof.keys()[index] and 'clonal_complex' not in prof.keys()[index]:
+        if 'ST' not in prof.keys()[index] and 'clonal_complex' not in prof.keys()[index] and 'species' not in prof.keys()[index]:
           condition = "Seq_types.loci=='{}' , Seq_types.allele=='{}'".format(prof.keys()[index], allele)
           alleledict[prof.keys()[index]] = ""
           alleleconditions.append("and_({})".format(condition))
@@ -307,13 +305,16 @@ class DB_Manipulator:
        if alleledict[allele.loci] == "":
          alleledict[allele.loci] = allele
        else:
-        if ((allele.span*allele.identity > alleledict[allele.loci].span*alleledict[allele.loci].identity) or\
-        (allele.span*allele.identity == alleledict[allele.loci].span*alleledict[allele.loci].identity and\
-        float(allele.evalue) < float(alleledict[allele.loci].evalue)) or\
-        (allele.span*allele.identity == alleledict[allele.loci].span*alleledict[allele.loci].identity and\
-        float(allele.evalue) == float(alleledict[allele.loci].evalue) and\
-        allele.contig_coverage > alleledict[allele.loci].contig_coverage)):
-          alleledict[allele.loci] = allele
+        old_al = alleledict[allele.loci]
+
+        if allele.span*allele.identity >= old_al.span*old_al.identity:
+          if allele.span*allele.identity > old_al.span*old_al.identity:
+            alleledict[allele.loci] = allele
+          elif float(allele.evalue) <= float(old_al.evalue):
+            if float(allele.evalue) < float(old_al.evalue):
+              alleledict[allele.loci] = allele
+            elif allele.contig_coverage > old_al.contig_coverage:
+              alleledict[allele.loci] = allele
 
       #Create score dict for the ST
       for key, allele in alleledict.items():
@@ -331,11 +332,17 @@ class DB_Manipulator:
     for key, val in scores.items():
       if scores[key]['spanid'] > topID:
         topID = scores[key]['spanid']
+        topEval = scores[key]['eval']
+        topCC = scores[key]['cc']
         topST = key
       elif scores[key]['spanid'] == topID and scores[key]['eval'] < topEval:
+        topID = scores[key]['spanid']
         topEval = scores[key]['eval']
+        topCC = scores[key]['cc']
         topST = key
-      elif scores[key]['spanid'] == topID and scores[key]['eval'] == topEval:
+      elif scores[key]['spanid'] == topID and scores[key]['eval'] == topEval and scores[key]['cc'] > topCC:
+        topID = scores[key]['spanid']
+        topEval = scores[key]['eval']
         topCC = scores[key]['cc']
         topST = key
     self.setPredictor(cg_sid, bestalleles[topST])
@@ -379,10 +386,10 @@ class DB_Manipulator:
         uniqueDict[hit.loci].append(hit.allele)
       elif hit.allele not in uniqueDict[hit.loci]:
         uniqueDict[hit.loci].append(hit.allele)
-
+    non_allele_columns = 1
     if 'clonal_complex' in self.profiles[organism].columns.keys():
-      non_allele_columns = 2
-    else:
-      non_allele_columns = 1
+      non_allele_columns += 1
+    if 'species' in self.profiles[organism].columns.keys():
+      non_allele_columns += 1
     allele_overabundance = len(uniqueDict.keys()) - (len(self.profiles[organism].columns.values()) - non_allele_columns)
     return [uniqueDict, allele_overabundance]

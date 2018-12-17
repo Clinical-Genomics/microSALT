@@ -3,37 +3,51 @@
 
 #!/usr/bin/env python
 
-import click
 import glob
 import os
 import re
 import shutil
 import subprocess
-import sys
 import time
-import yaml
 
+from datetime import datetime
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 from microSALT.store.db_manipulator import DB_Manipulator
 
 class Job_Creator():
 
-  def __init__(self, indir, config, log, outdir="", timestamp=""):
+  def __init__(self, input, config, log, finishdir="", timestamp=""):
     self.config = config
     self.logger = log
     self.batchfile = ""
-    self.indir = os.path.abspath(indir)
-    self.name = os.path.basename(os.path.normpath(indir))
+    self.filelist = list()
+    self.indir = ""
+
+    if isinstance(input, str):
+      self.indir = os.path.abspath(input)
+      self.name = os.path.basename(os.path.normpath(self.indir))
+    elif type(input) == list:
+      self.filelist = input
+      self.name = "SNP"
 
     self.now = timestamp
-    if timestamp == "":
-      self.now = time.strftime("%Y.%m.%d_%H.%M.%S")
-    self.outdir = outdir
-    if self.outdir == "":
-      self.outdir="{}/{}_{}".format(config["folders"]["results"], os.path.basename(os.path.normpath(self.indir)), self.now)
+    if timestamp != "":
+      self.now = timestamp
+      temp = timestamp.replace('_','.').split('.')
+      self.dt = datetime(int(temp[0]),int(temp[1]),int(temp[2]),int(temp[3]),int(temp[4]),int(temp[5]))
+    else:
+      self.dt = datetime.now() 
+      self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
+      format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
+
+    self.outdir = "/scratch/$SLURM_JOB_ID/workdir/{}_{}".format(self.name, self.now)
+    self.finishdir = finishdir
+    if self.finishdir == "":
+      self.finishdir="{}/{}_{}".format(config["folders"]["results"], self.name, self.now)
     
     self.db_pusher=DB_Manipulator(config, log)
     self.trimmed_files = dict()
+    self.concat_files = dict()
     self.organism = ""
     self.lims_fetcher = LIMS_Fetcher(config, log)
 
@@ -44,7 +58,7 @@ class Job_Creator():
   def get_headerargs(self):
     headerline = "-A {} -p {} -n {} -t {} -J {}_{} --qos {} --output {}/slurm_{}.log".format(self.config["slurm_header"]["project"],\
                  self.config["slurm_header"]["type"], self.config["slurm_header"]["threads"],self.config["slurm_header"]["time"],\
-                 self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"], self.outdir, self.name)
+                 self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"], self.finishdir, self.name)
     return headerline
 
   def verify_fastq(self):
@@ -75,60 +89,47 @@ class Job_Creator():
     return verified_files
  
   def interlace_files(self):
-    """Interlaces all unpaired files"""
+    """Interlaces all trimmed files"""
+    fplist = list()
+    kplist = list()
+    ilist = list()
     batchfile = open(self.batchfile, "a+")
-    batchfile.write("# Interlaced unpaired reads file creation\n")
-    suffix = "_unpaired_interlaced.fq"
+    batchfile.write("# Interlaced trimmed files\n")
+ 
     for name, v in self.trimmed_files.items():
-      interfile = "{}/trimmed/{}{}".format(self.outdir, name, suffix)
-      # Spammed a bit too much
-      #self.logger.info("Created unpaired interlace file for sample {}".format(name))
-      batchfile.write("touch {}\n".format(interfile))
-      batchfile.write("cat {} >> {}\n".format(v['fu'], interfile))
-      batchfile.write("cat {} >> {}\n".format(v['ru'], interfile))
-      self.trimmed_files[name]['i'] = "{}".format(interfile)
-      batchfile.write("\n")
+      fplist.append( v['fp'] )
+      kplist.append( v['rp'] )
+      ilist.append( v['fu'] )
+      ilist.append( v['ru'] )
+
+    if len(kplist) != len(fplist) or len(ilist)/2 != len(kplist):
+      raise Exception("Uneven distribution of trimmed files. Invalid trimming step {}".format(name))
+    self.concat_files['f'] = "{}/trimmed/{}{}".format(self.outdir,self.name, "_trim_front_pair.fq")
+    self.concat_files['r'] = "{}/trimmed/{}{}".format(self.outdir,self.name, "_trim_rev_pair.fq")
+    self.concat_files['i'] = "{}/trimmed/{}{}".format(self.outdir,self.name, "_trim_unpaired.fq")
+    for k, v in self.concat_files.items():
+      batchfile.write("touch {}\n".format(v))
+    
+    batchfile.write("cat {} >> {}\n".format(' '.join(fplist), self.concat_files['f']))
+    batchfile.write("cat {} >> {}\n".format(' '.join(kplist), self.concat_files['r']))
+    batchfile.write("cat {} >> {}\n".format(' '.join(ilist), self.concat_files['i']))
+    batchfile.write("rm {} {} {}\n".format(' '.join(fplist), ' '.join(kplist), ' '.join(ilist)))
+    batchfile.write("\n")
     batchfile.close()    
 
-  def create_spadessection(self):
+  def create_assemblysection(self):
     batchfile = open(self.batchfile, "a+")
     #memory is actually 128 per node regardless of cores.
     batchfile.write("# Spades assembly\n")
-    batchfile.write("spades.py --threads {} --memory {} -o {}/assembly"\
+    batchfile.write("spades.py --threads {} --careful --memory {} -o {}/assembly"\
     .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir))
     
-    libno = 1
-    for k,v in self.trimmed_files.items():
-      batchfile.write(" --pe{}-1 {}".format(libno, self.trimmed_files[k]['fp']))
-      batchfile.write(" --pe{}-2 {}".format(libno, self.trimmed_files[k]['rp']))
-      batchfile.write(" --pe{}-s {}".format(libno, self.trimmed_files[k]['i']))
-      libno += 1
+    batchfile.write(" --pe1-1 {}".format(self.concat_files['f']))
+    batchfile.write(" --pe1-2 {}".format(self.concat_files['r']))
+    batchfile.write(" --pe1-s {}".format(self.concat_files['i']))
 
     batchfile.write("\n\n")
     batchfile.close()
-
-  def index_db(self, full_dir, suffix):
-    """Check for indexation, makeblastdb job if not enough of them."""
-    try:
-      batchfile = open(self.batchfile, "a+")
-      files = os.listdir(full_dir)
-      sufx_files = glob.glob("{}/*{}".format(full_dir, suffix)) #List of source files
-      nin_suff = sum([1 for elem in files if 'nin' in elem]) #Total number of nin files 
-      if nin_suff < len(sufx_files):
-        batchfile.write("# Blast database indexing. Only necessary for initial run against target\n")
-        for file in sufx_files:
-          if '.fsa' in suffix:
-            batchfile.write("cd {} && makeblastdb -in {}/{} -dbtype nucl -out {}\n".format(\
-            full_dir, full_dir, os.path.basename(file),  os.path.basename(file[:-4])))
-          else:
-            batchfile.write("cd {} && makeblastdb -in {}/{} -dbtype nucl -parse_seqids -out {}\n".format(\
-            full_dir, full_dir, os.path.basename(file),  os.path.basename(file[:-4])))
-          ref = open(file, "r")
-          ref.readline()
-      batchfile.write("\n")
-      batchfile.close()
-    except Exception as e:
-      self.logger.error("Unable to index {} of organism {} against reference {}".format(self.name, self.organism, file))
 
   def create_cgmlstsection(self):
     """Creates a blast job against a known reference/expanded geneset"""
@@ -148,36 +149,63 @@ class Job_Creator():
     batchfile.close()
 
   def create_resistancesection(self):
-    """Creates a blast job for each resistance gene of an organism"""
-    self.index_db("{}".format(self.config["folders"]["resistances"]), '.fsa')
-    if not os.path.exists("{}/resistance".format(self.outdir)):
-      os.makedirs("{}/resistance".format(self.outdir))
+    """Creates a blast job for instances where many loci definition files make up an organism"""
 
     #Create run
     batchfile = open(self.batchfile, "a+")
+    batchfile.write("mkdir {}/resistance\n\n".format(self.outdir))
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
     res_list = glob.glob("{}/*.fsa".format(self.config["folders"]["resistances"]))
     for entry in res_list:
       batchfile.write("# BLAST Resistance search in {} for {}\n".format(self.organism, os.path.basename(entry[:-4])))
-      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/resistance/{}.txt -task megablast -num_threads {} -max_target_seqs 1 -outfmt {}\n".format(\
+      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/resistance/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
       entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
     batchfile.close()
 
-  def create_blastsection(self):
+  def create_mlstsection(self):
     """Creates a blast job for instances where many loci definition files make up an organism"""
-    self.index_db("{}/{}".format(self.config["folders"]["references"], self.organism), '.tfa')
-    if not os.path.exists("{}/blast".format(self.outdir)):
-      os.makedirs("{}/blast".format(self.outdir))
     
     #Create run
     batchfile = open(self.batchfile, "a+")
+    batchfile.write("mkdir {}/blast\n\n".format(self.outdir))
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
     tfa_list = glob.glob("{}/{}/*.tfa".format(self.config["folders"]["references"], self.organism))
     for entry in tfa_list:
       batchfile.write("# BLAST MLST alignment for {}, {}\n".format(self.organism, os.path.basename(entry[:-4])))
       batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast/loci_query_{}.txt -task megablast -num_threads {} -max_target_seqs 1 -outfmt {}\n".format(\
       entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
+    batchfile.write("\n")
+    batchfile.close()
+
+  def create_variantsection(self):
+    """ Creates a job for variant calling based on local alignment """
+    ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
+    localdir = "{}/alignment".format(self.outdir)
+    outbase = "{}/{}_{}".format(localdir, self.name, self.lims_fetcher.data['reference'])
+
+    #Create run
+    batchfile = open(self.batchfile, "a+")
+    batchfile.write("# Variant calling based on local alignment\n")
+    batchfile.write("mkdir {}\n".format(localdir))
+    batchfile.write("bwa mem -t {} {} {} {} > {}.sam\n".format(self.config["slurm_header"]["threads"], ref ,self.concat_files['f'], self.concat_files['r'], outbase))
+    batchfile.write("samtools view --threads {} -b -o {}.bam -T {} {}.sam\n".format(self.config["slurm_header"]["threads"], outbase, ref, outbase))
+    batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
+    batchfile.write("samtools fixmate --threads {} -r -m {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
+    batchfile.write("samtools sort --threads {} -o {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
+    #Markdup and duplicate stats
+    batchfile.write("samtools markdup -r -s --threads {} --reference {} --output-fmt bam {}.bam_sort {}.bam_sort_mkdup &> {}.stats.dup\n".format(self.config["slurm_header"]["threads"], ref, outbase, outbase, outbase))
+    batchfile.write("samtools rmdup --reference {} {}.bam_sort_mkdup {}.bam_sort_rmdup\n".format(ref, outbase, outbase))
+    #Ref stats
+    batchfile.write("samtools index {}.bam_sort_rmdup\n".format(outbase))
+    batchfile.write("samtools idxstats {}.bam_sort_rmdup &> {}.stats.ref\n".format(outbase, outbase))
+    #Insert stats
+    batchfile.write("samtools stats {}.bam_sort_rmdup |grep ^IS | cut -f 2- &> {}.stats.ins\n".format(outbase, outbase))
+    #Coverage
+    batchfile.write("samtools stats --coverage 1,1000,10 {}.bam_sort_rmdup |grep ^COV | cut -f 2- &> {}.stats.cov\n".format(outbase, outbase))
+    #Mapped rate
+    batchfile.write("samtools flagstat {}.bam_sort_rmdup &> {}.stats.map\n".format(outbase, outbase))
+
     batchfile.write("\n")
     batchfile.close()
 
@@ -189,9 +217,8 @@ class Job_Creator():
         break
     trimdir = "{}/trimmed".format(self.outdir)
     files = self.verify_fastq()
-    if not os.path.exists(trimdir):
-      os.makedirs(trimdir)
     batchfile = open(self.batchfile, "a+")
+    batchfile.write("mkdir {}\n\n".format(trimdir))
     i=0
     j=1
     while i < len(files):
@@ -212,14 +239,61 @@ class Job_Creator():
       i=i+2
       j+=1
 
-  def create_quastsection(self):
+  def create_assemblystats_section(self):
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# QUAST QC metrics\n")
-    batchfile.write("quast.py {}/assembly/contigs.fasta -o {}/quast\n".format(self.outdir, self.outdir))
-    batchfile.write("\n")
+    batchfile.write("mkdir {}/quast\n".format(self.outdir))
+    batchfile.write("quast.py {}/assembly/contigs.fasta -o {}/quast\n\n".format(self.outdir, self.outdir))
     batchfile.close()
-    if not os.path.exists("{}/quast".format(self.outdir)):
-      os.makedirs("{}/quast".format(self.outdir))
+
+  def create_snpsection(self):
+    snplist = self.filelist.copy()
+    batchfile = open(self.batchfile, "a+")
+
+    #VCFTools filters:
+    vcffilter="--minQ 30 --thin 50 --minDP 3 --min-meanDP 20"
+    #BCFTools filters:
+    bcffilter = "GL[0]<-500 & GL[1]=0 & QR/RO>30 & QA/AO>30 & QUAL>5000 & ODDS>1100 & GQ>140 & DP>100 & MQM>59 & SAP<15 & PAIRED>0.9 & EPP>3"
+
+    for item in snplist:
+      name = item.split('/')[-2]
+      if '_' in name:
+        name = name.split('_')[0]
+      self.lims_fetcher.load_lims_sample_info(name)
+      batchfile.write('# Basecalling for sample {}\n'.format(name))
+      ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
+      outbase = "{}/{}_{}".format(item, name, self.lims_fetcher.data['reference'])
+      batchfile.write("samtools view -h -q 1 -F 4 -F 256 {}.bam_sort_rmdup | grep -v XA:Z | grep -v SA:Z| samtools view -b - > {}/{}.unique\n".format(outbase, self.outdir, name))
+      batchfile.write('freebayes -= --pvar 0.7 -j -J --standard-filters -C 6 --min-coverage 30 --ploidy 1 -f {} -b {}/{}.unique -v {}/{}.vcf\n'.format(ref, self.outdir, name , self.outdir, name))
+      batchfile.write('bcftools view {}/{}.vcf -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, name, self.outdir, name))
+      batchfile.write('bcftools index {}/{}.bcf.gz\n'.format(self.outdir, name))
+      batchfile.write('\n')
+
+      batchfile.write('vcftools --bcf {}/{}.bcf.gz {} --remove-filtered-all --recode-INFO-all --recode-bcf --out {}/{}\n'.format(self.outdir, name, vcffilter, self.outdir, name))
+      batchfile.write('bcftools view {}/{}.recode.bcf -i "{}" -o {}/{}.recode.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, name, bcffilter, self.outdir, name))
+      batchfile.write('bcftools index {}/{}.recode.bcf.gz\n\n'.format(self.outdir, name))
+
+    batchfile.write('# SNP pair-wise distance\n')
+    batchfile.write('touch {}/stats.out\n'.format(self.outdir))
+    while len(snplist) > 1:
+      top = snplist.pop(0)
+      nameOne = top.split('/')[-2]
+      if '_' in nameOne:
+        nameOne = nameOne.split('_')[0]
+      for entry in snplist:
+        nameTwo = entry.split('/')[-2]
+        if '_' in nameTwo:
+          nameTwo = nameTwo.split('_')[0]
+
+        pair = "{}_{}".format(nameOne, nameTwo)
+        batchfile.write('bcftools isec {}/{}.recode.bcf.gz {}/{}.recode.bcf.gz -n=1 -c all -p {}/tmp -O b\n'.format(self.outdir, nameOne, self.outdir, nameTwo, self.outdir))
+        batchfile.write('bcftools merge -O b -o {}/{}.bcf.gz --force-samples {}/tmp/0000.bcf {}/tmp/0001.bcf\n'.format(self.outdir, pair, self.outdir, self.outdir))
+        batchfile.write('bcftools index {}/{}.bcf.gz\n'.format(self.outdir, pair))
+
+        batchfile.write("echo {} $( bcftools stats {}/{}.bcf.gz |grep SNPs: | cut -d $'\\t' -f4 ) >> {}/stats.out\n".format(pair, self.outdir, pair, self.outdir))
+        batchfile.write('\n')
+    batchfile.close()
+
 
   def create_project(self, name):
     """Creates project in database"""
@@ -241,80 +315,176 @@ class Job_Creator():
       sample_col['CG_ID_sample'] = self.lims_fetcher.data['CG_ID_sample']
       sample_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
       sample_col['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
-      sample_col["date_analysis"] = self.now
+      sample_col["date_analysis"] = self.dt
       self.db_pusher.add_rec(sample_col, 'Samples')
     except Exception as e:
       self.logger.error("Unable to add sample {} to database".format(self.name))
 
-  def project_job(self, single_sample=False):
+  def project_job(self, single_sample=False, qc_only=False):
+    if 'dry' in self.config and self.config['dry']==True:
+      dry=True
+    else:
+      dry=False
     jobarray = list()
-    if not os.path.exists(self.outdir):
-      os.makedirs(self.outdir)
-
+    if not os.path.exists(self.finishdir):
+      os.makedirs(self.finishdir)
     try:
        if single_sample:
          self.create_project(os.path.normpath(self.indir).split('/')[-2])
        else:
         self.create_project(self.name)
     except Exception as e:
-      self.logger.error("LIMS interaction failed. Unable to read/write project {}".format(self.name)) 
+      self.logger.error("LIMS interaction failed. Unable to read/write project {}".format(self.name))
     try:
       #Start every sample job
       if single_sample:
-        self.sample_job()
+        self.sample_job(qc_only=qc_only)
         headerargs = self.get_headerargs()
         outfile = self.get_sbatch()
         bash_cmd="sbatch {} {}".format(headerargs, outfile)
-        process = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
-        output, error = process.communicate()
-        jobno = re.search('(\d+)', str(output)).group(0)
-        jobarray.append(jobno)
+        if not dry and outfile != "":
+          samproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+          output, error = samproc.communicate()
+          jobno = re.search('(\d+)', str(output)).group(0)
+          jobarray.append(jobno)
+        else:
+          self.logger.info("Suppressed command: {}".format(bash_cmd))
       else:
         for (dirpath, dirnames, filenames) in os.walk(self.indir):
           for dir in dirnames:
             sample_in = "{}/{}".format(dirpath, dir)
-            sample_out = "{}/{}".format(self.outdir, dir)
+            sample_out = "{}/{}".format(self.finishdir, dir)
             sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now) 
-            sample_instance.sample_job()
+            sample_instance.sample_job(qc_only=qc_only)
             headerargs = sample_instance.get_headerargs()
-            outfile = sample_instance.get_sbatch()
+            outfile = ""
+            if os.path.isfile(sample_instance.get_sbatch()):
+              outfile = sample_instance.get_sbatch()
             bash_cmd="sbatch {} {}".format(headerargs, outfile)
-            output, error = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE).communicate()
-            jobno = re.search('(\d+)', str(output)).group(0)
-            jobarray.append(jobno)
-      #Mail job
-      mailline = "srun -A {} -p core -n 1 -t 00:00:10 -J {}_{}_TRACKER --qos {} --dependency=afterany:{} --output {}/run_complete.out --mail-user={} --mail-type=END pwd"\
-                 .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"],\
-                 ':'.join(jobarray), self.outdir,  self.config['regex']['mail_recipient'])
-      mailarray = mailline.split()
-      subprocess.Popen(mailarray, stdin=None, stdout=None, stderr=None)
+            if not dry and outfile != "":
+              projproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+              output, error = projproc.communicate()
+              jobno = re.search('(\d+)', str(output)).group(0)
+              jobarray.append(jobno)
+            else:
+              self.logger.info("Suppressed command: {}".format(bash_cmd))
+              
+      if (not dry and not qc_only):
+        self.finish_job(jobarray)
     except Exception as e:
-      self.logger.warning("Failed to spawn project at {}\nSource: {}".format(self.outdir, str(e)))
-      shutil.rmtree(self.outdir, ignore_errors=True)
+      self.logger.error("Issues handling some samples of project at {}\nSource: {}".format(self.finishdir, str(e)))
+      #shutil.rmtree(self.finishdir, ignore_errors=True)
 
-  def sample_job(self):
-    self.trimmed_files = dict()
-    if not os.path.exists(self.outdir):
-      os.makedirs(self.outdir)
+  def finish_job(self, joblist):
+    """ Uploads data and sends an email once all analysis jobs are complete. """
+
+    startfile = "{}/run_started.out".format(self.finishdir)
+    mailfile = "{}/mailjob.sh".format(self.finishdir)
+    mb = open(mailfile, "w+")
+    sb = open(startfile, "w+")
+    sb.write("#!/bin/sh\n\n")
+    sb.close()
+    mb.write("#!/bin/sh\n\n")
+    mb.write("#Uploading of results to database and production of report\n")
+    #mb.write("source ~/.bash_profile\n")
+    if 'MICROSALT_CONFIG' in os.environ:
+      mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
+    mb.write("source activate $CONDA_DEFAULT_ENV\n")
+    if not single_sample:
+      mb.write("microSALT finish project {} --input {} --rerun\n".format(self.name, self.finishdir))
+    else:
+      mb.write("microSALT finish sample {} --input {} --rerun\n".format(self.name, self.finishdir))
+    mb.write("touch {}/run_complete.out".format(self.finishdir))
+    mb.close()
+
+    massagedJobs = list()
+    final = ':'.join(joblist)
+    #Create subtracker if more than 50 samples
+    maxlen = 50
+    if len(joblist) > maxlen:
+      i = 1
+      while i <= len(joblist):
+        if i+maxlen < len(joblist):
+          massagedJobs.append(':'.join(joblist[i-1:i+maxlen-1]))
+        else:
+          massagedJobs.append(':'.join(joblist[i-1:-1]))
+        i += maxlen
+      for entry in massagedJobs:
+        if massagedJobs.index(entry) < len(massagedJobs)-1:
+          head = "-A {} -p core -n 1 -t 00:00:10 -J {}_{}_SUBTRACKER --qos {} --dependency=afterany:{}"\
+                 .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"],\
+                 entry)
+          bash_cmd="sbatch {} {}".format(head, startfile)
+          mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+          output, error = mailproc.communicate()
+          jobno = re.search('(\d+)', str(output)).group(0)
+          massagedJobs[massagedJobs.index(entry)+1] += ":{}".format(jobno)
+        else:
+          final = entry
+          break 
+
+    head = "-A {} -p core -n 1 -t 06:00:00 -J {}_{}_MAILJOB --qos {} --open-mode append --dependency=afterany:{} --output {}"\
+            .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"],\
+           final, self.config['folders']['log_file'],  self.config['regex']['mail_recipient'])
+    bash_cmd="sbatch {} {}".format(head, mailfile)
+    mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+    output, error = mailproc.communicate()
+
+  def sample_job(self, qc_only=False):
+    """ Writes necessary sbatch job for each individual sample """
+    if not os.path.exists(self.finishdir):
+      os.makedirs(self.finishdir)
     try:
       self.organism = self.lims_fetcher.get_organism_refname(self.name, external=False)
       # This is one job 
-      self.batchfile = "{}/runfile.sbatch".format(self.outdir)
+      self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
       batchfile = open(self.batchfile, "w+")
       batchfile.write("#!/bin/sh\n\n")
+      batchfile.write("mkdir -p {}\n".format(self.outdir))
       batchfile.close()
 
       self.create_trimsection()
       self.interlace_files()
-      self.create_spadessection()
-      self.create_quastsection()
-      self.create_blastsection()
-      self.create_resistancesection()
-      self.create_cgmlstsection()
+      self.create_variantsection()
+      if not qc_only:
+        self.create_assemblysection()
+        self.create_assemblystats_section()
+        self.create_mlstsection()
+        self.create_resistancesection()
+      batchfile = open(self.batchfile, "a+")
+      batchfile.write("cp -r {}/* {}".format(self.outdir, self.finishdir))
+      batchfile.close()
+
       self.logger.info("Created runfile for sample {} in folder {}".format(self.name, self.outdir))
     except Exception as e:
-      raise Exception("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
+      self.logger.error("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
+      shutil.rmtree(self.finishdir, ignore_errors=True) 
     try: 
       self.create_sample(self.name)
     except Exception as e:
-      self.logger.error("LIMS interaction failed. Unable to read/write sample {}".format(self.name))
+      self.logger.error("Unable to access LIMS info for sample {}".format(self.name))
+
+
+  def snp_job(self):
+    """ Writes a SNP calling job for a set of samples """
+    if not os.path.exists(self.finishdir):
+      os.makedirs(self.finishdir)
+
+    self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
+    batchfile = open(self.batchfile, "w+")
+    batchfile.write("#!/bin/sh\n\n")
+    batchfile.write("mkdir -p {}\n".format(self.outdir))
+    batchfile.close()
+
+    self.create_snpsection()
+    batchfile = open(self.batchfile, "a+")
+    batchfile.write("cp -r {}/* {}".format(self.outdir, self.finishdir))
+    batchfile.close()
+
+    headerline = "-A {} -p {} -n 1 -t 24:00:00 -J {}_{} --qos {} --output {}/slurm_{}.log".format(self.config["slurm_header"]["project"],\
+                 self.config["slurm_header"]["type"],\
+                 self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"], self.finishdir, self.name)
+    outfile = self.get_sbatch()
+    bash_cmd="sbatch {} {}".format(headerline, outfile)
+    samproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+    output, error = samproc.communicate()

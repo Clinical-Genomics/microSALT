@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import *
 from sqlalchemy.sql.expression import case, func
 
+from microSALT import config, __version__
 from microSALT.store.db_manipulator import app
 from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
 
@@ -47,14 +48,24 @@ def project_page(project):
         organisms = organism_groups,
         project = project) 
 
-@app.route('/microSALT/<project>/<organism_group>')
-def report_page(project, organism_group):
-    sample_info = gen_reportdata(project, organism_group)
+@app.route('/microSALT/<project>/qc')
+def alignment_page(project):
+    sample_info = gen_reportdata(project)
 
-    return render_template('report_page.html',
+    return render_template('alignment_page.html',
         samples = sample_info['samples'],
         date = date.today().isoformat(),
         version = sample_info['versions'])
+
+@app.route('/microSALT/<project>/typing/<organism_group>')
+def typing_page(project, organism_group):
+    sample_info = gen_reportdata(project, organism_group)
+
+    return render_template('typing_page.html',
+        samples = sample_info['samples'],
+        date = date.today().isoformat(),
+        version = sample_info['versions'],
+        build = __version__)
 
 def gen_reportdata(pid, organism_group='all'):
   """ Queries database for all necessary information for the reports """
@@ -71,17 +82,18 @@ def gen_reportdata(pid, organism_group='all'):
                 int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
   for s in sample_info:
     s.ST_status=str(s.ST)
-    if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or s.Customer_ID_sample.startswith('NK-'):
-      s.ST_status = 'Control'
+    if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') \
+    or s.Customer_ID_sample.startswith('NK-'):
+      s.ST_status = 'Control (prefix)'
     elif s.ST < 0:
       if s.ST == -1:
-        s.ST_status = 'Control'
+        s.ST_status = 'No pubMLST definition'
       elif s.ST == -4:
         s.ST_status = 'Novel'
       else:
         s.ST_status='None'
 
-    if s.ST_status=='Control':
+    if s.ST_status=='Control' or 'pubMLST' in s.ST_status:
       s.threshold = 'Passed'
     elif s.ST == -2 or s.ST == -3:
       s.threshold = 'Failed'
@@ -90,15 +102,26 @@ def gen_reportdata(pid, organism_group='all'):
       s.threshold = 'Passed'
       for seq_type in s.seq_types:
         #Identify single deviating allele
-        if seq_type.st_predictor and seq_type.identity >= 99.5 and seq_type.identity < 100.0 and seq_type.span >= 1.0:
+        if seq_type.st_predictor and seq_type.identity >= config["threshold"]["mlst_novel_id"] \
+        and config["threshold"]["mlst_id"] > seq_type.identity \
+        and 1-abs(1-seq_type.span) >= config["threshold"]["mlst_span"]:
           near_hits = near_hits + 1
-        elif seq_type.identity < 100.0 and seq_type.st_predictor or seq_type.span < 1.0 and seq_type.st_predictor:
+        elif (seq_type.identity < config["threshold"]["mlst_novel_id"] or seq_type.span < config["threshold"]["mlst_span"]) and seq_type.st_predictor:
           s.threshold = 'Failed'
 
       if near_hits > 0 and s.threshold == 'Passed':
         s.ST_status = 'Novel ({} alleles)'.format(near_hits)
     else:
       s.threshold = 'Failed'
+
+    #Resistence filter
+    for r in s.resistances:
+      if (s.ST > 0 or s.ST_status == 'Novel') and (r.identity >= config["threshold"]["res_id"] \
+      and r.span >= config["threshold"]["res_span"]) or (s.ST < 0 and s.ST_status != 'Novel'):
+        r.threshold = 'Passed'
+      else:
+        r.threshold = 'Failed'
+
     #Seq_type and resistance sorting
     s.seq_types=sorted(s.seq_types, key=lambda x: x.loci)
     s.resistances=sorted(s.resistances, key=lambda x: x.instance)

@@ -23,13 +23,22 @@ class Samples(db.Model):
    Customer_ID_sample = db.Column(db.String(40))
    organism = db.Column(db.String(30))
    ST = db.Column(db.SmallInteger, default=-1)
-   aux_ST = db.Column(db.Boolean, default=0)
-   aux_alleles = db.Column(db.SmallInteger, default=-1)
    date_analysis = db.Column(db.DateTime)
    genome_length = db.Column(db.Integer, default=-1)
    gc_percentage = db.Column(db.Float(3,2), default = 0.0)
    n50 = db.Column(db.Integer, default=-1)
    contigs = db.Column(db.Integer, default=-1)
+   priority = db.Column(db.String(20))
+
+   total_reads = db.Column(db.Integer) #Fetch from bcl2fastq
+   insert_size = db.Column(db.Integer)
+   duplication_rate = db.Column(db.Float)
+   mapped_rate = db.Column(db.Float)
+   coverage_10x = db.Column(db.Float)
+   coverage_30x = db.Column(db.Float)
+   coverage_50x = db.Column(db.Float)
+   coverage_100x = db.Column(db.Float)
+   average_coverage = db.Column(db.Float)
 
 class Seq_types(db.Model):
   __tablename__ = 'seq_types'
@@ -47,6 +56,9 @@ class Seq_types(db.Model):
   bitscore = db.Column(db.SmallInteger)
   subject_length = db.Column(db.Integer)
   st_predictor = db.Column(db.Boolean, default = 0)
+  contig_start=db.Column(db.Integer)
+  contig_end=db.Column(db.Integer)
+
 
 class Resistances(db.Model):
   __tablename__ = 'resistances'
@@ -63,6 +75,10 @@ class Resistances(db.Model):
   evalue = db.Column(db.String(10))
   bitscore = db.Column(db.SmallInteger)
   subject_length = db.Column(db.Integer)
+  reference = db.Column(db.String(40))
+  resistance = db.Column(db.String(120))
+  contig_start=db.Column(db.Integer)
+  contig_end=db.Column(db.Integer)
 
 class Profile_cgmlst(db.Model):
    __tablename__ = 'profile_cgmlst'
@@ -75,9 +91,10 @@ class Projects(db.Model):
   __tablename__ = 'projects'
   samples = relationship('Samples', back_populates='projects')
 
-  CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
-  Customer_ID_project = db.Column(db.String(15))
-  date_ordered = db.Column(db.DateTime)
+   CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
+   Customer_ID_project = db.Column(db.String(15))
+   date_ordered = db.Column(db.DateTime)
+   reference_genome = db.Column(db.String(32))
 
 class Versions(db.Model):
   __tablename__ = 'versions'

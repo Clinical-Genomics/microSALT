@@ -1,13 +1,9 @@
 #!/usr/bin/env python
 
-import click
-import glob
 import os
 import re
-import sys
-import time
-import yaml
 
+from datetime import datetime
 from genologics.lims import Lims
 # Should probably call these items directly since we're now up to 3 config files
 from genologics.config import BASEURI,USERNAME,PASSWORD
@@ -23,12 +19,29 @@ class LIMS_Fetcher():
 
   def load_lims_project_info(self, cg_projid):
     project = Project(self.lims, id=cg_projid)
+
     try:
-      self.data.update({'date_received': project.open_date,
+      #Resolves old format
+      if ' ' in project.name:
+        realname = project.name.split(' ')[0]
+      else:
+        realname = project.name
+
+      tmp = project.open_date.split('-')
+      newdate = datetime(int(tmp[0]), int(tmp[1]), int(tmp[2]))
+      self.data.update({'date_received': newdate,
                                'CG_ID_project': cg_projid,
-                               'Customer_ID_project' : project.name})
+                               'Customer_ID_project' : realname})
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for project {}\nSource: {}".format(cg_projid, str(e)))
+
+  def samples_in_project(self, cg_projid):
+    """ Returns a list of sample names for a project"""
+    output = list()
+    samples = self.lims.get_samples(projectlimsid=cg_projid)
+    for s in samples:
+      output.append(s.id)
+    return output
 
   def load_lims_sample_info(self, cg_sampleid, external=False):
     """ Loads all utilized LIMS info. Organism assumed to be written as binomial name """
@@ -42,9 +55,11 @@ class LIMS_Fetcher():
         sample = Sample(self.lims, id=cg_sampleid)
       except Exception as e:
         self.logger.error("LIMS connection timeout")
-    if 'Strain' in sample.udf:
-      organism = sample.udf['Strain']
-      if sample.udf['Strain'] == 'Other':
+    organism = "Unset"
+    if 'Strain' in sample.udf and organism == "Unset":
+      if sample.udf['Strain'] != 'Other' and sample.udf['Strain'] != 'other':
+        organism = sample.udf['Strain']
+      elif (sample.udf['Strain'] == 'Other' or sample.udf['Strain'] == 'other') and 'Other species' in sample.udf:
         organism = sample.udf['Other species']
       # Backwards compatibility
       elif sample.udf['Strain'] == 'VRE':
@@ -55,12 +70,19 @@ class LIMS_Fetcher():
             organism = 'Enterococcus faecalis'
         elif 'Comment' in sample.udf:
           organism = sample.udf['Comment']
-      elif sample.udf['Reference Genome Microbial'] == 'NC_002163':
+    if 'Reference Genome Microbial' in sample.udf and organism == "Unset":
+      if sample.udf['Reference Genome Microbial'] == 'NC_002163':
         organism = "Campylobacter jejuni"
-    elif 'Comment' in sample.udf:
+      elif sample.udf['Reference Genome Microbial'] == 'NZ_CP007557.1':
+        organism = 'Klebsiella oxytoca'
+      elif sample.udf['Reference Genome Microbial'] == 'NC_000913.3':
+        organism = 'Citrobacter freundii'
+      elif sample.udf['Reference Genome Microbial'] == 'NC_002516.2':
+        organism = 'Pseudomonas aeruginosa'
+    elif 'Comment' in sample.udf and organism == "Unset":
       organism = sample.udf['Comment']
     # Consistent safe-guard
-    else:
+    elif organism == "Unset":
       organism = "Other"
       self.logger.warn("Unable to resolve ambigious organism found in sample {}."\
       .format(cg_sampleid))
@@ -68,7 +90,9 @@ class LIMS_Fetcher():
       self.data.update({'CG_ID_project': sample.project.id,
                            'CG_ID_sample': sample.id,
                            'Customer_ID_sample' : sample.name,
-                           'organism' : organism})
+                           'organism' : organism,
+                           'priority' : sample.udf['priority'],
+                           'reference' : sample.udf['Reference Genome Microbial']})
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for sample {}. Review LIMS data.\nSource: {}"\
       .format(cg_sampleid, str(e)))
@@ -95,5 +119,5 @@ class LIMS_Fetcher():
         if hit == len(organism):
           return target
     except Exception as e:
-      self.logger.warn("Unable to find reference for {}, strain {} has no reference match\nSource: {}".format(sample_name, lims_organ, e))
+      self.logger.warn("Unable to find existing reference for {}, strain {} has no reference match\nSource: {}".format(sample_name, lims_organ, e))
 
