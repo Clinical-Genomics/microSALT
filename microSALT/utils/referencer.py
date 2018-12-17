@@ -138,6 +138,13 @@ class Referencer():
     url = "https://bitbucket.org/genomicepidemiology/resfinder_db.git"
     hiddensrc ="{}/.resfinder_db".format(self.config['folders']['resistances'])
     wipeIndex = False
+
+    actual = os.listdir(self.config['folders']['resistances'])
+    for file in os.listdir(hiddensrc):
+      if file not in actual and ('.fsa' in file or 'notes' in file):
+        self.logger.info("resFinder database files corrupted. Syncing...")
+        wipeIndex = True
+
     if not os.path.isdir(hiddensrc):
       self.logger.info("resFinder database not found. Fetching..")
       os.makedirs(hiddensrc)
@@ -152,25 +159,19 @@ class Referencer():
       process = subprocess.Popen(cmd.split(),cwd=hiddensrc, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
       output, error = process.communicate()
       if not 'Already up-to-date.' in str(output):
-        self.logger.info("resFinder database updated!")
+        self.logger.info("Remote resFinder database updated. Syncing...")
         wipeIndex = True
       else:
-        self.logger.info("resFinder database verified to be of latest version.")
+        self.logger.info("Cached resFinder database identical to remote.")
 
+    #Actual update of resistance folder
     if wipeIndex:
       for file in os.listdir(hiddensrc):
         if(os.path.isfile("{}/{}".format(hiddensrc, file))):
-          #Remove existing index
-          if file[-4] == '.':
-            fileWOsuf = file[:-4]
-            if fileWOsuf in os.listdir(self.config['folders']['resistances']):
-              self.logger.info("Removing existing index files for {}".format(fileWOsuf))
-              for tFile in os.listdir(self.config['folders']['resistances']):
-                os.remove("{}/{}".format(self.config['folders']['resistances'], tFile))
           #Copy fresh
           shutil.copy("{}/{}".format(hiddensrc, file), self.config['folders']['resistances'])
-          # Create new indexes
-          self.index_db(self.config['folders']['resistances'], '.fsa')
+      # Create new indexes
+      self.index_db(self.config['folders']['resistances'], '.fsa')
 
   def existing_organisms(self):
     """ Returns list of all organisms currently added """

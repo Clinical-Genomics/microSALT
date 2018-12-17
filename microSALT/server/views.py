@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import *
 from sqlalchemy.sql.expression import case, func
 
-from microSALT import config
+from microSALT import config, __version__
 from microSALT.store.db_manipulator import app
 from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
 
@@ -64,7 +64,8 @@ def typing_page(project, organism_group):
     return render_template('typing_page.html',
         samples = sample_info['samples'],
         date = date.today().isoformat(),
-        version = sample_info['versions'])
+        version = sample_info['versions'],
+        build = __version__)
 
 def gen_reportdata(pid, organism_group='all'):
   """ Queries database for all necessary information for the reports """
