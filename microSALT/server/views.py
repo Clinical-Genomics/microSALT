@@ -48,11 +48,20 @@ def project_page(project):
         organisms = organism_groups,
         project = project) 
 
-@app.route('/microSALT/<project>/<organism_group>')
-def report_page(project, organism_group):
+@app.route('/microSALT/<project>/qc')
+def alignment_page(project):
+    sample_info = gen_reportdata(project)
+
+    return render_template('alignment_page.html',
+        samples = sample_info['samples'],
+        date = date.today().isoformat(),
+        version = sample_info['versions'])
+
+@app.route('/microSALT/<project>/typing/<organism_group>')
+def typing_page(project, organism_group):
     sample_info = gen_reportdata(project, organism_group)
 
-    return render_template('report_page.html',
+    return render_template('typing_page.html',
         samples = sample_info['samples'],
         date = date.today().isoformat(),
         version = sample_info['versions'],
@@ -78,13 +87,13 @@ def gen_reportdata(pid, organism_group='all'):
       s.ST_status = 'Control (prefix)'
     elif s.ST < 0:
       if s.ST == -1:
-        s.ST_status = 'Control (auto)'
+        s.ST_status = 'No pubMLST definition'
       elif s.ST == -4:
         s.ST_status = 'Novel'
       else:
         s.ST_status='None'
 
-    if 'Control' in s.ST_status:
+    if s.ST_status=='Control' or 'pubMLST' in s.ST_status:
       s.threshold = 'Passed'
     elif s.ST == -2 or s.ST == -3:
       s.threshold = 'Failed'

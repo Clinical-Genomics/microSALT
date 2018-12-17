@@ -164,19 +164,31 @@ class Job_Creator():
   def create_variantsection(self):
     """ Creates a job for variant calling based on local alignment """
     ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
-    outbase = "{}/alignment/{}_{}".format(self.outdir, self.name, self.lims_fetcher.data['reference'])
+    localdir = "{}/alignment".format(self.outdir)
+    outbase = "{}/{}_{}".format(localdir, self.name, self.lims_fetcher.data['reference'])
 
     #Create run
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# Variant calling based on local alignment\n")
-    batchfile.write("mkdir {}/alignment\n".format(self.outdir))
+    batchfile.write("mkdir {}\n".format(localdir))
     batchfile.write("bwa mem -t {} {} {} {} > {}.sam\n".format(self.config["slurm_header"]["threads"], ref ,self.concat_files['f'], self.concat_files['r'], outbase))
     batchfile.write("samtools view --threads {} -b -o {}.bam -T {} {}.sam\n".format(self.config["slurm_header"]["threads"], outbase, ref, outbase))
     batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
     batchfile.write("samtools fixmate --threads {} -r -m {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
     batchfile.write("samtools sort --threads {} -o {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
-    batchfile.write("samtools markdup -r -s --threads {} --reference {} --output-fmt bam {}.bam_sort {}.bam_sort_mkdup\n".format(self.config["slurm_header"]["threads"], ref, outbase, outbase))
+    #Markdup and duplicate stats
+    batchfile.write("samtools markdup -r -s --threads {} --reference {} --output-fmt bam {}.bam_sort {}.bam_sort_mkdup &> {}.stats.dup\n".format(self.config["slurm_header"]["threads"], ref, outbase, outbase, outbase))
     batchfile.write("samtools rmdup --reference {} {}.bam_sort_mkdup {}.bam_sort_rmdup\n".format(ref, outbase, outbase))
+    #Ref stats
+    batchfile.write("samtools index {}.bam_sort_rmdup\n".format(outbase))
+    batchfile.write("samtools idxstats {}.bam_sort_rmdup &> {}.stats.ref\n".format(outbase, outbase))
+    #Insert stats
+    batchfile.write("samtools stats {}.bam_sort_rmdup |grep ^IS | cut -f 2- &> {}.stats.ins\n".format(outbase, outbase))
+    #Coverage
+    batchfile.write("samtools stats --coverage 1,1000,10 {}.bam_sort_rmdup |grep ^COV | cut -f 2- &> {}.stats.cov\n".format(outbase, outbase))
+    #Mapped rate
+    batchfile.write("samtools flagstat {}.bam_sort_rmdup &> {}.stats.map\n".format(outbase, outbase))
+
     batchfile.write("\n")
     batchfile.close()
 

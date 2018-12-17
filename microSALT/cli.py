@@ -108,7 +108,7 @@ def snp(ctx, ref_type, input_type, file, sample, config, email):
 @root.group()
 @click.pass_context
 def type(ctx):
-  """Starts analysis of project/sample"""
+  """Standard QC and typing of project/sample"""
   pass
 
 @type.command()
@@ -239,7 +239,7 @@ def sample(ctx, sample_id, rerun, email, input, config):
       click.echo("Path does not contain sample id. Exiting.")
       sys.exit(-1)
   else:
-    prohits = ctx.obj['config']['folders']['results'].startswith("{}_".format(sample_id))
+    prohits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(sample_id))]
     if len(prohits) > 1:
       click.echo("Multiple instances of that analysis exists. Specify full path using --input")
       sys.exit(-1)

@@ -28,6 +28,7 @@ class Reporter():
     self.server = Process(target=app.run)
     self.ticketFinder = LIMS_Fetcher(self.config, self.logger)
     self.attachments = list()
+    self.error = False
 
   def report(self, type='html'):
     if type == 'html':
@@ -50,27 +51,34 @@ class Reporter():
       self.kill_flask()
       sys.exit(-1)
     try:
-      r = requests.get("http://127.0.0.1:5000/microSALT/{}/all".format(name), allow_redirects=True)
+      r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(name), allow_redirects=True)
+      outtype = "{}_Typing.html".format(self.ticketFinder.data['Customer_ID_project'])
+      open(outtype, 'wb').write(r.content)
+      self.attachments.append(outtype)
+      q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(name), allow_redirects=True)
+      outqc = "{}_QC.html".format(self.ticketFinder.data['Customer_ID_project'])
+      open(outqc, 'wb').write(q.content)
+      self.attachments.append(outqc)  
     except Exception as e:
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
-      self.kill_flask()
-      sys.exit(-1)
-    outname = "{}_microSALT.html".format(self.ticketFinder.data['Customer_ID_project'])
-    open(outname, 'wb').write(r.content)
-    self.attachments.append(outname)
+      self.error = True
     self.kill_flask()
 
   def mail(self):
     file_name = self.attachments
     msg = MIMEMultipart()
-    msg['Subject'] = '{} ({}) Reports'.format(self.name, file_name[0].split('_')[0])
+    if not self.error:
+      msg['Subject'] = '{} ({}) Reports'.format(self.name, file_name[0].split('_')[0])
+    else:
+      msg['Subject'] = '{} ({}) Failed Generating Report'.format(self.name, file_name[0].split('_')[0])
     msg['From'] = 'microSALT'
     msg['To'] = self.config['regex']['mail_recipient']
-    
-    for file in self.attachments:
-      part = MIMEApplication(open(file).read())  
-      part.add_header('Content-Disposition', 'attachment; filename="%s"' % os.path.basename(file))
-      msg.attach(part)
+   
+    if not self.error: 
+      for file in self.attachments:
+        part = MIMEApplication(open(file).read())  
+        part.add_header('Content-Disposition', 'attachment; filename="%s"' % os.path.basename(file))
+        msg.attach(part)
 
     s = smtplib.SMTP('localhost')
     s.connect()
