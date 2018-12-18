@@ -100,7 +100,7 @@ class Referencer():
        if not "{}.fasta".format(self.lims.data['reference']) in os.listdir(self.config['folders']['genomes']):
          self.download_ncbi(self.lims.data['reference'])
    except Exception as e:
-     raise Exception("Unable to add reference for sample {}. pubMLST lacks organism {} or NCBI ref {}".format(cg_id, self.lims.data['organism'], self.lims.data['reference']))
+     raise Exception("Unable to add reference for sample {}. Either pubMLST lacks organism {} or NCBI lacks ref {}".format(cg_id, self.lims.data['organism'], self.lims.data['reference']))
  
   def filter_id(self):
     """ Filter fastq based on identity to other hits """

@@ -371,12 +371,12 @@ class Job_Creator():
               self.logger.info("Suppressed command: {}".format(bash_cmd))
               
       if (not dry and not qc_only):
-        self.finish_job(jobarray)
+        self.finish_job(jobarray, single_sample)
     except Exception as e:
       self.logger.error("Issues handling some samples of project at {}\nSource: {}".format(self.finishdir, str(e)))
       #shutil.rmtree(self.finishdir, ignore_errors=True)
 
-  def finish_job(self, joblist):
+  def finish_job(self, joblist, single_sample=False):
     """ Uploads data and sends an email once all analysis jobs are complete. """
 
     startfile = "{}/run_started.out".format(self.finishdir)
@@ -392,9 +392,9 @@ class Job_Creator():
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
     if not single_sample:
-      mb.write("microSALT finish project {} --input {} --rerun\n".format(self.name, self.finishdir))
+      mb.write("microSALT util finish project {} --input {} --rerun\n".format(self.name, self.finishdir))
     else:
-      mb.write("microSALT finish sample {} --input {} --rerun\n".format(self.name, self.finishdir))
+      mb.write("microSALT util finish sample {} --input {} --rerun\n".format(self.name, self.finishdir))
     mb.write("touch {}/run_complete.out".format(self.finishdir))
     mb.close()
 
