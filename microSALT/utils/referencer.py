@@ -101,7 +101,6 @@ class Referencer():
          self.download_ncbi(self.lims.data['reference'])
    except Exception as e:
      raise Exception("Unable to add reference for sample {}. pubMLST lacks organism {} or NCBI ref {}".format(cg_id, self.lims.data['organism'], self.lims.data['reference']))
->>>>>>> origin/dev
  
   def filter_id(self):
     """ Filter fastq based on identity to other hits """

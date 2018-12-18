@@ -23,11 +23,14 @@ if config == '':
   click.echo("ERROR: No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
   sys.exit(-1)
 
+def done():
+  click.echo("Execution finished!")
+
 @click.group()
 @click.version_option(__version__)
 @click.pass_context
 def root(ctx):
-  """ microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline """
+  """microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline """
   ctx.obj = {}
   ctx.obj['config'] = config
   logger = logging.getLogger('main_logger')
@@ -41,10 +44,43 @@ def root(ctx):
   logger.addHandler(ch)
   ctx.obj['log'] = logger
 
-def done():
-  click.echo("Execution finished!")
+@root.group()
+@click.pass_context
+def cluster(ctx):
+  """Extensive clustering analysis"""
+  pass
 
-@root.command()
+@root.group()
+@click.pass_context
+def type(ctx):
+  """Basic sequence and resistance typing"""
+  pass
+
+@root.group()
+@click.pass_context
+def util(ctx):
+  """ Utilities for specific purposes """
+  pass
+
+@util.group()
+@click.pass_context
+def finish(ctx):
+  """Manually upload analysis and generate results"""
+  pass
+
+@util.group()
+@click.pass_context
+def refer(ctx):
+  """ Manipulates MLST organisms """
+  pass
+
+@cluster.group()
+@click.pass_context
+def cgmlst(ctx):
+  """In-depth sample relationship analysis"""
+  pass
+
+@cluster.command()
 @click.option('--ref_type', type=click.Choice(['ids', 'paths']), help="Use either CG IDs or sample folder paths", required=True)
 @click.option('--input_type', type=click.Choice(['list', 'file']), help="Use either list or static file for input", required=True)
 @click.option('--file', help="File containing list of samples to analyse, one per row")
@@ -105,18 +141,6 @@ def snp(ctx, ref_type, input_type, file, sample, config, email):
   if allpresent:
     overlord = Job_Creator(snplist, ctx.obj['config'], ctx.obj['log'])
     overlord.snp_job() 
-
-@root.group()
-@click.pass_context
-def type(ctx):
-  """Basic sequence and resistance typing"""
-  pass
-
-@root.group()
-@click.pass_context
-def cgmlst(ctx):
-  """In-depth sample relationship analysis"""
-  pass
 
 @cgmlst.group()
 @click.argument('reference_path')
@@ -297,18 +321,6 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only):
     click.echo("Unable to process sample {} due to '{}'".format(sample_id,e))
   done()
 
-@type.group()
-@click.pass_context
-def util(ctx):
-  """ Utilities for specific purposes """
-  pass
-
-@util.group()
-@click.pass_context
-def finish(ctx):
-  """Manually upload analysis and generate results"""
-  pass
-
 @finish.command()
 @click.argument('sample_id')
 @click.option('--rerun', is_flag=True, default=False, help='Overwrite existing data')
@@ -399,12 +411,6 @@ def project(ctx, project_id, rerun, email, input, config):
   codemonkey.report()
   done()
 
-@util.group()
-@click.pass_context
-def refer(ctx):
-  """ Manipulates MLST organisms """
-  pass
-
 @refer.command()
 @click.argument('organism')
 @click.pass_context
@@ -448,10 +454,3 @@ def view(ctx):
   """Starts an interactive webserver for viewing"""
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
   codemonkey.start_web()
-
-@util.command()
-@click.argument('sample_list_file')
-@click.pass_context
-def cgmlst(ctx, sample_list_file):
-  """Produces sample distance matrix from sample list file"""
-  done()

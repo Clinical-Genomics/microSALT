@@ -315,6 +315,7 @@ class Job_Creator():
       sample_col['CG_ID_sample'] = self.lims_fetcher.data['CG_ID_sample']
       sample_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
       sample_col['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
+      sample_col['reference_genome'] = self.lims_fetcher.data['reference']
       sample_col["date_analysis"] = self.dt
       self.db_pusher.add_rec(sample_col, 'Samples')
     except Exception as e:

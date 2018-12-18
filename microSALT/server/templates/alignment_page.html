@@ -3,7 +3,7 @@
 {% block body %}
   <div class="container-fluid">
     <div class="jumbotron">
-      <h1>Project: {{ samples[0].projects.CG_ID_project }}</h1>
+      <h1>Project: {{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></h1>
     </div>
 
     <div class="row">
@@ -46,28 +46,39 @@
       <table class="table table-striped table-bordered">
         <thead>
           <tr>
-            <th>Sample</th>
-            <th>External ID</th>
+            <th>Sample ID</th>
+            <th>CG Sample ID</th>
             <th>Reference Genome</th>
+            <th>Organism</th>
             <th>Total Reads</th>
             <th>Median Insert Size</th>
             <th>Duplication Rate</th>
             <th>Mapped rate</th>
-            <th>Coverage 10X</th>
-            <th>Coverage 30X</th>
-            <th>Coverage 50X</th>
-            <th>Coverage 100X</th>
+            <th>Average coverage</th>
+            <th>%BP > 10x Coverage</th>
+            <th>%BP > 30x Coverage</th>
+            <th>%BP > 50x Coverage</th>
+            <th>%BP > 100x Coverage</th>
           </tr>
         </thead>
         
         <tbody>
           {% for sample in samples %}
             <tr>
-              <td>{{ samples[0].projects.Customer_ID_project }}</td>
+              <td>{{ sample.Customer_ID_sample }}</td>
               <td>{{ sample.CG_ID_sample }}</td>
               <td>{{ sample.reference_genome }}</td>
-              <td class="text-right">{{ sample.total_reads }}</td>
-              <td class="text-right">{{ sample.insert_size }}</td>
+              <td>{{sample.organism.replace('_', ' ').capitalize()}}</td>
+              <td class="text-right">
+                {% if sample.total_reads is not none %}
+                  {{ sample.total_reads }}
+                {% else %} Unknown {% endif %}
+              </td>
+              <td class="text-right">
+                {% if sample.insert_size is not none %}
+                  {{ sample.insert_size }}
+                {% else %} Unknown {% endif %}
+              </td>
               <td class="text-right">
                 {% if sample.duplication_rate is not none %} 
                   {{ (sample.duplication_rate*100)|round(2) }}% 
@@ -76,6 +87,11 @@
               <td class="text-right">
                 {% if sample.mapped_rate is not none %}
                   {{ (sample.mapped_rate*100)|round(2)}}%
+                {% else %} Unknown {% endif %}
+              </td>
+              <td class="text-right">
+                {% if sample.average_coverage is not none %}
+                  {{ (sample.average_coverage)|round(2)}}%
                 {% else %} Unknown {% endif %}
               </td>
               <td class="text-right">
@@ -143,7 +159,7 @@
           },
           series: [{
             color: 'rgba(223, 83, 83, .5)',
-            data: {{ duplications|tojson|safe }}
+            data: {{ dup_tuples|tojson|safe }}
           }]
         })
 
@@ -175,7 +191,7 @@
           },
           series: [{
             color: 'rgba(223, 83, 83, .5)',
-            data: {{ mapped|tojson|safe }}
+            data: {{ map_tuples|tojson|safe }}
           }]
         })
 
@@ -207,7 +223,7 @@
           },
           series: [{
             color: 'rgba(223, 83, 83, .5)',
-            data: {{ coverage|tojson|safe }}
+            data: {{ cov_tuples|tojson|safe }}
           }]
         })
 
@@ -250,7 +266,7 @@
           },
           series: [{
             color: 'rgba(223, 83, 83, .5)',
-            data: {{ reads_coverage|tojson|safe }}
+            data: {{ readsVScov_tuples|tojson|safe }}
           }]
         })
     })

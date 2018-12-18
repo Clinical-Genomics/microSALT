@@ -91,10 +91,10 @@ class Projects(db.Model):
   __tablename__ = 'projects'
   samples = relationship('Samples', back_populates='projects')
 
-   CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
-   Customer_ID_project = db.Column(db.String(15))
-   date_ordered = db.Column(db.DateTime)
-   reference_genome = db.Column(db.String(32))
+  CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
+  Customer_ID_project = db.Column(db.String(15))
+  date_ordered = db.Column(db.DateTime)
+  reference_genome = db.Column(db.String(32))
 
 class Versions(db.Model):
   __tablename__ = 'versions'

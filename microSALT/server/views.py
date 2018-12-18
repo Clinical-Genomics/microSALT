@@ -55,7 +55,12 @@ def alignment_page(project):
     return render_template('alignment_page.html',
         samples = sample_info['samples'],
         date = date.today().isoformat(),
-        version = sample_info['versions'])
+        version = sample_info['versions'],
+        cov_tuples = gen_tuples(project, "coverage_10x"),
+        map_tuples = gen_tuples(project, "mapped_rate"),
+        dup_tuples = gen_tuples(project, "duplication_rate"),
+        readsVScov_tuples = gen_tuples(project, ["total_reads","coverage_10x"])
+    )
 
 @app.route('/microSALT/<project>/typing/<organism_group>')
 def typing_page(project, organism_group):
@@ -66,6 +71,21 @@ def typing_page(project, organism_group):
         date = date.today().isoformat(),
         version = sample_info['versions'],
         build = __version__)
+
+def gen_tuples(pid, value):
+  """ Generates name:data tuples for highcharts plots """
+  tuples = list()
+  sample_info = session.query(Samples).filter(Samples.CG_ID_project==pid)
+
+  for s in sample_info:
+    tuples.append(dict())
+    tuples[-1]['name'] = s.CG_ID_sample
+    if isinstance(value, str):
+      tuples[-1]['y'] = getattr(s, value)
+    elif isinstance(value, (list,)):
+      tuples[-1]['x'] = getattr(s, value[0])
+      tuples[-1]['y'] = getattr(s, value[1])
+  return tuples
 
 def gen_reportdata(pid, organism_group='all'):
   """ Queries database for all necessary information for the reports """
