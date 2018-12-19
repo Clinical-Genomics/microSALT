@@ -44,6 +44,11 @@
     
     <div class="panel panel-default">
       <table class="table table-striped table-bordered">
+        <tr>
+          <td><i>Raw</i></td><td></td><td></td><td></td><td></td>
+          <td><i>Trimmed</i></td>
+          <td><i>Deduplicated</i></td><td></td><td></td><td></td><td></td><td></td><td></td>
+        </tr>
         <thead>
           <tr>
             <th>Sample ID</th>
@@ -68,7 +73,9 @@
               <td>{{ sample.Customer_ID_sample }}</td>
               <td>{{ sample.CG_ID_sample }}</td>
               <td>{{ sample.reference_genome }}</td>
-              <td>{{sample.organism.replace('_', ' ').capitalize()}}</td>
+              {% if sample.organism is not none %}
+                <td>{{sample.organism.replace('_', ' ').capitalize()}}</td>
+              {% else %}<td>Undetermined</td>{% endif %}
               <td class="text-right">
                 {% if sample.total_reads is not none %}
                   {{ sample.total_reads }}
@@ -91,7 +98,7 @@
               </td>
               <td class="text-right">
                 {% if sample.average_coverage is not none %}
-                  {{ (sample.average_coverage)|round(2)}}%
+                  {{ (sample.average_coverage)|round(2)}}x
                 {% else %} Unknown {% endif %}
               </td>
               <td class="text-right">

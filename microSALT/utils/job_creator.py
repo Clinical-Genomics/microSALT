@@ -196,11 +196,13 @@ class Job_Creator():
     #Markdup and duplicate stats
     batchfile.write("samtools markdup -r -s --threads {} --reference {} --output-fmt bam {}.bam_sort {}.bam_sort_mkdup &> {}.stats.dup\n".format(self.config["slurm_header"]["threads"], ref, outbase, outbase, outbase))
     batchfile.write("samtools rmdup --reference {} {}.bam_sort_mkdup {}.bam_sort_rmdup\n".format(ref, outbase, outbase))
-    #Ref stats
+    #Indexing
+    batchfile.write("samtools index {}.bam_sort_mkdup\n".format(outbase))
+    batchfile.write("samtools idxstats {}.bam_sort_mkdup &> {}.stats.ref\n".format(outbase, outbase))
     batchfile.write("samtools index {}.bam_sort_rmdup\n".format(outbase))
     batchfile.write("samtools idxstats {}.bam_sort_rmdup &> {}.stats.ref\n".format(outbase, outbase))
     #Insert stats
-    batchfile.write("samtools stats {}.bam_sort_rmdup |grep ^IS | cut -f 2- &> {}.stats.ins\n".format(outbase, outbase))
+    batchfile.write("samtools stats {}.bam_sort_mkdup |grep ^IS | cut -f 2- &> {}.stats.ins\n".format(outbase, outbase))
     #Coverage
     batchfile.write("samtools stats --coverage 1,1000,10 {}.bam_sort_rmdup |grep ^COV | cut -f 2- &> {}.stats.cov\n".format(outbase, outbase))
     #Mapped rate

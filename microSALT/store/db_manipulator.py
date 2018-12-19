@@ -8,6 +8,8 @@ import warnings
 
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
+# maintain the same connection per thread
+from sqlalchemy.pool import SingletonThreadPool
 
 from microSALT.store.orm_models import app, Projects, Resistances, Samples, Seq_types, Versions, Profile_cgmlst
 from microSALT.store.models import Profiles
@@ -17,7 +19,7 @@ class DB_Manipulator:
   def __init__(self, config, log):
     self.config = config
     self.logger = log
-    self.engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
+    self.engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'], poolclass=SingletonThreadPool)
     Session = sessionmaker(bind=self.engine)
     self.session = Session()
     self.metadata = MetaData(self.engine)

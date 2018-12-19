@@ -101,6 +101,7 @@ class Scraper():
       self.logger.warning("Cannot generate quast statistics for {}".format(self.name))
 
   def get_locilength(self, analysis, reference, target):
+    """ Find length of target within reference """
     alleles=dict()
     targetPre = ">{}".format(target)
     lastallele=""
@@ -110,6 +111,7 @@ class Scraper():
       target = re.search('(.+)_(\w+)', target).group(1)
       filename="{}/{}/{}.tfa".format(self.config["folders"]["references"], reference, target)
 
+    #Create dict with full name as key, associated nucleotides as value. 
     f = open(filename,"r")
     for row in f:
       if ">" in row:
@@ -118,7 +120,11 @@ class Scraper():
       else:
         alleles[lastallele] = alleles[lastallele] + row.strip()
     f.close()
-    return len(alleles[targetPre])
+    try:
+      return len(alleles[targetPre])
+    except KeyError as e:
+      self.logger.error("Target '{}' has been removed for current version of resFinder! Defaulting hit to length 1".format(targetPre))
+      return 1
 
   def scrape_resistances(self):
     q_list = glob.glob("{}/resistance/*".format(self.sampledir))

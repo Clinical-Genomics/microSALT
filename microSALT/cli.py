@@ -65,7 +65,7 @@ def util(ctx):
 @util.group()
 @click.pass_context
 def finish(ctx):
-  """Manually upload analysis and generate results"""
+  """Reupload typing analysis and generate results"""
   pass
 
 @util.group()
@@ -395,7 +395,7 @@ def project(ctx, project_id, rerun, email, input, config):
       click.echo("Path does not contain project id. Exiting.")
       sys.exit(-1)
   else:
-    prohits = ctx.obj['config']['folders']['results'].startswith("{}_".format(project_id))
+    prohits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(project_id))]
     if len(prohits) > 1:
       click.echo("Multiple instances of that analysis exists. Specify full path using --input")
       sys.exit(-1)

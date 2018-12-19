@@ -79,7 +79,7 @@ def gen_tuples(pid, value):
 
   for s in sample_info:
     tuples.append(dict())
-    tuples[-1]['name'] = s.CG_ID_sample
+    tuples[-1]['name'] = s.projects.Customer_ID_project
     if isinstance(value, str):
       tuples[-1]['y'] = getattr(s, value)
     elif isinstance(value, (list,)):
