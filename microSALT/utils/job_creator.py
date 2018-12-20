@@ -62,14 +62,13 @@ class Job_Creator():
     return headerline
 
   def verify_fastq(self):
-    """ Uses arg indir to return a list of PE fastq tuples fulfilling naming convention """
+    """ Uses arg indir to return a dict of PE fastq tuples fulfilling naming convention """
     files = os.listdir(self.indir)
     if files == []:
       raise Exception("Directory {} lacks fastq files.".format(self.indir))
-    verified_files = list()
+    verified_files = dict()
     for file in files:
       file_match = re.match( self.config['regex']['file_pattern'], file)
-      #file_match = self.fileformat.match( file )
       if file_match:
         if file_match[1] == '1':
           pairno = '2'
@@ -78,8 +77,9 @@ class Job_Creator():
                       file_match.string[file_match.end(1):file_match.end()])
           if pairname in files:
             files.pop( files.index(pairname) )
-            verified_files.append(file_match[0])
-            verified_files.append(pairname)
+            verified_files[self.name] = list()
+            verified_files[self.name].append(file_match[0])
+            verified_files[self.name].append(pairname)
         elif file_match[1] == '2':
           pass
         else:
@@ -183,11 +183,16 @@ class Job_Creator():
     ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
     localdir = "{}/alignment".format(self.outdir)
     outbase = "{}/{}_{}".format(localdir, self.name, self.lims_fetcher.data['reference'])
-
+    files = self.verify_fastq()
+ 
     #Create run
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# Variant calling based on local alignment\n")
     batchfile.write("mkdir {}\n".format(localdir))
+    #Total reads
+    batchfile.write("bwa mem -t {} {} {} {} > {}.raw.sam\n".format(self.config["slurm_header"]["threads"], ref ,files[self.name][0], files[self.name][1], outbase))
+    batchfile.write("samtools view -c {}.raw.sam &> {}.stats.raw\n".format(outbase, outbase)) 
+
     batchfile.write("bwa mem -t {} {} {} {} > {}.sam\n".format(self.config["slurm_header"]["threads"], ref ,self.concat_files['f'], self.concat_files['r'], outbase))
     batchfile.write("samtools view --threads {} -b -o {}.bam -T {} {}.sam\n".format(self.config["slurm_header"]["threads"], outbase, ref, outbase))
     batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
@@ -221,10 +226,9 @@ class Job_Creator():
     files = self.verify_fastq()
     batchfile = open(self.batchfile, "a+")
     batchfile.write("mkdir {}\n\n".format(trimdir))
-    i=0
-    j=1
-    while i < len(files):
-      outfile = files[i].split('.')[0][:-2]
+
+    for index, k in enumerate(files):
+      outfile = files[k][0].split('.')[0][:-2]
       if not outfile in self.trimmed_files:
         self.trimmed_files[outfile] = dict()
       self.trimmed_files[outfile]['fp'] = "{}/{}_trim_front_pair.fq".format(trimdir, outfile)
@@ -232,14 +236,12 @@ class Job_Creator():
       self.trimmed_files[outfile]['rp'] = "{}/{}_trim_rev_pair.fq".format(trimdir, outfile)
       self.trimmed_files[outfile]['ru'] = "{}/{}_trim_rev_unpair.fq".format(trimdir, outfile)
 
-      batchfile.write("# Trimmomatic set {}\n".format(j))
+      batchfile.write("# Trimmomatic set {}\n".format(index+1))
       batchfile.write("trimmomatic PE -threads {} -phred33 {}/{} {}/{} {} {} {} {}\
       ILLUMINACLIP:{}NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n\n"\
-      .format(self.config["slurm_header"]["threads"], self.indir, files[i], self.indir, files[i+1],\
+      .format(self.config["slurm_header"]["threads"], self.indir, files[k][0], self.indir, files[k][1],\
       self.trimmed_files[outfile]['fp'], self.trimmed_files[outfile]['fu'], self.trimmed_files[outfile]['rp'],\
       self.trimmed_files[outfile]['ru'], self.config["folders"]["adapters"]))
-      i=i+2
-      j+=1
 
   def create_assemblystats_section(self):
     batchfile = open(self.batchfile, "a+")

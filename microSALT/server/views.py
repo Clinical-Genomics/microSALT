@@ -56,10 +56,6 @@ def alignment_page(project):
         samples = sample_info['samples'],
         date = date.today().isoformat(),
         version = sample_info['versions'],
-        cov_tuples = gen_tuples(project, "coverage_10x"),
-        map_tuples = gen_tuples(project, "mapped_rate"),
-        dup_tuples = gen_tuples(project, "duplication_rate"),
-        readsVScov_tuples = gen_tuples(project, ["total_reads","coverage_10x"])
     )
 
 @app.route('/microSALT/<project>/typing/<organism_group>')

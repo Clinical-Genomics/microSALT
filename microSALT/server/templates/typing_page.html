@@ -42,7 +42,7 @@
                       {% if sample.organism is not none %}
                         <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
                       {% else %}
-                        <td><i>Control</i></td>
+                        <td><i>Unknown</i></td>
                       {% endif %}
                       {% if sample.ST_status == 'None' %}
                         <td><font color="red">{{sample.ST_status }}</font></td>
@@ -89,7 +89,7 @@
                       {% if sample.organism is not none %}
                         <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
                       {% else %}
-                        <td><i>Control</i></td>
+                        <td><i>Unknown</i></td>
                       {% endif %}
                     </tr>
                     <tr><th scope="row" >Sequence Type</th>

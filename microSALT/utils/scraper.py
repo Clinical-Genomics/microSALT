@@ -555,6 +555,8 @@ class Scraper():
     """Scrapes a single alignment result"""
     ins_list = list()
     cov_dict = dict()
+    align_dict = dict()
+    align_dict["reference_genome"] = self.lims_fetcher.data['reference']
 
     q_list = glob.glob("{}/alignment/*.stats.*".format(self.sampledir))
     for file in q_list:
@@ -562,6 +564,8 @@ class Scraper():
        type = file.split('.')[-1]
        for line in fh.readlines():
          lsplit = line.rstrip().split('\t')
+         if type == 'raw':
+           tot_reads = int(lsplit[0])
          if type == 'ins':
            ins_list.append(int(lsplit[1]))
          elif type == 'cov':
@@ -593,7 +597,6 @@ class Scraper():
         plus50 += v
       if int(k) > 100:
         plus100 += v
-    align_dict = dict()
     align_dict['coverage_10x'] = plus10/float(total)
     align_dict['coverage_30x'] = plus30/float(total)
     align_dict['coverage_50x'] = plus50/float(total)
@@ -602,4 +605,5 @@ class Scraper():
     align_dict['insert_size'] = median_ins
     align_dict['duplication_rate'] = dup_bp/float(ref_len)
     align_dict['average_coverage'] = sum/float(ref_len)
+    align_dict['total_reads'] = tot_reads
     self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', align_dict)

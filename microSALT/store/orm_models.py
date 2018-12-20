@@ -39,6 +39,7 @@ class Samples(db.Model):
    coverage_50x = db.Column(db.Float)
    coverage_100x = db.Column(db.Float)
    average_coverage = db.Column(db.Float)
+   reference_genome = db.Column(db.String(32))
 
 class Seq_types(db.Model):
   __tablename__ = 'seq_types'
@@ -94,7 +95,6 @@ class Projects(db.Model):
   CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
   Customer_ID_project = db.Column(db.String(15))
   date_ordered = db.Column(db.DateTime)
-  reference_genome = db.Column(db.String(32))
 
 class Versions(db.Model):
   __tablename__ = 'versions'
