@@ -327,6 +327,7 @@ class Scraper():
     conversions["lnu(E)"]="Macrolide"
     conversions["lnu(G)"]="Macrolide"
     conversions["lnu(P)"]="Macrolide"
+    conversions["lsa(E)"]="Macrolide"
     conversions["mcr-8"]="Colistin"
     conversions["mdf(A)"]="Macrolide"
     conversions["mdt(A)"]="Macrolide"
