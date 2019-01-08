@@ -22,7 +22,7 @@ class Referencer():
     self.db_access = DB_Manipulator(config, log)
     self.updated = list()
     #Fetch names of existing refs
-    self.refs = self.db_access.get_profiles()
+    self.refs = self.db_access.profiles
     organisms = self.refs.keys()
     self.organisms = [*organisms]
     self.lims=LIMS_Fetcher(config, log)
