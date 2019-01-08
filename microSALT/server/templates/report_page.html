@@ -46,6 +46,8 @@
                       {% endif %}
                       {% if sample.ST_status == 'None' %}
                         <td><font color="red">{{sample.ST_status }}</font></td>
+                      {% else if sample.ST <= -4 %}
+                        <td>{{sample.ST}}</td>                  
                       {% else %}
                         <td>{{sample.ST_status }}</td>
                       {% endif %}
@@ -95,6 +97,8 @@
                     <tr><th scope="row" >Sequence Type</th>
                       {% if sample.ST_status == 'None' %}
                         <td><font color="red">{{sample.ST_status }}</font></td>
+                      {% else if sample.ST <= -4 %}
+                        <td>{{sample.ST}}</td>
                       {% else %}
                         <td>{{sample.ST_status }}</td>
                       {% endif %}

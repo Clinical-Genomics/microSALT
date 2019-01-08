@@ -78,7 +78,7 @@ def gen_reportdata(pid, organism_group='all'):
     elif s.ST < 0:
       if s.ST == -1:
         s.ST_status = 'Control (auto)'
-      elif s.ST == -4:
+      elif s.ST <= -4:
         s.ST_status = 'Novel'
       else:
         s.ST_status='None'
