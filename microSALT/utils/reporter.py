@@ -30,19 +30,43 @@ class Reporter():
     self.attachments = list()
     self.error = False
 
-  def report(self, type='html'):
-    if type == 'html':
+  def report(self, type='all'):
+    self.start_web() 
+    if type == 'all':
+      self.gen_html()
+      self.gen_qc()
+      self.gen_csv()
+    elif type == 'html':
       self.gen_html()
     elif type == 'csv':
-      self.csv()
+      self.gen_csv()
+    elif type == 'qc':
+      self.gen_qc()
     else:
       raise Exception("Report function recieved invalid format")
+    self.kill_flask()
     self.mail()
     for file in self.attachments:
       os.remove(file)
 
+  def gen_qc(self):
+    name = self.name
+    try:
+      self.ticketFinder.load_lims_project_info(name)
+    except Exception as e:
+      self.logger.error("Project {} does not exist".format(name))
+      self.kill_flask()
+      sys.exit(-1)
+    try:
+      q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(name), allow_redirects=True)
+      outqc = "{}_QC.html".format(self.ticketFinder.data['Customer_ID_project'])
+      open(outqc, 'wb').write(q.content)
+      self.attachments.append(outqc)  
+    except Exception as e:
+      self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
+      self.error = True
+ 
   def gen_html(self):
-    self.start_web()
     name = self.name
     try:
       self.ticketFinder.load_lims_project_info(name)
@@ -55,14 +79,9 @@ class Reporter():
       outtype = "{}_Typing.html".format(self.ticketFinder.data['Customer_ID_project'])
       open(outtype, 'wb').write(r.content)
       self.attachments.append(outtype)
-      q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(name), allow_redirects=True)
-      outqc = "{}_QC.html".format(self.ticketFinder.data['Customer_ID_project'])
-      open(outqc, 'wb').write(q.content)
-      self.attachments.append(outqc)  
     except Exception as e:
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.error = True
-    self.kill_flask()
 
   def mail(self):
     file_name = self.attachments
@@ -92,7 +111,7 @@ class Reporter():
     #Hinders requests before server goes up
     time.sleep(0.05)
 
-  def csv(self):
+  def gen_csv(self):
     name = self.name
     self.ticketFinder.load_lims_project_info(name)
     excel = open("{}.csv".format(name), "w+")

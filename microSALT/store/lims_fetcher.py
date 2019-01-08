@@ -86,12 +86,16 @@ class LIMS_Fetcher():
       organism = "Other"
       self.logger.warn("Unable to resolve ambigious organism found in sample {}."\
       .format(cg_sampleid))
+    if 'priority' in sample.udf:
+      prio = sample.udf['priority']
+    else:
+      prio = ""
     try:
       self.data.update({'CG_ID_project': sample.project.id,
                            'CG_ID_sample': sample.id,
                            'Customer_ID_sample' : sample.name,
                            'organism' : organism,
-                           'priority' : sample.udf['priority'],
+                           'priority' : prio,
                            'reference' : sample.udf['Reference Genome Microbial']})
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for sample {}. Review LIMS data.\nSource: {}"\

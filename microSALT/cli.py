@@ -439,13 +439,13 @@ def list(ctx):
 @util.command()
 @click.argument('project_name')
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--format', default='html', type=click.Choice(['html', 'csv']))
+@click.option('--type', default='all', type=click.Choice(['all', 'html', 'csv', 'qc']))
 @click.pass_context
-def report(ctx, project_name, email, format):
+def report(ctx, project_name, email, type):
   """Re-generates report for a project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_name)
-  codemonkey.report(format)
+  codemonkey.report(type)
   done()
 
 @util.command()

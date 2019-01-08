@@ -84,7 +84,7 @@ class Referencer():
          refname = self.lims.get_organism_refname(cg_sampleid)
          if refname not in self.organisms and refname not in neworgs:
            neworgs.append(self.lims.data['organism'])
-         if not "{}.fasta".format(self.lims.data['reference']) in os.listdir(self.config['folders']['genomes']):
+         if not "{}.fasta".format(self.lims.data['reference']) in os.listdir(self.config['folders']['genomes']) and not self.lims.data['reference'] in newrefs:
            newrefs.append(self.lims.data['reference']) 
        for org in neworgs:
          self.add_pubmlst(org)
