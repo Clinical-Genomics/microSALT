@@ -249,7 +249,17 @@ class Referencer():
         if(os.path.isfile("{}/{}".format(hiddensrc, file))):
           #Copy fresh
           shutil.copy("{}/{}".format(hiddensrc, file), self.config['folders']['resistances'])
-      # Create new indexes
+
+    #Double checks indexation is current.
+    reIndex = False
+    for file in os.listdir(self.config['folders']['resistances']):
+      parts = file.split('.')
+      if parts[1] == 'fsa':
+        # Missing index or index born earlier than source
+        if not "{}.nhr".format(parts[0]) in os.listdir(self.config['folders']['resistances']) \
+           or os.stat(file)[-1] > os.stat("{}.nhr".format(parts[0]))[-1]:
+             reIndex = True
+    if reIndex:
       self.index_db(self.config['folders']['resistances'], '.fsa')
 
   def existing_organisms(self):

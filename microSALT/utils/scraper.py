@@ -123,7 +123,7 @@ class Scraper():
     try:
       return len(alleles[targetPre])
     except KeyError as e:
-      self.logger.error("Target '{}' has been removed for current version of resFinder! Defaulting hit to length 1".format(targetPre))
+      self.logger.error("Target '{}' has been removed from current version of resFinder! Defaulting hit to length 1".format(targetPre))
       return 1
 
   def scrape_resistances(self):
