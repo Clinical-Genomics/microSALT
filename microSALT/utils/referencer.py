@@ -149,21 +149,22 @@ class Referencer():
     files = os.listdir(full_dir)
     sufx_files = glob.glob("{}/*{}".format(full_dir, suffix)) #List of source files
     nin_suff = sum([1 for elem in files if 'nin' in elem]) #Total number of nin files 
-    if nin_suff < len(sufx_files):
-      for file in sufx_files:
-        try:
-          #Resistence files
-          if '.fsa' in suffix:
-            bash_cmd = "makeblastdb -in {}/{} -dbtype nucl -out {}".format(\
-            full_dir, os.path.basename(file),  os.path.basename(file[:-4]))
-          #MLST locis
-          else:
-            bash_cmd = "makeblastdb -in {}/{} -dbtype nucl -parse_seqids -out {}".format(\
-            full_dir, os.path.basename(file),  os.path.basename(file[:-4]))
-          proc = subprocess.Popen(bash_cmd.split(), cwd=full_dir, stdout=subprocess.PIPE)
-          output, error = proc.communicate()
-        except Exception as e:
-          self.logger.error("Unable to index requested target {} in {}".format(file, full_dir))
+    #if nin_suff < len(sufx_files):
+    for file in sufx_files:
+      try:
+        #Resistence files
+        if '.fsa' in suffix:
+          bash_cmd = "makeblastdb -in {}/{} -dbtype nucl -out {}".format(\
+          full_dir, os.path.basename(file),  os.path.basename(file[:-4]))
+        #MLST locis
+        else:
+          bash_cmd = "makeblastdb -in {}/{} -dbtype nucl -parse_seqids -out {}".format(\
+          full_dir, os.path.basename(file),  os.path.basename(file[:-4]))
+        proc = subprocess.Popen(bash_cmd.split(), cwd=full_dir, stdout=subprocess.PIPE)
+        output, error = proc.communicate()
+      except Exception as e:
+        self.logger.error("Unable to index requested target {} in {}".format(file, full_dir))
+    self.logger.info("Indexed contents of {}".format(full_dir))
 
   def fetch_external(self):
     """ Updates reference for data that IS ONLY LINKED to pubMLST """
@@ -254,11 +255,10 @@ class Referencer():
     reIndex = False
     for file in os.listdir(self.config['folders']['resistances']):
       parts = file.split('.')
-      if parts[1] == 'fsa':
+      if len(parts) > 1 and parts[1] == 'fsa':
         # Missing index or source modified after index
         if not "{}.nhr".format(parts[0]) in os.listdir(self.config['folders']['resistances']) \
-           or os.stat("{}/{}".format(self.config['folders']['resistances'], file)).st_mtime > os.stat("{}/{}.nhr".format(\
-              self.config['folders']['resistances'],parts[0])).st_mtime:
+           or os.stat("{}/{}".format(self.config['folders']['resistances'], file)).st_mtime > os.stat("{}/{}.nhr".format(self.config['folders']['resistances'],parts[0])).st_mtime:
              reIndex = True
     if reIndex:
       self.index_db(self.config['folders']['resistances'], '.fsa')

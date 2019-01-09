@@ -584,6 +584,7 @@ class Scraper():
            if dsplit[0] == 'DUPLICATE' and dsplit[1] == 'TOTAL':
              dup_bp = int(dsplit[2])
     #Post mangle
+    #Fallbacks
     if len(ins_list) >= 1:
       median_ins = ins_list.index(max(ins_list))
     else:
@@ -600,13 +601,24 @@ class Scraper():
         plus50 += v
       if int(k) > 100:
         plus100 += v
-    align_dict['coverage_10x'] = plus10/float(total)
-    align_dict['coverage_30x'] = plus30/float(total)
-    align_dict['coverage_50x'] = plus50/float(total)
-    align_dict['coverage_100x'] = plus100/float(total) 
+    if total > 0:
+      align_dict['coverage_10x'] = plus10/float(total)
+      align_dict['coverage_30x'] = plus30/float(total)
+      align_dict['coverage_50x'] = plus50/float(total)
+      align_dict['coverage_100x'] = plus100/float(total)
+    else:
+      align_dict['coverage_10x'] = 0.0
+      align_dict['coverage_30x'] = 0.0
+      align_dict['coverage_50x'] = 0.0
+      align_dict['coverage_100x'] = 0.0
+ 
     align_dict['mapped_rate'] = map_rate
     align_dict['insert_size'] = median_ins
-    align_dict['duplication_rate'] = dup_bp/float(ref_len)
-    align_dict['average_coverage'] = sum/float(ref_len)
+    if ref_len > 0:
+      align_dict['duplication_rate'] = dup_bp/float(ref_len)
+      align_dict['average_coverage'] = sum/float(ref_len)
+    else:
+      align_dict['duplication_rate'] = 0.0
+      align_dict['average_coverage'] = 0.0
     align_dict['total_reads'] = tot_reads
     self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', align_dict)
