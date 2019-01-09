@@ -584,7 +584,10 @@ class Scraper():
            if dsplit[0] == 'DUPLICATE' and dsplit[1] == 'TOTAL':
              dup_bp = int(dsplit[2])
     #Post mangle
-    median_ins = ins_list.index(max(ins_list))
+    if len(ins_list) >= 1:
+      median_ins = ins_list.index(max(ins_list))
+    else:
+      median_ins = 0
     sum, plus10, plus30, plus50, plus100, total = 0, 0, 0, 0, 0, 0
     for k, v in cov_dict.items():
       sum += int(k)*v

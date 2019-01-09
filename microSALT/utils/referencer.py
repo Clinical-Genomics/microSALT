@@ -255,9 +255,10 @@ class Referencer():
     for file in os.listdir(self.config['folders']['resistances']):
       parts = file.split('.')
       if parts[1] == 'fsa':
-        # Missing index or index born earlier than source
+        # Missing index or source modified after index
         if not "{}.nhr".format(parts[0]) in os.listdir(self.config['folders']['resistances']) \
-           or os.stat(file)[-1] > os.stat("{}.nhr".format(parts[0]))[-1]:
+           or os.stat("{}/{}".format(self.config['folders']['resistances'], file)).st_mtime > os.stat("{}/{}.nhr".format(\
+              self.config['folders']['resistances'],parts[0])).st_mtime:
              reIndex = True
     if reIndex:
       self.index_db(self.config['folders']['resistances'], '.fsa')
