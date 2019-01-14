@@ -73,11 +73,11 @@ def gen_reportdata(pid, organism_group='all'):
                 int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
   for s in sample_info:
     s.ST_status=str(s.ST)
-    if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or s.Customer_ID_sample.startswith('NK-'):
+    if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or s.Customer_ID_sample.startswith('CTRL') or s.Customer_ID_sample.startswith('Neg'):
       s.ST_status = 'Control (prefix)'
     elif s.ST < 0:
       if s.ST == -1:
-        s.ST_status = 'Control (auto)'
+        s.ST_status = 'Unavailable'
       elif s.ST == -4:
         s.ST_status = 'Novel'
       else:
