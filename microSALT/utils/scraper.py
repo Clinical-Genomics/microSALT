@@ -240,7 +240,8 @@ class Scraper():
          conversions['tetA({})'.format(num)] = 'Tetracycline'
          conversions['tetB({})'.format(num)] = 'Tetracycline'
          conversions['erm({})'.format(num)]= 'Macrolide'
-         conversions['mcr-{}.{}'.format(int(num)/10, num)] = 'Colistin'
+         for prim in range(1,11):
+           conversions['mcr-{}.{}'.format(prim, num)] = 'Colistin'
 
     tho = range(1, 1000)
     for num in tho:
