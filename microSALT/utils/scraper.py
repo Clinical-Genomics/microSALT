@@ -559,6 +559,11 @@ class Scraper():
     align_dict["reference_genome"] = self.lims_fetcher.data['reference']
 
     q_list = glob.glob("{}/alignment/*.stats.*".format(self.sampledir))
+    map_rate = 0.0
+    median_ins = 0
+    ref_len = 0.0
+    tot_reads = 0
+    tot_map = 0
     for file in q_list:
       with open(file, 'r') as fh:
        type = file.split('.')[-1]
@@ -571,14 +576,15 @@ class Scraper():
          elif type == 'cov':
            cov_dict[lsplit[1]] = int(lsplit[2])
          elif type == 'ref':
-           if lsplit[0] != '*':
+           if lsplit[0] != '*' and len(lsplit) >= 2:
              ref_len = int(lsplit[1])
          elif type == 'map':
            dsplit = line.rstrip().split(' ')
            if len(dsplit)>= 5 and dsplit[4] == 'total':
              tot_map = int(dsplit[0])
            elif len(dsplit)>=4 and dsplit[3] == 'mapped':
-             map_rate = int(dsplit[0])/float(tot_map)
+             if tot_map > 0:
+               map_rate = int(dsplit[0])/float(tot_map)
          elif type == 'dup':
            dsplit = line.rstrip().split(' ')
            if dsplit[0] == 'DUPLICATE' and dsplit[1] == 'TOTAL':
@@ -587,8 +593,6 @@ class Scraper():
     #Fallbacks
     if len(ins_list) >= 1:
       median_ins = ins_list.index(max(ins_list))
-    else:
-      median_ins = 0
     sum, plus10, plus30, plus50, plus100, total = 0, 0, 0, 0, 0, 0
     for k, v in cov_dict.items():
       sum += int(k)*v
