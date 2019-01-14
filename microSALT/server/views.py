@@ -104,7 +104,7 @@ def gen_reportdata(pid, organism_group='all'):
 
     #Resistence filter
     for r in s.resistances:
-      if (s.ST > 0 or s.ST_status == 'Novel') and (r.identity >= config["threshold"]["res_id"] and r.span >= config["threshold"]["res_span"]) or (s.ST < 0 and s.ST_status != 'Novel'):
+      if (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity >= config["threshold"]["res_id"] and r.span >= config["threshold"]["res_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
         r.threshold = 'Passed'
       else:
         r.threshold = 'Failed'
