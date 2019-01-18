@@ -67,7 +67,7 @@ class DB_Manipulator:
       for pk in pk_list:
         args.append("table.c.{}=={}".format(pk, data_dict[pk]))
       args = '_or(' + ','.join(args) + ')'
-      exist = self.session.query(table).filter(eval(filter)).all()
+      exist = self.session.query(table).filter(eval(args)).all()
       #Add record
       if len(exist) > 0:
         data = table.insert()
@@ -184,7 +184,7 @@ class DB_Manipulator:
     """ Helper function. Flags a set of seq_types as part of the final prediction.
     Uses optional pks[loci][column] = VALUE dictionary to distinguish in scenarios where an allele number has multiple hits"""
     sample = self.session.query(Seq_types).filter(Seq_types.CG_ID_sample==cg_sid)
- 
+
     if pks == dict():
       sample.update({Seq_types.st_predictor: 1})
     else:
@@ -195,7 +195,7 @@ class DB_Manipulator:
         arglist = list()
         for key, val in columns.items():
           arglist.append("Seq_types.{}=='{}'".format(key,val))
-          args = ', '.join(arglist)
+          args = "and_("  + ', '.join(arglist) + ")"
         sample.filter(eval(args)).update({Seq_types.st_predictor : 1})
     self.session.commit()
 
@@ -230,6 +230,7 @@ class DB_Manipulator:
     filter = "and_({})".format(filter)
     output = self.session.query(self.profiles[organism]).filter(eval(filter)).all()
 
+    #Check for existence in profile database
     if len(output) > 1:
       STlist= list()
       for st in output:
@@ -241,6 +242,7 @@ class DB_Manipulator:
     elif len(output) == 1:
       #Arbitary call
       return self.bestST(cg_sid, [output[0].ST], 'profile')
+    #Check for existence in novel database
     elif threshold:
       self.logger.info("Sample {} on {} has novel ST reliably established. Searching for prior novel definition...".format(cg_sid, organism))
       filter = list()
@@ -267,6 +269,7 @@ class DB_Manipulator:
       elif len(output) == 1:
         return self.bestST(cg_sid, [output[0].ST], 'novel')
       else:
+        #Create new novel ST
         #Set ST -10 per default, or one below the current min, whichever is smaller.
         st = -9
         query = self.session.query(self.novel[organism]).all()
@@ -402,9 +405,11 @@ class DB_Manipulator:
 
   def get_unique_alleles(self, cg_sid, organism, threshold=True):
     """ Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
+    tid = float(self.config["threshold"]["mlst_id"])
+    tspan = float(self.config["threshold"]["mlst_span"])
     if threshold:
       hits = self.session.query(Seq_types.loci, Seq_types.allele)\
-           .filter(Seq_types.CG_ID_sample==cg_sid).all()
+           .filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity >= tid, Seq_types.span >= tspan).all()
     else:
       hits = self.session.query(Seq_types.loci, Seq_types.allele).filter(Seq_types.CG_ID_sample==cg_sid).all()
 
