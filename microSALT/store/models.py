@@ -22,8 +22,8 @@ class Profiles:
       head = fh.readline()
       head = head.rstrip().split('\t')
       index = 0
-        
-      header = "Table(profile_{}, self.metadata,".format(file)
+      
+      header = "Table('profile_{}'.format(file), self.metadata,".format(file)  
       while index < len(head):
         # Set ST as PK
         if head[index]=='ST':
@@ -55,7 +55,7 @@ class Novel:
       head = head.rstrip().split('\t')
       index = 0
 
-      header = "Table(novel_{}, self.metadata,".format(file)
+      header = "Table('novel_{}'.format(file), self.metadata,".format(file)
       while index < len(head):
         # Set ST as PK
         if head[index]=='ST':

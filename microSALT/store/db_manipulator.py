@@ -59,6 +59,20 @@ class DB_Manipulator:
 
   def add_rec(self, data_dict, tablename, force=False):
     """Adds a record to the specified table through a dict with columns as keys."""
+    if not isinstance(tablename, str):
+      #Non-orm table, check for existence
+      table = tablename
+      pk_list = table.primary_key.columns.keys()
+      args = list()
+      for pk in pk_list:
+        args.append("table.c.{}=={}".format(pk, data_dict[pk]))
+      args = '_or(' + ','.join(args) + ')'
+      exist = self.session.query(table).filter(eval(filter)).all()
+      #Add record
+      if len(exist) > 0:
+        data = table.insert()
+        data.execute(data_dict)
+        self.logger.info("Added entry to table {}".format(tablename.fullname))
     try:
       table = eval(tablename)
       #Check for existing entry
@@ -170,7 +184,7 @@ class DB_Manipulator:
     """ Helper function. Flags a set of seq_types as part of the final prediction.
     Uses optional pks[loci][column] = VALUE dictionary to distinguish in scenarios where an allele number has multiple hits"""
     sample = self.session.query(Seq_types).filter(Seq_types.CG_ID_sample==cg_sid)
-
+ 
     if pks == dict():
       sample.update({Seq_types.st_predictor: 1})
     else:
@@ -180,7 +194,7 @@ class DB_Manipulator:
       for loci, columns in pks.items():
         arglist = list()
         for key, val in columns.items():
-          arglist.append("Seq_types.{}=={}".(key,val))
+          arglist.append("Seq_types.{}=='{}'".format(key,val))
           args = ', '.join(arglist)
         sample.filter(eval(args)).update({Seq_types.st_predictor : 1})
     self.session.commit()
@@ -215,7 +229,7 @@ class DB_Manipulator:
     filter = ','.join(filter)
     filter = "and_({})".format(filter)
     output = self.session.query(self.profiles[organism]).filter(eval(filter)).all()
- 
+
     if len(output) > 1:
       STlist= list()
       for st in output:
@@ -264,10 +278,9 @@ class DB_Manipulator:
         bestSet = self.bestAlleles(cg_sid)
         newEntry = dict()
         for allele, columns in bestSet.items():
-          newEntry[columns['loci']] = allele
-        newEntry['name'] = 'novel_{}'.format(organism)
+          newEntry[allele] = columns['allele']
         newEntry['ST'] = st
-        self.add_rec(newEntry)
+        self.add_rec(newEntry, self.novel[organism])
         return self.bestST(cg_sid, st, 'novel')
     else:
       self.logger.warning("Sample {} on {} has an allele set but hits are low-quality and\
@@ -334,7 +347,10 @@ class DB_Manipulator:
         scores[prof.ST]['spanid'] += allele.span*allele.identity
         scores[prof.ST]['eval'] += float(allele.evalue)
         scores[prof.ST]['cc'] += allele.contig_coverage
-        bestalleles[prof.ST][allele.loci] = str(allele.contig_name)
+        if not allele.loci in bestalleles[prof.ST].keys():
+          bestalleles[prof.ST][allele.loci] = dict()
+        if not 'contig_name' in bestalleles[prof.ST][allele.loci].keys():
+          bestalleles[prof.ST][allele.loci]['contig_name'] = str(allele.contig_name)
 
     #Establish best ST
     topST = ""
