@@ -64,8 +64,14 @@ class Job_Creator():
     verified_files = list()
     for file in files:
       file_match = re.match( self.config['regex']['file_pattern'], file)
-      #file_match = self.fileformat.match( file )
+      #Check that symlinks resolve
+      if file_match or file_match[1] == '2':
+        path = '{}/{}'.format(self.indir, file)
+        if os.path.islink(path):
+          if not os.path.exists(os.readlink(path)):
+            raise Exception("Some fastq files are unresolved symlinks in directory {}.".format(self.indir))
       if file_match:
+        #Make sure both mates exist
         if file_match[1] == '1':
           pairno = '2'
           #Construct mate name
@@ -75,10 +81,11 @@ class Job_Creator():
             files.pop( files.index(pairname) )
             verified_files.append(file_match[0])
             verified_files.append(pairname)
+
         elif file_match[1] == '2':
           pass
         else:
-          raise Exception("Some fastq files in directory have no mate in directory {}.".format(self.indir))
+          raise Exception("Some fastq files have no mate in directory {}.".format(self.indir))
     if verified_files == []:
       raise Exception("No files in directory {} match file_pattern '{}'.".format(self.indir, self.config['regex']['file_pattern']))
     return verified_files
