@@ -11,7 +11,7 @@
 
   "_comment": "File finding patterns. Only single capture group accepted (for reverse/forward identifier)",
   "regex":  {
-    "file_pattern": "\w{8,12}_\w{8,10}(?:-\d+)*_L\d_(?:R)*(\d{1}).fastq.gz",
+    "file_pattern": "\\w{8,12}_\\w{8,10}(?:-\\d+)*_L\\d_(?:R)*(\\d{1}).fastq.gz",
     "mail_recipient": "user@examplegroup.com"
   },
   
