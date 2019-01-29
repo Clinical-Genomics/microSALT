@@ -71,6 +71,8 @@ def gen_reportdata(pid, organism_group='all'):
   #Sorts sample names
   sample_info = sorted(sample_info, key=lambda sample: \
                 int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
+
+  #Set ST status
   for s in sample_info:
     s.ST_status=str(s.ST)
     if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or s.Customer_ID_sample.startswith('CTRL') or s.Customer_ID_sample.startswith('Neg'):
@@ -78,14 +80,15 @@ def gen_reportdata(pid, organism_group='all'):
     elif s.ST < 0:
       if s.ST == -1:
         s.ST_status = 'Unavailable'
-      elif s.ST == -4:
+      elif s.ST <= -4:
         s.ST_status = 'Novel'
       else:
         s.ST_status='None'
 
+    #Set threshold status
     if 'Control' in s.ST_status:
       s.threshold = 'Passed'
-    elif s.ST == -3:
+    elif s.ST == -3 or s.ST == -1:
       s.threshold = 'Failed'
     elif hasattr(s, 'seq_types') and s.seq_types != [] or s.ST == -2:
       near_hits=0
@@ -98,7 +101,7 @@ def gen_reportdata(pid, organism_group='all'):
           s.threshold = 'Failed'
 
       if near_hits > 0 and s.threshold == 'Passed':
-        s.ST_status = 'Novel ({} alleles)'.format(near_hits)
+        s.ST_status = 'Novel alleles ({})'.format(near_hits)
     else:
       s.threshold = 'Failed'
 

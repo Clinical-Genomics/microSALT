@@ -144,7 +144,10 @@ class Scraper():
               hypo[-1]["instance"] = os.path.basename(file[:-4])
 
               # Split elem 3 in loci (name) and allele (number)
-              partials = re.search('(^_\s+)_(\d+){1,3}(?:_(\w+))*', elem_list[3])
+              partials = re.search('(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3])
+              #if partials is None:
+              #  print("DEBUG!")
+              #  import pdb; pdb.set_trace()
               hypo[-1]["reference"] = partials.group(3)
 
               hypo[-1]["gene"] = partials.group(1)
@@ -171,9 +174,6 @@ class Scraper():
         ignore = False
         if hypo[ind]["contig_name"] == hypo[targ]["contig_name"]:      
           #Overlapping or shared gene 
-          debString = "{} ({}-{}) [id:{},span:{}] overlaps with (or shares name) {} ({}-{}) [id:{},span:{}].".format(hypo[ind]['gene'],\
-          hypo[ind]['contig_start'],hypo[ind]['contig_end'],hypo[ind]['identity'],hypo[ind]['span'],hypo[targ]['gene'],\
-          hypo[targ]['contig_start'],hypo[targ]['contig_end'],hypo[targ]['identity'],hypo[targ]['span'])
           if (hypo[ind]["contig_start"] >= hypo[targ]["contig_start"] and hypo[ind]["contig_start"] <= hypo[targ]["contig_end"]) or\
               (hypo[ind]["contig_end"] >= hypo[targ]["contig_start"] and hypo[ind]["contig_end"] <= hypo[targ]["contig_end"]) or \
               (hypo[ind]['gene'] == hypo[targ]['gene']):
@@ -255,7 +255,7 @@ class Scraper():
               hypo[-1]["subject_length"] = int(elem_list[11])
          
               # Split elem 3 in loci (name) and allele (number)
-              partials = re.search('(.+)_(\d+){1,2}(?:_(\w+))*', elem_list[3]) 
+              partials = re.search('(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3]) 
               hypo[-1]["loci"] = partials.group(1)
               hypo[-1]["allele"] = int(partials.group(2))
               hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('Seq_types', organism, partials.group(0))
@@ -268,37 +268,28 @@ class Scraper():
     except Exception as e:
       self.logger.error("{}".format(str(e)))
 
-    #Cleanup of overlapping hits
+    #Reduction to top hit
     ind = 0
     while ind < len(hypo)-1:
       targ = ind+1
       while targ < len(hypo):
         ignore = False
-        if hypo[ind]["contig_name"] == hypo[targ]["contig_name"]:      
-          #Overlapping or shared name 
-          debString = "{} ({}-{}) [id:{},span:{}] overlaps with (or shares name) {} ({}-{}) [id:{},span:{}].".format(hypo[ind]['loci'],\
-          hypo[ind]['contig_start'],hypo[ind]['contig_end'],hypo[ind]['identity'],hypo[ind]['span'],hypo[targ]['loci'],\
-          hypo[targ]['contig_start'],hypo[targ]['contig_end'],hypo[targ]['identity'],hypo[targ]['span'])
-          if (hypo[ind]["contig_start"] >= hypo[targ]["contig_start"] and hypo[ind]["contig_start"] <= hypo[targ]["contig_end"]) or\
-              (hypo[ind]["contig_end"] >= hypo[targ]["contig_start"] and hypo[ind]["contig_end"] <= hypo[targ]["contig_end"]) or \
-              (hypo[ind]['loci'] == hypo[targ]['loci']):
-            #Rightmost is worse
-            if float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]["span"])) >= float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]["span"])):
-              del hypo[targ]
-              ignore = True
-            #Leftmost is worse
-            elif float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]['span'])) < float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]['span'])):
-              del hypo[ind]
-              targ = ind +1
-              ignore = True
+        #Rightmost is worse
+        if float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]["span"])) >= float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]["span"])):
+          #self.logger.warn("Removing {}:{} with span {} and id {}".format(hypo[targ]['loci'],hypo[targ]["allele"], hypo[targ]['span'],hypo[targ]['identity']))
+          del hypo[targ]
+          ignore = True
+        #Leftmost is worse
+        elif float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]['span'])) < float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]['span'])):
+          #self.logger.warn("Removing {}:{} with span {} and id {}".format(hypo[ind]['loci'],hypo[ind]["allele"], hypo[ind]['span'],hypo[ind]['identity']))
+          del hypo[ind]
+          targ = ind +1
+          ignore = True
         if not ignore:
           targ += 1
         else:
           pass
       ind += 1
-
-    self.logger.info("{} loci hits were added after removing overlaps and duplicate hits".format( len(hypo)))
     for hit in hypo:
+      self.logger.info("Kept {}:{} with span {} and id {}".format(hit['loci'],hit["allele"], hit['span'],hit['identity']))
       self.db_pusher.add_rec(hit, 'Seq_types')
-      # Too spammy
-      #self.logger.info("Added allele {}={} of sample {} to table Seq_types".format(seq_col["loci"], seq_col["allele"], self.name))

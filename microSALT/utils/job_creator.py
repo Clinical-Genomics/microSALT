@@ -64,13 +64,13 @@ class Job_Creator():
     verified_files = list()
     for file in files:
       file_match = re.match( self.config['regex']['file_pattern'], file)
-      #Check that symlinks resolve
-      if file_match or file_match[1] == '2':
+      if file_match:
+        #Check that symlinks resolve
         path = '{}/{}'.format(self.indir, file)
         if os.path.islink(path):
           if not os.path.exists(os.readlink(path)):
             raise Exception("Some fastq files are unresolved symlinks in directory {}.".format(self.indir))
-      if file_match:
+
         #Make sure both mates exist
         if file_match[1] == '1':
           pairno = '2'
@@ -230,9 +230,9 @@ class Job_Creator():
         self.create_project(self.name)
     except Exception as e:
       self.logger.error("LIMS interaction failed. Unable to read/write project {}".format(self.name))
-    try:
       #Start every sample job
-      if single_sample:
+    if single_sample:
+      try:
         self.sample_job()
         headerargs = self.get_headerargs()
         outfile = self.get_sbatch()
@@ -244,9 +244,12 @@ class Job_Creator():
           jobarray.append(jobno)
         else:
           self.logger.info("Suppressed command: {}".format(bash_cmd))
-      else:
-        for (dirpath, dirnames, filenames) in os.walk(self.indir):
-          for dir in dirnames:
+      except Exception as e:
+        self.logger.error("Unable to analysis of single sample {}".format(self.name))
+    else:
+      for (dirpath, dirnames, filenames) in os.walk(self.indir):
+        for dir in dirnames:
+          try:
             sample_in = "{}/{}".format(dirpath, dir)
             sample_out = "{}/{}".format(self.finishdir, dir)
             sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now) 
@@ -263,11 +266,10 @@ class Job_Creator():
               jobarray.append(jobno)
             else:
               self.logger.info("Suppressed command: {}".format(bash_cmd))
-      if not dry:
-        self.finish_job(jobarray, single_sample)
-    except Exception as e:
-      self.logger.error("Issues handling some samples of project at {}\nSource: {}".format(self.finishdir, str(e)))
-      #shutil.rmtree(self.finishdir, ignore_errors=True)
+            if not dry:
+              self.finish_job(jobarray, single_sample)
+          except Exception as e:
+            pass
 
   def finish_job(self, joblist, single_sample=False):
     """ Uploads data and sends an email once all analysis jobs are complete.
@@ -281,7 +283,6 @@ class Job_Creator():
     sb.close()
     mb.write("#!/bin/sh\n\n")
     mb.write("#Uploading of results to database and production of report\n")
-    #mb.write("source ~/.bash_profile\n")
     if 'MICROSALT_CONFIG' in os.environ:
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
@@ -326,33 +327,38 @@ class Job_Creator():
     output, error = mailproc.communicate()
 
   def sample_job(self):
-    self.trimmed_files = dict()
-    if not os.path.exists(self.finishdir):
-      os.makedirs(self.finishdir)
     try:
-      self.organism = self.lims_fetcher.get_organism_refname(self.name, external=False)
-      # This is one job 
-      self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
-      batchfile = open(self.batchfile, "w+")
-      batchfile.write("#!/bin/sh\n\n")
-      batchfile.write("mkdir -p {}\n".format(self.outdir))
-      batchfile.close()
+      self.trimmed_files = dict()
+      if not os.path.exists(self.finishdir):
+        os.makedirs(self.finishdir)
+      try:
+        self.organism = self.lims_fetcher.get_organism_refname(self.name, external=False)
+        # This is one job 
+        self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
+        batchfile = open(self.batchfile, "w+")
+        batchfile.write("#!/bin/sh\n\n")
+        batchfile.write("mkdir -p {}\n".format(self.outdir))
+        batchfile.close()
 
-      self.create_trimsection()
-      self.interlace_files()
-      self.create_spadessection()
-      self.create_quastsection()
-      self.create_blastsection()
-      self.create_resistancesection()
-      batchfile = open(self.batchfile, "a+")
-      batchfile.write("cp -r {}/* {}".format(self.outdir, self.finishdir))
-      batchfile.close()
+        self.create_trimsection()
+        self.interlace_files()
+        self.create_spadessection()
+        self.create_quastsection()
+        self.create_blastsection()
+        self.create_resistancesection()
+        batchfile = open(self.batchfile, "a+")
+        batchfile.write("cp -r {}/* {}".format(self.outdir, self.finishdir))
+        batchfile.close()
 
-      self.logger.info("Created runfile for sample {} in folder {}".format(self.name, self.outdir))
+        self.logger.info("Created runfile for sample {} in folder {}".format(self.name, self.outdir))
+      except Exception as e:
+        raise 
+      try: 
+        self.create_sample(self.name)
+      except Exception as e:
+        self.logger.error("Unable to access LIMS info for sample {}".format(self.name))
     except Exception as e:
-      self.logger.error("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
-      shutil.rmtree(self.finishdir, ignore_errors=True) 
-    try: 
-      self.create_sample(self.name)
-    except Exception as e:
-      self.logger.error("Unable to access LIMS info for sample {}".format(self.name))
+      self.logger.error("Unable to create job for sample {}\nSource: {}".format(self.name, str(e)))
+      shutil.rmtree(self.finishdir, ignore_errors=True)
+      raise
+

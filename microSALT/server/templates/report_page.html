@@ -47,7 +47,7 @@
                       {% if sample.ST_status == 'None' %}
                         <td><font color="red">{{ sample.ST_status }}</font></td>
                       {% elif sample.ST <= -4 %}
-                        <td>Novel ({{sample.ST}})</td>                  
+                        <td>{{sample.ST}} (Novel)</td>                  
                       {% else %}
                         <td>{{sample.ST_status }}</td>
                       {% endif %}
@@ -98,7 +98,7 @@
                       {% if sample.ST_status == 'None' %}
                         <td><font color="red">{{sample.ST_status }}</font></td>
                       {% elif sample.ST <= -4 %}
-                        <td>Novel ({{sample.ST}})</td>
+                        <td>{{sample.ST}} (Novel)</td>
                       {% else %}
                         <td>{{sample.ST_status }}</td>
                       {% endif %}

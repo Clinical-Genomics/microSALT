@@ -59,39 +59,42 @@ class DB_Manipulator:
 
   def add_rec(self, data_dict, tablename, force=False):
     """Adds a record to the specified table through a dict with columns as keys."""
+    #Non-orm
     if not isinstance(tablename, str):
-      #Non-orm table, check for existence
+      #check for existence
       table = tablename
       pk_list = table.primary_key.columns.keys()
       args = list()
       for pk in pk_list:
         args.append("table.c.{}=={}".format(pk, data_dict[pk]))
-      args = '_or(' + ','.join(args) + ')'
+      args = 'or_(' + ','.join(args) + ')'
       exist = self.session.query(table).filter(eval(args)).all()
       #Add record
-      if len(exist) > 0:
+      if len(exist) == 0:
         data = table.insert()
         data.execute(data_dict)
         self.logger.info("Added entry to table {}".format(tablename.fullname))
-    try:
-      table = eval(tablename)
-      #Check for existing entry
-      pk_list = table.__table__.primary_key.columns.keys()
-    except Exception as e:
-      self.logger.error("Attempted to access table {} which has not been created".format(tablename))
-    pk_values = list()
-    for item in pk_list:
-      pk_values.append(data_dict[item])
-    existing = self.session.query(table).get(pk_values)
-    #Add record
-    if not existing or force:
-      newobj = table()
-      for k, v in data_dict.items():
-        setattr(newobj, k, v)
-      self.session.add(newobj)
-      self.session.commit()
+    #ORM
     else:
-      self.logger.warn("Hindered insertion of existing record ({}) into table {}".format(data_dict, tablename))
+      try:
+        table = eval(tablename)
+        #Check for existing entry
+        pk_list = table.__table__.primary_key.columns.keys()
+      except Exception as e:
+        self.logger.error("Attempted to access table {} which has not been created".format(tablename))
+      pk_values = list()
+      for item in pk_list:
+        pk_values.append(data_dict[item])
+      existing = self.session.query(table).get(pk_values)
+      #Add record
+      if not existing or force:
+        newobj = table()
+        for k, v in data_dict.items():
+          setattr(newobj, k, v)
+        self.session.add(newobj)
+        self.session.commit()
+      else:
+        self.logger.warn("Hindered insertion of existing record ({}) into table {}".format(data_dict, tablename))
 
   def upd_rec(self, req_dict, tablename, upd_dict):
     """Updates a record to the specified table through a dict with columns as keys."""
@@ -284,7 +287,7 @@ class DB_Manipulator:
           newEntry[allele] = columns['allele']
         newEntry['ST'] = st
         self.add_rec(newEntry, self.novel[organism])
-        return self.bestST(cg_sid, st, 'novel')
+        return self.bestST(cg_sid, [st], 'novel')
     else:
       self.logger.warning("Sample {} on {} has an allele set but hits are low-quality and\
  do not resolve to an ST. Setting ST to -2".format(cg_sid, organism))
