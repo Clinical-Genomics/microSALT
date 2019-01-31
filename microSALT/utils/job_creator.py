@@ -245,7 +245,7 @@ class Job_Creator():
         else:
           self.logger.info("Suppressed command: {}".format(bash_cmd))
       except Exception as e:
-        self.logger.error("Unable to analysis of single sample {}".format(self.name))
+        self.logger.error("Unable to analyze single sample {}".format(self.name))
     else:
       for (dirpath, dirnames, filenames) in os.walk(self.indir):
         for dir in dirnames:
@@ -266,10 +266,10 @@ class Job_Creator():
               jobarray.append(jobno)
             else:
               self.logger.info("Suppressed command: {}".format(bash_cmd))
-            if not dry:
-              self.finish_job(jobarray, single_sample)
           except Exception as e:
             pass
+    if not dry:
+      self.finish_job(jobarray, single_sample)
 
   def finish_job(self, joblist, single_sample=False):
     """ Uploads data and sends an email once all analysis jobs are complete.
