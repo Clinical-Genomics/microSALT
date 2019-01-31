@@ -85,6 +85,7 @@ def project(ctx, project_id, input, dry, config, email):
     fixer.update_refs()
   except Exception as e:
     print("{}".format(e))
+
   print("Version check done. Creating sbatch jobs")
   manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
   manager.project_job()
@@ -135,7 +136,7 @@ def sample(ctx, sample_id, input, dry, config, email):
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
     worker.project_job(single_sample=True)
   except Exception as e:
-    print("Unable to process sample {} due to '{}'".format(sample_id,e))
+    print("Unable to process single sample {} due to '{}'".format(sample_id,e))
   done()
 
 @root.group()

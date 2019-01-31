@@ -119,5 +119,4 @@ class LIMS_Fetcher():
           return target
     except Exception as e:
       self.logger.warn("Unable to find existing reference for {}, strain {} has no reference match\nSource: {}".format(sample_name, lims_organ, e))
-      return '"{}"'.format(self.data['organism'])
 

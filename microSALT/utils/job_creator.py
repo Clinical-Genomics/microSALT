@@ -211,6 +211,8 @@ class Job_Creator():
       sample_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
       sample_col['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
       sample_col["date_analysis"] = self.dt
+      sample_col['organism']=self.lims_fetcher.data['organism']
+      self.db_pusher.purge_rec(sample_col['CG_ID_sample'], 'sample')
       self.db_pusher.add_rec(sample_col, 'Samples')
     except Exception as e:
       self.logger.error("Unable to add sample {} to database".format(self.name))
