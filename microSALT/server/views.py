@@ -85,9 +85,9 @@ def gen_reportdata(pid, organism_group='all'):
       else:
         s.ST_status='None'
 
-    if 'Control' in s.ST_status or 'Unavailable' in s.ST_status:
+    if 'Control' in s.ST_status or s.ST == -1:
       s.threshold = '-'
-    elif s.ST == -2 or s.ST == -3:
+    elif s.ST == -3:
       s.threshold = 'Failed'
     elif hasattr(s, 'seq_types') and s.seq_types != [] or s.ST == -2:
       near_hits=0
