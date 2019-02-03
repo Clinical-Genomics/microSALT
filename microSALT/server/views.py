@@ -83,7 +83,7 @@ def gen_reportdata(pid, organism_group='all'):
     elif s.ST < 0:
       if s.ST == -1:
         s.ST_status = 'Unavailable'
-      elif s.ST <= -4:
+      elif s.ST <= -4 or s.ST == -2:
         s.ST_status = 'Novel'
       else:
         s.ST_status='None'
