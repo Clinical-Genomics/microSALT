@@ -75,14 +75,14 @@ def gen_reportdata(pid, organism_group='all'):
   #Set ST status
   for s in sample_info:
     s.ST_status=str(s.ST)
-    if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or \ 
+    if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or \
     s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or \
     s.Customer_ID_sample.startswith('CTRL') or s.Customer_ID_sample.startswith('Neg') or \
     s.Customer_ID_sample.startswith('blank'):
       s.ST_status = 'Control (prefix)'
     elif s.ST < 0:
       if s.ST == -1:
-        s.ST_status = 'Unavailable'
+        s.ST_status = 'Invalid data'
       elif s.ST <= -4 or s.ST == -2:
         s.ST_status = 'Novel'
       else:

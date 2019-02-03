@@ -44,7 +44,7 @@
                       {% else %}
                         <td><i>Control</i></td>
                       {% endif %}
-                      {% if sample.ST_status == 'None' %}
+                      {% if sample.ST_status == 'None' or sample.ST == -1 %}
                         <td><font color="red">{{ sample.ST_status }}</font></td>
                       {% elif sample.ST <= -4 %}
                         <td>{{sample.ST}} (Novel)</td>                  
@@ -148,7 +148,7 @@
               <div class="panel-body"> 
 
                 <div class="table-responsive">
-                  {% if not sample.seq_types|length == 0 %}
+                  {% if not sample.seq_types|length == 0 and 'Invalid' not in sample.ST_status%}
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                       <h4>MLST</h4>
                       <thead>
