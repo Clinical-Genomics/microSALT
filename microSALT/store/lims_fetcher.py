@@ -57,12 +57,8 @@ class LIMS_Fetcher():
         self.logger.error("LIMS connection timeout")
     organism = "Unset"
     if 'Strain' in sample.udf and organism == "Unset":
-      if sample.udf['Strain'] != 'Other' and sample.udf['Strain'] != 'other':
-        organism = sample.udf['Strain']
-      elif (sample.udf['Strain'] == 'Other' or sample.udf['Strain'] == 'other') and 'Other species' in sample.udf:
-        organism = sample.udf['Other species']
-      # Backwards compatibility
-      elif sample.udf['Strain'] == 'VRE':
+      #Backwards compat, MUST hit first
+      if sample.udf['Strain'] == 'VRE':
         if 'Reference Genome Microbial' in sample.udf:
           if sample.udf['Reference Genome Microbial'] == 'NC_017960.1':
             organism = 'Enterococcus faecium'
@@ -70,6 +66,10 @@ class LIMS_Fetcher():
             organism = 'Enterococcus faecalis'
         elif 'Comment' in sample.udf:
           organism = sample.udf['Comment']
+      elif sample.udf['Strain'] != 'Other' and sample.udf['Strain'] != 'other':
+        organism = sample.udf['Strain']
+      elif (sample.udf['Strain'] == 'Other' or sample.udf['Strain'] == 'other') and 'Other species' in sample.udf:
+        organism = sample.udf['Other species']
     if 'Reference Genome Microbial' in sample.udf and organism == "Unset":
       if sample.udf['Reference Genome Microbial'] == 'NC_002163':
         organism = "Campylobacter jejuni"
