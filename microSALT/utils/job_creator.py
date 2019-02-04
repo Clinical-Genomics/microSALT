@@ -289,9 +289,11 @@ class Job_Creator():
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
     if not single_sample:
-      mb.write("microSALT finish project {} --input {} --rerun\n".format(self.name, self.finishdir))
+      mb.write("microSALT finish project {} --input {} --rerun --email {}\n".\
+               format(self.name, self.finishdir, self.config['regex']['mail_recipient']))
     else:
-      mb.write("microSALT finish sample {} --input {} --rerun\n".format(self.name, self.finishdir))
+      mb.write("microSALT finish sample {} --input {} --rerun --email {}\n".\
+               format(self.name, self.finishdir, self.config['regex']['mail_recipient']))
     mb.write("touch {}/run_complete.out".format(self.finishdir))
     mb.close()
 
@@ -310,8 +312,8 @@ class Job_Creator():
       for entry in massagedJobs:
         if massagedJobs.index(entry) < len(massagedJobs)-1:
           head = "-A {} -p core -n 1 -t 00:00:10 -J {}_{}_SUBTRACKER --qos {} --dependency=afterany:{}"\
-                 .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"],\
-                 entry)
+                 .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"],\
+                         self.name,self.config["slurm_header"]["qos"],entry)
           bash_cmd="sbatch {} {}".format(head, startfile)
           mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
           output, error = mailproc.communicate()
@@ -322,7 +324,8 @@ class Job_Creator():
           break 
 
     head = "-A {} -p core -n 1 -t 06:00:00 -J {}_{}_MAILJOB --qos {} --open-mode append --dependency=afterany:{} --output {}"\
-            .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"],\
+            .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"],\
+                    self.name,self.config["slurm_header"]["qos"],\
            final, self.config['folders']['log_file'],  self.config['regex']['mail_recipient'])
     bash_cmd="sbatch {} {}".format(head, mailfile)
     mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
