@@ -35,10 +35,13 @@ class LIMS_Fetcher():
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for project {}\nSource: {}".format(cg_projid, str(e)))
 
-  def samples_in_project(self, cg_projid):
+  def samples_in_project(self, cg_projid, external=False):
     """ Returns a list of sample names for a project"""
     output = list()
-    samples = self.lims.get_samples(projectlimsid=cg_projid)
+    if not external:
+      samples = self.lims.get_samples(projectlimsid=cg_projid)
+    else:
+      samples = self.lims.get_samples(projectname=cg_projid)
     for s in samples:
       output.append(s.id)
     return output
