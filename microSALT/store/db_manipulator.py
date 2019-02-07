@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 # maintain the same connection per thread
 from sqlalchemy.pool import SingletonThreadPool
 
-from microSALT.store.orm_models import app, Projects, Resistances, Samples, Seq_types, Versions, Profile_cgmlst
+from microSALT.store.orm_models import app, Projects, Resistances, Samples, Seq_types, Versions
 from microSALT.store.models import Profiles
 
 class DB_Manipulator:
@@ -47,9 +47,6 @@ class DB_Manipulator:
     if not self.engine.dialect.has_table(self.engine, 'resistances'):
       Resistances.__table__.create(self.engine)
       self.logger.info("Created resistance table")
-    if not self.engine.dialect.has_table(self.engine, 'profile_cgmlst'):
-      Profile_cgmlst.__table__.create(self.engine)
-      self.logger.info("Created cgMLST profile table")
     for k,v in self.profiles.items():
       if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
         self.profiles[k].create()
