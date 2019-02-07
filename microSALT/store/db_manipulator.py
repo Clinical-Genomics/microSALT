@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import SingletonThreadPool
 
 from microSALT.store.orm_models import app, Projects, Resistances, Samples, Seq_types, Versions
-from microSALT.store.models import Profiles
+from microSALT.store.models import Profiles, Novel
 
 class DB_Manipulator:
  
@@ -23,8 +23,8 @@ class DB_Manipulator:
     Session = sessionmaker(bind=self.engine)
     self.session = Session()
     self.metadata = MetaData(self.engine)
-    #TODO: Switch profiles to ORM format
     self.profiles = Profiles(self.metadata, self.config).tables
+    self.novel = Novel(self.metadata, self.config).tables
     #Turns off pymysql deprecation warnings until they can update their code
     with warnings.catch_warnings():
       warnings.simplefilter("ignore")
@@ -53,28 +53,50 @@ class DB_Manipulator:
         self.init_profiletable(k, v)       
         self.add_rec({'name': 'profile_{}'.format(k), 'version': '0'}, 'Versions', force=True)
         self.logger.info("Profile table profile_{} initialized".format(k))
+    for k,v in self.novel.items():
+      if not self.engine.dialect.has_table(self.engine, "novel_{}".format(k)):
+        self.novel[k].create()
+        self.add_rec({'name': 'novel_{}'.format(k), 'version': '0'}, 'Versions', force=True)
+        self.logger.info("Profile table novel_{} initialized".format(k))
 
   def add_rec(self, data_dict, tablename, force=False):
     """Adds a record to the specified table through a dict with columns as keys."""
-    try:
-      table = eval(tablename)
-      #Check for existing entry
-      pk_list = table.__table__.primary_key.columns.keys()
-    except Exception as e:
-      self.logger.error("Attempted to access table {} which has not been created".format(tablename))
-    pk_values = list()
-    for item in pk_list:
-      pk_values.append(data_dict[item])
-    existing = self.session.query(table).get(pk_values)
-    #Add record
-    if not existing or force:
-      newobj = table()
-      for k, v in data_dict.items():
-        setattr(newobj, k, v)
-      self.session.add(newobj)
-      self.session.commit()
+    #Non-orm
+    if not isinstance(tablename, str):
+      #check for existence
+      table = tablename
+      pk_list = table.primary_key.columns.keys()
+      args = list()
+      for pk in pk_list:
+        args.append("table.c.{}=={}".format(pk, data_dict[pk]))
+      args = 'or_(' + ','.join(args) + ')'
+      exist = self.session.query(table).filter(eval(args)).all()
+      #Add record
+      if len(exist) == 0:
+        data = table.insert()
+        data.execute(data_dict)
+        self.logger.info("Added entry to table {}".format(tablename.fullname))
+    #ORM
     else:
-      self.logger.warn("Hindered insertion of existing record ({}) into table {}".format(data_dict, tablename))
+      try:
+        table = eval(tablename)
+        #Check for existing entry
+        pk_list = table.__table__.primary_key.columns.keys()
+      except Exception as e:
+        self.logger.error("Attempted to access table {} which has not been created".format(tablename))
+      pk_values = list()
+      for item in pk_list:
+        pk_values.append(data_dict[item])
+      existing = self.session.query(table).get(pk_values)
+      #Add record
+      if not existing or force:
+        newobj = table()
+        for k, v in data_dict.items():
+          setattr(newobj, k, v)
+        self.session.add(newobj)
+        self.session.commit()
+      else:
+        self.logger.warn("Hindered insertion of existing record ({}) into table {}".format(data_dict, tablename))
 
   def upd_rec(self, req_dict, tablename, upd_dict):
     """Updates a record to the specified table through a dict with columns as keys."""
@@ -163,15 +185,11 @@ class DB_Manipulator:
           linedict[head[index]] = line[index]
           index = index+1
         data.execute(linedict)
- 
+
   def get_columns(self, tablename):
     """ Returns all records for a given ORM table"""
     table = eval(tablename)
     return dict.fromkeys(table.__table__.columns.keys())
-
-  def get_profiles(self):
-    """Returns non-orm profiles tables"""
-    return self.profiles
 
   def exists(self, table, item):
     """ Takes a k-v pair and checks for the entrys existence in the given table """
@@ -196,7 +214,7 @@ class DB_Manipulator:
 
   def setPredictor(self, cg_sid, pks=dict()):
     """ Helper function. Flags a set of seq_types as part of the final prediction.
-    Uses optional pks[loci]=contig_name dictionary to distinguish in scenarios where an allele number has multiple hits"""
+    Uses optional pks[loci][column] = VALUE dictionary to distinguish in scenarios where an allele number has multiple hits"""
     sample = self.session.query(Seq_types).filter(Seq_types.CG_ID_sample==cg_sid)
 
     if pks == dict():
@@ -205,12 +223,12 @@ class DB_Manipulator:
       #Resets all previous predictors
       sample.update({Seq_types.st_predictor: None})
       #Set subset
-      for loci, cn in pks.items():
-        if isinstance(cn, list):
-          for entry in cn:
-            sample.filter(Seq_types.loci==loci, Seq_types.allele==entry).update({Seq_types.st_predictor : 1})
-        else:
-          sample.filter(Seq_types.loci==loci, Seq_types.contig_name==cn).update({Seq_types.st_predictor : 1})
+      for loci, columns in pks.items():
+        arglist = list()
+        for key, val in columns.items():
+          arglist.append("Seq_types.{}=='{}'".format(key,val))
+          args = "and_("  + ', '.join(arglist) + ")"
+        sample.filter(eval(args)).update({Seq_types.st_predictor : 1})
     self.session.commit()
 
   def alleles2st(self, cg_sid):
@@ -243,23 +261,62 @@ class DB_Manipulator:
     filter = ','.join(filter)
     filter = "and_({})".format(filter)
     output = self.session.query(self.profiles[organism]).filter(eval(filter)).all()
- 
+
+    #Check for existence in profile database
     if len(output) > 1:
       STlist= list()
       for st in output:
         STlist.append(st.ST)
-      best = self.bestST(cg_sid, STlist)
+      best = self.bestST(cg_sid, STlist, 'profile')
       if threshold:   
         self.logger.warning("Multiple ST within threshold found for sample {}, list: {}. Established ST{} as best hit.".format(cg_sid, STlist, best))
       return best
     elif len(output) == 1:
-      #Doing bestST only to establish best loci number combination
-      return self.bestST(cg_sid, [output[0].ST])
+      #Arbitary call
+      return self.bestST(cg_sid, [output[0].ST], 'profile')
+    #Check for existence in novel database
     elif threshold:
-      self.logger.warning("Sample {} on {} has an allele set but no ST. Novel ST found, setting ST to -4".format(cg_sid, organism))
-      bestSet = self.bestAlleles(cg_sid)
-      self.setPredictor(cg_sid, bestSet)
-      return -4
+      self.logger.info("Sample {} on {} has novel ST reliably established. Searching for prior novel definition...".format(cg_sid, organism))
+      filter = list()
+      for key, val in alleles.items():
+        subfilter = list()
+        for num in val:
+          subfilter.append(" self.novel[organism].c.{}=={} ".format(key, num))
+        subfilter = ','.join(subfilter)
+        if len(val) > 1:
+          subfilter = "or_({})".format(subfilter)
+        filter.append(subfilter)
+      filter = ','.join(filter)
+      filter = "and_({})".format(filter)
+      output = self.session.query(self.novel[organism]).filter(eval(filter)).all()    
+ 
+      if len(output) > 1:
+        STlist= list()
+        for st in output:
+          STlist.append(st.ST)
+        best = self.bestST(cg_sid, STlist, 'novel')
+        if threshold:
+          self.logger.warning("Multiple ST within novel threshold found for sample {}, list: {}. Established ST{} as best hit.".format(cg_sid, STlist, best))
+        return best
+      elif len(output) == 1:
+        return self.bestST(cg_sid, [output[0].ST], 'novel')
+      else:
+        #Create new novel ST
+        #Set ST -10 per default, or one below the current min, whichever is smaller.
+        st = -9
+        query = self.session.query(self.novel[organism]).all()
+        for entry in query:
+          if entry.ST < st:
+            st = entry.ST
+        st = st-1
+
+        bestSet = self.bestAlleles(cg_sid)
+        newEntry = dict()
+        for allele, columns in bestSet.items():
+          newEntry[allele] = columns['allele']
+        newEntry['ST'] = st
+        self.add_rec(newEntry, self.novel[organism])
+        return self.bestST(cg_sid, [st], 'novel')
     else:
       self.logger.warning("Sample {} on {} has an allele set but hits are low-quality and\
  do not resolve to an ST. Setting ST to -2".format(cg_sid, organism))
@@ -267,8 +324,10 @@ class DB_Manipulator:
       self.setPredictor(cg_sid, bestSet)
       return -2
 
-  def bestST(self, cg_sid, st_list):
-    """Takes in a list of ST and a sample. Establishes which ST is most likely by criteria id*span -> eval -> contig coverage"""
+  def bestST(self, cg_sid, st_list,type='profile'):
+    """Takes in a list of ST and a sample.
+       Establishes which ST is most likely by criteria id*span -> eval -> contig coverage
+       & flags involved alleles"""
     profiles = list()
     scores = dict()
     bestalleles = dict()
@@ -280,7 +339,10 @@ class DB_Manipulator:
       scores[st]['eval'] = 0
       scores[st]['cc'] = 0
       scores[st]['span'] = 0
-      profiles.append(self.session.query(self.profiles[organism]).filter(text('ST={}'.format(st))).first())
+      if type == 'profile':
+        profiles.append(self.session.query(self.profiles[organism]).filter(text('ST={}'.format(st))).first())
+      elif type == 'novel':
+        profiles.append(self.session.query(self.novel[organism]).filter(text('ST={}'.format(st))).first())
 
     # Get values for each allele set that resolves an ST
     for prof in profiles:
@@ -320,8 +382,10 @@ class DB_Manipulator:
         scores[prof.ST]['spanid'] += allele.span*allele.identity
         scores[prof.ST]['eval'] += float(allele.evalue)
         scores[prof.ST]['cc'] += allele.contig_coverage
-        bestalleles[prof.ST][allele.loci] = ""
-        bestalleles[prof.ST][allele.loci] += allele.contig_name
+        if not allele.loci in bestalleles[prof.ST].keys():
+          bestalleles[prof.ST][allele.loci] = dict()
+        if not 'contig_name' in bestalleles[prof.ST][allele.loci].keys():
+          bestalleles[prof.ST][allele.loci]['contig_name'] = str(allele.contig_name)
 
     #Establish best ST
     topST = ""
@@ -348,14 +412,16 @@ class DB_Manipulator:
     return topST
 
   def bestAlleles(self, cg_sid):
-    """ Establishes which allele set (for novel ST) is most likely by criteria span* id -> eval -> contig coverage"""
-    hits = self.session.query(Seq_types.contig_name, Seq_types.loci, Seq_types.span, Seq_types.identity, Seq_types.evalue, Seq_types.contig_coverage)\
+    """ Establishes which allele set (for bad samples) is most likely by criteria span* id -> eval -> contig coverage"""
+    hits = self.session.query(Seq_types.contig_name, Seq_types.loci, Seq_types.span, Seq_types.identity, Seq_types.evalue, Seq_types.contig_coverage, Seq_types.allele)\
            .filter(Seq_types.CG_ID_sample==cg_sid).all()
     bestHits = dict()
     alleledict = dict()
     for allele in hits:
       if allele.loci not in bestHits.keys():
-        bestHits[allele.loci] = allele.contig_name
+        bestHits[allele.loci] = dict()
+        bestHits[allele.loci]['contig_name'] = allele.contig_name
+        bestHits[allele.loci]['allele'] = allele.allele
         alleledict[allele.loci] = [allele.identity, allele.evalue, allele.contig_coverage, allele.span]
       else:
         if ((allele.identity*allele.span > alleledict[allele.loci][0]*alleledict[allele.loci][3]) or\
@@ -364,16 +430,18 @@ class DB_Manipulator:
         (allele.identity*allele.span == alleledict[allele.loci][0]*alleledict[allele.loci][3] and\
         float(allele.evalue) == float(alleledict[allele.loci][1]) and\
         allele.contig_coverage > alleledict[allele.loci][2])):
-          bestHits[allele.loci] = allele.contig_name
+          bestHits[allele.loci]['contig_name'] = allele.contig_name
           alleledict[allele.loci] = [allele.identity, allele.evalue, allele.contig_coverage, allele.span]
     return bestHits
 
 
   def get_unique_alleles(self, cg_sid, organism, threshold=True):
     """ Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
+    tid = float(self.config["threshold"]["mlst_id"])
+    tspan = float(self.config["threshold"]["mlst_span"])
     if threshold:
       hits = self.session.query(Seq_types.loci, Seq_types.allele)\
-           .filter(Seq_types.CG_ID_sample==cg_sid).all()
+           .filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity >= tid, Seq_types.span >= tspan).all()
     else:
       hits = self.session.query(Seq_types.loci, Seq_types.allele).filter(Seq_types.CG_ID_sample==cg_sid).all()
 

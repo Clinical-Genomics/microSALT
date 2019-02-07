@@ -23,7 +23,7 @@ class Referencer():
     self.db_access = DB_Manipulator(config, log)
     self.updated = list()
     #Fetch names of existing refs
-    self.refs = self.db_access.get_profiles()
+    self.refs = self.db_access.profiles
     organisms = self.refs.keys()
     self.organisms = [*organisms]
     self.lims=LIMS_Fetcher(config, log)
@@ -69,7 +69,7 @@ class Referencer():
     """Check for indexation, makeblastdb job if not enough of them."""
     files = os.listdir(full_dir)
     sufx_files = glob.glob("{}/*{}".format(full_dir, suffix)) #List of source files
-    nin_suff = sum([1 for elem in files if 'nin' in elem]) #Total number of nin files 
+    nin_suff = sum([1 for elem in files if 'nin' in elem]) #Total number of nin files
     #if nin_suff < len(sufx_files):
     for file in sufx_files:
       try:
