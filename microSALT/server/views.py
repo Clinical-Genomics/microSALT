@@ -46,7 +46,7 @@ def project_page(project):
     organism_groups.sort()
     return render_template('project_page.html',
         organisms = organism_groups,
-        project = project) 
+        project = project)
 
 @app.route('/microSALT/<project>/<organism_group>')
 def report_page(project, organism_group):
@@ -114,6 +114,8 @@ def gen_reportdata(pid, organism_group='all'):
       if (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity >= config["threshold"]["res_id"] and \
       r.span >= config["threshold"]["res_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
         r.threshold = 'Passed'
+      elif (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity < config["threshold"]["res_id"] and r.span < config["threshold"]["res_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
+        r.threshold = 'BelowPassed'
       else:
         r.threshold = 'Failed'
 
