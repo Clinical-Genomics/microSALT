@@ -46,7 +46,7 @@
                       {% if sample.ST_status == 'None' or sample.ST == -1 %}
                         <td><font color="red">{{ sample.ST_status }}</font></td>
                       {% elif sample.ST <= -4 %}
-                        <td>{{sample.ST}} (Novel)</td>                  
+                        <td>{{sample.ST}} (Novel)</td>
                       {% else %}
                         <td>{{sample.ST_status }}</td>
                       {% endif %}
@@ -227,14 +227,15 @@
           {% endfor %}
 
 <!-- Here my code begins FOR RESISTANCE TABLE-->
-{% if s.belowCount > 0 %}
+<!-- If loop for the table to be formed only when there are resistances below threshold in samples -->
+{% if belowCount > 0 %}
 <footer>
   <div class="panel"><div class="panel-body">
     <h2 class="page-header"><div class="row"></div><strong>Resistance Summary Table</strong><br>
       <small>Less tan 97% identity</small>
       <small><p align="right">{{date}}</p></small></h2>
     <div class="table-responsive">
-      <!-- Set if loop for the table to be formed only when there are resistances below threshold in samples -->
+
       <table  class="table table-bordered" style='table-layout:fixed;'>
         <tr>
           <th width="4%">#</th>

@@ -56,10 +56,12 @@ def report_page(project, organism_group):
         samples = sample_info['samples'],
         date = date.today().isoformat(),
         version = sample_info['versions'],
-        build = __version__)
+        build = __version__,
+        belowCount = sample_info['belowCount'])
 
 def gen_reportdata(pid, organism_group='all'):
   """ Queries database for all necessary information for the reports """
+  belowCount=0
   output = dict()
   output['samples'] = list()
   output['versions'] = dict()
@@ -110,16 +112,16 @@ def gen_reportdata(pid, organism_group='all'):
       s.threshold = 'Failed'
 
     #Resistence filter
-    s.belowCount = 0
     for r in s.resistances:
       if (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity >= config["threshold"]["res_id"] and \
       r.span >= config["threshold"]["res_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
         r.threshold = 'Passed'
       elif (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity < config["threshold"]["res_id"] and r.span < config["threshold"]["res_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
-        s.belowCount = belowCount + 1
+        belowCount = belowCount + 1
         r.threshold = 'BelowPassed'
       else:
         r.threshold = 'Failed'
+    output['belowCount'] = belowCount
 
     #Seq_type and resistance sorting
     s.seq_types=sorted(s.seq_types, key=lambda x: x.loci)
