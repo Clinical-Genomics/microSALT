@@ -110,11 +110,13 @@ def gen_reportdata(pid, organism_group='all'):
       s.threshold = 'Failed'
 
     #Resistence filter
+    s.belowCount = 0
     for r in s.resistances:
       if (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity >= config["threshold"]["res_id"] and \
       r.span >= config["threshold"]["res_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
         r.threshold = 'Passed'
       elif (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity < config["threshold"]["res_id"] and r.span < config["threshold"]["res_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
+        s.belowCount = belowCount + 1
         r.threshold = 'BelowPassed'
       else:
         r.threshold = 'Failed'

@@ -227,7 +227,7 @@
           {% endfor %}
 
 <!-- Here my code begins FOR RESISTANCE TABLE-->
-
+{% if s.belowCount > 0 %}
 <footer>
   <div class="panel"><div class="panel-body">
     <h2 class="page-header"><div class="row"></div><strong>Resistance Summary Table</strong><br>
@@ -277,6 +277,7 @@
     </div>
   </div>
 </footer>
+{% endif %}
 
       </div>
     </div>
