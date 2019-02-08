@@ -36,7 +36,7 @@ Edit the fields to match your environment.
 Create `$HOME/.genologicsrc` with the following formatting:
 ```
 [genologics]
-BASEURI=https://yourlims.corporation.se:8443
+BASEURI=https://yourlims.corporation.se/
 USERNAME=your_username
 PASSWORD=your_password
 [logging]
