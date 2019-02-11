@@ -84,15 +84,9 @@ class Job_Creator():
                       file_match.string[file_match.end(1):file_match.end()])
           if pairname in files:
             files.pop( files.index(pairname) )
-<<<<<<< HEAD
             verified_files[self.name] = list()
             verified_files[self.name].append(file_match[0])
             verified_files[self.name].append(pairname)
-=======
-            verified_files.append(file_match[0])
-            verified_files.append(pairname)
-
->>>>>>> db07d5c63e898e9222bba2dd227ff6d18705a46c
         elif file_match[1] == '2':
           pass
         else:
@@ -394,10 +388,10 @@ class Job_Creator():
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
     if not single_sample:
-      mb.write("microSALT finish project {} --input {} --rerun --email {}\n".\
+      mb.write("microSALT util finish project {} --input {} --rerun --email {}\n".\
                format(self.name, self.finishdir, self.config['regex']['mail_recipient']))
     else:
-      mb.write("microSALT finish sample {} --input {} --rerun --email {}\n".\
+      mb.write("microSALT util finish sample {} --input {} --rerun --email {}\n".\
                format(self.name, self.finishdir, self.config['regex']['mail_recipient']))
     mb.write("touch {}/run_complete.out".format(self.finishdir))
     mb.close()
