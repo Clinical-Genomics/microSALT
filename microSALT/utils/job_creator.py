@@ -83,8 +83,9 @@ class Job_Creator():
           pairname = "{}{}{}".format(file_match.string[:file_match.end(1)-1] , pairno, \
                       file_match.string[file_match.end(1):file_match.end()])
           if pairname in files:
+            if not self.name in verified_files.keys():
+              verified_files[self.name] = list()
             files.pop( files.index(pairname) )
-            verified_files[self.name] = list()
             verified_files[self.name].append(file_match[0])
             verified_files[self.name].append(pairname)
         elif file_match[1] == '2':
@@ -163,45 +164,64 @@ class Job_Creator():
     tfa_list = glob.glob("{}/{}/*.tfa".format(self.config["folders"]["references"], self.organism))
     for entry in tfa_list:
       batchfile.write("# BLAST MLST alignment for {}, {}\n".format(self.organism, os.path.basename(entry[:-4])))
-      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
-      entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
+      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n"\
+                      .format(entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
     batchfile.close()
 
-  def create_variantsection(self):
+  def create_variantsection(self, trimmed=True):
     """ Creates a job for variant calling based on local alignment """
     ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
     localdir = "{}/alignment".format(self.outdir)
     outbase = "{}/{}_{}".format(localdir, self.name, self.lims_fetcher.data['reference'])
     files = self.verify_fastq()
+
+    if trimmed:
+      reads_forward = self.concat_files['f'] 
+      reads_reverse = self.concat_files['r']
+    #State for old-MWGS comparison. Not normally reachable
+    elif not trimmed:
+      for file in files[self.name]:
+        fullfile = self.indir + file
+        #Even indexes = Forward
+        if not files[self.name].index(file)  % 2:
+          forward.append(fullfile)
+        elif files[self.name].index(file)  % 2:
+          reverse.append(fullfile)
+      reads_forward = '<(cat' + ' '.join(forward) + ')'
+      reads_reverse = '<(cat' + ' '.join(reverse) ')'
  
     #Create run
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# Variant calling based on local alignment\n")
     batchfile.write("mkdir {}\n".format(localdir))
-    #Total reads
-    batchfile.write("bwa mem -t {} {} {} {} > {}.raw.sam\n".format(self.config["slurm_header"]["threads"], ref ,files[self.name][0], files[self.name][1], outbase))
-    batchfile.write("samtools view -c {}.raw.sam &> {}.stats.raw\n".format(outbase, outbase)) 
 
-    batchfile.write("bwa mem -t {} {} {} {} > {}.sam\n".format(self.config["slurm_header"]["threads"], ref ,self.concat_files['f'], self.concat_files['r'], outbase))
+    batchfile.write("## Alignment & Deduplication\n")
+    batchfile.write("bwa mem -t {} {} {} {} > {}.sam\n".format(self.config["slurm_header"]["threads"], ref ,reads_forward, reads_reverse, outbase))
     batchfile.write("samtools view --threads {} -b -o {}.bam -T {} {}.sam\n".format(self.config["slurm_header"]["threads"], outbase, ref, outbase))
     batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
     batchfile.write("samtools fixmate --threads {} -r -m {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
     batchfile.write("samtools sort --threads {} -o {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
-    #Markdup and duplicate stats
-    batchfile.write("samtools markdup -r -s --threads {} --reference {} --output-fmt bam {}.bam_sort {}.bam_sort_mkdup &> {}.stats.dup\n".format(self.config["slurm_header"]["threads"], ref, outbase, outbase, outbase))
+    batchfile.write("samtools markdup -r -s --threads {} --reference {} --output-fmt bam {}.bam_sort {}.bam_sort_mkdup &> {}.stats.dup\n"\
+                    .format(self.config["slurm_header"]["threads"], ref, outbase, outbase, outbase))
     batchfile.write("samtools rmdup --reference {} {}.bam_sort_mkdup {}.bam_sort_rmdup\n".format(ref, outbase, outbase))
-    #Indexing
+
+    batchfile.write("## Indexing\n")
     batchfile.write("samtools index {}.bam_sort_mkdup\n".format(outbase))
     batchfile.write("samtools idxstats {}.bam_sort_mkdup &> {}.stats.ref\n".format(outbase, outbase))
     batchfile.write("samtools index {}.bam_sort_rmdup\n".format(outbase))
     batchfile.write("samtools idxstats {}.bam_sort_rmdup &> {}.stats.ref\n".format(outbase, outbase))
+
+
+    batchfile.write("## Primary stats generation\n")
     #Insert stats
     batchfile.write("samtools stats {}.bam_sort_mkdup |grep ^IS | cut -f 2- &> {}.stats.ins\n".format(outbase, outbase))
     #Coverage
     batchfile.write("samtools stats --coverage 1,1000,10 {}.bam_sort_rmdup |grep ^COV | cut -f 2- &> {}.stats.cov\n".format(outbase, outbase))
     #Mapped rate
     batchfile.write("samtools flagstat {}.bam_sort_rmdup &> {}.stats.map\n".format(outbase, outbase))
+    #Total reads
+    batchfile.write("samtools view -c {}.bam_sort_rmdup &> {}.stats.raw\n".format(outbase, outbase))
 
     batchfile.write("\n")
     batchfile.close()
@@ -447,7 +467,7 @@ class Job_Creator():
 
         self.create_trimsection()
         self.interlace_files()
-        self.create_variantsection()
+        self.create_variantsection(trimmed=True)
         if not qc_only:
           self.create_assemblysection()
           self.create_assemblystats_section()
