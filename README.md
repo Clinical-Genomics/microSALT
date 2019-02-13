@@ -14,7 +14,7 @@ conda config --add channels bioconda
 conda create -n microSALT python=3.6
 source activate microSALT
 conda install -c bioconda blast=2.5.0=h3727419_3 spades=3.12.0=py36_0 \
-trimmomatic=0.38=1 bwa==0.7.15=1 samtools=1.6=0
+trimmomatic=0.38=1 bwa==0.7.15=1 samtools=1.6=0 picard=2.18.26=0
 git clone https://github.com/Clinical-Genomics/microSALT.git
 cd microSALT && pip install -r requirements.txt && pip install.
 ```
