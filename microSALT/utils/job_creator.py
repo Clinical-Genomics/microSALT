@@ -181,15 +181,17 @@ class Job_Creator():
       reads_reverse = self.concat_files['r']
     #State for old-MWGS comparison. Not normally reachable
     elif not trimmed:
+      forward = list()
+      reverse = list()
       for file in files[self.name]:
-        fullfile = self.indir + file
+        fullfile = "{}/{}".format(self.indir, file)
         #Even indexes = Forward
         if not files[self.name].index(file)  % 2:
           forward.append(fullfile)
         elif files[self.name].index(file)  % 2:
           reverse.append(fullfile)
-      reads_forward = '<(cat' + ' '.join(forward) + ')'
-      reads_reverse = '<(cat' + ' '.join(reverse) ')'
+      reads_forward = "<( cat {} )".format(' '.join(forward)) 
+      reads_reverse = "<( cat {} )".format(' '.join(reverse))
  
     #Create run
     batchfile = open(self.batchfile, "a+")
@@ -197,14 +199,15 @@ class Job_Creator():
     batchfile.write("mkdir {}\n".format(localdir))
 
     batchfile.write("## Alignment & Deduplication\n")
-    batchfile.write("bwa mem -t {} {} {} {} > {}.sam\n".format(self.config["slurm_header"]["threads"], ref ,reads_forward, reads_reverse, outbase))
+    batchfile.write("bwa mem -M -t {} {} {} {} > {}.sam\n".format(self.config["slurm_header"]["threads"], ref ,reads_forward, reads_reverse, outbase))
     batchfile.write("samtools view --threads {} -b -o {}.bam -T {} {}.sam\n".format(self.config["slurm_header"]["threads"], outbase, ref, outbase))
     batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
-    batchfile.write("samtools fixmate --threads {} -r -m {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
-    batchfile.write("samtools sort --threads {} -o {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
-    batchfile.write("samtools markdup -r -s --threads {} --reference {} --output-fmt bam {}.bam_sort {}.bam_sort_mkdup &> {}.stats.dup\n"\
-                    .format(self.config["slurm_header"]["threads"], ref, outbase, outbase, outbase))
-    batchfile.write("samtools rmdup --reference {} {}.bam_sort_mkdup {}.bam_sort_rmdup\n".format(ref, outbase, outbase))
+    batchfile.write("picard MarkDuplicates I={}.bam_sort O={}.bam_sort_rmdup M={}.stats.dup REMOVE_DUPLICATES=true".format(outbase, outbase, outbase))
+    #batchfile.write("samtools fixmate --threads {} -r -m {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
+    #batchfile.write("samtools sort --threads {} -o {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
+    #batchfile.write("samtools markdup -r -s --threads {} --reference {} --output-fmt bam {}.bam_sort {}.bam_sort_mkdup &> {}.stats.dup\n"\
+    #                .format(self.config["slurm_header"]["threads"], ref, outbase, outbase, outbase))
+    #batchfile.write("samtools rmdup --reference {} {}.bam_sort_mkdup {}.bam_sort_rmdup\n".format(ref, outbase, outbase))
 
     batchfile.write("## Indexing\n")
     batchfile.write("samtools index {}.bam_sort_mkdup\n".format(outbase))
@@ -400,9 +403,9 @@ class Job_Creator():
     mailfile = "{}/mailjob.sh".format(self.finishdir)
     mb = open(mailfile, "w+")
     sb = open(startfile, "w+")
-    sb.write("#!/bin/sh\n\n")
+    sb.write("#!/usr/bin/env bash\n\n")
     sb.close()
-    mb.write("#!/bin/sh\n\n")
+    mb.write("#!/usr/bin/env bash\n\n")
     mb.write("#Uploading of results to database and production of report\n")
     if 'MICROSALT_CONFIG' in os.environ:
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
@@ -461,13 +464,14 @@ class Job_Creator():
         # This is one job 
         self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
         batchfile = open(self.batchfile, "w+")
-        batchfile.write("#!/bin/sh\n\n")
+        batchfile.write("#!/usr/bin/env bash\n\n")
         batchfile.write("mkdir -p {}\n".format(self.outdir))
         batchfile.close()
 
         self.create_trimsection()
         self.interlace_files()
-        self.create_variantsection(trimmed=True)
+        self.logger.info("Sample trimming is currently disabled for QC results")
+        self.create_variantsection(trimmed=False)
         if not qc_only:
           self.create_assemblysection()
           self.create_assemblystats_section()
@@ -496,7 +500,7 @@ class Job_Creator():
 
     self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
     batchfile = open(self.batchfile, "w+")
-    batchfile.write("#!/bin/sh\n\n")
+    batchfile.write("#!/usr/bin/env bash\n\n")
     batchfile.write("mkdir -p {}\n".format(self.outdir))
     batchfile.close()
 
