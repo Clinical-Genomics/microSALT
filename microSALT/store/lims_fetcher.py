@@ -60,8 +60,11 @@ class LIMS_Fetcher():
         self.logger.error("LIMS connection timeout")
     organism = "Unset"
     if 'Strain' in sample.udf and organism == "Unset":
+      #Predefined genus usage
+      if 'gonorrhoeae' in sample.udf['Strain']:
+        organism = "Neisseria spp." 
       #Backwards compat, MUST hit first
-      if sample.udf['Strain'] == 'VRE':
+      elif sample.udf['Strain'] == 'VRE':
         if 'Reference Genome Microbial' in sample.udf:
           if sample.udf['Reference Genome Microbial'] == 'NC_017960.1':
             organism = 'Enterococcus faecium'

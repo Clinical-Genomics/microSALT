@@ -213,7 +213,7 @@ class Referencer():
       truename = "{}_{}".format(truename[0], truename[1])
       self.download_pubmlst(truename, seqdef_url)
       #Update organism list
-      self.refs = self.db_access.get_profiles()
+      self.refs = self.db_access.profiles
       self.logger.info("Created table profile_{}".format(truename))
 
   def query_pubmlst(self):
