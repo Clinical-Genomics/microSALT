@@ -178,7 +178,7 @@
                 </div>
 
                 <div class="table-responsive">
-                  {% if not sample.resistances|length == 0 %}
+                  {% if not sample.resistances|selectattr('threshold', 'equalto', 'Passed')|list|length == 0 %}
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                     <h4>Resistance</h4>
                       <thead>
