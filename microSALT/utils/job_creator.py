@@ -190,6 +190,15 @@ class Job_Creator():
     batchfile.write("quast.py {}/assembly/contigs.fasta -o {}/quast\n\n".format(self.outdir, self.outdir))
     batchfile.close()
 
+  def create_contaminationsection(self):
+    with open(self.batchfile, "a+") as batchfile:
+      batchfile.write("# BLAST contamination check -- something descriptive about databases etc\n")
+      batchfile.write("mkdir {}/contamination\n".format(self.outdir))
+      #batchfile.write("cp -r /mnt/hds/proj/cust053/tanja_develop/databases/nt/ XXXXX")
+      batchfile.write("blastn -task 'megablast' -evalue 0.0001 -db /mnt/hds/proj/cust053/tanja_develop/databases/nt/nt \
+        -outfmt '7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send qlen length ssciname sskingdom' \
+        -query {}/assembly/contigs.fasta -out {}/contamination/myblasted.txt\n\n".format(self.outdir, self.outdir))
+
   def create_project(self, name):
     """Creates project in database"""
     try:
@@ -366,4 +375,35 @@ class Job_Creator():
       self.logger.error("Unable to create job for sample {}\nSource: {}".format(self.name, str(e)))
       shutil.rmtree(self.finishdir, ignore_errors=True)
       raise
+
+  def contamination_job(self):
+
+      if not os.path.exists(self.finishdir):
+        os.makedirs(self.finishdir)
+      
+      # This is one job
+      self.batchfile = "{}/runfile_contamination.sbatch".format(self.finishdir)
+      with open(self.batchfile, "w+") as batchfile:
+        batchfile.write("#!/bin/sh\n\n")
+
+        # Run only contamination job if contigs exists
+        if os.path.isfile("{}/assembly/contigs.fasta".format(self.finishdir)):
+          print("Blasting contigs in: {}/assembly/contigs.fasta".format(self.finishdir))
+          batchfile.write("mkdir -p {}/assembly\n\n".format(self.outdir))
+          batchfile.write("cp {}/assembly/contigs.fasta {}/assembly\n\n".format(self.finishdir, self.outdir))
+          slurm_output = "{}/contamination/".format(self.outdir)
+
+        # Run assembly followed by contamination job
+        else:
+          print("No contigs detected, running assembly")
+          batchfile.write("mkdir -p {}\n\n".format(self.outdir))
+          self.create_trimsection()
+          self.interlace_files()
+          self.create_spadessection()
+          self.create_quastsection()
+          slurm_output = "{}/*".format(self.outdir)
+
+      self.create_contaminationsection()
+      with open(self.batchfile, "a+") as batchfile:
+        batchfile.write("cp -r {} {}".format(slurm_output, self.finishdir))
 
