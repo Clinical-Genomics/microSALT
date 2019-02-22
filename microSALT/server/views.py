@@ -12,7 +12,7 @@ from microSALT import config, __version__
 from microSALT.store.db_manipulator import app
 from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
 
-engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
+engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'], connect_args={'check_same_thread': False})
 Session = sessionmaker(bind=engine)
 session = Session()
 app.debug = 0
