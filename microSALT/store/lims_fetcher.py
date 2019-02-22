@@ -19,7 +19,14 @@ class LIMS_Fetcher():
 
   def load_lims_project_info(self, cg_projid):
     project = Project(self.lims, id=cg_projid)
+    samplelist = self.samples_in_project(cg_projid)
 
+    custids = list()
+    for sample in samplelist:
+      self.load_lims_sample_info(sample)
+      custids.append(self.data['Customer_ID'])
+    if not custids[1:] == custids[:-1]:
+      raise Exception("Project {} contains multiple Customer IDs".format(cg_projid))
     try:
       #Resolves old format
       if ' ' in project.name:
@@ -31,7 +38,8 @@ class LIMS_Fetcher():
       newdate = datetime(int(tmp[0]), int(tmp[1]), int(tmp[2]))
       self.data.update({'date_received': newdate,
                                'CG_ID_project': cg_projid,
-                               'Customer_ID_project' : realname})
+                               'Customer_ID_project' : realname,
+                               'Customer_ID': custids[0]})
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for project {}\nSource: {}".format(cg_projid, str(e)))
 
@@ -94,7 +102,10 @@ class LIMS_Fetcher():
                            'CG_ID_sample': sample.id,
                            'Customer_ID_sample' : sample.name,
                            'organism' : organism,
-                           'priority' : sample.udf['priority']})
+                           'priority' : sample.udf['priority'],
+                           'Customer_ID': sample.udf['customer'],
+                           'application_tag': sample.udf['Sequencing Analysis']
+})
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for sample {}. Review LIMS data.\nSource: {}"\
       .format(cg_sampleid, str(e)))

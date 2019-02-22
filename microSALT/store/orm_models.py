@@ -29,6 +29,7 @@ class Samples(db.Model):
    n50 = db.Column(db.Integer, default=-1)
    contigs = db.Column(db.Integer, default=-1)
    priority = db.Column(db.String(20))
+   application_tag = db.Column(db.String(15))
 
 class Seq_types(db.Model):
   __tablename__ = 'seq_types'
@@ -77,6 +78,7 @@ class Projects(db.Model):
    CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
    Customer_ID_project = db.Column(db.String(15))
    date_ordered = db.Column(db.DateTime)
+   Customer_ID = db.Column(db.String(15))
 
 class Versions(db.Model):
   __tablename__ = 'versions'
