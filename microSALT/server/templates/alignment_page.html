@@ -33,15 +33,15 @@
                     <th>CG Sample ID</th>
                     <th>Reference Genome</th>
                     <th>Organism</th>
-                    <th>Raw Total Reads</th>
-                    <th>Trimmed Median Insert Size</th>
+                    <th>Total Reads</th>
+                    <th>Mapping rate</th>
                     <th>Duplication Rate</th>
-                    <th>Deduplicated Mapped rate</th>
-                    <th>Deduplicated Average coverage</th>
-                    <th>Deduplicated %BP > 10x Coverage</th>
-                    <th>Deduplicated %BP > 30x Coverage</th>
-                    <th>Deduplicated %BP > 50x Coverage</th>
-                    <th>Deduplicated %BP > 100x Coverage</th>
+                    <th>Median Insert Size</th>
+                    <th>Average coverage</th>
+                    <th>%BP > 10x Coverage</th>
+                    <th>%BP > 30x Coverage</th>
+                    <th>%BP > 50x Coverage</th>
+                    <th>%BP > 100x Coverage</th>
 
                   </tr>
                   {% for sample in samples %}
@@ -58,8 +58,8 @@
                         {% else %} Unknown {% endif %}
                       </td>
                       <td class="text-right">
-                        {% if sample.insert_size is not none %}
-                          {{ sample.insert_size }}
+                        {% if sample.mapped_rate is not none %}
+                          {{ (sample.mapped_rate*100)|round(2)}}%
                         {% else %} Unknown {% endif %}
                       </td>
                       <td class="text-right">
@@ -68,8 +68,8 @@
                         {% else %} Unknown {% endif %}
                       </td>
                       <td class="text-right">
-                        {% if sample.mapped_rate is not none %}
-                          {{ (sample.mapped_rate*100)|round(2)}}%
+                        {% if sample.insert_size is not none %}
+                          {{ sample.insert_size }}
                         {% else %} Unknown {% endif %}
                       </td>
                       <td class="text-right">

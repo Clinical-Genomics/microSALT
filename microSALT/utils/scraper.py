@@ -315,6 +315,7 @@ class Scraper():
     ref_len = 0.0
     tot_reads = 0
     tot_map = 0
+    duprate = 0.0
     for file in q_list:
       with open(file, 'r') as fh:
        type = file.split('.')[-1]
@@ -329,6 +330,9 @@ class Scraper():
          elif type == 'ref':
            if lsplit[0] != '*' and len(lsplit) >= 2:
              ref_len = int(lsplit[1])
+         elif type == 'dup':
+           if lsplit[0] == 'Unknown Library':
+             duprate = float(lsplit[8]) 
          elif type == 'map':
            dsplit = line.rstrip().split(' ')
            if len(dsplit)>= 5 and dsplit[4] == 'total':
@@ -336,14 +340,17 @@ class Scraper():
            elif len(dsplit)>=4 and dsplit[3] == 'mapped':
              if tot_map > 0:
                map_rate = int(dsplit[0])/float(tot_map)
-         elif type == 'dup':
-           dsplit = line.rstrip().split(' ')
-           if dsplit[0] == 'DUPLICATE' and dsplit[1] == 'TOTAL':
-             dup_bp = int(dsplit[2])
     #Post mangle
     #Fallbacks
     if len(ins_list) >= 1:
-      median_ins = ins_list.index(max(ins_list))
+      entries = sum(ins_list)
+      total = 0
+      for entry in ins_list:
+        total = total + entry
+        if total >= entries/2:
+          median_ins = ins_list.index(entry)
+          break
+
     sum, plus10, plus30, plus50, plus100, total = 0, 0, 0, 0, 0, 0
     for k, v in cov_dict.items():
       sum += int(k)*v
@@ -370,7 +377,7 @@ class Scraper():
     align_dict['mapped_rate'] = map_rate
     align_dict['insert_size'] = median_ins
     if ref_len > 0:
-      align_dict['duplication_rate'] = dup_bp/float(ref_len)
+      align_dict['duplication_rate'] = duprate
       align_dict['average_coverage'] = sum/float(ref_len)
     else:
       align_dict['duplication_rate'] = 0.0

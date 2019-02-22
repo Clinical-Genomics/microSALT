@@ -201,30 +201,30 @@ class Job_Creator():
     batchfile.write("## Alignment & Deduplication\n")
     batchfile.write("bwa mem -M -t {} {} {} {} > {}.sam\n".format(self.config["slurm_header"]["threads"], ref ,reads_forward, reads_reverse, outbase))
     batchfile.write("samtools view --threads {} -b -o {}.bam -T {} {}.sam\n".format(self.config["slurm_header"]["threads"], outbase, ref, outbase))
-    batchfile.write("samtools sort --threads {} -n -o {}.bam_sort {}.bam\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
-    batchfile.write("picard MarkDuplicates I={}.bam_sort O={}.bam_sort_rmdup M={}.stats.dup REMOVE_DUPLICATES=true".format(outbase, outbase, outbase))
+    batchfile.write("samtools sort --threads {} -o {}.bam_sort {}.bam\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
+    batchfile.write("picard MarkDuplicates I={}.bam_sort O={}.bam_sort_rmdup M={}.stats.dup REMOVE_DUPLICATES=true\n".format(outbase, outbase, outbase))
+    batchfile.write("samtools index {}.bam_sort_rmdup\n".format(outbase))
+    batchfile.write("samtools idxstats {}.bam_sort_rmdup &> {}.stats.ref\n".format(outbase, outbase))
+    #Samtools duplicate calling, legacy
     #batchfile.write("samtools fixmate --threads {} -r -m {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
     #batchfile.write("samtools sort --threads {} -o {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
     #batchfile.write("samtools markdup -r -s --threads {} --reference {} --output-fmt bam {}.bam_sort {}.bam_sort_mkdup &> {}.stats.dup\n"\
     #                .format(self.config["slurm_header"]["threads"], ref, outbase, outbase, outbase))
     #batchfile.write("samtools rmdup --reference {} {}.bam_sort_mkdup {}.bam_sort_rmdup\n".format(ref, outbase, outbase))
-
-    batchfile.write("## Indexing\n")
-    batchfile.write("samtools index {}.bam_sort_mkdup\n".format(outbase))
-    batchfile.write("samtools idxstats {}.bam_sort_mkdup &> {}.stats.ref\n".format(outbase, outbase))
-    batchfile.write("samtools index {}.bam_sort_rmdup\n".format(outbase))
-    batchfile.write("samtools idxstats {}.bam_sort_rmdup &> {}.stats.ref\n".format(outbase, outbase))
+    #batchfile.write("## Indexing\n")
+    #batchfile.write("samtools index {}.bam_sort_mkdup\n".format(outbase))
+    #batchfile.write("samtools idxstats {}.bam_sort_mkdup &> {}.stats.ref\n".format(outbase, outbase))
 
 
     batchfile.write("## Primary stats generation\n")
-    #Insert stats
-    batchfile.write("samtools stats {}.bam_sort_mkdup |grep ^IS | cut -f 2- &> {}.stats.ins\n".format(outbase, outbase))
+    #Insert stats, dedupped
+    batchfile.write("samtools stats {}.bam_sort_rmdup |grep ^IS | cut -f 2- &> {}.stats.ins\n".format(outbase, outbase))
     #Coverage
     batchfile.write("samtools stats --coverage 1,1000,10 {}.bam_sort_rmdup |grep ^COV | cut -f 2- &> {}.stats.cov\n".format(outbase, outbase))
-    #Mapped rate
-    batchfile.write("samtools flagstat {}.bam_sort_rmdup &> {}.stats.map\n".format(outbase, outbase))
-    #Total reads
-    batchfile.write("samtools view -c {}.bam_sort_rmdup &> {}.stats.raw\n".format(outbase, outbase))
+    #Mapped rate, no dedup,dedup in MWGS (trimming has no effect)!
+    batchfile.write("samtools flagstat {}.bam_sort &> {}.stats.map\n".format(outbase, outbase))
+    #Total reads, no dedup,dedup in MWGS (trimming has no effect)!
+    batchfile.write("samtools view -c {}.bam_sort &> {}.stats.raw\n".format(outbase, outbase))
 
     batchfile.write("\n")
     batchfile.close()
