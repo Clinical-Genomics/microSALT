@@ -323,7 +323,8 @@ class Scraper():
          lsplit = line.rstrip().split('\t')
          if type == 'raw':
            tot_reads = int(lsplit[0])
-         if type == 'ins':
+         #8k is the the value of unmapped inserts
+         if type == 'ins' and not lsplit[0] == '8000':
            ins_list.append(int(lsplit[1]))
          elif type == 'cov':
            cov_dict[lsplit[1]] = int(lsplit[2])
