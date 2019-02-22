@@ -200,6 +200,7 @@ class Job_Creator():
     proj_col['CG_ID_project'] = name
     proj_col['Customer_ID_project'] = self.lims_fetcher.data['Customer_ID_project']
     proj_col['date_ordered'] = self.lims_fetcher.data['date_received']
+    proj_col['Customer_ID'] = self.lims_fetcher.data['Customer_ID']
     self.db_pusher.add_rec(proj_col, 'Projects')
 
   def create_sample(self, name):
@@ -212,6 +213,7 @@ class Job_Creator():
       sample_col['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
       sample_col["date_analysis"] = self.dt
       sample_col['organism']=self.lims_fetcher.data['organism']
+      sample_col["application_tag"] = self.lims_fetcher.data['application_tag']
       #self.db_pusher.purge_rec(sample_col['CG_ID_sample'], 'sample')
       self.db_pusher.add_rec(sample_col, 'Samples')
     except Exception as e:
