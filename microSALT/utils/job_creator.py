@@ -205,6 +205,10 @@ class Job_Creator():
     batchfile.write("picard MarkDuplicates I={}.bam_sort O={}.bam_sort_rmdup M={}.stats.dup REMOVE_DUPLICATES=true\n".format(outbase, outbase, outbase))
     batchfile.write("samtools index {}.bam_sort_rmdup\n".format(outbase))
     batchfile.write("samtools idxstats {}.bam_sort_rmdup &> {}.stats.ref\n".format(outbase, outbase))
+    #Removal of temp aligment files
+    os.remove("{}.sam".format(outbase))
+    os.remove("{}.bam".format(outbase))
+
     #Samtools duplicate calling, legacy
     #batchfile.write("samtools fixmate --threads {} -r -m {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
     #batchfile.write("samtools sort --threads {} -o {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
@@ -215,12 +219,11 @@ class Job_Creator():
     #batchfile.write("samtools index {}.bam_sort_mkdup\n".format(outbase))
     #batchfile.write("samtools idxstats {}.bam_sort_mkdup &> {}.stats.ref\n".format(outbase, outbase))
 
-
     batchfile.write("## Primary stats generation\n")
     #Insert stats, dedupped
     batchfile.write("samtools stats {}.bam_sort_rmdup |grep ^IS | cut -f 2- &> {}.stats.ins\n".format(outbase, outbase))
     #Coverage
-    batchfile.write("samtools stats --coverage 1,1000,10 {}.bam_sort_rmdup |grep ^COV | cut -f 2- &> {}.stats.cov\n".format(outbase, outbase))
+    batchfile.write("samtools stats --coverage 1,10000,1 {}.bam_sort_rmdup |grep ^COV | cut -f 2- &> {}.stats.cov\n".format(outbase, outbase))
     #Mapped rate, no dedup,dedup in MWGS (trimming has no effect)!
     batchfile.write("samtools flagstat {}.bam_sort &> {}.stats.map\n".format(outbase, outbase))
     #Total reads, no dedup,dedup in MWGS (trimming has no effect)!
@@ -470,8 +473,8 @@ class Job_Creator():
 
         self.create_trimsection()
         self.interlace_files()
-        self.logger.info("Sample trimming is currently disabled for QC results")
-        self.create_variantsection(trimmed=False)
+        #self.logger.info("Sample trimming is currently disabled for QC results")
+        self.create_variantsection(trimmed=True)
         if not qc_only:
           self.create_assemblysection()
           self.create_assemblystats_section()

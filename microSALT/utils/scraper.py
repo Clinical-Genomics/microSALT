@@ -309,6 +309,7 @@ class Scraper():
     align_dict = dict()
     align_dict["reference_genome"] = self.lims_fetcher.data['reference']
 
+    #Reading
     q_list = glob.glob("{}/alignment/*.stats.*".format(self.sampledir))
     map_rate = 0.0
     median_ins = 0
@@ -341,20 +342,20 @@ class Scraper():
            elif len(dsplit)>=4 and dsplit[3] == 'mapped':
              if tot_map > 0:
                map_rate = int(dsplit[0])/float(tot_map)
-    #Post mangle
-    #Fallbacks
+
+    #Mangling
     if len(ins_list) >= 1:
       entries = sum(ins_list)
-      total = 0
+      ins_total = 0
       for entry in ins_list:
-        total = total + entry
-        if total >= entries/2:
+        ins_total = ins_total + entry
+        if ins_total >= entries/2:
           median_ins = ins_list.index(entry)
           break
 
-    sum, plus10, plus30, plus50, plus100, total = 0, 0, 0, 0, 0, 0
+    sumz, plus10, plus30, plus50, plus100, total = 0, 0, 0, 0, 0, 0
     for k, v in cov_dict.items():
-      sum += int(k)*v
+      sumz += int(k)*v
       total += v
       if int(k) > 10:
         plus10 += v
@@ -365,10 +366,10 @@ class Scraper():
       if int(k) > 100:
         plus100 += v
     if total > 0:
-      align_dict['coverage_10x'] = plus10/float(total)
-      align_dict['coverage_30x'] = plus30/float(total)
-      align_dict['coverage_50x'] = plus50/float(total)
-      align_dict['coverage_100x'] = plus100/float(total)
+      align_dict['coverage_10x'] = plus10/float(ref_len)
+      align_dict['coverage_30x'] = plus30/float(ref_len)
+      align_dict['coverage_50x'] = plus50/float(ref_len)
+      align_dict['coverage_100x'] = plus100/float(ref_len)
     else:
       align_dict['coverage_10x'] = 0.0
       align_dict['coverage_30x'] = 0.0
@@ -379,7 +380,7 @@ class Scraper():
     align_dict['insert_size'] = median_ins
     if ref_len > 0:
       align_dict['duplication_rate'] = duprate
-      align_dict['average_coverage'] = sum/float(ref_len)
+      align_dict['average_coverage'] = sumz/float(ref_len)
     else:
       align_dict['duplication_rate'] = 0.0
       align_dict['average_coverage'] = 0.0
