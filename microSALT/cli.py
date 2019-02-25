@@ -45,41 +45,29 @@ def root(ctx):
 
 @root.group()
 @click.pass_context
-def cluster(ctx):
-  """Extensive clustering analysis"""
-  pass
-
-@root.group()
-@click.pass_context
-def type(ctx):
+def analyse(ctx):
   """Basic sequence and resistance typing"""
   pass
 
 @root.group()
 @click.pass_context
-def util(ctx):
+def utils(ctx):
   """ Utilities for specific purposes """
   pass
 
-@util.group()
+@utils.group()
 @click.pass_context
 def finish(ctx):
   """Reupload typing analysis and generate results"""
   pass
 
-@util.group()
+@utils.group()
 @click.pass_context
 def refer(ctx):
   """ Manipulates MLST organisms """
   pass
 
-@type.group()
-@click.pass_context
-def start(ctx):
-  """Standard QC and typing of project/sample"""
-  pass
-
-@type.command()
+@analyse.command()
 @click.argument('project_id')
 @click.option('--input', help='Full path to project folder',default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
@@ -88,7 +76,7 @@ def start(ctx):
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.pass_context
 def project(ctx, project_id, input, dry, config, email, qc_only):
-  """Analyze a whole project"""
+  """Analysze a whole project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
     try:
@@ -121,7 +109,7 @@ def project(ctx, project_id, input, dry, config, email, qc_only):
   manager.project_job(qc_only=qc_only)
   done() 
 
-@type.command()
+@analyse.command()
 @click.argument('sample_id')
 @click.option('--input', help='Full path to sample folder', default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
@@ -285,7 +273,7 @@ def list(ctx):
   for org in sorted(refe.existing_organisms()):
     click.echo(org.replace("_"," ").capitalize())
 
-@util.command()
+@utils.command()
 @click.argument('project_name')
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--type', default='all', type=click.Choice(['all', 'html', 'csv', 'qc']))
@@ -297,7 +285,7 @@ def report(ctx, project_name, email, type):
   codemonkey.report(type)
   done()
 
-@util.command()
+@utils.command()
 @click.pass_context
 def view(ctx):
   """Starts an interactive webserver for viewing"""
