@@ -74,11 +74,12 @@ def refer(ctx):
 @click.option('--qc_only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--trimmed', help="Use trimmed input data", default=True, is_flag=True)
+@click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
 @click.pass_context
-def project(ctx, project_id, input, dry, config, email, qc_only, trimmed):
-  """Analysze a whole project"""
+def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed):
+  """Analyse a whole project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
+  trimmed = not untrimmed
   if config != '':
     try:
       with open(os.path.abspath(config), 'r') as conf:
@@ -117,11 +118,12 @@ def project(ctx, project_id, input, dry, config, email, qc_only, trimmed):
 @click.option('--qc_only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--trimmed', help="Use trimmed input data", default=True, is_flag=True)
+@click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
 @click.pass_context
-def sample(ctx, sample_id, input, dry, config, email, qc_only, trimmed):
-  """Analyze a single sample"""
+def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed):
+  """Analyse a single sample"""
   ctx.obj['config']['regex']['mail_recipient'] = email
+  trimmed = not untrimmed
   if config != '':
     try:
       with open(os.path.abspath(config), 'r') as conf:
