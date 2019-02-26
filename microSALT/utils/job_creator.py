@@ -343,7 +343,7 @@ class Job_Creator():
     except Exception as e:
       self.logger.error("Unable to add sample {} to database".format(self.name))
 
-  def project_job(self, single_sample=False, qc_only=False):
+  def project_job(self, single_sample=False, qc_only=False, trimmed=True):
     if 'dry' in self.config and self.config['dry']==True:
       dry=True
     else:
@@ -361,7 +361,7 @@ class Job_Creator():
       #Start every sample job
     if single_sample:
       try:
-        self.sample_job()
+        self.sample_job(trimmed=True)
         headerargs = self.get_headerargs()
         outfile = self.get_sbatch()
         bash_cmd="sbatch {} {}".format(headerargs, outfile)
@@ -456,7 +456,7 @@ class Job_Creator():
     mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
     output, error = mailproc.communicate()
 
-  def sample_job(self, qc_only=False):
+  def sample_job(self, qc_only=False, trimmed=True):
     """ Writes necessary sbatch job for each individual sample """
     try:
       self.trimmed_files = dict()
@@ -474,7 +474,7 @@ class Job_Creator():
         self.create_trimsection()
         self.interlace_files()
         #self.logger.info("Sample trimming is currently disabled for QC results")
-        self.create_variantsection(trimmed=True)
+        self.create_variantsection(trimmed=trimmed)
         if not qc_only:
           self.create_assemblysection()
           self.create_assemblystats_section()

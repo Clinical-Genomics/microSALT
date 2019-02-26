@@ -74,8 +74,9 @@ def refer(ctx):
 @click.option('--qc_only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.option('--trimmed', help="Use trimmed input data", default=True, is_flag=True)
 @click.pass_context
-def project(ctx, project_id, input, dry, config, email, qc_only):
+def project(ctx, project_id, input, dry, config, email, qc_only, trimmed):
   """Analysze a whole project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
@@ -106,7 +107,7 @@ def project(ctx, project_id, input, dry, config, email, qc_only):
     click.echo("{}".format(e))
   click.echo("Version check done. Creating sbatch jobs")
   manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
-  manager.project_job(qc_only=qc_only)
+  manager.project_job(qc_only=qc_only, trimmed=trimmed)
   done() 
 
 @analyse.command()
@@ -116,8 +117,9 @@ def project(ctx, project_id, input, dry, config, email, qc_only):
 @click.option('--qc_only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.option('--trimmed', help="Use trimmed input data", default=True, is_flag=True)
 @click.pass_context
-def sample(ctx, sample_id, input, dry, config, email, qc_only):
+def sample(ctx, sample_id, input, dry, config, email, qc_only, trimmed):
   """Analyze a single sample"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
@@ -153,7 +155,7 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only):
     fixer.update_refs()
     click.echo("Version check done. Creating sbatch job")
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
-    worker.project_job(single_sample=True, qc_only=qc_only)
+    worker.project_job(single_sample=True, qc_only=qc_only, trimmed=trimmed)
   except Exception as e:
     click.echo("Unable to process sample {} due to '{}'".format(sample_id,e))
   done()
