@@ -26,11 +26,15 @@ while true; do
 done
 echo "Thank you, executing!"
 
-conda create -n $cname python=3.6
-source activate $cname
+if $type = 'prod'
+    rname =P_$cname
+    conda create -n $rname python=3.6
+elif $type = 'dev'
+    rname=D_$cname
+    conda create -n $rname python=3.6
+source activate $rname
 conda config --add channels bioconda
 conda install -c bioconda blast=2.5.0=hc0b0e79_3 spades=3.12.0=py36_0 trimmomatic=0.38=1
-git clone https://github.com/Clinical-Genomics/microSALT.git
 if $type = 'prod'
     cd microSALT && pip install -r requirements.txt && pip install .
 elif $type = 'dev'
