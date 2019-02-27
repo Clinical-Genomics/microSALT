@@ -141,22 +141,22 @@ class LIMS_Fetcher():
       self.logger.warn("Unable to find existing reference for {}, strain {} has no reference match\nSource: {}"\
       .format(sample_name, lims_organ, e))
 
-  def get_date(sample_id, type=""):
+  def get_date(self, sample_id, type=""):
     """ Returns the most recent sequencing date of a sample """
     date_list = list()
-    if type = "sequencing":
+    if type == "sequencing":
       steps = ["CG002 - Illumina Sequencing (Illumina SBS)", "CG002 Illumina SBS (HiSeq X)"]
-    elif type = "libprep":
+    elif type == "libprep":
       steps = "CG002 - Aggregate QC (Library Validation)"
     else:
       raise Exception("Attempted to get date for {} but no step defined".format(sample_id))
     for step in steps:
       try:
-        arts = lims.get_artifacts(samplelimsid = sample_id, process_type = step)
-        date_list.append([a.parent_process.date_run for a in arts])
+        arts = self.lims.get_artifacts(samplelimsid = sample_id, process_type = step)
+        date_list = date_list + [a.parent_process.date_run for a in arts]
       except Exception as e:
         pass
-    return max(dates)
+    return max(date_list)
 
 #DEBUG: Implement later!
 #   def get_method_document(sample_id, first_date = True):
