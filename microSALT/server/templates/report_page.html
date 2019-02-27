@@ -226,60 +226,58 @@
           {% endif %}
           {% endfor %}
 
-<!-- Here my code begins FOR RESISTANCE TABLE-->
-<!-- If loop for the table to be formed only when there are resistances below threshold in samples -->
-{% if belowCount > 0 %}
-<footer>
-  <div class="panel"><div class="panel-body">
-    <h2 class="page-header"><div class="row"></div><strong>Resistance Summary Table</strong><br>
-      <small>Less tan 97% identity</small>
-      <small><p align="right">{{date}}</p></small></h2>
-    <div class="table-responsive">
-
-      <table  class="table table-bordered" style='table-layout:fixed;'>
-        <tr>
-          <th width="4%">#</th>
-          <th width="15%">Sample ID</th>
-          <th width="15%">Gene</th>
-          <th width="20%">Type</th>
-          <th width="15%">Reference</th>
-          <th width="20%">Contig Coverage</th>
-          <th>Identity</th>
-          <th>Span</th>
-        </tr>
-        {% for sample in samples %}
-        {% for seq_type in sample.resistances if seq_type.threshold == 'BelowPassed' %}
-          <tr>
-            <td>{{loop.index}}</td>
-            <td>{{sample.Customer_ID_sample}}</td>
-            <td>{{seq_type.gene}}</td>
-            {% if seq_type.resistance is not none %}
-              <td>{{seq_type.resistance|title}}</td>
-            {% else %}
-              <td>{{seq_type.instance|title}}</td>
-            {% endif %}
-            {% if seq_type.reference is not none %}
-              <td>{{seq_type.reference}}</td>
-            {% else %}
-              <td>Unknown</td>
-            {% endif %}
-            <td>{{ seq_type.contig_coverage|round(2)  }}</td>
-            <td>{{ seq_type.identity|round(2) }}</td>
-            {% if seq_type.span == 999.0 %}
-              <td>Undef.</td>
-            {% else %}
-              <td>{{ seq_type.span|round(2) }}</td>
-            {% endif %}
-          </tr>
-        {% endfor %}
-        {% endfor %}
-      </table>
-    </div>
-    </div>
-  </div>
-</footer>
-{% endif %}
-
+          <!-- If loop for formation of table with only resistances below threshold in samples -->
+          {% for sample in samples %}
+            {% for seq_type in sample if sample.resistances|selectattr('threshold', 'equalto', 'BelowCount')|list|length == 0 %}
+              {% if loop.first %}
+                <footer>
+                  <div class="panel"><div class="panel-body">
+                    <h2 class="page-header"><div class="row"></div><strong>Unreliable resistance calls</strong><br>
+                      <small><p align="right">{{date}}</p></small></h2>
+                    <div class="table-responsive">
+                <table  class="table table-bordered" style='table-layout:fixed;'>
+                  <tr>
+                    <th width="4%">#</th>
+                    <th width="15%">Sample ID</th>
+                    <th width="15%">Gene</th>
+                    <th width="20%">Type</th>
+                    <th width="15%">Reference</th>
+                    <th width="20%">Contig Coverage</th>
+                    <th>Identity</th>
+                    <th>Span</th>
+                  </tr>
+              {% endif %}
+                    <tr>
+                      <td>{{loop.index}}</td>
+                      <td>{{sample.Customer_ID_sample}}</td>
+                      <td>{{seq_type.gene}}</td>
+                      {% if seq_type.resistance is not none %}
+                        <td>{{seq_type.resistance|title}}</td>
+                      {% else %}
+                        <td>{{seq_type.instance|title}}</td>
+                      {% endif %}
+                      {% if seq_type.reference is not none %}
+                        <td>{{seq_type.reference}}</td>
+                      {% else %}
+                        <td>Unknown</td>
+                      {% endif %}
+                      <td>{{ seq_type.contig_coverage|round(2)  }}</td>
+                      <td>{{ seq_type.identity|round(2) }}</td>
+                      {% if seq_type.span == 999.0 %}
+                        <td>Undef.</td>
+                      {% else %}
+                        <td>{{ seq_type.span|round(2) }}</td>
+                      {% endif %}
+                    </tr>
+              {% if loop.last %}
+                </table>
+                    </div>
+                  </div>
+                </div>
+                </footer>
+              {% endif %}
+            {% endfor %}
+          {% endfor %}
+        </div>
       </div>
-    </div>
-  {% endblock %}
+{% endblock %}

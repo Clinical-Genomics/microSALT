@@ -56,8 +56,7 @@ def report_page(project, organism_group):
         samples = sample_info['samples'],
         date = date.today().isoformat(),
         version = sample_info['versions'],
-        build = __version__,
-        belowCount = sample_info['belowCount'])
+        build = __version__)
 
 def gen_reportdata(pid, organism_group='all'):
   """ Queries database for all necessary information for the reports """
@@ -121,7 +120,6 @@ def gen_reportdata(pid, organism_group='all'):
         r.threshold = 'BelowPassed'
       else:
         r.threshold = 'Failed'
-    output['belowCount'] = belowCount
 
     #Seq_type and resistance sorting
     s.seq_types=sorted(s.seq_types, key=lambda x: x.loci)
