@@ -31,7 +31,7 @@ class Job_Creator():
       temp = timestamp.replace('_','.').split('.')
       self.dt = datetime(int(temp[0]),int(temp[1]),int(temp[2]),int(temp[3]),int(temp[4]),int(temp[5]))
     else:
-      self.dt = datetime.now() 
+      self.dt = datetime.now()
       self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
       format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
@@ -40,7 +40,7 @@ class Job_Creator():
     self.finishdir = finishdir
     if self.finishdir == "":
       self.finishdir="{}/{}_{}".format(config["folders"]["results"], self.name, self.now)
-    
+
     self.db_pusher=DB_Manipulator(config, log)
     self.trimmed_files = dict()
     self.organism = ""
@@ -89,7 +89,7 @@ class Job_Creator():
     if verified_files == []:
       raise Exception("No files in directory {} match file_pattern '{}'.".format(self.indir, self.config['regex']['file_pattern']))
     return verified_files
- 
+
   def interlace_files(self):
     """Interlaces all unpaired files"""
     batchfile = open(self.batchfile, "a+")
@@ -104,7 +104,7 @@ class Job_Creator():
       batchfile.write("cat {} >> {}\n".format(v['ru'], interfile))
       self.trimmed_files[name]['i'] = "{}".format(interfile)
       batchfile.write("\n")
-    batchfile.close()    
+    batchfile.close()
 
   def create_spadessection(self):
     batchfile = open(self.batchfile, "a+")
@@ -112,7 +112,7 @@ class Job_Creator():
     batchfile.write("# Spades assembly\n")
     batchfile.write("spades.py --threads {} --careful --memory {} -o {}/assembly"\
     .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir))
-    
+
     libno = 1
     for k,v in self.trimmed_files.items():
       batchfile.write(" --pe{}-1 {}".format(libno, self.trimmed_files[k]['fp']))
@@ -140,7 +140,7 @@ class Job_Creator():
 
   def create_blastsection(self):
     """Creates a blast job for instances where many loci definition files make up an organism"""
-    
+
     #Create run
     batchfile = open(self.batchfile, "a+")
     batchfile.write("mkdir {}/blast\n\n".format(self.outdir))
@@ -207,13 +207,16 @@ class Job_Creator():
     """Creates sample in database"""
     try:
       self.lims_fetcher.load_lims_sample_info(name)
-      sample_col = self.db_pusher.get_columns('Samples') 
+      sample_col = self.db_pusher.get_columns('Samples')
       sample_col['CG_ID_sample'] = self.lims_fetcher.data['CG_ID_sample']
       sample_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
       sample_col['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
       sample_col["date_analysis"] = self.dt
       sample_col['organism']=self.lims_fetcher.data['organism']
       sample_col["application_tag"] = self.lims_fetcher.data['application_tag']
+      sample_col["priority"] = self.lims_fetcher.data['priority']
+      sample_col["date_sequencing"] = self.lims_fetcher.data['date_sequencing']
+      sample_col["date_libprep"] = self.lims_fetcher.data['date_libprep']
       #self.db_pusher.purge_rec(sample_col['CG_ID_sample'], 'sample')
       self.db_pusher.add_rec(sample_col, 'Samples')
     except Exception as e:
@@ -256,7 +259,7 @@ class Job_Creator():
           try:
             sample_in = "{}/{}".format(dirpath, dir)
             sample_out = "{}/{}".format(self.finishdir, dir)
-            sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now) 
+            sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now)
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()
             outfile = ""
@@ -323,7 +326,7 @@ class Job_Creator():
           massagedJobs[massagedJobs.index(entry)+1] += ":{}".format(jobno)
         else:
           final = entry
-          break 
+          break
 
     head = "-A {} -p core -n 1 -t 06:00:00 -J {}_{}_MAILJOB --qos {} --open-mode append --dependency=afterany:{} --output {}"\
             .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"],\
@@ -340,7 +343,7 @@ class Job_Creator():
         os.makedirs(self.finishdir)
       try:
         self.organism = self.lims_fetcher.get_organism_refname(self.name, external=False)
-        # This is one job 
+        # This is one job
         self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
         batchfile = open(self.batchfile, "w+")
         batchfile.write("#!/bin/sh\n\n")
@@ -359,8 +362,8 @@ class Job_Creator():
 
         self.logger.info("Created runfile for sample {} in folder {}".format(self.name, self.outdir))
       except Exception as e:
-        raise 
-      try: 
+        raise
+      try:
         self.create_sample(self.name)
       except Exception as e:
         self.logger.error("Unable to access LIMS info for sample {}".format(self.name))
@@ -368,4 +371,3 @@ class Job_Creator():
       self.logger.error("Unable to create job for sample {}\nSource: {}".format(self.name, str(e)))
       shutil.rmtree(self.finishdir, ignore_errors=True)
       raise
-

@@ -30,6 +30,10 @@ class Samples(db.Model):
    contigs = db.Column(db.Integer, default=-1)
    priority = db.Column(db.String(20))
    application_tag = db.Column(db.String(15))
+   date_sequencing = db.Column(db.DateTime)
+   date_libprep = db.Column(db.DateTime)
+   method_sequencing = db.Column(db.String(15))
+   method_libprep = db.Column(db.String(15))
 
 class Seq_types(db.Model):
   __tablename__ = 'seq_types'

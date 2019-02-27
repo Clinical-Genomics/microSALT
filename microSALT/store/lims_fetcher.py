@@ -58,12 +58,16 @@ class LIMS_Fetcher():
     """ Loads all utilized LIMS info. Organism assumed to be written as binomial name """
     if external:
       sample = self.lims.get_samples(name=cg_sampleid)
+      seq_date = self.get_date(sample.id,type="sequencing")
+      libprep_date = self.get_date(sample.id,type="libprep")
       if len(sample) != 1:
         self.logger.error("Sample ID {} resolves to multiple entries".format(cg_sampleid))
       sample = sample[0]
     else:
       try:
         sample = Sample(self.lims, id=cg_sampleid)
+        seq_date = self.get_date(cg_sampleid,type="sequencing")
+        libprep_date = self.get_date(cg_sampleid,type="libprep")
       except Exception as e:
         self.logger.error("LIMS connection timeout")
     organism = "Unset"
@@ -104,7 +108,9 @@ class LIMS_Fetcher():
                            'organism' : organism,
                            'priority' : sample.udf['priority'],
                            'Customer_ID': sample.udf['customer'],
-                           'application_tag': sample.udf['Sequencing Analysis']
+                           'application_tag': sample.udf['Sequencing Analysis'],
+                           'date_sequencing': seq_date,
+                           'date_libprep': libprep_date
 })
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for sample {}. Review LIMS data.\nSource: {}"\
@@ -132,5 +138,37 @@ class LIMS_Fetcher():
         if hit == len(organism):
           return target
     except Exception as e:
-      self.logger.warn("Unable to find existing reference for {}, strain {} has no reference match\nSource: {}".format(sample_name, lims_organ, e))
+      self.logger.warn("Unable to find existing reference for {}, strain {} has no reference match\nSource: {}"\
+      .format(sample_name, lims_organ, e))
 
+  def get_date(sample_id, type=""):
+    """ Returns the most recent sequencing date of a sample """
+    date_list = list()
+    if type = "sequencing":
+      steps = ["CG002 - Illumina Sequencing (Illumina SBS)", "CG002 Illumina SBS (HiSeq X)"]
+    elif type = "libprep":
+      steps = "CG002 - Aggregate QC (Library Validation)"
+    else:
+      raise Exception("Attempted to get date for {} but no step defined".format(sample_id))
+    for step in steps:
+      try:
+        arts = lims.get_artifacts(samplelimsid = sample_id, process_type = step)
+        date_list.append([a.parent_process.date_run for a in arts])
+      except Exception as e:
+        pass
+    return max(dates)
+
+#DEBUG: Implement later!
+#   def get_method_document(sample_id, first_date = True):
+#     steps = ['CG002 - Cluster Generation (HiSeq X)', 'CG002 - Cluster Generation (Illumina SBS)']
+#
+#     arts = lims.get_artifacts(samplelimsid = sample_id, process_type = steps)
+#     processes = [(a.parent_process.date_run, a.parent_process.date_run) for a in arts]
+#     processes = list(set(processes))
+#     if first_date
+#       process = sorted(processes)[0]
+#     else:
+#       process = sorted(processes)[-1]
+#     dokument = process.udf.get('Method Document')
+#     version = process.udf.get('document version')
+#     return dokument, version
