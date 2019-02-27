@@ -18,7 +18,7 @@
                 <div class="col-sm-6">
                   <div class="card">
                     <div class="card-body">
-                      <h3 class="card-title">Kontakt Clinical genomics</h3>
+                      <h3 class="card-title">Kontakt Clinical genomics:</h3>
                       <address>
                         <strong>Clinical Genomics</strong><br>
                         Science for Life Laboratory<br>
@@ -32,13 +32,11 @@
                 <div class="col-sm-6">
                   <div class="card">
                     <div class="card-body">
-                      <h3 class="card-title">Kontakt Kund</h3>
+                      <h3 class="card-title">Kund: </h3>
                       <address>
-                        <strong>Kund {{custxxx}}</strong><br>
-                        statusDB<br>
-                        statusDB<br>
-                        statusDB<br>
-                        <abbr title="Phone">P:</abbr> 08-xxxxxx
+                        <h2>{{samples[0].projects.Customer_ID}}</h2><br>
+
+
                       </address>
                     </div>
                   </div>
@@ -56,7 +54,7 @@
                           </tr>
                           <tr>
                           <td><b>Customer ID <i>(CG Project ID)</i></b>
-                            <td>*<i></i></td>
+                            <td>{{samples[0].projects.Customer_ID}}<i></i></td>
                           </tr>
                           <tr>
                             <td><b>Analysis date</b></td>
@@ -84,14 +82,16 @@
                     <th>Biblioteksprep datum</th>
                     <th>Biblioteksmetod</th>
                     <th>Sekvensering datum</th>
-                    <th>Sekvenseringsmetod</th
+                    <th>Sekvenseringsmetod</th>
+                    <th>Priority(research/standard)</th>
                   </tr>
                   {% for sample in samples %}
                     <tr>
                       <td>{{sample.Customer_ID_sample}}</td>
                       <td>{{sample.CG_ID_sample}}</td>
-                      <td>*</td>
+                      <td>{{sample.application_tag}}</td>
                       <td>{{samples[0].projects.date_ordered.date()}}</td>
+                      <td>*</td>
                       <td>*</td>
                       <td>*</td>
                       <td>*</td>
@@ -315,13 +315,13 @@
           <footer>
             <div class="panel"><div class="panel-body">
 
-              <h3><strong>Teknisk beskrivninga av analysen : "{{applicationtag}}"</strong><br></h3>
+              <h3><strong>Teknisk beskrivning av analysen : {{samples[0].application_tag}}</strong><br></h3>
               <p>
-                <br>
+                Microbial whole genome routine samples, Nextera prep, Sequencing on HiSeq X to 3 M read pairs<br>
 
               </p>
 
-              <h3><strong>Begränsningar av analysen : "{{applicationtag}}"</strong><br></h3>
+              <h3><strong>Begränsningar av analysen : {{samples[0].application_tag}}</strong><br></h3>
               <p>
                 <br>
 
