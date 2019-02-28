@@ -8,7 +8,7 @@
             <div class="panel"><div class="panel-body">
               <a href="https://github.com/Clinical-Genomics/microSALT"><img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" alt="MicroSALT Logo" align="left" style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
               <!--<img src="swedac.jpg" alt="Swedac Logo" align="right" style="display:flex;">-->
-              <img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/swedac.jpg?raw=true" alt="Swedac Logo" align="right" style="display:flex;">
+              <img src="https://github.com/Clinical-Genomics/microSALT/blob/accreditation-changes-to-report/artwork/swedac.jpg?raw=true" alt="Swedac Logo" align="right" style="display:flex;">
               <h2 class="page-header">
                 <small><br><br>Klinisk Mikrobiologi</small>
               <small><p align="center">Rapport genererad: {{date}}</p></small></h2>
@@ -151,7 +151,12 @@
                 <div class="panel-body">
                   <h2 class="page-header"><div class="row"></div><strong>microSALT Resultat</strong><br>
                     <small>Klinisk Mikrobiologi</small>
-                    <small><p align="right">Rapport genererad: {{date}}</p></small></h2>
+                    <small><p align="center">Rapport genererad: {{date}}</p></small></h2>
+                    {% if sample.priority == 'standard' %}
+                      <img src="https://github.com/Clinical-Genomics/microSALT/blob/accreditation-changes-to-report/artwork/swedac.jpg?raw=true" alt="Swedac Logo" align="right" style="width:40px;height:60px;display:flex;">
+                    {% else %}
+                      <p align="right">Ej ackrediterad analys</p>
+                    {% endif %}
 
                    <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
                     <h4>Översikt</h4>
