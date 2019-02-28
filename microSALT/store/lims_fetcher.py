@@ -56,13 +56,15 @@ class LIMS_Fetcher():
 
   def load_lims_sample_info(self, cg_sampleid, external=False):
     """ Loads all utilized LIMS info. Organism assumed to be written as binomial name """
+    libprep_date = ""
+    seq_date = ""
     if external:
       sample = self.lims.get_samples(name=cg_sampleid)
-      seq_date = self.get_date(sample.id,type="sequencing")
-      libprep_date = self.get_date(sample.id,type="libprep")
       if len(sample) != 1:
         self.logger.error("Sample ID {} resolves to multiple entries".format(cg_sampleid))
       sample = sample[0]
+      seq_date = self.get_date(sample.id,type="sequencing")
+      libprep_date = self.get_date(sample.id,type="libprep")
     else:
       try:
         sample = Sample(self.lims, id=cg_sampleid)
@@ -141,13 +143,28 @@ class LIMS_Fetcher():
       self.logger.warn("Unable to find existing reference for {}, strain {} has no reference match\nSource: {}"\
       .format(sample_name, lims_organ, e))
 
+#  def get_date(self, sample_id, type=""):
+#    """ Returns the most recent sequencing date of a sample """
+#    if type == "sequencing":
+#        steps = ["CG002 - Illumina Sequencing (Illumina SBS)", "CG002 Illumina SBS (HiSeq X)"]
+#    elif type == "libprep":
+#        steps = "CG002 - Aggregate QC (Library Validation)"
+#    else:
+#        raise Exception("Attempted to get date for {} but no step defined".format(sample_id))
+#    try:
+#        arts = self.lims.get_artifacts(samplelimsid = sample_id, process_type = steps)
+#        date_list = [a.parent_process.date_run for a in arts]
+#    except Exception as e:
+#        pass
+#    return max(date_list)
+
   def get_date(self, sample_id, type=""):
     """ Returns the most recent sequencing date of a sample """
     date_list = list()
     if type == "sequencing":
       steps = ["CG002 - Illumina Sequencing (Illumina SBS)", "CG002 Illumina SBS (HiSeq X)"]
     elif type == "libprep":
-      steps = "CG002 - Aggregate QC (Library Validation)"
+      steps = ["CG002 - Aggregate QC (Library Validation)"]
     else:
       raise Exception("Attempted to get date for {} but no step defined".format(sample_id))
     for step in steps:
@@ -156,7 +173,8 @@ class LIMS_Fetcher():
         date_list = date_list + [a.parent_process.date_run for a in arts]
       except Exception as e:
         pass
-    return max(date_list)
+    dp = max(date_list).split('-')
+    return datetime(int(dp[0]), int(dp[1]), int(dp[2]))
 
 #DEBUG: Implement later!
 #   def get_method_document(sample_id, first_date = True):
