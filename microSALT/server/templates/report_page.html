@@ -8,9 +8,10 @@
             <div class="panel"><div class="panel-body">
               <a href="https://github.com/Clinical-Genomics/microSALT"><img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" alt="MicroSALT Logo" align="left" style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
               <!--<img src="swedac.jpg" alt="Swedac Logo" align="right" style="display:flex;">-->
+              <img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/swedac.jpg?raw=true" alt="Swedac Logo" align="right" style="display:flex;">
               <h2 class="page-header">
-                <small><br><br>Clinical Microbiology</small>
-              <small><p align="right">{{date}}</p></small></h2>
+                <small><br><br>Klinisk Mikrobiologi</small>
+              <small><p align="center">Rapport genererad: {{date}}</p></small></h2>
 
 
 
@@ -46,22 +47,18 @@
 
               <div class="card">
                 <div class="card-block">
-                  <h3 class="card-title">Project Summary</h3>
+                  <h3 class="card-title">Projekt Sammanfattning</h3>
                     <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
                           <tr>
-                          <td><b>Project ID <i>(CG Project ID)</i></b>
+                          <td><b>Projekt ID <i>(CG Projekt ID)</i></b>
                             <td>{{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></td>
                           </tr>
                           <tr>
-                          <td><b>Customer ID <i>(CG Project ID)</i></b>
+                          <td><b>Kund ID</b>
                             <td>{{samples[0].projects.Customer_ID}}<i></i></td>
                           </tr>
                           <tr>
-                            <td><b>Analysis date</b></td>
-                            <td>{{samples[0].date_analysis.date()}}</td>
-                          </tr>
-                          <tr>
-                            <td><b>Pipeline version</b></td>
+                            <td><b>Analys pipeline version</b></td>
                             <td>{{build}}</td>
                           </tr>
                         </table>
@@ -71,12 +68,12 @@
 
 
                 <div class="card-block">
-                  <h3 class="card-title">Sample Summary</h3>
+                  <h3 class="card-title">Prov Sammanfattning</h3>
                   <div class="table-responsive">
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                   <tr>
-                    <th>Sample ID</th>
-                    <th>CG Sample ID</th>
+                    <th>Prov ID</th>
+                    <th>CG Prov ID</th>
                     <th>Applikations tag</th>
                     <th>Ankomstdatum</th>
                     <th>Biblioteksprep datum</th>
@@ -91,11 +88,11 @@
                       <td>{{sample.CG_ID_sample}}</td>
                       <td>{{sample.application_tag}}</td>
                       <td>{{samples[0].projects.date_ordered.date()}}</td>
+                      <td>{{sample.date_libprep.date()}}</td>
                       <td>*</td>
+                      <td>{{sample.date_sequencing.date()}}</td>
                       <td>*</td>
-                      <td>*</td>
-                      <td>*</td>
-                      <td>*</td>
+                      <td>{{sample.priority}}</td>
                       </tr>
                       {% endfor %}
                   </table>
@@ -109,15 +106,15 @@
 
             <footer>
               <div class="panel"><div class="panel-body">
-                <h3><strong>Summary of Results</strong><br></h3>
+                <h3><strong>Sammanställning av Resultat</strong><br></h3>
                 <div class="table-responsive">
                   <table  class="table table-bordered" style='table-layout:fixed;'>
                     <tr>
-                      <th>Sample ID</th>
-                      <th>CG Sample ID</th>
+                      <th>Prov ID</th>
+                      <th>CG Prov ID</th>
                       <th>Organism</th>
-                      <th>Sequence Type</th>
-                      <th>Thresholds</th>
+                      <th>Sekvens Typ</th>
+                      <th>Tröskelvärden</th>
                     </tr>
                     {% for sample in samples %}
                       <tr>
@@ -152,22 +149,22 @@
             <footer>
               <div class="panel">
                 <div class="panel-body">
-                  <h2 class="page-header"><div class="row"></div><strong>microSALT Results</strong><br>
-                    <small>Clinical Microbiology</small>
-                    <small><p align="right">{{date}}</p></small></h2>
+                  <h2 class="page-header"><div class="row"></div><strong>microSALT Resultat</strong><br>
+                    <small>Klinisk Mikrobiologi</small>
+                    <small><p align="right">Rapport genererad: {{date}}</p></small></h2>
 
                    <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
-                    <h4>Overview</h4>
+                    <h4>Översikt</h4>
                     <tr>
-                      <td><b>Project ID <i>(CG Project ID)</i></b></td>
+                      <td><b>Projekt ID <i>(CG Projekt ID)</i></b></td>
                       <td>{{sample.projects.Customer_ID_project}} <i>({{sample.projects.CG_ID_project}})</i></td>
                     </tr>
                     <tr>
-                      <td><b>Sample ID <i>(CG Sample ID)</i></b></td>
+                      <td><b>Prov ID <i>(CG Prov ID)</i></b></td>
                       <td>{{sample.Customer_ID_sample}}  <i>({{sample.CG_ID_sample}})</i></td>
                     </tr>
                     <tr>
-                      <th scope="row" >Analysis date</th>
+                      <th scope="row" >Analys datum</th>
                       <td>{{sample.date_analysis.date()}}</td>
                     </tr>
                     <tr>
@@ -175,10 +172,10 @@
                       {% if sample.organism is not none %}
                         <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
                       {% else %}
-                        <td><i>Control</i></td>
+                        <td><i>Kontroll</i></td>
                       {% endif %}
                     </tr>
-                    <tr><th scope="row" >Sequence Type</th>
+                    <tr><th scope="row" >Sekvens Typ</th>
                       {% if sample.ST_status == 'None' %}
                         <td><font color="red">{{sample.ST_status }}</font></td>
                       {% elif sample.ST <= -4 %}
@@ -187,7 +184,7 @@
                         <td>{{sample.ST_status }}</td>
                       {% endif %}
                     </tr>
-                    <tr><th scope="row" >Thresholds</th>
+                    <tr><th scope="row" >Tröskelvärde</th>
                       {% if sample.threshold=='Failed' %}
                         <td><font color="red">{{sample.threshold }}</font></td>
                       {% else %}
@@ -196,7 +193,7 @@
                     </tr>
                     {% if sample.organism in version %}
                       <tr>
-                        <th scope="row">Reference version</th>
+                        <th scope="row">Referens version</th>
                         <td>{{version[sample.organism]}}</td>
                       </tr>
                     {% endif %}
@@ -211,15 +208,15 @@
                 <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
                   <h4>Assembly</h4>
                   {% if sample.genome_length > -1 %}
-                    <tr><th scope="row" >Estimated genome length</th><td>{{'{0:,}'.format(sample.genome_length)|replace(","," ")}}</td></tr>
+                    <tr><th scope="row" >Estimerad genom storlek</th><td>{{'{0:,}'.format(sample.genome_length)|replace(","," ")}}</td></tr>
                     <tr><th scope="row" >GC content</th><td>{{sample.gc_percentage| round(2)}}%</td></tr>
-                    <tr><th scope="row" >N50 (min. contig length for 50% of genome)</th><td>{{'{0:,}'.format(sample.n50)|replace(","," ")}}</td></tr>
-                    <tr><th scope="row" >Necessary contigs</th><td>{{sample.contigs}}</td></tr>
+                    <tr><th scope="row" >N50 (min. contig längd för 50% av genom)</th><td>{{'{0:,}'.format(sample.n50)|replace(","," ")}}</td></tr>
+                    <tr><th scope="row" >Nödvändiga contigs</th><td>{{sample.contigs}}</td></tr>
                   {% else %}
-                    <tr><th scope="row" >Estimated genome length</th><td>Insufficient data for QUAST</td></tr>
+                    <tr><th scope="row" >Estimerad genom storlek</th><td>Insufficient data for QUAST</td></tr>
                     <tr><th scope="row" >GC content</th><td>Insufficient data for QUAST</td></tr>
-                    <tr><th scope="row" >N50 (min. contig length for 50% of genome)</th><td>Insufficient data for QUAST</td></tr>
-                    <tr><th scope="row" >Necessary contigs</th><td>Insufficient data for QUAST</td></tr>
+                    <tr><th scope="row" >N50 (min. contig längd för 50% av genom)</th><td>Insufficient data for QUAST</td></tr>
+                    <tr><th scope="row" >Nödvändiga contigs</th><td>Insufficient data for QUAST</td></tr>
                   {% endif %}
                 </table></div>
 
@@ -240,9 +237,9 @@
                         <tr>
                           <th width="4%">#</th>
                           <th width="30%">Loci</th>
-                          <th width="20%">Allele</th>
-                          <th width="20%">Contig Coverage</th>
-                          <th>Identity</th>
+                          <th width="20%">Allel</th>
+                          <th width="20%">Contig Täckning</th>
+                          <th>Identitet</th>
                           <th>Span</th>
                         </tr>
                       </thead>
@@ -265,15 +262,15 @@
                 <div class="table-responsive">
                   {% if not sample.resistances|length == 0 %}
                     <table  class="table table-bordered" style='table-layout:fixed;'>
-                    <h4>Resistance</h4>
+                    <h4>Resistens</h4>
                       <thead>
                         <tr>
                           <th width="4%">#</th>
-                          <th width="15%">Gene</th>
-                          <th width="20%">Type</th>
-                          <th width="15%">Reference</th>
-                          <th width="20%">Contig Coverage</th>
-                          <th>Identity</th>
+                          <th width="15%">Gen</th>
+                          <th width="20%">Typ</th>
+                          <th width="15%">Referens</th>
+                          <th width="20%">Contig Täckning</th>
+                          <th>Identitet</th>
                           <th>Span</th>
                         </tr>
                       </thead>
@@ -317,7 +314,7 @@
 
               <h3><strong>Teknisk beskrivning av analysen : {{samples[0].application_tag}}</strong><br></h3>
               <p>
-                Microbial whole genome routine samples, Nextera prep, Sequencing on HiSeq X to 3 M read pairs<br>
+                Mikrobiella helgenoms rutin-prover, Nextera prep, Sekvensering på Illumina till 3 M read par<br>
 
               </p>
 
