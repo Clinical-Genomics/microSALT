@@ -27,7 +27,7 @@ class Referencer():
     organisms = self.refs.keys()
     self.organisms = [*organisms]
     self.lims=LIMS_Fetcher(config, log)
-    self.force=force
+    self.force = force
 
   def identify_new(self, cg_id, project=False):
    """ Automatically downloads pubMLST & NCBI organisms not already downloaded """
@@ -61,9 +61,9 @@ class Referencer():
  
   def update_refs(self):
     """Updates all references. Order is important, since no object is updated twice"""
-    self.fetch_pubmlst()
-    self.fetch_external()
-    self.fetch_resistances()
+    self.fetch_pubmlst(self.force)
+    self.fetch_external(self.force)
+    self.fetch_resistances(self.force)
 
   def index_db(self, full_dir, suffix):
     """Check for indexation, makeblastdb job if not enough of them."""
@@ -87,7 +87,7 @@ class Referencer():
         self.logger.error("Unable to index requested target {} in {}".format(file, full_dir))
     self.logger.info("Indexed contents of {}".format(full_dir))
 
-  def fetch_external(self):
+  def fetch_external(self, force=False):
     """ Updates reference for data that IS ONLY LINKED to pubMLST """
     prefix = "https://pubmlst.org"
     query = urllib.request.urlopen("{}/data/".format(prefix))
@@ -108,7 +108,7 @@ class Referencer():
           organ = organ[:-2]
         currver = self.db_access.get_version("profile_{}".format(organ))
         profile_no = re.search('\d+', sample[2]).group(0)
-        if organ in self.organisms and organ.replace("_", " ") not in self.updated and (profile_no > currver or self.force):
+        if organ in self.organisms and organ.replace("_", " ") not in self.updated and (profile_no > currver or force):
           # Download definition files
           st_link = prefix + entry.find_all("a")[1]['href']
           output = "{}/{}".format(self.config['folders']['profiles'], organ)
@@ -134,7 +134,7 @@ class Referencer():
     except StopIteration:
       pass
 
-  def fetch_resistances(self):
+  def fetch_resistances(self, force=False):
     cwd = os.getcwd()
     url = "https://bitbucket.org/genomicepidemiology/resfinder_db.git"
     hiddensrc ="{}/.resfinder_db".format(self.config['folders']['resistances'])
@@ -179,7 +179,8 @@ class Referencer():
       if len(parts) > 1 and parts[1] == 'fsa':
         # Missing index or source modified after index
         if not "{}.nhr".format(parts[0]) in os.listdir(self.config['folders']['resistances']) \
-           or os.stat("{}/{}".format(self.config['folders']['resistances'], file)).st_mtime > os.stat("{}/{}.nhr".format(self.config['folders']['resistances'],parts[0])).st_mtime:
+           or os.stat("{}/{}".format(self.config['folders']['resistances'], file)).st_mtime > os.stat("{}/{}.nhr".format(self.config['folders']['resistances'],parts[0])).st_mtime\
+           or force:
              reIndex = True
     if reIndex:
       self.index_db(self.config['folders']['resistances'], '.fsa')
@@ -241,7 +242,7 @@ class Referencer():
       truename = "{}_{}".format(truename[0], truename[1])
       self.download_pubmlst(truename, seqdef_url)
       #Update organism list
-      self.refs = self.db_access.get_profiles()
+      self.refs = self.db_access.profiles
       self.logger.info("Created table profile_{}".format(truename))
 
   def query_pubmlst(self):
@@ -289,7 +290,7 @@ class Referencer():
     self.index_db(output, '.tfa')
     return ver_query['last_updated']
 
-  def fetch_pubmlst(self):
+  def fetch_pubmlst(self,force=False):
     """ Updates reference for data that is stored on pubMLST """
     seqdef_url=dict()
     db_query = self.query_pubmlst()
@@ -303,7 +304,8 @@ class Referencer():
             self.updated.append(name.replace('_', ' '))
             seqdef_url[name] = subtype['href']
     for key, val in seqdef_url.items():
-      ver = self.download_pubmlst(key, val)
+      ver = self.download_pubmlst(key, val, force)
       self.db_access.upd_rec({'name':'profile_{}'.format(key)}, 'Versions', {'version':ver})
+      self.db_access.reload_profiletable(key)
       self.logger.info('pubMLST reference for {} set to version {}'.format(key.replace('_',' ').capitalize(), ver))
 

@@ -60,8 +60,11 @@ class LIMS_Fetcher():
         self.logger.error("LIMS connection timeout")
     organism = "Unset"
     if 'Strain' in sample.udf and organism == "Unset":
+      #Predefined genus usage. All hail buggy excel files
+      if 'gonorrhoeae' in sample.udf['Strain']:
+        organism = "Neisseria spp." 
       #Backwards compat, MUST hit first
-      if sample.udf['Strain'] == 'VRE':
+      elif sample.udf['Strain'] == 'VRE':
         if 'Reference Genome Microbial' in sample.udf:
           if sample.udf['Reference Genome Microbial'] == 'NC_017960.1':
             organism = 'Enterococcus faecium'
@@ -72,7 +75,11 @@ class LIMS_Fetcher():
       elif sample.udf['Strain'] != 'Other' and sample.udf['Strain'] != 'other':
         organism = sample.udf['Strain']
       elif (sample.udf['Strain'] == 'Other' or sample.udf['Strain'] == 'other') and 'Other species' in sample.udf:
-        organism = sample.udf['Other species']
+        #Other species predefined genus usage
+        if 'gonorrhoeae' in sample.udf['Other species']:
+          organism = "Neisseria spp."
+        else:
+          organism = sample.udf['Other species']
     if 'Reference Genome Microbial' in sample.udf and organism == "Unset":
       if sample.udf['Reference Genome Microbial'] == 'NC_002163':
         organism = "Campylobacter jejuni"

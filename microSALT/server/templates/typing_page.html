@@ -47,7 +47,7 @@
                       {% if sample.ST_status == 'None' or sample.ST == -1 %}
                         <td><font color="red">{{ sample.ST_status }}</font></td>
                       {% elif sample.ST <= -4 %}
-                        <td>{{sample.ST}} (Novel)</td>                  
+                        <td>I{{sample.ST|int|abs}} (Novel)</td>                  
                       {% else %}
                         <td>{{sample.ST_status }}</td>
                       {% endif %}
@@ -98,7 +98,7 @@
                       {% if sample.ST_status == 'None' %}
                         <td><font color="red">{{sample.ST_status }}</font></td>
                       {% elif sample.ST <= -4 %}
-                        <td>{{sample.ST}} (Novel)</td>
+                        <td>I{{sample.ST|int|abs}} (Novel)</td>
                       {% else %}
                         <td>{{sample.ST_status }}</td>
                       {% endif %}
@@ -178,7 +178,7 @@
                 </div>
 
                 <div class="table-responsive">
-                  {% if not sample.resistances|length == 0 %}
+                  {% if not sample.resistances|selectattr('threshold', 'equalto', 'Passed')|list|length == 0 %}
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                     <h4>Resistance</h4>
                       <thead>

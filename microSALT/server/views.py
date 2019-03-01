@@ -103,7 +103,7 @@ def gen_reportdata(pid, organism_group='all'):
     if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or \
     s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or \
     s.Customer_ID_sample.startswith('CTRL') or s.Customer_ID_sample.startswith('Neg') or \
-    s.Customer_ID_sample.startswith('blank'):
+    s.Customer_ID_sample.startswith('blank') or s.Customer_ID_sample.startswith('dual-NTC'):
       s.ST_status = 'Control (prefix)'
     elif s.ST < 0:
       if s.ST == -1:

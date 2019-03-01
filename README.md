@@ -21,10 +21,10 @@ cd microSALT && pip install -r requirements.txt && pip install.
 
 Then continue with __Configuration__
 
-_Optional SNP-calling support:_
-
-`conda install -c bioconda freebayes=1.1.0=py36_2 bcftools=1.3.1=0 \
-vcftools=0.1.15=0`
+## Quick installation
+* `git clone https://github.com/Clinical-Genomics/microSALT.git`
+* `cd microSALT && bash install.sh`
+* Perform all steps under section  __Configuration__
 
 ## Configuration
 Copy the configuration file to microSALTs hidden home directory, _or_ copy the configuration file anywhere and direct the envvar MICROSALT_CONFIG to it. See examples: 
@@ -43,7 +43,7 @@ __Then edit the fields to match your environment__.
 Create `$HOME/.genologicsrc` with the following formatting:
 ```
 [genologics]
-BASEURI=https://yourlims.corporation.se:8443
+BASEURI=https://yourlims.corporation.se/
 USERNAME=your_username
 PASSWORD=your_password
 [logging]
