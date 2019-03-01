@@ -7,9 +7,9 @@
 __Microbial Sequence Analysis and Loci-based Typing pipeline__
 
 _The microbial sequence analysis and loci-based typing pipeline (microSALT) is used to analyse microbial samples.
-It produces a quality control of the sample, determines a sample's organism specific sequence type, and its resistance pattern. microSALT also provides a database storage solution and report generation of these results.
+It produces a quality control of the sample, determines a sample's organism specific sequence type, and its resistance pattern. microSALT also provides a database storage solution and report generation of these results._
 
-microSALT uses a combination of python, sqLite and flask. Python is used for the majority of functionality, the database is handled through sqLite and the front-end is handled through flask. All analysis activity by microSALT requires a SLURM cluster._
+_microSALT uses a combination of python, sqLite and flask. Python is used for the majority of functionality, the database is handled through sqLite and the front-end is handled through flask. All analysis activity by microSALT requires a SLURM cluster._
 
 ## Quick installation
 ```
