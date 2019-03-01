@@ -51,8 +51,8 @@ MAIN_LOG=/tmp/lims.log
 ```
 
 ## Usage
-* Use the `start` function to start sbatch job(s), producing output to `folders['results']`. Afterwards the parsed results  are uploaded to the SQL back-end and produce reports (HTML).
-* Various functionality, including adding manually new reference organisms and re-generating reports; are stored under the `util` command.
+* Use the `analyse` function to start sbatch job(s), producing output to `folders['results']`. Afterwards the parsed results  are uploaded to the SQL back-end and produce reports (HTML).
+* Various functionality, including adding manually new reference organisms and re-generating reports; are stored under the `utils` commands.
 
 ## Databases
 ### MLST Definitions
