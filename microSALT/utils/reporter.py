@@ -2,6 +2,7 @@
    By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
+import json
 import requests
 import time
 import os
@@ -33,7 +34,9 @@ class Reporter():
     if type == 'html':
       self.gen_html()
     elif type == 'csv':
-      self.csv()
+      self.gen_csv()
+    elif type == 'json':
+      self.gen_json()
     else:
       raise Exception("Report function recieved invalid format")
     self.mail()
@@ -84,7 +87,7 @@ class Reporter():
     #Hinders requests before server goes up
     time.sleep(0.05)
 
-  def csv(self):
+  def gen_csv(self):
     name = self.name
     self.ticketFinder.load_lims_project_info(name)
     excel = open("{}.csv".format(name), "w+")
@@ -143,6 +146,28 @@ class Reporter():
     inpath = "{}/{}.csv".format(os.getcwd(), name)
     self.attachments.append(inpath)
 
+  def gen_json(self):
+    report = dict()
+    analyses = ['blast_pubmlst', 'quast_assembly', 'blast_resfinder_resistence', 'picard_markduplicate', 'microsalt_samtools_stats']
+    for a in analyses:
+      report[a] = dict()
+
+    sample_info = gen_reportdata(self.name)
+    for s in sample_info['samples']:
+      report['blast_pubmlst'][s.CG_ID_sample] = dict()
+      report['blast_pubmlst'][s.CG_ID_sample] = {'sequence_type':s.ST_status, 'thresholds':s.threshold}
+      report['quast_assembly'][s.CG_ID_sample] = {'estimated_genome_length':s.genome_length, 'gc_percentage':float(s.gc_percentage), 'n50':s.n50, 'necessary_contigs':s.contigs}
+
+      report['blast_resfinder_resistence'][s.CG_ID_sample] = list()
+      for r in s.resistances:
+        if not (r.gene in report['blast_resfinder_resistence'][s.CG_ID_sample]) and r.threshold == 'Passed':
+          report['blast_resfinder_resistence'][s.CG_ID_sample].append(r.gene)
+
+    #json.dumps(report) #Dumps the json directly
+    inpath = "{}/{}.json".format(os.getcwd(), self.name)
+    with open(inpath, 'w') as outfile: 
+      json.dump(report, outfile)
+    self.attachments.append(inpath)
 
   def kill_flask(self):
     self.server.terminate()
