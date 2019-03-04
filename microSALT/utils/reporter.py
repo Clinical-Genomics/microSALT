@@ -162,9 +162,8 @@ class Reporter():
       report[s.CG_ID_sample]['blast_pubmlst'] = {'sequence_type':s.ST_status, 'thresholds':s.threshold}
       report[s.CG_ID_sample]['quast_assembly'] = {'estimated_genome_length':s.genome_length, 'gc_percentage':float(s.gc_percentage), 'n50':s.n50, 'necessary_contigs':s.contigs}
 
-      report['blast_resfinder_resistence'][s.CG_ID_sample] = list()
       for r in s.resistances:
-        if not (r.gene in report['blast_resfinder_resistence'][s.CG_ID_sample]) and r.threshold == 'Passed':
+        if not (r.gene in report[s.CG_ID_sample]['blast_resfinder_resistence']) and r.threshold == 'Passed':
           report[s.CG_ID_sample]['blast_resfinder_resistence'].append(r.gene)
 
     #json.dumps(report) #Dumps the json directly
