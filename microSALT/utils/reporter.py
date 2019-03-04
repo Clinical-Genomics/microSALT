@@ -148,20 +148,24 @@ class Reporter():
 
   def gen_json(self):
     report = dict()
-    analyses = ['blast_pubmlst', 'quast_assembly', 'blast_resfinder_resistence', 'picard_markduplicate', 'microsalt_samtools_stats']
-    for a in analyses:
-      report[a] = dict()
 
     sample_info = gen_reportdata(self.name)
+    analyses = ['blast_pubmlst', 'quast_assembly', 'blast_resfinder_resistence', 'picard_markduplicate', 'microsalt_samtools_stats']
     for s in sample_info['samples']:
-      report['blast_pubmlst'][s.CG_ID_sample] = dict()
-      report['blast_pubmlst'][s.CG_ID_sample] = {'sequence_type':s.ST_status, 'thresholds':s.threshold}
-      report['quast_assembly'][s.CG_ID_sample] = {'estimated_genome_length':s.genome_length, 'gc_percentage':float(s.gc_percentage), 'n50':s.n50, 'necessary_contigs':s.contigs}
+      report[s.CG_ID_sample] = dict()
+      for a in analyses:
+        if a == 'blast_resfinder_resistence':
+          report[s.CG_ID_sample][a] = list()
+        else:
+          report[s.CG_ID_sample][a] = dict()
+            
+      report[s.CG_ID_sample]['blast_pubmlst'] = {'sequence_type':s.ST_status, 'thresholds':s.threshold}
+      report[s.CG_ID_sample]['quast_assembly'] = {'estimated_genome_length':s.genome_length, 'gc_percentage':float(s.gc_percentage), 'n50':s.n50, 'necessary_contigs':s.contigs}
 
       report['blast_resfinder_resistence'][s.CG_ID_sample] = list()
       for r in s.resistances:
         if not (r.gene in report['blast_resfinder_resistence'][s.CG_ID_sample]) and r.threshold == 'Passed':
-          report['blast_resfinder_resistence'][s.CG_ID_sample].append(r.gene)
+          report[s.CG_ID_sample]['blast_resfinder_resistence'].append(r.gene)
 
     #json.dumps(report) #Dumps the json directly
     inpath = "{}/{}.json".format(os.getcwd(), self.name)
