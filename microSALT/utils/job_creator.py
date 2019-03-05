@@ -206,8 +206,8 @@ class Job_Creator():
     batchfile.write("samtools index {}.bam_sort_rmdup\n".format(outbase))
     batchfile.write("samtools idxstats {}.bam_sort_rmdup &> {}.stats.ref\n".format(outbase, outbase))
     #Removal of temp aligment files
-    os.remove("{}.sam".format(outbase))
-    os.remove("{}.bam".format(outbase))
+    batchfile.write("rm {}.sam".format(outbase))
+    batchfile.write("rm {}.bam".format(outbase))
 
     #Samtools duplicate calling, legacy
     #batchfile.write("samtools fixmate --threads {} -r -m {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
@@ -414,10 +414,10 @@ class Job_Creator():
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
     if not single_sample:
-      mb.write("microSALT util finish project {} --input {} --rerun --email {}\n".\
+      mb.write("microSALT utils finish project {} --input {} --rerun --email {}\n".\
                format(self.name, self.finishdir, self.config['regex']['mail_recipient']))
     else:
-      mb.write("microSALT util finish sample {} --input {} --rerun --email {}\n".\
+      mb.write("microSALT utils finish sample {} --input {} --rerun --email {}\n".\
                format(self.name, self.finishdir, self.config['regex']['mail_recipient']))
     mb.write("touch {}/run_complete.out".format(self.finishdir))
     mb.close()
