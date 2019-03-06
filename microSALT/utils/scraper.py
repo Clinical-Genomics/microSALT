@@ -334,7 +334,10 @@ class Scraper():
              ref_len = int(lsplit[1])
          elif type == 'dup':
            if lsplit[0] == 'Unknown Library':
-             duprate = float(lsplit[8]) 
+             try:
+               duprate = float(lsplit[8]) 
+             except Exception as e:
+               duprate = -1.0
          elif type == 'map':
            dsplit = line.rstrip().split(' ')
            if len(dsplit)>= 5 and dsplit[4] == 'total':
