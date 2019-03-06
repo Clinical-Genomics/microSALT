@@ -294,3 +294,22 @@ def view(ctx):
   """Starts an interactive webserver for viewing"""
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
   codemonkey.start_web()
+
+@util.command()
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.option('--force', help="Replaces rather than just reporting", default=False, is_flag=True)
+@click.pass_context
+def resync(ctx, email, force):
+  """Replace internal ST with pubMLST ones. Creates report"""
+  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+  fixer.replace_internal()
+  ##Referencer
+  #Scan internal tables
+  #Scan pubmlst tables
+  #Compare
+  ##Reporter
+  #Generate results from comparisons
+
+
+  done()
+

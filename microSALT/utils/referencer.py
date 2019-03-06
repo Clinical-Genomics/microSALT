@@ -124,6 +124,11 @@ class Referencer():
     except StopIteration:
       pass
 
+  def replace_internal(self):
+    """Replaces internal ids with external ones when available"""
+    self.db_access.compare_internal()
+
+
   def fetch_resistances(self, force=False):
     cwd = os.getcwd()
     url = "https://bitbucket.org/genomicepidemiology/resfinder_db.git"

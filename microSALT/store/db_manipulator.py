@@ -183,6 +183,27 @@ class DB_Manipulator:
     else:
       return version.version
 
+  def compare_internal(self):
+    """Looks at each novel table. See if any record has a profile match in the profile table"""
+
+    for org, novel_table in self.novel.items():
+
+      novel_list = self.session.query(novel_table).all()
+      org_keys = novel_table.c.keys()
+      profile_list = self.session.query(self.profiles[org]).all()
+      #Filter
+      for novel in novel_list:
+        args = list()
+        for key in org_keys:
+          if key != 'ST' and key != 'clonal_complex' and key != 'species':
+            args.append("self.profiles[org].c.{}=={}".format(key, eval("novel.{}".format(key))))
+        args = 'and_(' + ','.join(args) + ')'
+        exist = self.session.query(self.profiles[org]).filter(eval(args)).all()
+        if exist:
+          exist = exist[0]
+          print("Duplicate: ST {}; Internal {}; share profile {} for organism '{}'".format(exist.ST, novel.ST, exist, org.replace('_', ' ').capitalize()))
+    import pdb; pdb.set_trace()
+
   def setPredictor(self, cg_sid, pks=dict()):
     """ Helper function. Flags a set of seq_types as part of the final prediction.
     Uses optional pks[loci][column] = VALUE dictionary to distinguish in scenarios where an allele number has multiple hits"""
