@@ -259,15 +259,6 @@ class Referencer():
     """ Downloads ST and loci for a given organism stored on pubMLST if it is more recent. Returns update date """
     organism = organism.lower().replace(' ', '_')
 
-    #Pull version
-    ver_req = urllib.request.Request("{}/schemes/1/profiles".format(subtype_href))
-    with urllib.request.urlopen(ver_req) as response:
-        ver_query = json.loads(response.read().decode('utf-8'))
-    currver = self.db_access.get_version("profile_{}".format(organism))
-    if ver_query['last_updated'] <= currver and not force:
-      #self.logger.info("Profile for {} already at latest version".format(organism.replace('_' ,' ').capitalize()))
-      return currver
-
     #Pull ST file
     st_target = "{}/{}".format(self.config['folders']['profiles'], organism)
     input = "{}/schemes/1/profiles_csv".format(subtype_href)
@@ -284,10 +275,15 @@ class Referencer():
     os.makedirs(output)
 
     for locipath in loci_query['loci']:
-          loci = os.path.basename(os.path.normpath(locipath))
-          urllib.request.urlretrieve("{}/alleles_fasta".format(locipath), "{}/{}.tfa".format(output, loci))
+      loci = os.path.basename(os.path.normpath(locipath))
+      urllib.request.urlretrieve("{}/alleles_fasta".format(locipath), "{}/{}.tfa".format(output, loci))
     # Create new indexes
     self.index_db(output, '.tfa')
+
+  def external_version(self, organism, subtype_href):
+    ver_req = urllib.request.Request("{}/schemes/1/profiles".format(subtype_href))
+    with urllib.request.urlopen(ver_req) as response:
+        ver_query = json.loads(response.read().decode('utf-8'))
     return ver_query['last_updated']
 
   def fetch_pubmlst(self,force=False):
@@ -296,16 +292,19 @@ class Referencer():
     db_query = self.query_pubmlst()
     
     # Fetch seqdef locations 
-    for name in self.organisms:
-      for item in db_query:
-        for subtype in item['databases']:
+    for item in db_query:
+      for subtype in item['databases']:
+        for name in self.organisms:
           if name.replace('_', ' ') in subtype['description'].lower():
             #Seqdef always appear after isolates, so this is fine
             self.updated.append(name.replace('_', ' '))
             seqdef_url[name] = subtype['href']
-    for key, val in seqdef_url.items():
-      ver = self.download_pubmlst(key, val, force)
-      self.db_access.upd_rec({'name':'profile_{}'.format(key)}, 'Versions', {'version':ver})
-      self.db_access.reload_profiletable(key)
-      self.logger.info('pubMLST reference for {} set to version {}'.format(key.replace('_',' ').capitalize(), ver))
 
+    for key, val in seqdef_url.items():
+      internal_ver = self.db_access.get_version('profile_{}'.format(key))
+      external_ver = self.external_version(key, val)  
+      if interal_ver < external_ver:
+        self.download_pubmlst(key, val, force)
+        self.db_access.upd_rec({'name':'profile_{}'.format(key)}, 'Versions', {'version':ver})
+        self.db_access.reload_profiletable(key)
+        self.logger.info('pubMLST reference for {} set to version {}'.format(key.replace('_',' ').capitalize(), ver))

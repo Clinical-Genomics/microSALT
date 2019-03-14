@@ -361,7 +361,7 @@ class Job_Creator():
       #Start every sample job
     if single_sample:
       try:
-        self.sample_job(trimmed=True)
+        self.sample_job(qc_only=qc_only, trimmed=trimmed)
         headerargs = self.get_headerargs()
         outfile = self.get_sbatch()
         bash_cmd="sbatch {} {}".format(headerargs, outfile)
@@ -381,7 +381,7 @@ class Job_Creator():
             sample_in = "{}/{}".format(dirpath, dir)
             sample_out = "{}/{}".format(self.finishdir, dir)
             sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now) 
-            sample_instance.sample_job(qc_only=qc_only)
+            sample_instance.sample_job(qc_only=qc_only, trimmed=trimmed)
             headerargs = sample_instance.get_headerargs()
             outfile = ""
             if os.path.isfile(sample_instance.get_sbatch()):
