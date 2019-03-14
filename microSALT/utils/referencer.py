@@ -303,7 +303,7 @@ class Referencer():
     for key, val in seqdef_url.items():
       internal_ver = self.db_access.get_version('profile_{}'.format(key))
       external_ver = self.external_version(key, val)  
-      if interal_ver < external_ver:
+      if internal_ver < external_ver:
         self.download_pubmlst(key, val, force)
         self.db_access.upd_rec({'name':'profile_{}'.format(key)}, 'Versions', {'version':ver})
         self.db_access.reload_profiletable(key)
