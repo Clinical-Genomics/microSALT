@@ -23,17 +23,17 @@ class Samples(db.Model):
    Customer_ID_sample = db.Column(db.String(40))
    organism = db.Column(db.String(30))
    ST = db.Column(db.SmallInteger, default=-1)
-   date_analysis = db.Column(db.DateTime)
    genome_length = db.Column(db.Integer, default=-1)
    gc_percentage = db.Column(db.Float(3,2), default = 0.0)
    n50 = db.Column(db.Integer, default=-1)
    contigs = db.Column(db.Integer, default=-1)
    priority = db.Column(db.String(20))
    application_tag = db.Column(db.String(15))
-   date_sequencing = db.Column(db.DateTime)
-   date_libprep = db.Column(db.DateTime)
-   method_sequencing = db.Column(db.String(15))
-   method_libprep = db.Column(db.String(15))
+#   date_analysis = db.Column(db.DateTime)
+#   date_sequencing = db.Column(db.DateTime)
+#   date_libprep = db.Column(db.DateTime)
+#   method_sequencing = db.Column(db.String(15))
+#   method_libprep = db.Column(db.String(15))
 
 class Seq_types(db.Model):
   __tablename__ = 'seq_types'
@@ -75,13 +75,20 @@ class Resistances(db.Model):
   contig_start=db.Column(db.Integer)
   contig_end=db.Column(db.Integer)
 
+class Steps(db.Model):
+  __tablename__ = 'steps'
+  CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
+  date = db.Column(db.DateTime)
+  method = db.Column(db.String(40))
+  step = db.Column(db.String(40))
+
 class Projects(db.Model):
    __tablename__ = 'projects'
    samples = relationship('Samples', back_populates='projects')
 
    CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
    Customer_ID_project = db.Column(db.String(15))
-   date_ordered = db.Column(db.DateTime)
+#  date_ordered = db.Column(db.DateTime)
    Customer_ID = db.Column(db.String(15))
 
 class Versions(db.Model):
