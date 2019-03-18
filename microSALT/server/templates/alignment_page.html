@@ -53,50 +53,50 @@
                         <td>{{sample.organism.replace('_', ' ').capitalize()}}</td>
                       {% else %}<td>Undetermined</td>{% endif %}
                       <td class="text-right">
-                        {% if sample.total_reads is not none %}
-                          {{ sample.total_reads }}
-                        {% else %} Unknown {% endif %}
+                        {% if sample.total_reads is none %}
+                          0
+                        {% else %} {{ sample.total_reads }} {% endif %}
                       </td>
                       <td class="text-right">
                         {% if sample.mapped_rate is none or sample.mapped_rate == 0 %}
-                          Unknown
+                          0.0%
                         {% else %} {{ (sample.mapped_rate*100)|round(2) }}% {% endif %}
                       </td>
                       <td class="text-right">
                         {% if sample.duplication_rate is none or sample.duplication_rate == -1 %}
-                          Unknown
+                          N/A
                         {% else %}
                           {{ (sample.duplication_rate*100)|round(2) }}%
                         {% endif %}
                       </td>
                       <td class="text-right">
                         {% if sample.insert_size is none or sample.insert_size == 0%}
-                          Unknown
+                          N/A
                         {% else %} {{ sample.insert_size }} {% endif %}
                       </td>
                       <td class="text-right">
                         {% if sample.average_coverage is none or sample.average_coverage|round(2) == 0 %}
-                          Unknown
+                          0.0x
                         {% else %} {{ (sample.average_coverage)|round(2) }}x {% endif %}
                       </td>
                       <td class="text-right">
                         {% if sample.coverage_10x is none or (sample.coverage_10x*100)|round(2) == 0 %}
-                          Unknown
+                          0.0%
                         {% else %} {{ (sample.coverage_10x*100)|round(2) }}% {% endif %}
                       </td>
                       <td class="text-right">
                         {% if sample.coverage_30x is none or (sample.coverage_30x*100)|round(2) == 0 %}
-                          Unknown
+                          0.0%
                         {% else %} {{ (sample.coverage_30x*100)|round(2) }}% {% endif %}
                       </td>
                       <td class="text-right">
                         {% if sample.coverage_50x is none or (sample.coverage_50x*100)|round(2) == 0 %}
-                          Unknown
+                          0.0%
                         {% else %} {{ (sample.coverage_50x*100)|round(2) }}% {% endif %}
                       </td>
                       <td class="text-right">
                         {% if sample.coverage_100x is none or (sample.coverage_100x*100)|round(2) == 0 %}
-                          Unknown
+                          0.0%
                         {% else %} {{ (sample.coverage_100x*100)|round(2) }}% {% endif %}
                       </td>
                     </tr>
