@@ -62,7 +62,9 @@ class LIMS_Fetcher():
     if 'Strain' in sample.udf and organism == "Unset":
       #Predefined genus usage. All hail buggy excel files
       if 'gonorrhoeae' in sample.udf['Strain']:
-        organism = "Neisseria spp." 
+        organism = "Neisseria spp."
+      elif 'Cutibacterium acnes' in sample.udf['Strain']:
+        organism = "Propionibacterium acnes" 
       #Backwards compat, MUST hit first
       elif sample.udf['Strain'] == 'VRE':
         if 'Reference Genome Microbial' in sample.udf:
@@ -78,6 +80,8 @@ class LIMS_Fetcher():
         #Other species predefined genus usage
         if 'gonorrhoeae' in sample.udf['Other species']:
           organism = "Neisseria spp."
+        elif 'Cutibacterium acnes' in sample.udf['Other species']:
+          organism = "Propionibacterium acnes"
         else:
           organism = sample.udf['Other species']
     if 'Reference Genome Microbial' in sample.udf and organism == "Unset":
