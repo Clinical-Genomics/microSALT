@@ -45,6 +45,9 @@ class DB_Manipulator:
     if not self.engine.dialect.has_table(self.engine, 'resistances'):
       Resistances.__table__.create(self.engine)
       self.logger.info("Created resistance table")
+    if not self.engine.dialect.has_table(self.engine, 'steps'):
+      Resistances.__table__.create(self.engine)
+      self.logger.info("Created step table")
     for k,v in self.profiles.items():
       if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
         self.profiles[k].create()
