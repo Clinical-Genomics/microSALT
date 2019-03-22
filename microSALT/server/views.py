@@ -79,7 +79,7 @@ def gen_reportdata(pid, organism_group='all'):
     s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or \
     s.Customer_ID_sample.startswith('CTRL') or s.Customer_ID_sample.startswith('Neg') or \
     s.Customer_ID_sample.startswith('blank'):
-      s.ST_status = 'Control (prefix)'
+      s.ST_status = 'Kontroll (prefix)'
     elif s.ST < 0:
       if s.ST == -1:
         s.ST_status = 'Invalid data'

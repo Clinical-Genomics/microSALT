@@ -61,6 +61,7 @@ class Reporter():
     self.kill_flask()
 
   def mail(self):
+    """ Requires that the sending PC has a domain"""
     file_name = self.attachments
     msg = MIMEMultipart()
     msg['Subject'] = '{} ({}) Reports'.format(self.name, file_name[0].split('_')[0])
