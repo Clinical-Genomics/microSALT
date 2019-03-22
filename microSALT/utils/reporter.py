@@ -56,7 +56,7 @@ class Reporter():
       self.kill_flask()
       sys.exit(-1)
     outname = "{}_microSALT.html".format(self.ticketFinder.data['Customer_ID_project'])
-    open(outname, 'wb').write(r.content)
+    open(outname, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
     self.attachments.append(outname)
     self.kill_flask()
 
