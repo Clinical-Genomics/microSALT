@@ -14,9 +14,29 @@
               <small><p align="center">Rapport genererad: {{date}}</p></small></h2>
 
 
-
               <div class="row">
-                <div class="col-sm-6">
+                <div class="col">
+                 <h3>Kontakt Clinical Genomics</h3>
+                 <address>
+                   <strong>Clinical Genomics</strong><br>
+                   Science for Life Laboratory<br>
+                   Tomtebodavägen 23<br>
+                   171 65 Solna<br>
+                  <abbr title="Phone">P:</abbr> (08) 524 81 500
+                 </address>
+              </div>
+               <div class="col">
+                 <h3>Kund:</h3>
+                 <address>
+                 <h2>{{samples[0].projects.Customer_ID}}</h2><br>
+                </address>
+              </div>
+              <br />
+              <br />
+
+              <!-- Cards för kontaktinformation
+              <div class="row">
+                <div class="col-sm-4">
                   <div class="card">
                     <div class="card-body">
                       <h3 class="card-title">Kontakt Clinical genomics:</h3>
@@ -30,31 +50,28 @@
                     </div>
                   </div>
                 </div>
-                <div class="col-sm-6">
+                <div class="col-sm-3">
                   <div class="card">
                     <div class="card-body">
                       <h3 class="card-title">Kund: </h3>
                       <address>
                         <h2>{{samples[0].projects.Customer_ID}}</h2><br>
-
-
                       </address>
                     </div>
                   </div>
                 </div>
               </div>
               <br />
-
-              <div class="card">
-                <div class="card-block">
-                  <h3 class="card-title">Projekt Sammanfattning</h3>
+              -->
+              <div class="panel"><div class="panel-body">
+                <h3>Projekt Sammanfattning(*)<br></h3>
                     <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
                           <tr>
                           <td><b>Projekt ID <i>(CG Projekt ID)</i></b>
                             <td>{{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></td>
                           </tr>
                           <tr>
-                          <td><b>Kund ID</b>
+                          <td><b>Kund ID (*)</b>
                             <td>{{samples[0].projects.Customer_ID}}<i></i></td>
                           </tr>
                           <tr>
@@ -64,23 +81,27 @@
                         </table>
                       </div>
                 </div>
+              </div>
+              <br />
 
-
-
+              <!--<div class="card">
                 <div class="card-block">
-                  <h3 class="card-title">Prov Sammanfattning</h3>
+                  <h3 class="card-title">Prov Sammanfattning</h3> -->
+              <div class="panel"><div class="panel-body">
+                <h3>Prov Sammanfattning(*)<br></h3>
                   <div class="table-responsive">
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                   <tr>
-                    <th>Prov ID</th>
+                    <th>Prov ID (*)</th>
                     <th>CG Prov ID</th>
-                    <th>Applikations tag</th>
+                    <th>Applikations tag (*)</th>
                     <th>Ankomstdatum</th>
                     <th>Biblioteksprep datum</th>
                     <th>Biblioteksmetod</th>
                     <th>Sekvensering datum</th>
                     <th>Sekvenseringsmetod</th>
-                    <th>Priority(research/standard)</th>
+                    <th>Prioritet (*)(**)</th>
+                    <th>Ackrediterad</th>
                   </tr>
                   {% for sample in samples %}
                     <tr>
@@ -93,26 +114,36 @@
                       <td>{{sample.date_sequencing.date()}}</td>
                       <td>*</td>
                       <td>{{sample.priority}}</td>
+                      {% if sample.priority == 'standard' %}
+                        <td><i><img src="https://github.com/Clinical-Genomics/microSALT/blob/accreditation-changes-to-report/artwork/swedac.jpg?raw=true" alt="Swedac Logo" align="right" style="width:10px;height:20px;display:flex;"></i></td>
+                      {% else %}
+                        <td><i>-</i></td>
+                      {% endif %}
                       </tr>
                       {% endfor %}
-                  </table>
+                    </table>
+                  </div>
                 </div>
+                <p>
+                  (*) Information om prover som kommer från kund <br/>
+                  (**) Standard (ackrediterad) eller Research (inte ackrediterad)
               </div>
-            </div>
-
-            </footer>
+         </footer>
 
 
-
-            <footer>
+          <footer>
               <div class="panel"><div class="panel-body">
-                <h3><strong>Sammanställning av Resultat</strong><br></h3>
+                <h3>Sammanställning av Resultat(*)<br></h3>
+                <p>
+                 * Laboratoriet har inte haft ansvar för provtagningsstadiet och
+                 extraktion, resultaten gäller för provet såsom det har mottagits.
+                 </p>
                 <div class="table-responsive">
                   <table  class="table table-bordered" style='table-layout:fixed;'>
                     <tr>
-                      <th>Prov ID</th>
+                      <th>Prov ID(*)</th>
                       <th>CG Prov ID</th>
-                      <th>Organism</th>
+                      <th>Organism(*)</th>
                       <th>Sekvens Typ</th>
                       <th>Tröskelvärden</th>
                     </tr>
@@ -143,7 +174,10 @@
                     </div>
                   </div>
                 </div>
-              </footer>
+            </footer>
+
+
+
           <!-- Sample pages -->
           {% for sample in samples %}
             <footer>
@@ -226,11 +260,10 @@
                 </table></div>
 
                 </div>
-              </div>
-            </footer>
+            <!-- </footer> -->
           {% if sample.genome_length > -1 %}
 
-            <footer>
+          <!--  <footer> -->
               <div class="panel">
               <div class="panel-body">
 
@@ -328,6 +361,15 @@
                 <br>
 
               </p>
+
+              <h3><strong>Avvikelser från metoden</strong><br></h3>
+              <p>
+              All kommunikation gällande ordern såsom tillägg, avvikelser eller
+              ev undantag i metoden från Clinical Genomics finns tillgängligt i
+              SupportSystem för dess ticket id. En stängd ticket kan närsomhelst
+              öppnas upp igen för frågor.
+              </p>
+
 
               <h3><strong>Signatur för godkännande av rapport</strong><br></h3>
               <p>
