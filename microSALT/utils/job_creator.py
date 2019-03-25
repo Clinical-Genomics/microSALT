@@ -217,6 +217,8 @@ class Job_Creator():
       sample_col["priority"] = self.lims_fetcher.data['priority']
       sample_col["date_sequencing"] = self.lims_fetcher.data['date_sequencing']
       sample_col["date_libprep"] = self.lims_fetcher.data['date_libprep']
+      sample_col["method_libprep"] = self.lims_fetcher.data['method_libprep']
+      sample_col["method_sequencing"] = self.lims_fetcher.data['method_sequencing']
       #self.db_pusher.purge_rec(sample_col['CG_ID_sample'], 'sample')
       self.db_pusher.add_rec(sample_col, 'Samples')
     except Exception as e:
