@@ -34,37 +34,10 @@
               <br />
               <br />
 
-              <!-- Cards för kontaktinformation
-              <div class="row">
-                <div class="col-sm-4">
-                  <div class="card">
-                    <div class="card-body">
-                      <h3 class="card-title">Kontakt Clinical genomics:</h3>
-                      <address>
-                        <strong>Clinical Genomics</strong><br>
-                        Science for Life Laboratory<br>
-                        Tomtebodavägen 23<br>
-                        171 65 Solna<br>
-                        <abbr title="Phone">P:</abbr> (08) 524 81 500
-                      </address>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-sm-3">
-                  <div class="card">
-                    <div class="card-body">
-                      <h3 class="card-title">Kund: </h3>
-                      <address>
-                        <h2>{{samples[0].projects.Customer_ID}}</h2><br>
-                      </address>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <br />
-              -->
+
+
               <div class="panel"><div class="panel-body">
-                <h3>Projektsammanfattning(*)<br></h3>
+                <h3>Projektsammanställning<br></h3>
                     <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
                           <tr>
                           <td><b>Projekt ID <i>(CG Projekt ID)</i></b>
@@ -84,16 +57,14 @@
               </div>
               <br />
 
-              <!--<div class="card">
-                <div class="card-block">
-                  <h3 class="card-title">Prov Sammanfattning</h3> -->
+
               <div class="panel"><div class="panel-body">
-                <h3>Provsammanfattning(*)<br></h3>
+                <h3>Provsammanställning<br></h3>
                   <div class="table-responsive">
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                   <tr>
                     <th>Prov ID (*)</th>
-                    <th>CG Prov ID</th>
+                    <th>Organism (*)</th>
                     <th>Applikationstag (*)</th>
                     <th>Ankomstdatum</th>
                     <th>Biblioteksprepsdatum</th>
@@ -101,12 +72,12 @@
                     <th>Sekvenseringsdatum</th>
                     <th>Sekvenseringsmetod</th>
                     <th>Prioritet (*)(**)</th>
-                    <th>Ackrediterad</th>
+                    <th>Verifierad</th>
                   </tr>
                   {% for sample in samples %}
                     <tr>
                       <td>{{sample.Customer_ID_sample}}</td>
-                      <td>{{sample.CG_ID_sample}}</td>
+                      <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
                       <td>{{sample.application_tag}}</td>
                       <td>{{samples[0].projects.date_ordered.date()}}</td>
                       {% if sample.date_libprep is not none %}
@@ -123,7 +94,7 @@
                       <td>*</td>
                       <td>{{sample.priority}}</td>
                       {% if sample.priority == 'standard' %}
-                        <td><i><img src="https://github.com/Clinical-Genomics/microSALT/blob/accreditation-changes-to-report/artwork/swedac.jpg?raw=true" alt="Swedac Logo" align="right" style="width:10px;height:20px;display:flex;"></i></td>
+                        <td><i>✔︎</i></td>
                       {% else %}
                         <td><i>-</i></td>
                       {% endif %}
@@ -134,16 +105,20 @@
                 </div>
                 <p>
                   (*) Information om prover som kommer från kund <br/>
-                  (**) Standard (ackrediterad) eller Research (inte ackrediterad)
+                  (**) Standard = Verifierad organim,
+                  Research = Icke verifierad organism <br/>
+                  Kvalitetskontrollen har verifierats för ett antal bestämda organismer.
+                  För andra organismer kan ej kriterierna för metoden appliceras.
+
               </div>
          </footer>
 
 
           <footer>
               <div class="panel"><div class="panel-body">
-                <h3>Resultatsammanställning(*)<br></h3>
+                <h3>Resultatsammanställning(***)<br></h3>
                 <p>
-                 * Laboratoriet har inte haft ansvar för provtagningsstadiet och
+                 (***) Laboratoriet har inte haft ansvar för provtagningsstadiet och
                  extraktion, resultaten gäller för provet såsom det har mottagits.
                  </p>
                 <div class="table-responsive">
@@ -163,7 +138,7 @@
                           <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
                           {% else %}
                           <td><i>Kontroll</i></td>
-                          {% endif %}
+                        {% endif %}
                           {% if sample.ST_status == 'None' or sample.ST == -1 %}
                           <td><font color="red">{{ sample.ST_status }}</font></td>
                           {% elif sample.ST <= -4 %}
@@ -197,7 +172,7 @@
                     {% if sample.priority == 'standard' %}
                       <img src="https://github.com/Clinical-Genomics/microSALT/blob/accreditation-changes-to-report/artwork/swedac.jpg?raw=true" alt="Swedac Logo" align="right" style="width:40px;height:60px;display:flex;">
                     {% else %}
-                      <p align="right">Ej ackrediterad analys</p>
+                      <p align="right">Icke verifierad organism</p>
                     {% endif %}
 
                    <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
