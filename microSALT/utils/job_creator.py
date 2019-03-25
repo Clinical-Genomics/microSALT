@@ -63,10 +63,10 @@ class Job_Creator():
 
   def verify_fastq(self):
     """ Uses arg indir to return a dict of PE fastq tuples fulfilling naming convention """
+    verified_files = list()
     files = os.listdir(self.indir)
     if files == []:
       raise Exception("Directory {} lacks fastq files.".format(self.indir))
-    verified_files = dict()
     for file in files:
       file_match = re.match( self.config['regex']['file_pattern'], file)
       if file_match:
@@ -83,11 +83,9 @@ class Job_Creator():
           pairname = "{}{}{}".format(file_match.string[:file_match.end(1)-1] , pairno, \
                       file_match.string[file_match.end(1):file_match.end()])
           if pairname in files:
-            if not self.name in verified_files.keys():
-              verified_files[self.name] = list()
             files.pop( files.index(pairname) )
-            verified_files[self.name].append(file_match[0])
-            verified_files[self.name].append(pairname)
+            verified_files.append(file_match[0])
+            verified_files.append(pairname)
         elif file_match[1] == '2':
           pass
         else:
@@ -103,25 +101,19 @@ class Job_Creator():
     ilist = list()
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# Interlaced trimmed files\n")
- 
-    for name, v in self.trimmed_files.items():
-      fplist.append( v['fp'] )
-      kplist.append( v['rp'] )
-      ilist.append( v['fu'] )
-      ilist.append( v['ru'] )
 
+    fplist.append( self.trimmed_files['fp'] )
+    kplist.append( self.trimmed_files['rp'] )
+    ilist.append( self.trimmed_files['fu'] )
+    ilist.append( self.trimmed_files['ru'] )
     if len(kplist) != len(fplist) or len(ilist)/2 != len(kplist):
       raise Exception("Uneven distribution of trimmed files. Invalid trimming step {}".format(name))
     self.concat_files['f'] = "{}/trimmed/{}{}".format(self.outdir,self.name, "_trim_front_pair.fq")
     self.concat_files['r'] = "{}/trimmed/{}{}".format(self.outdir,self.name, "_trim_rev_pair.fq")
     self.concat_files['i'] = "{}/trimmed/{}{}".format(self.outdir,self.name, "_trim_unpaired.fq")
-    for k, v in self.concat_files.items():
-      batchfile.write("touch {}\n".format(v))
-    
-    batchfile.write("cat {} >> {}\n".format(' '.join(fplist), self.concat_files['f']))
-    batchfile.write("cat {} >> {}\n".format(' '.join(kplist), self.concat_files['r']))
+
     batchfile.write("cat {} >> {}\n".format(' '.join(ilist), self.concat_files['i']))
-    batchfile.write("rm {} {} {}\n".format(' '.join(fplist), ' '.join(kplist), ' '.join(ilist)))
+    batchfile.write("rm {}\n".format(' '.join(ilist)))
     batchfile.write("\n")
     batchfile.close()    
 
@@ -148,11 +140,12 @@ class Job_Creator():
 
     #Create run
     batchfile = open(self.batchfile, "a+")
-    batchfile.write("mkdir {}/resistance\n\n".format(self.outdir))
+    batchfile.write("# BLAST Resistance section\n")
+    batchfile.write("mkdir {}/resistance\n".format(self.outdir))
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
     res_list = glob.glob("{}/*.fsa".format(self.config["folders"]["resistances"]))
     for entry in res_list:
-      batchfile.write("# BLAST Resistance search in {} for {}\n".format(self.organism, os.path.basename(entry[:-4])))
+      batchfile.write("## BLAST Resistance search in {} for {}\n".format(self.organism, os.path.basename(entry[:-4])))
       batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/resistance/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
       entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
@@ -163,11 +156,12 @@ class Job_Creator():
     
     #Create run
     batchfile = open(self.batchfile, "a+")
-    batchfile.write("mkdir {}/blast\n\n".format(self.outdir))
+    batchfile.write("# BLAST MLST Section\n")
+    batchfile.write("mkdir {}/blast\n".format(self.outdir))
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
     tfa_list = glob.glob("{}/{}/*.tfa".format(self.config["folders"]["references"], self.organism))
     for entry in tfa_list:
-      batchfile.write("# BLAST MLST alignment for {}, {}\n".format(self.organism, os.path.basename(entry[:-4])))
+      batchfile.write("## BLAST MLST alignment for {}, {}\n".format(self.organism, os.path.basename(entry[:-4])))
       batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n"\
                       .format(entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
@@ -187,12 +181,12 @@ class Job_Creator():
     elif not trimmed:
       forward = list()
       reverse = list()
-      for file in files[self.name]:
+      for file in files:
         fullfile = "{}/{}".format(self.indir, file)
         #Even indexes = Forward
-        if not files[self.name].index(file)  % 2:
+        if not files.index(file)  % 2:
           forward.append(fullfile)
-        elif files[self.name].index(file)  % 2:
+        elif files.index(file)  % 2:
           reverse.append(fullfile)
       reads_forward = "<( cat {} )".format(' '.join(forward)) 
       reads_reverse = "<( cat {} )".format(' '.join(reverse))
@@ -210,8 +204,8 @@ class Job_Creator():
     batchfile.write("samtools index {}.bam_sort_rmdup\n".format(outbase))
     batchfile.write("samtools idxstats {}.bam_sort_rmdup &> {}.stats.ref\n".format(outbase, outbase))
     #Removal of temp aligment files
-    batchfile.write("rm {}.sam".format(outbase))
-    batchfile.write("rm {}.bam".format(outbase))
+    batchfile.write("rm {}.sam\n".format(outbase))
+    batchfile.write("rm {}.bam\n".format(outbase))
 
     #Samtools duplicate calling, legacy
     #batchfile.write("samtools fixmate --threads {} -r -m {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
@@ -245,23 +239,34 @@ class Job_Creator():
     trimdir = "{}/trimmed".format(self.outdir)
     files = self.verify_fastq()
     batchfile = open(self.batchfile, "a+")
-    batchfile.write("mkdir {}\n\n".format(trimdir))
+    batchfile.write("# Trimmomatic section\n")
+    batchfile.write("mkdir {}\n".format(trimdir))
 
-    for index, k in enumerate(files):
-      outfile = files[k][0].split('.')[0][:-2]
-      if not outfile in self.trimmed_files:
-        self.trimmed_files[outfile] = dict()
-      self.trimmed_files[outfile]['fp'] = "{}/{}_trim_front_pair.fq".format(trimdir, outfile)
-      self.trimmed_files[outfile]['fu'] = "{}/{}_trim_front_unpair.fq".format(trimdir, outfile)
-      self.trimmed_files[outfile]['rp'] = "{}/{}_trim_rev_pair.fq".format(trimdir, outfile)
-      self.trimmed_files[outfile]['ru'] = "{}/{}_trim_rev_unpair.fq".format(trimdir, outfile)
+    forward = list()
+    reverse = list()
+    for file in files:
+      fullfile = "{}/{}".format(self.indir, file)
+      #Even indexes = Forward
+      if not files.index(file)  % 2:
+        forward.append(fullfile)
+      elif files.index(file)  % 2:
+        reverse.append(fullfile)
+    reads_forward = "<( cat {} )".format(' '.join(forward))
+    reads_reverse = "<( cat {} )".format(' '.join(reverse))
 
-      batchfile.write("# Trimmomatic set {}\n".format(index+1))
-      batchfile.write("trimmomatic PE -threads {} -phred33 {}/{} {}/{} {} {} {} {}\
-      ILLUMINACLIP:{}NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n\n"\
-      .format(self.config["slurm_header"]["threads"], self.indir, files[k][0], self.indir, files[k][1],\
-      self.trimmed_files[outfile]['fp'], self.trimmed_files[outfile]['fu'], self.trimmed_files[outfile]['rp'],\
-      self.trimmed_files[outfile]['ru'], self.config["folders"]["adapters"]))
+
+    outfile = files[0].split('_')[0]
+    self.trimmed_files = dict()
+    self.trimmed_files['fp'] = "{}/{}_trim_front_pair.fq".format(trimdir, outfile)
+    self.trimmed_files['fu'] = "{}/{}_trim_front_unpair.fq".format(trimdir, outfile)
+    self.trimmed_files['rp'] = "{}/{}_trim_rev_pair.fq".format(trimdir, outfile)
+    self.trimmed_files['ru'] = "{}/{}_trim_rev_unpair.fq".format(trimdir, outfile)
+
+    batchfile.write("trimmomatic PE -threads {} -phred33 {} {} {} {} {} {}\
+    ILLUMINACLIP:{}NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n\n"\
+    .format(self.config["slurm_header"]["threads"], reads_forward, reads_reverse,\
+    self.trimmed_files['fp'], self.trimmed_files['fu'], self.trimmed_files['rp'],\
+    self.trimmed_files['ru'], self.config["folders"]["adapters"]))
 
   def create_assemblystats_section(self):
     batchfile = open(self.batchfile, "a+")
@@ -471,10 +476,9 @@ class Job_Creator():
         # This is one job 
         self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
         batchfile = open(self.batchfile, "w+")
-        batchfile.write("#!/usr/bin/env bash\n\n")
-        batchfile.write("mkdir -p {}\n".format(self.outdir))
+        batchfile.write("#!/usr/bin/env bash\n")
+        batchfile.write("mkdir -p {}\n\n".format(self.outdir))
         batchfile.close()
-
         self.create_trimsection()
         self.interlace_files()
         #self.logger.info("Sample trimming is currently disabled for QC results")
@@ -507,8 +511,8 @@ class Job_Creator():
 
     self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
     batchfile = open(self.batchfile, "w+")
-    batchfile.write("#!/usr/bin/env bash\n\n")
-    batchfile.write("mkdir -p {}\n".format(self.outdir))
+    batchfile.write("#!/usr/bin/env bash\n")
+    batchfile.write("mkdir -p {}\n\n".format(self.outdir))
     batchfile.close()
 
     self.create_snpsection()
