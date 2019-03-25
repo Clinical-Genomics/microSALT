@@ -129,12 +129,16 @@ class Job_Creator():
     batchfile = open(self.batchfile, "a+")
     #memory is actually 128 per node regardless of cores.
     batchfile.write("# Spades assembly\n")
+    batchfile.write("cat {} > {}/trimmed/forward_reads.fasta.gz").format(self.concat_files['f'], self.outdir))
+    batchfile.write("cat {} > {}/trimmed/reverse_reads.fasta.gz").format(self.concat_files['r'], self.outdir))
+
     batchfile.write("spades.py --threads {} --careful --memory {} -o {}/assembly"\
     .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir))
     
-    batchfile.write(" --pe1-1 {}".format(self.concat_files['f']))
-    batchfile.write(" --pe1-2 {}".format(self.concat_files['r']))
-    batchfile.write(" --pe1-s {}".format(self.concat_files['i']))
+    batchfile.write(" -1 {}/trimmed/forward_reads.fasta.gz".format(self.outdir))
+    batchfile.write(" -2 {}/trimmed/reverse_reads.fasta.gz".format(self.outdir))
+    batchfile.write(" -s {}".format(self.concat_files['i']))
+    batchfile.write("rm {}/trimmed/forward_reads.fasta.gz {}/trimmed/reverse_reads.fasta.gz".format(self.outdir, self.outdir))
 
     batchfile.write("\n\n")
     batchfile.close()
