@@ -75,12 +75,13 @@ class Resistances(db.Model):
   contig_start=db.Column(db.Integer)
   contig_end=db.Column(db.Integer)
 
-class Steps(db.Model):
-  __tablename__ = 'steps'
-  CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
-  date = db.Column(db.DateTime)
-  method = db.Column(db.String(40))
-  step = db.Column(db.String(40))
+#Debug: Multi-date support for libprep/sequencing
+#class Steps(db.Model):
+#  __tablename__ = 'steps'
+#  CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
+#  date = db.Column(db.DateTime)
+#  method = db.Column(db.String(40))
+#  step = db.Column(db.String(40))
 
 class Projects(db.Model):
    __tablename__ = 'projects'
