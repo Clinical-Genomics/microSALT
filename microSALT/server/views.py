@@ -88,7 +88,7 @@ def gen_reportdata(pid, organism_group='all'):
       else:
         s.ST_status='None'
 
-    if 'Control' in s.ST_status or s.ST == -1:
+    if 'Kontroll' in s.ST_status or 'Control' in s.ST_status or s.ST == -1:
       s.threshold = '-'
     elif s.ST == -3:
       s.threshold = 'Failed'

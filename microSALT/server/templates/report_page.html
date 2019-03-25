@@ -85,13 +85,13 @@
                       {% else %}
                         <td>0000-00-00</td>
                       {% endif %}
-                      <td>*</td>
+                      <td>{{sample.method_libprep}}</td>
                       {% if sample.date_sequencing is not none %}
                         <td>{{sample.date_sequencing.date()}}</td>
                       {% else %}
                         <td>0000-00-00</td>
                       {% endif %}
-                      <td>*</td>
+                      <td>{{sample.method_sequencing}}</td>
                       <td>{{sample.priority}}</td>
                       {% if sample.priority == 'standard' %}
                         <td><i>✔︎</i></td>
