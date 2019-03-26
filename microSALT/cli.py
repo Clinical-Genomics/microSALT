@@ -107,8 +107,8 @@ def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed):
   except Exception as e:
     click.echo("{}".format(e))
   click.echo("Version check done. Creating sbatch jobs")
-  manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
-  manager.project_job(qc_only=qc_only, trimmed=trimmed)
+  manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'],trim=trimmed,qc_only=qc_only)
+  manager.project_job()
   done() 
 
 @analyse.command()
@@ -156,8 +156,8 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed):
     fixer.identify_new(sample_id,project=False) 
     fixer.update_refs()
     click.echo("Version check done. Creating sbatch job")
-    worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
-    worker.project_job(single_sample=True, qc_only=qc_only, trimmed=trimmed)
+    worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'], trim=trimmed,qc_only=qc_only)
+    worker.project_job(single_sample=True)
   except Exception as e:
     click.echo("Unable to process sample {} due to '{}'".format(sample_id,e))
   done()

@@ -85,7 +85,7 @@ class Referencer():
         output, error = proc.communicate()
       except Exception as e:
         self.logger.error("Unable to index requested target {} in {}".format(file, full_dir))
-    self.logger.info("Indexed contents of {}".format(full_dir))
+    self.logger.info("Re-indexed contents of {}".format(full_dir))
 
   def fetch_external(self, force=False):
     """ Updates reference for data that IS ONLY LINKED to pubMLST """
@@ -304,7 +304,7 @@ class Referencer():
       internal_ver = self.db_access.get_version('profile_{}'.format(key))
       external_ver = self.external_version(key, val)  
       if internal_ver < external_ver:
+        self.logger.info('pubMLST reference for {} updated to {} from {}'.format(key.replace('_',' ').capitalize(), external_ver, internal_ver))
         self.download_pubmlst(key, val, force)
-        self.db_access.upd_rec({'name':'profile_{}'.format(key)}, 'Versions', {'version':internal_ver})
+        self.db_access.upd_rec({'name':'profile_{}'.format(key)}, 'Versions', {'version':external_ver})
         self.db_access.reload_profiletable(key)
-        self.logger.info('pubMLST reference for {} set to version {}'.format(key.replace('_',' ').capitalize(), internal_ver))
