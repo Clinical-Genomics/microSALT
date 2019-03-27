@@ -58,3 +58,9 @@ Other definitions may be used, as long as they retain the same format.
 ### Resistance genes
 microSALT relies on the resistance genes of resFinder (https://cge.cbs.dtu.dk/services/data.php), and will attempt to automatically download these.
 Any definitions will work, as long as they retain the same formatting.
+
+## Credits
+* Isak Sylvin - Lead developer
+* Emma Sernstad - Accreditation ready reports
+* Tanja Normark - Contamination analysis, various issues
+* Maya Brandi - Various issues
