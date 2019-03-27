@@ -58,16 +58,35 @@ def report_page(project, organism_group):
         version = sample_info['versions'],
         build = __version__)
 
-def gen_reportdata(pid, organism_group='all'):
+@app.route('/microSALT/STtracker')
+def STtracker_page():
+    sample_info = gen_reportdata(pid='all', organism_group='all')
+    final_samples = list()
+    for s in sample_info['samples']:
+      if s.pubmlst_ST != -1:
+        final_samples.append(s)
+      
+    final_samples = sorted(final_samples, key=lambda sample: \
+                    (sample.CG_ID_sample)) 
+
+    return render_template('STtracker_page.html',
+        internal = final_samples)
+
+def gen_reportdata(pid='all', organism_group='all'):
   """ Queries database for all necessary information for the reports """
   output = dict()
   output['samples'] = list()
   output['versions'] = dict()
-  if organism_group=='all':
+  if pid=='all' and organism_group=='all':
+    sample_info = session.query(Samples)
+  elif pid=='all':
+    sample_info = session.query(Samples).filter(Samples.organism==organism_group)
+  elif organism_group=='all':
     sample_info = session.query(Samples).filter(Samples.CG_ID_project==pid)
   else:
     sample_info = session.query(Samples).\
-                  filter(Samples.organism==organism_group, Samples.CG_ID_project==project)
+                  filter(Samples.CG_ID_project==pid, Samples.organism==organism_group)
+     
   #Sorts sample names
   sample_info = sorted(sample_info, key=lambda sample: \
                 int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))

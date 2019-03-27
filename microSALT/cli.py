@@ -279,7 +279,7 @@ def list(ctx):
 @util.command()
 @click.argument('project_name')
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--format', default='html', type=click.Choice(['html', 'csv', 'json']))
+@click.option('--format', default='html', type=click.Choice(['html', 'csv', 'json', 'st']))
 @click.pass_context
 def report(ctx, project_name, email, format):
   """Re-generates report for a project"""
@@ -294,3 +294,40 @@ def view(ctx):
   """Starts an interactive webserver for viewing"""
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
   codemonkey.start_web()
+
+@util.group()
+@click.pass_context
+def resync(ctx):
+  """Updates internal ST with pubMLST equivalent"""
+
+@resync.command()
+@click.pass_context
+def review(ctx):
+  """Generates report with old and new ST"""
+  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+  fixer.resync(overwrite=False)
+  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
+  codemonkey.report(type='st') 
+  done()
+
+@resync.command()
+@click.pass_context
+def overwrite(ctx):
+  """All ST with pubMLST equivalent will be marked as resolved"""
+  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+  fixer.resync(overwrite=True)
+  done()
+
+@resync.command()
+@click.pass_context
+def list(ctx):
+  """Lists all currently unresolved novel samples"""
+  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+  fixer.resync(just_list=True)
+  done()
+
+
+
+
+
+

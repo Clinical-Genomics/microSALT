@@ -13,22 +13,23 @@ db = SQLAlchemy(app)
 
 class Samples(db.Model):
 
-   __tablename__ = 'samples'
-   seq_types = relationship("Seq_types", back_populates="samples")
-   projects = relationship('Projects', back_populates='samples')
-   resistances = relationship("Resistances", back_populates="samples")
+  __tablename__ = 'samples'
+  seq_types = relationship("Seq_types", back_populates="samples")
+  projects = relationship('Projects', back_populates='samples')
+  resistances = relationship("Resistances", back_populates="samples")
 
-   CG_ID_sample = db.Column(db.String(15), primary_key=True, nullable=False)
-   CG_ID_project = db.Column(db.String(15), ForeignKey('projects.CG_ID_project'))
-   Customer_ID_sample = db.Column(db.String(40))
-   organism = db.Column(db.String(30))
-   ST = db.Column(db.SmallInteger, default=-1)
-   date_analysis = db.Column(db.DateTime)
-   genome_length = db.Column(db.Integer, default=-1)
-   gc_percentage = db.Column(db.Float(3,2), default = 0.0)
-   n50 = db.Column(db.Integer, default=-1)
-   contigs = db.Column(db.Integer, default=-1)
-   priority = db.Column(db.String(20))
+  CG_ID_sample = db.Column(db.String(15), primary_key=True, nullable=False)
+  CG_ID_project = db.Column(db.String(15), ForeignKey('projects.CG_ID_project'))
+  Customer_ID_sample = db.Column(db.String(40))
+  organism = db.Column(db.String(30))
+  ST = db.Column(db.SmallInteger, default=-1)
+  pubmlst_ST = db.Column(db.SmallInteger, default=-1)
+  date_analysis = db.Column(db.DateTime)
+  genome_length = db.Column(db.Integer, default=-1)
+  gc_percentage = db.Column(db.Float(3,2), default = 0.0)
+  n50 = db.Column(db.Integer, default=-1)
+  contigs = db.Column(db.Integer, default=-1)
+  priority = db.Column(db.String(20))
 
 class Seq_types(db.Model):
   __tablename__ = 'seq_types'
