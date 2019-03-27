@@ -105,7 +105,7 @@ class Job_Creator():
     else:
       batchfile.write("spades.py --threads {} --careful --memory {} -o {}/assembly -1 {} -2 {}\n"\
       .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir, self.concat_files['f'], self.concat_files['r']))
-    batchfile.write("rm {}/trimmed/forward_reads.fasta.gz {}/trimmed/reverse_reads.fasta.gz\n".format(self.outdir, self.outdir))
+    batchfile.write("rm {} {}\n".format(self.concat_files['f'], self.concat_files['r']))
     batchfile.write("\n\n")
     batchfile.close()
 
@@ -148,30 +148,13 @@ class Job_Creator():
     outbase = "{}/{}_{}".format(localdir, self.name, self.lims_fetcher.data['reference'])
     files = self.verify_fastq()
 
-    if self.trimmed:
-      reads_forward = self.concat_files['f'] 
-      reads_reverse = self.concat_files['r']
-    #State for old-MWGS comparison. Not normally reachable
-    elif not self.trimmed:
-      forward = list()
-      reverse = list()
-      for file in files:
-        fullfile = "{}/{}".format(self.indir, file)
-        #Even indexes = Forward
-        if not files.index(file)  % 2:
-          forward.append(fullfile)
-        elif files.index(file)  % 2:
-          reverse.append(fullfile)
-      reads_forward = "<( cat {} )".format(' '.join(forward)) 
-      reads_reverse = "<( cat {} )".format(' '.join(reverse))
- 
     #Create run
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# Variant calling based on local alignment\n")
     batchfile.write("mkdir {}\n".format(localdir))
 
     batchfile.write("## Alignment & Deduplication\n")
-    batchfile.write("bwa mem -M -t {} {} {} {} > {}.sam\n".format(self.config["slurm_header"]["threads"], ref ,reads_forward, reads_reverse, outbase))
+    batchfile.write("bwa mem -M -t {} {} {} {} > {}.sam\n".format(self.config["slurm_header"]["threads"], ref ,self.concat_files['f'], self.concat_files['r'], outbase))
     batchfile.write("samtools view --threads {} -b -o {}.bam -T {} {}.sam\n".format(self.config["slurm_header"]["threads"], outbase, ref, outbase))
     batchfile.write("samtools sort --threads {} -o {}.bam_sort {}.bam\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
     batchfile.write("picard MarkDuplicates I={}.bam_sort O={}.bam_sort_rmdup M={}.stats.dup REMOVE_DUPLICATES=true\n".format(outbase, outbase, outbase))
@@ -229,28 +212,28 @@ class Job_Creator():
         reverse.append(fullfile)
     outfile = files[0].split('_')[0]
 
-    self.concat_files['f'] = "{}/trimmed/forward_reads.fasta.gz".format(self.outdir)
-    self.concat_files['r'] = "{}/trimmed/reverse_reads.fasta.gz".format(self.outdir)
+    self.concat_files['f'] = "{}/trimmed/forward_reads.fastq.gz".format(self.outdir)
+    self.concat_files['r'] = "{}/trimmed/reverse_reads.fastq.gz".format(self.outdir)
     batchfile.write("cat {} > {}\n".format(' '.join(forward), self.concat_files['f']))
     batchfile.write("cat {} > {}\n".format(' '.join(reverse), self.concat_files['r']))
 
     if self.trimmed:
-      fp = "{}/{}_trim_front_pair.fq".format(trimdir, outfile)
-      fu = "{}/{}_trim_front_unpair.fq".format(trimdir, outfile)
-      rp = "{}/{}_trim_rev_pair.fq".format(trimdir, outfile)
-      ru = "{}/{}_trim_rev_unpair.fq".format(trimdir, outfile)
+      fp = "{}/{}_trim_front_pair.fastq.gz".format(trimdir, outfile)
+      fu = "{}/{}_trim_front_unpair.fastq.gz".format(trimdir, outfile)
+      rp = "{}/{}_trim_rev_pair.fastq.gz".format(trimdir, outfile)
+      ru = "{}/{}_trim_rev_unpair.fastq.gz".format(trimdir, outfile)
       batchfile.write("##Trimming section\n")
       batchfile.write("trimmomatic PE -threads {} -phred33 {} {} {} {} {} {}\
       ILLUMINACLIP:{}NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n"\
       .format(self.config["slurm_header"]["threads"], self.concat_files['f'], self.concat_files['r'], fp, fu, rp, ru, self.config["folders"]["adapters"]))
 
       batchfile.write("## Interlaced trimmed files\n")
-      self.concat_files['f'] = "{}/trimmed/{}{}".format(self.outdir,self.name, "_trim_front_pair.fq")
-      self.concat_files['r'] = "{}/trimmed/{}{}".format(self.outdir,self.name, "_trim_rev_pair.fq")
-      self.concat_files['i'] = "{}/trimmed/{}{}".format(self.outdir,self.name, "_trim_unpaired.fq")
+      self.concat_files['f'] = fp
+      self.concat_files['r'] = rp 
+      self.concat_files['i'] = "{}/{}_trim_unpair.fastq.gz".format(trimdir, outfile)
 
       batchfile.write("cat {} >> {}\n".format(' '.join([fu, ru]), self.concat_files['i']))
-      batchfile.write("rm {}/trimmed/forward_reads.fasta.gz {}/trimmed/reverse_reads.fasta.gz {} {}\n".format(self.outdir, self.outdir, fu, ru))
+      batchfile.write("rm {}/trimmed/forward_reads.fastq.gz {}/trimmed/reverse_reads.fastq.gz {} {}\n".format(self.outdir, self.outdir, fu, ru))
     batchfile.write("\n")
     batchfile.close()
 
