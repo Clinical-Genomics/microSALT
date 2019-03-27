@@ -11,7 +11,6 @@ from sqlalchemy.sql.expression import case, func
 from microSALT import config, __version__
 from microSALT.store.db_manipulator import app
 from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
-from microSALT.store.models import Profiles, Novel
 
 engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
 Session = sessionmaker(bind=engine)

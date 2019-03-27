@@ -10,7 +10,6 @@ import sys
 import smtplib
 
 
-from datetime import date
 from os.path import basename
 from email.mime.text  import MIMEText
 from email.mime.multipart import MIMEMultipart

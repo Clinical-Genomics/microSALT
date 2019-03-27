@@ -49,7 +49,6 @@ class Novel:
       self.add_table(file)
 
   def add_table(self, file):
-    resolved = "resolved"
     with open("{}/{}".format(self.config["folders"]["profiles"], file), "r") as fh:
       #Sets profile_* headers
       head = fh.readline()
