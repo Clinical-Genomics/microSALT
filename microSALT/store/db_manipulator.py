@@ -183,11 +183,12 @@ class DB_Manipulator:
     else:
       return version.version
 
-  def compare_internal(self):
-    """Looks at each novel table. See if any record has a profile match in the profile table"""
-
+  def add_external(self, overwrite=False):
+    """Looks at each novel table. See if any record has a profile match in the profile table.
+       Sets pubmlst_ST in samples for those samples that do"""
+    prequery = self.session.query(Samples)
+    listdict = list()
     for org, novel_table in self.novel.items():
-
       novel_list = self.session.query(novel_table).all()
       org_keys = novel_table.c.keys()
       profile_list = self.session.query(self.profiles[org]).all()
@@ -199,10 +200,19 @@ class DB_Manipulator:
             args.append("self.profiles[org].c.{}=={}".format(key, eval("novel.{}".format(key))))
         args = 'and_(' + ','.join(args) + ')'
         exist = self.session.query(self.profiles[org]).filter(eval(args)).all()
+
         if exist:
           exist = exist[0]
-          print("Duplicate: ST {}; Internal {}; share profile {} for organism '{}'".format(exist.ST, novel.ST, exist, org.replace('_', ' ').capitalize()))
-    import pdb; pdb.set_trace()
+          onelap = prequery.filter(and_(Samples.ST==novel.ST,Samples.organism==org)).all()
+          for entry in onelap:
+            if entry.pubmlst_ST == -1:
+              self.logger.info("Update: Sample {} of organism {}; Internal ST {} is now linked to {} '{}')".\
+                        format(entry.CG_ID_sample, org, novel.ST, exist.ST, exist))
+              self.upd_rec({'CG_ID_sample':entry.CG_ID_sample}, 'Samples', {'pubmlst_ST':exist.ST, 'pubmlst_synced':False})
+            elif not entry.pubmlst_synced and overwrite:
+              self.upd_rec({'CG_ID_sample':entry.CG_ID_sample}, 'Samples', {'pubmlst_ST':exist.ST, 'pubmlst_synced':True})
+              self.logger.info("Replacement: Sample {} of organism {}; Internal ST {} is now {} '{}')".\
+                        format(entry.CG_ID_sample, org, novel.ST, exist.ST, exist))
 
   def setPredictor(self, cg_sid, pks=dict()):
     """ Helper function. Flags a set of seq_types as part of the final prediction.

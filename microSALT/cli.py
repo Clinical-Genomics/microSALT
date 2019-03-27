@@ -279,7 +279,7 @@ def list(ctx):
 @util.command()
 @click.argument('project_name')
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--format', default='html', type=click.Choice(['html', 'csv', 'json']))
+@click.option('--format', default='html', type=click.Choice(['html', 'csv', 'json', 'st']))
 @click.pass_context
 def report(ctx, project_name, email, format):
   """Re-generates report for a project"""
@@ -295,21 +295,28 @@ def view(ctx):
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
   codemonkey.start_web()
 
-@util.command()
-@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--force', help="Replaces rather than just reporting", default=False, is_flag=True)
+@util.group()
 @click.pass_context
-def resync(ctx, email, force):
-  """Replace internal ST with pubMLST ones. Creates report"""
+def resync(ctx, apply):
+  """Updates internal ST with pubMLST equivalent"""
+
+@resync.command()
+@click.pass_context
+def review(ctx):
+  """Generates report with old and new ST"""
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-  fixer.replace_internal()
-  ##Referencer
-  #Scan internal tables
-  #Scan pubmlst tables
-  #Compare
-  ##Reporter
-  #Generate results from comparisons
-
-
+  fixer.resync(overwrite=False)
+  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
+  codemonkey.report(type='st') 
   done()
+
+@resync.command()
+@click.pass_context
+def overwrite(ctx):
+  """All ST with pubMLST equivalent will be marked as resolved"""
+  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+  fixer.resync(overwrite=True)
+  done()
+
+
 

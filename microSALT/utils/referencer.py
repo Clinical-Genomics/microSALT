@@ -124,9 +124,9 @@ class Referencer():
     except StopIteration:
       pass
 
-  def replace_internal(self):
-    """Replaces internal ids with external ones when available"""
-    self.db_access.compare_internal()
+  def resync(self, overwrite=False):
+    """Adds external ids to internal ones on sample level, when available"""
+    self.db_access.add_external(overwrite=False)
 
 
   def fetch_resistances(self, force=False):

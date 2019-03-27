@@ -9,6 +9,8 @@ import os
 import sys
 import smtplib
 
+
+from datetime import date
 from os.path import basename
 from email.mime.text  import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -37,11 +39,27 @@ class Reporter():
       self.gen_csv()
     elif type == 'json':
       self.gen_json()
+    elif type == 'st':
+      self.gen_STtracker()
     else:
       raise Exception("Report function recieved invalid format")
     self.mail()
     for file in self.attachments:
       os.remove(file)
+
+  def gen_STtracker(self):
+    self.start_web()
+    self.name ="Sequence Type Update"
+    try:
+      r = requests.get("http://127.0.0.1:5000/microSALT/STtracker", allow_redirects=True)
+    except Exception as e:
+      self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
+      self.kill_flask()
+      sys.exit(-1)
+    outname = "ST_updates.html"
+    open(outname, 'wb').write(r.content)
+    self.attachments.append(outname)
+    self.kill_flask()
 
   def gen_html(self):
     self.start_web()
@@ -66,7 +84,7 @@ class Reporter():
   def mail(self):
     file_name = self.attachments
     msg = MIMEMultipart()
-    msg['Subject'] = '{} ({}) Reports'.format(self.name, file_name[0].split('_')[0])
+    msg['Subject'] = '{} ({}) Results'.format(self.name, file_name[0].split('_')[0])
     msg['From'] = 'microSALT'
     msg['To'] = self.config['regex']['mail_recipient']
     
