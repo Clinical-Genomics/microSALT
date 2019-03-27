@@ -24,7 +24,6 @@ class Samples(db.Model):
   organism = db.Column(db.String(30))
   ST = db.Column(db.SmallInteger, default=-1)
   pubmlst_ST = db.Column(db.SmallInteger, default=-1)
-  pubmlst_synced = db.Column(db.Boolean, default=True)
   date_analysis = db.Column(db.DateTime)
   genome_length = db.Column(db.Integer, default=-1)
   gc_percentage = db.Column(db.Float(3,2), default = 0.0)

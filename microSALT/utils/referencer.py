@@ -124,10 +124,12 @@ class Referencer():
     except StopIteration:
       pass
 
-  def resync(self, overwrite=False):
+  def resync(self, overwrite=False, just_list=False):
     """Adds external ids to internal ones on sample level, when available"""
-    self.db_access.add_external(overwrite=False)
-
+    if just_list:
+      self.db_access.list_unresolved()
+    else:
+      self.db_access.add_external(overwrite)
 
   def fetch_resistances(self, force=False):
     cwd = os.getcwd()

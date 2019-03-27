@@ -297,7 +297,7 @@ def view(ctx):
 
 @util.group()
 @click.pass_context
-def resync(ctx, apply):
+def resync(ctx):
   """Updates internal ST with pubMLST equivalent"""
 
 @resync.command()
@@ -317,6 +317,17 @@ def overwrite(ctx):
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
   fixer.resync(overwrite=True)
   done()
+
+@resync.command()
+@click.pass_context
+def list(ctx):
+  """Lists all currently unresolved novel samples"""
+  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+  fixer.resync(just_list=True)
+  done()
+
+
+
 
 
 
