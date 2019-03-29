@@ -55,7 +55,7 @@
                       <td class="text-right">
                         {% if sample.total_reads is none %}
                           0
-                        {% else %} {{ sample.total_reads }} {% endif %}
+                        {% else %} {{'{0:,}'.format(sample.total_reads)|replace(","," ")}} {% endif %}
                       </td>
                       <td class="text-right">
                         {% if sample.mapped_rate is none or sample.mapped_rate == 0 %}
