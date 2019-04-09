@@ -7,18 +7,17 @@ cache: pip
 
 install:
 ## Install anaconda
-  - wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
+  - wget https://repo.anaconda.com/archive/Anaconda3-2019.03-MacOSX-x86_64.sh -O conda.sh;
+  - bash conda.sh -b 
   - conda config --add channels defaults
-  - conda config --add channels conda-forge
   - conda config --add channels bioconda
+  - conda config --add channels conda-forge
+  - conda info
   
   
 ## Install microSALT
   - conda create -y -n microSALT python=3.6
   - source activate microSALT
-  - conda install -y anaconda-client
   - conda install -y -c bioconda blast=2.5.0=hc0b0e79_3 spades=3.12.0=py36_0 trimmomatic=0.38=1
   - pip install -r requirements.txt
   - pip install .
