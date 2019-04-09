@@ -1,0 +1,24 @@
+language: python
+
+python:
+    - '3.6'
+
+cache: pip
+
+install:
+## Install conda
+  - wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - conda config --add channels bioconda
+  
+## Install microSALT
+  - conda create -y -n microSALT python=3.6
+  - conda install -y -c bioconda blast=2.5.0=hc0b0e79_3 spades=3.12.0=py36_0 trimmomatic=0.38=1
+  - pip install -r requirements.txt
+  - pip install .
+  - pip check
+
+script:
+    - git reset --soft ${TRAVIS_COMMIT_RANGE%...*} && git lint
+    - microSALT
