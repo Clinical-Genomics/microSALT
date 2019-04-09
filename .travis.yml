@@ -6,18 +6,14 @@ sudo: required
 cache: pip
 
 before_install:
-  - sudo apt-get install -y coreutils libssl1.0.0 libssl-dev libcrypto++9 libcrypto++-dev
-  - cd /lib/x86_64-linux-gnu
-  - sudo ln -s libssl.so.1.0.0 libssl.so.10
-  - sudo ln -s libcrypto.so.1.0.0 libcrypto.so.10
-  - cd ~
+  - sudo apt-get install -y coreutils ucommon-utils
 addons:
   apt:
     update: true
 
 install:
 ## Install anaconda
-  - wget https://repo.anaconda.com/archive/Anaconda3-2019.03-MacOSX-x86_64.sh -O conda.sh;
+  - wget https://repo.anaconda.com/archive/Anaconda3-2019.03-Linux-x86_64.sh -O conda.sh;
   - bash conda.sh -b -p $HOME/anaconda
   - export PATH="$HOME/anaconda/bin:$PATH"
   - conda config --add channels defaults
@@ -31,9 +27,12 @@ install:
   - source activate microSALT
   - conda install -y -c bioconda blast=2.5.0=hc0b0e79_3 spades=3.12.0=py36_0 trimmomatic=0.38=1
   - pip install -r requirements.txt
+  - pip install git-lint yamllint
   - pip install .
   - pip check
 
 script:
-    - git reset --soft ${TRAVIS_COMMIT_RANGE%...*} && git lint
-    - microSALT
+#    - git lint
+    - mkdir ~/.microSALT && touch ~/.microSALT/config.json
+#    - Create config
+#    - microSALT
