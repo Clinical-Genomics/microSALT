@@ -5,10 +5,16 @@ python:
 
 cache: pip
 
+before_install:
+  - sudo apt-get install -y coreutils
+addons:
+  apt:
+    update: true
+
 install:
 ## Install anaconda
   - wget https://repo.anaconda.com/archive/Anaconda3-2019.03-MacOSX-x86_64.sh -O conda.sh;
-  - alias md5=md5sum
+  - alias md5='md5sum'
   - bash conda.sh -b -p $HOME/anaconda
   - export PATH="$HOME/anaconda/bin:$PATH"
   - conda config --add channels defaults
