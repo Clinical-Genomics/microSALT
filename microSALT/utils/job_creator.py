@@ -172,10 +172,12 @@ class Job_Creator():
     #batchfile.write("## Indexing\n")
     #batchfile.write("samtools index {}.bam_sort_mkdup\n".format(outbase))
     #batchfile.write("samtools idxstats {}.bam_sort_mkdup &> {}.stats.ref\n".format(outbase, outbase))
+    #Insert stats, dedupped
+    #batchfile.write("samtools stats -m 0.999 {}.bam_sort_rmdup |grep ^IS | cut -f 2- &> {}.stats.ins\n".format(outbase, outbase))
 
     batchfile.write("## Primary stats generation\n")
     #Insert stats, dedupped
-    batchfile.write("samtools stats -m 0.999 {}.bam_sort_rmdup |grep ^IS | cut -f 2- &> {}.stats.ins\n".format(outbase, outbase))
+    batchfile.write("picard CollectInsertSizeMetrics I={}.bam_sort_rmdup O={}.stats.ins H={}.hist.ins\n".format(outbase, outbase, outbase))
     #Coverage
     batchfile.write("samtools stats --coverage 1,10000,1 {}.bam_sort_rmdup |grep ^COV | cut -f 2- &> {}.stats.cov\n".format(outbase, outbase))
     #Mapped rate, no dedup,dedup in MWGS (trimming has no effect)!

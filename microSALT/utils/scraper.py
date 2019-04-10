@@ -324,9 +324,12 @@ class Scraper():
          lsplit = line.rstrip().split('\t')
          if type == 'raw':
            tot_reads = int(lsplit[0])
-         #8k is the the value of unmapped inserts
-         if type == 'ins' and not lsplit[0] == '8000':
-           ins_list.append(int(lsplit[1]))
+         elif type == 'ins':
+           if len(lsplit) == 18:
+             try:
+               median_ins = int(lsplit[0])
+             except Exception as e:
+               pass
          elif type == 'cov':
            cov_dict[lsplit[1]] = int(lsplit[2])
          elif type == 'ref':
@@ -347,15 +350,6 @@ class Scraper():
                map_rate = int(dsplit[0])/float(tot_map)
 
     #Mangling
-    if len(ins_list) >= 1:
-      entries = sum(ins_list)
-      ins_total = 0
-      for entry in ins_list:
-        ins_total = ins_total + entry
-        if ins_total >= entries/2:
-          median_ins = ins_list.index(entry)
-          break
-
     sumz, plus10, plus30, plus50, plus100, total = 0, 0, 0, 0, 0, 0
     for k, v in cov_dict.items():
       sumz += int(k)*v
