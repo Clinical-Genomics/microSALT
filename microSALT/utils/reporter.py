@@ -31,7 +31,7 @@ class Reporter():
     self.ticketFinder = LIMS_Fetcher(self.config, self.logger)
     self.attachments = list()
 
-  def report(self, type='html'):
+  def report(self, type='html', customer="all"):
     if type == 'html':
       self.gen_html()
     elif type == 'csv':
@@ -39,18 +39,18 @@ class Reporter():
     elif type == 'json':
       self.gen_json()
     elif type == 'st':
-      self.gen_STtracker()
+      self.gen_STtracker(customer)
     else:
       raise Exception("Report function recieved invalid format")
     self.mail()
     for file in self.attachments:
       os.remove(file)
 
-  def gen_STtracker(self):
+  def gen_STtracker(self, customer="all"):
     self.start_web()
     self.name ="Sequence Type Update"
     try:
-      r = requests.get("http://127.0.0.1:5000/microSALT/STtracker", allow_redirects=True)
+      r = requests.get("http://127.0.0.1:5000/microSALT/STtracker/{}".format(customer), allow_redirects=True)
     except Exception as e:
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.kill_flask()
