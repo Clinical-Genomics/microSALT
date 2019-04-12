@@ -186,10 +186,7 @@ class DB_Manipulator:
   def add_external(self,overwrite=False, sample=""):
     """Looks at each novel table. See if any record has a profile match in the profile table.
        Updates these based on parameters"""
-    if sample == "":
-      prequery = self.session.query(Samples)
-    else:
-      prequery = self.session.query(Samples).filter(Samples.CG_ID_sample==sample)
+    prequery = self.session.query(Samples)
     for org, novel_table in self.novel.items():
       novel_list = self.session.query(novel_table).all()
       org_keys = novel_table.c.keys()
@@ -205,7 +202,10 @@ class DB_Manipulator:
 
         if exist:
           exist = exist[0]
-          onelap = prequery.filter(and_(Samples.ST==novel.ST,Samples.organism==org, Samples.ST<=-10)).all()
+          if sample == "":
+            onelap = prequery.filter(and_(Samples.ST==novel.ST,Samples.organism==org, Samples.ST<=-10)).all()
+          else:
+            onelap = prequery.filter(and_(Samples.ST==novel.ST,Samples.organism==org, Samples.ST<=-10, Samples.CG_ID_sample==sample)).all()
           for entry in onelap:
             #review
             if entry.pubmlst_ST == -1 and not overwrite:

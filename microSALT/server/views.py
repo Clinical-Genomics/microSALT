@@ -63,8 +63,8 @@ def STtracker_page(customer):
     sample_info = gen_reportdata(pid='all', organism_group='all')
     final_samples = list()
     for s in sample_info['samples']:
-      if s.projects.customer_ID == customer or customer == 'all':
-        if s.pubmlst_ST != -1:
+      if s.projects.Customer_ID == customer or customer == 'all':
+        if s.pubmlst_ST != -1 and s.ST < 0:
           final_samples.append(s)
       
     final_samples = sorted(final_samples, key=lambda sample: \

@@ -124,7 +124,7 @@ class Referencer():
     except StopIteration:
       pass
 
-  def resync(self, type, sample=""):
+  def resync(self, type="", sample=""):
     """Manipulates samples that have an internal ST that differs from pubMLST ST"""
     if type=='list':
       #Add single sample support later

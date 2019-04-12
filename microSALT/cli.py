@@ -324,5 +324,5 @@ def review(ctx, format, customer):
 def overwrite(ctx,sample_name):
   """Sample sample_name with pubMLST equivalent will be marked as resolved"""
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-  fixer.resync(type='overwrite', sample=sample)
+  fixer.resync(type='overwrite', sample=sample_name)
   done()
