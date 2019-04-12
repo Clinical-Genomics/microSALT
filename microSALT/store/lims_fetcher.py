@@ -31,7 +31,8 @@ class LIMS_Fetcher():
       newdate = datetime(int(tmp[0]), int(tmp[1]), int(tmp[2]))
       self.data.update({'date_received': newdate,
                                'CG_ID_project': cg_projid,
-                               'Customer_ID_project' : realname})
+                               'Customer_ID_project' : realname,
+                               'Customer_ID': custids[0]})
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for project {}\nSource: {}".format(cg_projid, str(e)))
 
