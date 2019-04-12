@@ -105,7 +105,8 @@ class LIMS_Fetcher():
                            'CG_ID_sample': sample.id,
                            'Customer_ID_sample' : sample.name,
                            'organism' : organism,
-                           'priority' : sample.udf['priority']})
+                           'priority' : sample.udf['priority'],
+                           'Customer_ID': sample.udf['customer']})
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for sample {}. Review LIMS data.\nSource: {}"\
       .format(cg_sampleid, str(e)))

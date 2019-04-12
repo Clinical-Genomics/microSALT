@@ -78,6 +78,7 @@ class Projects(db.Model):
    CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
    Customer_ID_project = db.Column(db.String(15))
    date_ordered = db.Column(db.DateTime)
+   Customer_ID = db.Column(db.String(15))
 
 class Versions(db.Model):
   __tablename__ = 'versions'
