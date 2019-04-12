@@ -308,7 +308,6 @@ def review(ctx, format, customer):
   """Generates information about novel ST"""
   #Trace exists by some samples having pubMLST_ST filled in. Make trace function later
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-  fixer.identify_new(sample_id,project=False)
   fixer.update_refs()
   fixer.resync()
   print("Version check done. Generating output")
@@ -323,7 +322,7 @@ def review(ctx, format, customer):
 @click.argument('sample_name')
 @click.pass_context
 def overwrite(ctx,sample_name):
-  """All ST with pubMLST equivalent will be marked as resolved"""
+  """Sample sample_name with pubMLST equivalent will be marked as resolved"""
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
   fixer.resync(type='overwrite', sample=sample)
   done()

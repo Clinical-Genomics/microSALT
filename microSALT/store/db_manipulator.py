@@ -183,7 +183,7 @@ class DB_Manipulator:
     else:
       return version.version
 
-  def add_external(self,overwrite=False, sample=sample):
+  def add_external(self,overwrite=False, sample=""):
     """Looks at each novel table. See if any record has a profile match in the profile table.
        Updates these based on parameters"""
     if sample == "":
