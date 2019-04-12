@@ -16,6 +16,7 @@
               <div class="table-responsive">
                 <table  class="table table-bordered" style='table-layout:fixed;'>
                   <tr>
+                    <th>Customer</th>
                     <th>Sample ID</th>
                     <th>CG Sample ID</th>
                     <th>Organism</th>
@@ -24,6 +25,11 @@
                   </tr>
                   {% for entry in internal %}
                     <tr>
+                      {% if entry.projects.Customer_ID is not none %}
+                        <td>{{entry.projects.Customer_ID}}</td>
+                      {% else %}
+                        <td>Unknown</td>
+                      {% endif %}
                       <td>{{entry.Customer_ID_sample}}</td>
                       <td>{{entry.CG_ID_sample}}</td>
                       {% if entry.organism is not none %}
