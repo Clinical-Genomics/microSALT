@@ -183,10 +183,13 @@ class DB_Manipulator:
     else:
       return version.version
 
-  def add_external(self,overwrite=False):
+  def add_external(self,overwrite=False, sample=sample):
     """Looks at each novel table. See if any record has a profile match in the profile table.
        Updates these based on parameters"""
-    prequery = self.session.query(Samples)
+    if sample == "":
+      prequery = self.session.query(Samples)
+    else:
+      prequery = self.session.query(Samples).filter(Samples.CG_ID_sample==sample)
     for org, novel_table in self.novel.items():
       novel_list = self.session.query(novel_table).all()
       org_keys = novel_table.c.keys()
