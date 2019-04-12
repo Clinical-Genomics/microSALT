@@ -58,13 +58,14 @@ def report_page(project, organism_group):
         version = sample_info['versions'],
         build = __version__)
 
-@app.route('/microSALT/STtracker')
-def STtracker_page():
+@app.route('/microSALT/STtracker/<customer>')
+def STtracker_page(customer):
     sample_info = gen_reportdata(pid='all', organism_group='all')
     final_samples = list()
     for s in sample_info['samples']:
-      if s.pubmlst_ST != -1:
-        final_samples.append(s)
+      if s.projects.customer_ID == customer or customer == 'all':
+        if s.pubmlst_ST != -1:
+          final_samples.append(s)
       
     final_samples = sorted(final_samples, key=lambda sample: \
                     (sample.CG_ID_sample)) 

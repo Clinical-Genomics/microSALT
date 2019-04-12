@@ -301,33 +301,28 @@ def resync(ctx):
   """Updates internal ST with pubMLST equivalent"""
 
 @resync.command()
+@click.option('--format', default='html', type=click.Choice(['html', 'list']))
+@click.option('--customer', default='all')
 @click.pass_context
-def review(ctx):
-  """Generates report with old and new ST"""
+def review(ctx, format, customer):
+  """Generates information about novel ST"""
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-  fixer.resync(overwrite=False)
-  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
-  codemonkey.report(type='st') 
+  fixer.identify_new(sample_id,project=False)
+  fixer.update_refs()
+  fixer.resync()
+  print("Version check done. Generating output")
+  if format=='html':
+    codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
+    codemonkey.report(type='st', customer=customer)
+  elif format=='list':
+    fixer.resync(type=format)
   done()
 
 @resync.command()
+@click.argument('sample_name')
 @click.pass_context
-def overwrite(ctx):
+def overwrite(ctx,sample_name):
   """All ST with pubMLST equivalent will be marked as resolved"""
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-  fixer.resync(overwrite=True)
+  fixer.resync(type='overwrite')
   done()
-
-@resync.command()
-@click.pass_context
-def list(ctx):
-  """Lists all currently unresolved novel samples"""
-  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-  fixer.resync(just_list=True)
-  done()
-
-
-
-
-
-
