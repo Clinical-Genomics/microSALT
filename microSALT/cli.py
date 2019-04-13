@@ -55,8 +55,9 @@ def start(ctx):
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.option('--skip-update', default=False, help="Skips downloading of references")
 @click.pass_context
-def project(ctx, project_id, input, dry, config, email):
+def project(ctx, project_id, input, dry, config, email, skip-update):
   """Analyze a whole project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
@@ -80,9 +81,13 @@ def project(ctx, project_id, input, dry, config, email):
 
   print("Checking versions of references..")
   try:
-    fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-    fixer.identify_new(project_id,project=True)
-    fixer.update_refs()
+    if not skip-update:
+      fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+      fixer.identify_new(project_id,project=True)
+      fixer.update_refs()
+      print("Version check done. Creating sbatch job")
+    else:
+      print("Skipping version check.")
   except Exception as e:
     print("{}".format(e))
 
@@ -97,8 +102,9 @@ def project(ctx, project_id, input, dry, config, email):
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.option('--skip-update', default=False, help="Skips downloading of references")
 @click.pass_context
-def sample(ctx, sample_id, input, dry, config, email):
+def sample(ctx, sample_id, input, dry, config, email, skip-update):
   """Analyze a single sample"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
@@ -129,10 +135,13 @@ def sample(ctx, sample_id, input, dry, config, email):
 
   print("Checking versions of references..")
   try:
-    fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-    fixer.identify_new(sample_id,project=False) 
-    fixer.update_refs()
-    print("Version check done. Creating sbatch job")
+    if not skip-update:
+      fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+      fixer.identify_new(sample_id,project=False) 
+      fixer.update_refs()
+      print("Version check done. Creating sbatch job")
+    else:
+      print("Skipping version check.")
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
     worker.project_job(single_sample=True)
   except Exception as e:
@@ -301,15 +310,17 @@ def resync(ctx):
   """Updates internal ST with pubMLST equivalent"""
 
 @resync.command()
-@click.option('--format', default='html', type=click.Choice(['html', 'list']))
-@click.option('--customer', default='all')
+@click.option('--format', default='html', type=click.Choice(['html', 'list']), help="Output format")
+@click.option('--customer', default='all', help="Customer id filter")
+@click.option('--skip-update', default=False, help="Skips downloading of references")
 @click.pass_context
-def review(ctx, format, customer):
+def review(ctx, format, customer, skip-update):
   """Generates information about novel ST"""
   #Trace exists by some samples having pubMLST_ST filled in. Make trace function later
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-  fixer.update_refs()
-  fixer.resync()
+  if not skip-update:
+    fixer.update_refs()
+    fixer.resync()
   print("Version check done. Generating output")
   if format=='html':
     codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
@@ -322,7 +333,7 @@ def review(ctx, format, customer):
 @click.argument('sample_name')
 @click.pass_context
 def overwrite(ctx,sample_name):
-  """Sample sample_name with pubMLST equivalent will be marked as resolved"""
+  """Flags sample as resolved"""
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
   fixer.resync(type='overwrite', sample=sample_name)
   done()
