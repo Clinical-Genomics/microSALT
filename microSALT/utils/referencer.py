@@ -247,7 +247,7 @@ class Referencer():
     with urllib.request.urlopen(ver_req) as response:
         ver_query = json.loads(response.read().decode('utf-8'))
     currver = self.db_access.get_version("profile_{}".format(organism))
-    if int(ver_query['last_updated'].replace('-','')) <= int(currver) and not force:
+    if int(ver_query['last_updated'].replace('-','')) <= int(currver.replace('-','')) and not force:
       #self.logger.info("Profile for {} already at latest version".format(organism.replace('_' ,' ').capitalize()))
       return currver
 
