@@ -99,7 +99,7 @@ class Referencer():
           organ = organ[:-2]
         currver = self.db_access.get_version("profile_{}".format(organ))
         profile_no = re.search('\d+', sample[2]).group(0)
-        if organ in self.organisms and organ.replace("_", " ") not in self.updated and (profile_no > currver or force):
+        if organ in self.organisms and organ.replace("_", " ") not in self.updated and int(profile_no.replace('-','')) > int(currver) or force):
           # Download definition files
           st_link = prefix + entry.find_all("a")[1]['href']
           output = "{}/{}".format(self.config['folders']['profiles'], organ)
@@ -246,7 +246,7 @@ class Referencer():
     with urllib.request.urlopen(ver_req) as response:
         ver_query = json.loads(response.read().decode('utf-8'))
     currver = self.db_access.get_version("profile_{}".format(organism))
-    if ver_query['last_updated'] <= currver and not force:
+    if int(ver_query['last_updated'].replace('-','')) <= int(currver) and not force:
       #self.logger.info("Profile for {} already at latest version".format(organism.replace('_' ,' ').capitalize()))
       return currver
 
