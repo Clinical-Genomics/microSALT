@@ -83,6 +83,7 @@ class Referencer():
     query = urllib.request.urlopen("{}/data/".format(prefix))
     soup = BeautifulSoup(query, 'html.parser')
     tr_sub = soup.find_all("tr", class_="td1")
+    tr_sub = tr_sub + soup.find_all("tr", class_="td2")
 
     # Only search every other instance
     iterator = iter(tr_sub)
