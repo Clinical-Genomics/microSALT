@@ -31,7 +31,8 @@ class LIMS_Fetcher():
       newdate = datetime(int(tmp[0]), int(tmp[1]), int(tmp[2]))
       self.data.update({'date_received': newdate,
                                'CG_ID_project': cg_projid,
-                               'Customer_ID_project' : realname})
+                               'Customer_ID_project' : realname,
+                               'Customer_ID': custids[0]})
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for project {}\nSource: {}".format(cg_projid, str(e)))
 
@@ -62,7 +63,9 @@ class LIMS_Fetcher():
     if 'Strain' in sample.udf and organism == "Unset":
       #Predefined genus usage. All hail buggy excel files
       if 'gonorrhoeae' in sample.udf['Strain']:
-        organism = "Neisseria spp." 
+        organism = "Neisseria spp."
+      elif 'Cutibacterium acnes' in sample.udf['Strain']:
+        organism = "Propionibacterium acnes" 
       #Backwards compat, MUST hit first
       elif sample.udf['Strain'] == 'VRE':
         if 'Reference Genome Microbial' in sample.udf:
@@ -78,6 +81,8 @@ class LIMS_Fetcher():
         #Other species predefined genus usage
         if 'gonorrhoeae' in sample.udf['Other species']:
           organism = "Neisseria spp."
+        elif 'Cutibacterium acnes' in sample.udf['Other species']:
+          organism = "Propionibacterium acnes"
         else:
           organism = sample.udf['Other species']
     if 'Reference Genome Microbial' in sample.udf and organism == "Unset":
@@ -106,7 +111,8 @@ class LIMS_Fetcher():
                            'Customer_ID_sample' : sample.name,
                            'organism' : organism,
                            'priority' : prio,
-                           'reference' : sample.udf['Reference Genome Microbial']})
+                           'reference' : sample.udf['Reference Genome Microbial'],
+                           'Customer_ID': sample.udf['customer']})
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for sample {}. Review LIMS data.\nSource: {}"\
       .format(cg_sampleid, str(e)))

@@ -68,31 +68,37 @@ def typing_page(project, organism_group):
         version = sample_info['versions'],
         build = __version__)
 
-def gen_tuples(pid, value):
-  """ Generates name:data tuples for highcharts plots """
-  tuples = list()
-  sample_info = session.query(Samples).filter(Samples.CG_ID_project==pid)
 
-  for s in sample_info:
-    tuples.append(dict())
-    tuples[-1]['name'] = s.projects.Customer_ID_project
-    if isinstance(value, str):
-      tuples[-1]['y'] = getattr(s, value)
-    elif isinstance(value, (list,)):
-      tuples[-1]['x'] = getattr(s, value[0])
-      tuples[-1]['y'] = getattr(s, value[1])
-  return tuples
+@app.route('/microSALT/STtracker/<customer>')
+def STtracker_page(customer):
+    sample_info = gen_reportdata(pid='all', organism_group='all')
+    final_samples = list()
+    for s in sample_info['samples']:
+      if s.projects.Customer_ID == customer or customer == 'all':
+        if s.pubmlst_ST != -1 and s.ST < 0:
+          final_samples.append(s)
+      
+    final_samples = sorted(final_samples, key=lambda sample: \
+                    (sample.CG_ID_sample)) 
 
-def gen_reportdata(pid, organism_group='all'):
+    return render_template('STtracker_page.html',
+        internal = final_samples)
+
+def gen_reportdata(pid='all', organism_group='all'):
   """ Queries database for all necessary information for the reports """
   output = dict()
   output['samples'] = list()
   output['versions'] = dict()
-  if organism_group=='all':
+  if pid=='all' and organism_group=='all':
+    sample_info = session.query(Samples)
+  elif pid=='all':
+    sample_info = session.query(Samples).filter(Samples.organism==organism_group)
+  elif organism_group=='all':
     sample_info = session.query(Samples).filter(Samples.CG_ID_project==pid)
   else:
     sample_info = session.query(Samples).\
-                  filter(Samples.organism==organism_group, Samples.CG_ID_project==project)
+                  filter(Samples.CG_ID_project==pid, Samples.organism==organism_group)
+     
   #Sorts sample names
   sample_info = sorted(sample_info, key=lambda sample: \
                 int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))

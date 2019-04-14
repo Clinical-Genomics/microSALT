@@ -74,9 +74,10 @@ def refer(ctx):
 @click.option('--qc_only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
 @click.pass_context
-def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed):
+def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip_update):
   """Analyse a whole project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   trimmed = not untrimmed
@@ -101,9 +102,13 @@ def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed):
 
   click.echo("Checking versions of references..")
   try:
-    fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-    fixer.identify_new(project_id,project=True)
-    fixer.update_refs()
+    if not skip_update:
+      fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+      fixer.identify_new(project_id,project=True)
+      fixer.update_refs()
+      print("Version check done. Creating sbatch job")
+    else:
+      print("Skipping version check.")
   except Exception as e:
     click.echo("{}".format(e))
   click.echo("Version check done. Creating sbatch jobs")
@@ -119,8 +124,9 @@ def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed):
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
+@click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.pass_context
-def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed):
+def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_update):
   """Analyse a single sample"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   trimmed = not untrimmed
@@ -152,10 +158,13 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed):
 
   click.echo("Checking versions of references..")
   try:
-    fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-    fixer.identify_new(sample_id,project=False) 
-    fixer.update_refs()
-    click.echo("Version check done. Creating sbatch job")
+    if not skip_update:
+      fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+      fixer.identify_new(sample_id,project=False) 
+      fixer.update_refs()
+      print("Version check done. Creating sbatch job")
+    else:
+      print("Skipping version check.")
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'], trim=trimmed,qc_only=qc_only)
     worker.project_job(single_sample=True)
   except Exception as e:
@@ -280,7 +289,7 @@ def list(ctx):
 @utils.command()
 @click.argument('project_name')
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--type', default='all', type=click.Choice(['all', 'html', 'csv', 'qc']))
+@click.option('--type', default='all', type=click.Choice(['all', 'html', 'csv', 'json', 'st']))
 @click.pass_context
 def report(ctx, project_name, email, type):
   """Re-generates report for a project"""
@@ -295,3 +304,37 @@ def view(ctx):
   """Starts an interactive webserver for viewing"""
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
   codemonkey.start_web()
+
+@util.group()
+@click.pass_context
+def resync(ctx):
+  """Updates internal ST with pubMLST equivalent"""
+
+@resync.command()
+@click.option('--type', default='html', type=click.Choice(['html', 'list']), help="Output format")
+@click.option('--customer', default='all', help="Customer id filter")
+@click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
+@click.pass_context
+def review(ctx, type, customer, skip_update):
+  """Generates information about novel ST"""
+  #Trace exists by some samples having pubMLST_ST filled in. Make trace function later
+  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+  if not skip_update:
+    fixer.update_refs()
+    fixer.resync()
+  print("Version check done. Generating output")
+  if type=='html':
+    codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
+    codemonkey.report(type='st', customer=customer)
+  elif type=='list':
+    fixer.resync(type=type)
+  done()
+
+@resync.command()
+@click.argument('sample_name')
+@click.pass_context
+def overwrite(ctx,sample_name):
+  """Flags sample as resolved"""
+  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+  fixer.resync(type='overwrite', sample=sample_name)
+  done()

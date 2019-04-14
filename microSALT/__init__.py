@@ -4,7 +4,6 @@ import sys
 
 from flask import Flask
 
-
 __version__ = '2.4.0'
 
 app = Flask(__name__, template_folder='server/templates')

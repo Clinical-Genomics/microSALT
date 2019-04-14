@@ -93,6 +93,7 @@ class Referencer():
     query = urllib.request.urlopen("{}/data/".format(prefix))
     soup = BeautifulSoup(query, 'html.parser')
     tr_sub = soup.find_all("tr", class_="td1")
+    tr_sub = tr_sub + soup.find_all("tr", class_="td2")
 
     # Only search every other instance
     iterator = iter(tr_sub)
@@ -108,7 +109,8 @@ class Referencer():
           organ = organ[:-2]
         currver = self.db_access.get_version("profile_{}".format(organ))
         profile_no = re.search('\d+', sample[2]).group(0)
-        if organ in self.organisms and organ.replace("_", " ") not in self.updated and (profile_no > currver or force):
+        if organ in self.organisms and organ.replace("_", " ") not in self.updated and\
+           (int(profile_no.replace('-','')) > int(currver) or force):
           # Download definition files
           st_link = prefix + entry.find_all("a")[1]['href']
           output = "{}/{}".format(self.config['folders']['profiles'], organ)
@@ -133,6 +135,16 @@ class Referencer():
           iterator.__next__()
     except StopIteration:
       pass
+
+  def resync(self, type="", sample=""):
+    """Manipulates samples that have an internal ST that differs from pubMLST ST"""
+    if type=='list':
+      #Add single sample support later
+      self.db_access.list_unresolved()
+    elif type=='overwrite':
+      self.db_access.add_external(overwrite=True, sample=sample)
+    else:
+      self.db_access.add_external(overwrite=False, sample=sample)
 
   def fetch_resistances(self, force=False):
     cwd = os.getcwd()
@@ -258,6 +270,15 @@ class Referencer():
   def download_pubmlst(self, organism, subtype_href, force=False):
     """ Downloads ST and loci for a given organism stored on pubMLST if it is more recent. Returns update date """
     organism = organism.lower().replace(' ', '_')
+
+    #Pull version
+    ver_req = urllib.request.Request("{}/schemes/1/profiles".format(subtype_href))
+    with urllib.request.urlopen(ver_req) as response:
+        ver_query = json.loads(response.read().decode('utf-8'))
+    currver = self.db_access.get_version("profile_{}".format(organism))
+    if int(ver_query['last_updated'].replace('-','')) <= int(currver.replace('-','')) and not force:
+      #self.logger.info("Profile for {} already at latest version".format(organism.replace('_' ,' ').capitalize()))
+      return currver
 
     #Pull ST file
     st_target = "{}/{}".format(self.config['folders']['profiles'], organism)

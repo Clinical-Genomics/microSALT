@@ -75,3 +75,9 @@ Any definitions will work, as long as they retain the same formatting.
 ### Software
 * Conda
 * Python 3.6
+
+## Credits
+* Isak Sylvin - Lead developer
+* Emma Sernstad - Accreditation ready reports
+* Tanja Normark - Contamination analysis, various issues
+* Maya Brandi - Various issues

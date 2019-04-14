@@ -1,0 +1,51 @@
+{% extends 'layout.html' %}
+  {% block body %}
+    {% set thres = dict() %}
+      <div class="container-fluid">
+        <div class="col-lg-16">
+          <!-- Summary pages  -->
+          <footer>
+            <div class="panel"><div class="panel-body">
+              <a href="https://github.com/Clinical-Genomics/microSALT"><img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" alt="MicroSALT Logo" align="left" style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
+              <!--<img src="swedac.jpg" alt="Swedac Logo" align="right" style="display:flex;">-->
+              <h2 class="page-header">
+                <small><br><br>Clinical Microbiology</small>
+              <small><p align="right">{{date}}</p></small></h2>
+
+              <h3><strong>Sequence Type Updates</strong><br></h3>
+              <div class="table-responsive">
+                <table  class="table table-bordered" style='table-layout:fixed;'>
+                  <tr>
+                    <th>Customer</th>
+                    <th>Sample ID</th>
+                    <th>CG Sample ID</th>
+                    <th>Organism</th>
+                    <th>Old (Internal) ST</th>
+                    <th>New (pubMLST) ST</th>
+                  </tr>
+                  {% for entry in internal %}
+                    <tr>
+                      {% if entry.projects.Customer_ID is not none %}
+                        <td>{{entry.projects.Customer_ID}}</td>
+                      {% else %}
+                        <td>Unknown</td>
+                      {% endif %}
+                      <td>{{entry.Customer_ID_sample}}</td>
+                      <td>{{entry.CG_ID_sample}}</td>
+                      {% if entry.organism is not none %}
+                        <td><i>{{entry.organism.replace('_', ' ').capitalize()}}</i></td>
+                      {% else %}
+                        <td><i>Control</i></td>
+                      {% endif %}
+                      <td>I{{entry.ST|int|abs}}</td> 
+                      <td>{{entry.pubmlst_ST }}</td>
+                    </tr>
+                  {% endfor %}
+                </table>
+              </div>
+              </div>
+            </div>
+          </footer>
+        </div>
+      </div>
+  {% endblock %}

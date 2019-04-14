@@ -211,6 +211,73 @@ class DB_Manipulator:
     else:
       return version.version
 
+  def add_external(self,overwrite=False, sample=""):
+    """Looks at each novel table. See if any record has a profile match in the profile table.
+       Updates these based on parameters"""
+    prequery = self.session.query(Samples)
+    for org, novel_table in self.novel.items():
+      novel_list = self.session.query(novel_table).all()
+      org_keys = novel_table.c.keys()
+      profile_list = self.session.query(self.profiles[org]).all()
+      #Filter
+      for novel in novel_list:
+        args = list()
+        for key in org_keys:
+          if key != 'ST' and key != 'clonal_complex' and key != 'species':
+            args.append("self.profiles[org].c.{}=={}".format(key, eval("novel.{}".format(key))))
+        args = 'and_(' + ','.join(args) + ')'
+        exist = self.session.query(self.profiles[org]).filter(eval(args)).all()
+
+        if exist:
+          exist = exist[0]
+          if sample == "":
+            onelap = prequery.filter(and_(Samples.ST==novel.ST,Samples.organism==org, Samples.ST<=-10)).all()
+          else:
+            onelap = prequery.filter(and_(Samples.ST==novel.ST,Samples.organism==org, Samples.ST<=-10, Samples.CG_ID_sample==sample)).all()
+          for entry in onelap:
+            #review
+            if entry.pubmlst_ST == -1 and not overwrite:
+              self.logger.info("Update: Sample {} of organism {}; Internal ST {} is now linked to {} '{}')".\
+                        format(entry.CG_ID_sample, org, novel.ST, exist.ST, exist))
+              self.upd_rec({'CG_ID_sample':entry.CG_ID_sample}, 'Samples', {'pubmlst_ST':exist.ST})
+            #overwrite
+            elif overwrite:
+              self.logger.info("Replacement: Sample {} of organism {}; Internal ST {} is now {} '{}')".\
+                        format(entry.CG_ID_sample, org, novel.ST, exist.ST, exist))
+              self.upd_rec({'CG_ID_sample':entry.CG_ID_sample}, 'Samples', {'ST':exist.ST, 'pubmlst_ST':exist.ST})
+
+  def list_unresolved(self):
+    """Lists all novel samples that current havent been flagged as resolved"""
+    novelbkt = dict()
+    prequery = self.session.query(Samples).filter(and_(Samples.ST<=-10, Samples.pubmlst_ST==-1)).all()
+    for entry in prequery:
+      if not entry.organism in novelbkt:
+        novelbkt[entry.organism] = dict()
+      if not entry.ST in novelbkt[entry.organism]:
+        novelbkt[entry.organism][entry.ST] = list()
+      novelbkt[entry.organism][entry.ST].append(entry.CG_ID_sample)
+
+    novelbkt2= dict()
+    postquery = self.session.query(Samples).filter(and_(Samples.ST<=-10, Samples.pubmlst_ST != -1)).all()
+    for entry in postquery:
+      if not entry.organism in novelbkt2:
+        novelbkt2[entry.organism] = dict()
+      if not entry.ST in novelbkt2[entry.organism]:
+        novelbkt2[entry.organism][entry.ST] = list()
+      novelbkt2[entry.organism][entry.ST].append(entry.CG_ID_sample)
+
+    print("\n####ST updated on pubMLST but not marked as resolved:####")
+    for k,v in novelbkt2.items():
+      print("Organism {} ({}):".format(k, len(v)))
+      for x,y in v.items():
+        print("{}:{} ({})".format(x,y,len(y)))
+
+    print("\n####ST currently not updated at all:####")
+    for k,v in novelbkt.items():
+      print("Organism {} ({}):".format(k, len(v)))
+      for x,y in v.items():
+        print("{}:{} ({})".format(x,y,len(y)))
+
   def setPredictor(self, cg_sid, pks=dict()):
     """ Helper function. Flags a set of seq_types as part of the final prediction.
     Uses optional pks[loci][column] = VALUE dictionary to distinguish in scenarios where an allele number has multiple hits"""
