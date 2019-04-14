@@ -55,9 +55,9 @@ def start(ctx):
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--skip-update', default=False, help="Skips downloading of references")
+@click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.pass_context
-def project(ctx, project_id, input, dry, config, email, skip-update):
+def project(ctx, project_id, input, dry, config, email, skip_update):
   """Analyze a whole project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
@@ -81,7 +81,7 @@ def project(ctx, project_id, input, dry, config, email, skip-update):
 
   print("Checking versions of references..")
   try:
-    if not skip-update:
+    if not skip_update:
       fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
       fixer.identify_new(project_id,project=True)
       fixer.update_refs()
@@ -102,9 +102,9 @@ def project(ctx, project_id, input, dry, config, email, skip-update):
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--skip-update', default=False, help="Skips downloading of references")
+@click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.pass_context
-def sample(ctx, sample_id, input, dry, config, email, skip-update):
+def sample(ctx, sample_id, input, dry, config, email, skip_update):
   """Analyze a single sample"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
@@ -135,7 +135,7 @@ def sample(ctx, sample_id, input, dry, config, email, skip-update):
 
   print("Checking versions of references..")
   try:
-    if not skip-update:
+    if not skip_update:
       fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
       fixer.identify_new(sample_id,project=False) 
       fixer.update_refs()
@@ -312,13 +312,13 @@ def resync(ctx):
 @resync.command()
 @click.option('--format', default='html', type=click.Choice(['html', 'list']), help="Output format")
 @click.option('--customer', default='all', help="Customer id filter")
-@click.option('--skip-update', default=False, help="Skips downloading of references")
+@click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.pass_context
-def review(ctx, format, customer, skip-update):
+def review(ctx, format, customer, skip_update):
   """Generates information about novel ST"""
   #Trace exists by some samples having pubMLST_ST filled in. Make trace function later
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-  if not skip-update:
+  if not skip_update:
     fixer.update_refs()
     fixer.resync()
   print("Version check done. Generating output")
