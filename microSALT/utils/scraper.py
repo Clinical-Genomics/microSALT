@@ -334,7 +334,7 @@ class Scraper():
            cov_dict[lsplit[1]] = int(lsplit[2])
          elif type == 'ref':
            if lsplit[0] != '*' and len(lsplit) >= 2:
-             ref_len = int(lsplit[1])
+             ref_len = ref_len + int(lsplit[1])
          elif type == 'dup':
            if lsplit[0] == 'Unknown Library':
              try:
