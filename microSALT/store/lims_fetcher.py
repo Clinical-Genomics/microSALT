@@ -19,7 +19,14 @@ class LIMS_Fetcher():
 
   def load_lims_project_info(self, cg_projid):
     project = Project(self.lims, id=cg_projid)
+    samplelist = self.samples_in_project(cg_projid)
 
+    custids = list()
+    for sample in samplelist:
+      self.load_lims_sample_info(sample)
+      custids.append(self.data['Customer_ID'])
+    if not custids[1:] == custids[:-1]:
+      raise Exception("Project {} contains multiple Customer IDs".format(cg_projid))
     try:
       #Resolves old format
       if ' ' in project.name:
