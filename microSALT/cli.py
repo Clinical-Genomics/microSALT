@@ -305,7 +305,7 @@ def view(ctx):
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
   codemonkey.start_web()
 
-@util.group()
+@utils.group()
 @click.pass_context
 def resync(ctx):
   """Updates internal ST with pubMLST equivalent"""
