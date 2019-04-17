@@ -9,9 +9,8 @@
               <a href="https://github.com/Clinical-Genomics/microSALT"><img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" alt="MicroSALT Logo" align="left" style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
               <!--<img src="swedac.jpg" alt="Swedac Logo" align="right" style="display:flex;">-->
               <h2 class="page-header">
-                <small><br><br>Clinical Microbiology</small>
+                <small><br><br>Clinical Microbiology - Delivery Report</small>
               <small><p align="right">{{date}}</p></small></h2>
-
               <h3><strong>Project Summary</strong><br></h3>
               <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
                   <tr>
@@ -145,7 +144,7 @@
           {% if sample.genome_length > -1 %}
             <footer>
               <div class="panel">
-              <div class="panel-body"> 
+              <div class="panel-body">
 
                 <div class="table-responsive">
                   {% if not sample.seq_types|length == 0 and 'Invalid' not in sample.ST_status%}
@@ -193,7 +192,7 @@
                         </tr>
                       </thead>
                       <tbody>
-                        {% for seq_type in sample.resistances if seq_type.threshold == 'Passed' %} 
+                        {% for seq_type in sample.resistances if seq_type.threshold == 'Passed' %}
                             <tr>
                               <td>{{loop.index}}</td>
                               <td>{{seq_type.gene}}</td>
@@ -226,6 +225,59 @@
             </footer>
           {% endif %}
           {% endfor %}
+
+          <!-- If loop for formation of table with only resistances below threshold in samples -->
+          {% for sample in samples %}
+            {% for seq_type in sample if sample.resistances|selectattr('threshold', 'equalto', 'BelowCount')|list|length == 0 %}
+              {% if loop.first %}
+                <footer>
+                  <div class="panel"><div class="panel-body">
+                    <h2 class="page-header"><div class="row"></div><strong>Unreliable resistance calls</strong><br>
+                      <small><p align="right">{{date}}</p></small></h2>
+                    <div class="table-responsive">
+                <table  class="table table-bordered" style='table-layout:fixed;'>
+                  <tr>
+                    <th width="4%">#</th>
+                    <th width="15%">Sample ID</th>
+                    <th width="15%">Gene</th>
+                    <th width="20%">Type</th>
+                    <th width="15%">Reference</th>
+                    <th width="20%">Contig Coverage</th>
+                    <th>Identity</th>
+                    <th>Span</th>
+                  </tr>
+              {% endif %}
+                    <tr>
+                      <td>{{loop.index}}</td>
+                      <td>{{sample.Customer_ID_sample}}</td>
+                      <td>{{seq_type.gene}}</td>
+                      {% if seq_type.resistance is not none %}
+                        <td>{{seq_type.resistance|title}}</td>
+                      {% else %}
+                        <td>{{seq_type.instance|title}}</td>
+                      {% endif %}
+                      {% if seq_type.reference is not none %}
+                        <td>{{seq_type.reference}}</td>
+                      {% else %}
+                        <td>Unknown</td>
+                      {% endif %}
+                      <td>{{ seq_type.contig_coverage|round(2)  }}</td>
+                      <td>{{ seq_type.identity|round(2) }}</td>
+                      {% if seq_type.span == 999.0 %}
+                        <td>Undef.</td>
+                      {% else %}
+                        <td>{{ seq_type.span|round(2) }}</td>
+                      {% endif %}
+                    </tr>
+              {% if loop.last %}
+                </table>
+                    </div>
+                  </div>
+                </div>
+                </footer>
+              {% endif %}
+            {% endfor %}
+          {% endfor %}
         </div>
       </div>
-  {% endblock %}
+{% endblock %}
