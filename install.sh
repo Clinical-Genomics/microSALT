@@ -42,7 +42,7 @@ conda config --add channels bioconda
 conda install -y -c bioconda blast=2.5.0=hc0b0e79_3 spades=3.12.0=py36_0 trimmomatic=0.38=1
 if [[ $type = "prod" ]]; then
     pip install -r requirements.txt && pip install .
-elif [[ $type = "dev" ]]; then
+elif [[ $type = "dev" ]] || [[ $type = "stage" ]]; then
     pip install -r requirements.txt && pip install -e .
 fi
 echo "Installation Complete!"
