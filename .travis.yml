@@ -33,6 +33,5 @@ install:
 
 script:
 #    - git lint
-    - mkdir ~/.microSALT && touch ~/.microSALT/config.json
-#    - Create config
-#    - microSALT
+    - mkdir ~/.microSALT && cp configExample.json ~/.microSALT/config.json
+    - microSALT
