@@ -31,7 +31,8 @@ Copy the configuration file `configExample.json` to `~/.microSALT/config.json` _
 
 Edit the fields to match your environment.
 
-### LIMS Configuration
+### Genologics Configuration
+_Genologics is likely already installed on your system. If such, this section can be skipped_
 Create `$HOME/.genologicsrc` with the following formatting:
 ```
 [genologics]
@@ -42,7 +43,7 @@ PASSWORD=your_password
 MAIN_LOG=/tmp/lims.log
 ```
 
-### Genologics python3 bug fix
+#### Genologics python3 bug fix
 Change line 5 of `config.py` to `import configparser as ConfigParser` to fix the bug.
 To find the path of the file, simply run `microSALT` and note where the log points to.
 
