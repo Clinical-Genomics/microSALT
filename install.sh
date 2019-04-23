@@ -15,11 +15,11 @@ while true; do
     fi
 done
 while true; do
-    echo "Would you like a 'dev' or 'prod' environment?"
+    echo "Would you like a 'dev', 'stage' or 'prod' environment?"
     read input
     if [[ $input = "q" ]] || [[ $input = "Q" ]]; then
         break
-    elif [[ $input != "dev" ]] && [[ $input != "prod" ]]; then
+    elif [[ $input != "dev" ]] && [[ $input != "prod" ]] && [[ $input != "stage" ]]; then
         :
     else
         type=$input
@@ -30,6 +30,8 @@ if [[ $type = "prod" ]]; then
     rname=P_$cname
 elif [[ $type = "dev" ]]; then
     rname=D_$cname
+elif [[ $type = "stage" ]]; then
+    rname=S_$cname
 fi
 echo "Thank you, setting up environment $rname!"
 
