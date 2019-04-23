@@ -33,6 +33,7 @@ Edit the fields to match your environment.
 
 ### Genologics Configuration
 _Genologics is likely already installed on your system. If such, this section can be skipped_
+
 Create `$HOME/.genologicsrc` with the following formatting:
 ```
 [genologics]
