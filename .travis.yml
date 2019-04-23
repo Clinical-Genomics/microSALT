@@ -27,11 +27,12 @@ install:
   - source activate microSALT
   - conda install -y -c bioconda blast=2.5.0=hc0b0e79_3 spades=3.12.0=py36_0 trimmomatic=0.38=1
   - pip install -r requirements.txt
-  - pip install git-lint yamllint
+  - pip install git-lint yamllint pylint tidy coveralls
   - pip install .
   - pip check
 
 script:
-#    - git lint
     - mkdir ~/.microSALT && cp configExample.json ~/.microSALT/config.json
+#   - coveralls
+    - git lint 
     - microSALT
