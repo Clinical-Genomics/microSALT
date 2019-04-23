@@ -20,17 +20,20 @@ if 'MICROSALT_CONFIG' in os.environ:
     with open(envvar, 'r') as conf:
       config = json.load(conf)
   except Exception as e:
+    print("Config error: {}".format(e.args))
     pass
 elif os.path.exists(defaulto):
   try:
     with open(defaulto, 'r') as conf:
       config = json.load(conf)
   except Exception as e:
+    print("Config error: {}".format(e.args)) 
     pass
 # Load flask instance
 if config != '':
   try:
     app.config.update(config['database'])
   except Exception as e:
+    print("Config error: {}".format(e.args))
     pass
 
