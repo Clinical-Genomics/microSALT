@@ -13,6 +13,7 @@ addons:
 
 install:
 ## Install anaconda
+  - export LANG=en_US.iso885915
   - wget https://repo.anaconda.com/archive/Anaconda3-2019.03-Linux-x86_64.sh -O conda.sh;
   - bash conda.sh -b -p $HOME/anaconda
   - export PATH="$HOME/anaconda/bin:$PATH"
@@ -21,7 +22,6 @@ install:
   - conda config --add channels conda-forge
   - conda info
   
-  
 ## Install microSALT
   - conda create -y -n microSALT python=3.6
   - source activate microSALT
@@ -29,10 +29,12 @@ install:
   - pip install -r requirements.txt
   - pip install git-lint yamllint pylint tidy coveralls
   - pip install .
-  - pip check
+  - mkdir ~/.microSALT && cp configExample.json ~/.microSALT/config.json
+  - echo $LANG
 
 script:
-    - mkdir ~/.microSALT && cp configExample.json ~/.microSALT/config.json
-#   - coveralls
-    - git lint 
+## Actual checks
+    - pip check
     - microSALT
+#    - git lint
+#   - coveralls
