@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import *
 from sqlalchemy.sql.expression import case, func
 
-from microSALT import config, __version__
+from microSALT import __version__
 from microSALT.store.db_manipulator import app
 from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
 
@@ -117,11 +117,11 @@ def gen_reportdata(pid='all', organism_group='all'):
       s.threshold = 'Passed'
       for seq_type in s.seq_types:
         #Identify single deviating allele
-        if seq_type.st_predictor and seq_type.identity >= config["threshold"]["mlst_novel_id"] and \
-        config["threshold"]["mlst_id"] > seq_type.identity and 1-abs(1-seq_type.span) >= config["threshold"]["mlst_span"]:
+        if seq_type.st_predictor and seq_type.identity >= app.config["threshold"]["mlst_novel_id"] and \
+        app.config["threshold"]["mlst_id"] > seq_type.identity and 1-abs(1-seq_type.span) >= app.config["threshold"]["mlst_span"]:
           near_hits = near_hits + 1
-        elif (seq_type.identity < config["threshold"]["mlst_novel_id"] or \
-              seq_type.span < config["threshold"]["mlst_span"]) and seq_type.st_predictor:
+        elif (seq_type.identity < app.config["threshold"]["mlst_novel_id"] or \
+              seq_type.span < app.config["threshold"]["mlst_span"]) and seq_type.st_predictor:
           s.threshold = 'Failed'
 
       if near_hits > 0 and s.threshold == 'Passed':
@@ -131,8 +131,8 @@ def gen_reportdata(pid='all', organism_group='all'):
 
     #Resistence filter
     for r in s.resistances:
-      if (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity >= config["threshold"]["res_id"] and \
-      r.span >= config["threshold"]["res_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
+      if (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity >= app.config["threshold"]["res_id"] and \
+      r.span >= app.config["threshold"]["res_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
         r.threshold = 'Passed'
       else:
         r.threshold = 'Failed'

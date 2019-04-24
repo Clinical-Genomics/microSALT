@@ -18,6 +18,7 @@ from microSALT.utils.reporter import Reporter
 from microSALT.utils.referencer import Referencer
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 
+
 if config == '':
   print("ERROR: No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
   sys.exit(-1)
