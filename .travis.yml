@@ -5,11 +5,11 @@ python:
 sudo: required
 cache: pip
 
-before_install:
-  - sudo apt-get install -y coreutils ucommon-utils
-addons:
-  apt:
-    update: true
+#before_install:
+# - sudo apt-get install -y coreutils ucommon-utils
+#addons:
+#  apt:
+#    update: true
 
 install:
 ## Install anaconda
@@ -26,8 +26,8 @@ install:
   - conda create -y -n microSALT python=3.6
   - source activate microSALT
   - conda install -y -c bioconda blast=2.5.0=hc0b0e79_3 spades=3.12.0=py36_0 trimmomatic=0.38=1
-  - pip install -r requirements.txt
-  - pip install git-lint yamllint pylint tidy coveralls
+  - pip install -r requirements.txt --no-cache-dir
+  - pip install git-lint yamllint pylint 
   - pip install .
   - mkdir ~/.microSALT && cp configExample.json ~/.microSALT/config.json
   - echo $LANG
@@ -36,5 +36,5 @@ script:
 ## Actual checks
     - pip check
     - microSALT
-#    - git lint
-#   - coveralls
+    - git lint -t -f
+    #- coveralls
