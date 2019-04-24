@@ -132,10 +132,9 @@ def gen_reportdata(pid='all', organism_group='all'):
 
     #Resistence filter
     for r in s.resistances:
-      if (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity >= config["threshold"]["res_id"] and \
-      r.span >= config["threshold"]["res_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
+      if (r.identity >= config["threshold"]["res_id"] and r.span >= config["threshold"]["res_span"]):
         r.threshold = 'Passed'
-      elif (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity < config["threshold"]["res_id"] and r.span < config["threshold"]["res_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
+      elif (50 < r.identity and r.identity < config["threshold"]["res_id"] and 0.45 < r.span and r.span < config["threshold"]["res_span"]):
         belowCount = belowCount + 1
         r.threshold = 'BelowPassed'
       else:
