@@ -1,3 +1,5 @@
+![Build status](https://travis-ci.com/Clinical-Genomics/microSALT.svg?branch=master) [![Coverage Status](https://coveralls.io/repos/github/Clinical-Genomics/microSALT/badge.svg?branch=master)](https://coveralls.io/github/Clinical-Genomics/microSALT?branch=master)
+
 <p align="center">
   <a href="https://github.com/sylvinite/microSALT">
     <img width="1000" height="250" src="artwork/microsalt.jpg"/>

@@ -27,6 +27,8 @@ class Reporter():
     self.name = name
     self.config = config
     self.logger = log
+    for k, v in config.items():
+      app.config[k] = v
     self.server = Process(target=app.run)
     self.ticketFinder = LIMS_Fetcher(self.config, self.logger)
     self.attachments = list()
