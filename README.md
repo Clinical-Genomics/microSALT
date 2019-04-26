@@ -1,3 +1,5 @@
+![Build status](https://travis-ci.com/Clinical-Genomics/microSALT.svg?branch=master) [![Coverage Status](https://coveralls.io/repos/github/Clinical-Genomics/microSALT/badge.svg?branch=master)](https://coveralls.io/github/Clinical-Genomics/microSALT?branch=master)
+
 <p align="center">
   <a href="https://github.com/sylvinite/microSALT">
     <img width="1000" height="250" src="artwork/microsalt.jpg"/>
@@ -42,7 +44,9 @@ export MICROSALT_CONFIG=/MY/FAV/FOLDER/config.json
 
 __Then edit the fields to match your environment__.
 
-### LIMS Configuration
+### Genologics Configuration
+_Genologics is likely already installed on your system. If such, this section can be skipped_
+
 Create `$HOME/.genologicsrc` with the following formatting:
 ```
 [genologics]
@@ -52,6 +56,7 @@ PASSWORD=your_password
 [logging]
 MAIN_LOG=/tmp/lims.log
 ```
+
 
 ## Usage
 * Use the `analyse` function to start sbatch job(s), producing output to `folders['results']`. Afterwards the parsed results  are uploaded to the SQL back-end and produce reports (HTML).

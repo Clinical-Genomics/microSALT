@@ -10,7 +10,6 @@ from sqlalchemy.orm import relationship
 from microSALT import app
 
 db = SQLAlchemy(app)
-
 class Samples(db.Model):
 
   __tablename__ = 'samples'
