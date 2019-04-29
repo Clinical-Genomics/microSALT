@@ -37,7 +37,7 @@ class Referencer():
        for cg_sampleid in samplenames:
          self.lims.load_lims_sample_info(cg_sampleid)
          refname = self.lims.get_organism_refname(cg_sampleid)
-         if refname not in self.organisms and refname not in neworgs:
+         if refname not in self.organisms and self.lims.data['organism'] not in neworgs:
            neworgs.append(self.lims.data['organism'])
        for org in neworgs:
          self.add_pubmlst(org)
@@ -142,30 +142,31 @@ class Referencer():
     hiddensrc ="{}/.resfinder_db".format(self.config['folders']['resistances'])
     wipeIndex = False
 
-    actual = os.listdir(self.config['folders']['resistances'])
-    for file in os.listdir(hiddensrc):
-      if file not in actual and ('.fsa' in file or 'notes' in file):
-        self.logger.info("resFinder database files corrupted. Syncing...")
-        wipeIndex = True
-
     if not os.path.isdir(hiddensrc):
-      self.logger.info("resFinder database not found. Fetching..")
+      self.logger.info("resFinder database not found. Caching..")
       os.makedirs(hiddensrc)
       cmd = "git clone {} --quiet".format(url)
       process = subprocess.Popen(cmd.split(),cwd=self.config['folders']['resistances'], stdout=subprocess.PIPE)
       output, error = process.communicate()
       os.rename("{}/resfinder_db".format(self.config['folders']['resistances']), hiddensrc)
       wipeIndex = True
-
     else:
-      cmd = "git pull origin master"
-      process = subprocess.Popen(cmd.split(),cwd=hiddensrc, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-      output, error = process.communicate()
-      if not 'Already up-to-date.' in str(output):
-        self.logger.info("Remote resFinder database updated. Syncing...")
-        wipeIndex = True
-      else:
-        self.logger.info("Cached resFinder database identical to remote.")
+      if not wipeIndex:
+        actual = os.listdir(self.config['folders']['resistances'])
+        for file in os.listdir(hiddensrc):
+          if file not in actual and ('.fsa' in file):
+            self.logger.info("resFinder database files corrupted. Syncing...")
+            wipeIndex = True
+            break
+
+        cmd = "git pull origin master"
+        process = subprocess.Popen(cmd.split(),cwd=hiddensrc, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        output, error = process.communicate()
+        if not 'Already up-to-date.' in str(output):
+          self.logger.info("Remote resFinder database updated. Syncing...")
+          wipeIndex = True
+        else:
+          self.logger.info("Cached resFinder database identical to remote.")
 
     #Actual update of resistance folder
     if wipeIndex:

@@ -86,13 +86,12 @@ def project(ctx, project_id, input, dry, config, email, skip_update):
       fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
       fixer.identify_new(project_id,project=True)
       fixer.update_refs()
-      print("Version check done. Creating sbatch job")
+      print("Version check done. Creating sbatch jobs")
     else:
       print("Skipping version check.")
   except Exception as e:
     print("{}".format(e))
 
-  print("Version check done. Creating sbatch jobs")
   manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
   manager.project_job()
   done() 
