@@ -36,11 +36,10 @@ class Job_Creator():
       format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
     #Attempting writing on slurm
-    self.outdir = "/scratch/$SLURM_JOB_ID/workdir/{}_{}".format(self.name, self.now)
     self.finishdir = finishdir
     if self.finishdir == "":
       self.finishdir="{}/{}_{}".format(config["folders"]["results"], self.name, self.now)
-    
+ 
     self.db_pusher=DB_Manipulator(config, log)
     self.trimmed_files = dict()
     self.organism = ""
@@ -96,7 +95,7 @@ class Job_Creator():
     batchfile.write("# Interlaced unpaired reads file creation\n")
     suffix = "_unpaired_interlaced.fq"
     for name, v in self.trimmed_files.items():
-      interfile = "{}/trimmed/{}{}".format(self.outdir, name, suffix)
+      interfile = "{}/trimmed/{}{}".format(self.finishdir, name, suffix)
       # Spammed a bit too much
       #self.logger.info("Created unpaired interlace file for sample {}".format(name))
       batchfile.write("touch {}\n".format(interfile))
@@ -111,7 +110,7 @@ class Job_Creator():
     #memory is actually 128 per node regardless of cores.
     batchfile.write("# Spades assembly\n")
     batchfile.write("spades.py --threads {} --careful --memory {} -o {}/assembly"\
-    .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir))
+    .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.finishdir))
     
     libno = 1
     for k,v in self.trimmed_files.items():
@@ -128,13 +127,13 @@ class Job_Creator():
 
     #Create run
     batchfile = open(self.batchfile, "a+")
-    batchfile.write("mkdir {}/resistance\n\n".format(self.outdir))
+    batchfile.write("mkdir {}/resistance\n\n".format(self.finishdir))
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
     res_list = glob.glob("{}/*.fsa".format(self.config["folders"]["resistances"]))
     for entry in res_list:
       batchfile.write("# BLAST Resistance search in {} for {}\n".format(self.organism, os.path.basename(entry[:-4])))
       batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/resistance/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
-      entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
+      entry[:-4], self.finishdir, self.finishdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
     batchfile.close()
 
@@ -143,13 +142,13 @@ class Job_Creator():
     
     #Create run
     batchfile = open(self.batchfile, "a+")
-    batchfile.write("mkdir {}/blast\n\n".format(self.outdir))
+    batchfile.write("mkdir {}/blast\n\n".format(self.finishdir))
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
     tfa_list = glob.glob("{}/{}/*.tfa".format(self.config["folders"]["references"], self.organism))
     for entry in tfa_list:
       batchfile.write("# BLAST MLST alignment for {}, {}\n".format(self.organism, os.path.basename(entry[:-4])))
       batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
-      entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
+      entry[:-4], self.finishdir, self.finishdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
     batchfile.close()
 
@@ -159,7 +158,7 @@ class Job_Creator():
         self.logger.error("Adapters folder at {} does not contain NexteraPE-PE.fa. Review paths.yml")
       else:
         break
-    trimdir = "{}/trimmed".format(self.outdir)
+    trimdir = "{}/trimmed".format(self.finishdir)
     files = self.verify_fastq()
     batchfile = open(self.batchfile, "a+")
     batchfile.write("mkdir {}\n\n".format(trimdir))
@@ -186,8 +185,8 @@ class Job_Creator():
   def create_quastsection(self):
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# QUAST QC metrics\n")
-    batchfile.write("mkdir {}/quast\n".format(self.outdir))
-    batchfile.write("quast.py {}/assembly/contigs.fasta -o {}/quast\n\n".format(self.outdir, self.outdir))
+    batchfile.write("mkdir {}/quast\n".format(self.finishdir))
+    batchfile.write("quast.py {}/assembly/contigs.fasta -o {}/quast\n\n".format(self.finishdir, self.finishdir))
     batchfile.close()
 
   def create_project(self, name):
@@ -287,12 +286,16 @@ class Job_Creator():
     mb.write("#!/bin/sh\n\n")
     mb.write("#Uploading of results to database and production of report\n")
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
-    if not single_sample:
-      mb.write("microSALT finish project {} --input {} --rerun --email {} --config {}\n".\
-               format(self.name, self.finishdir, self.config['regex']['mail_recipient'], self.config))
-    else:
-      mb.write("microSALT finish sample {} --input {} --rerun --email {} --config {}\n".\
-               format(self.name, self.finishdir, self.config['regex']['mail_recipient'], self.config))
+
+    span = 'project'
+    custom_conf = ''
+    if single_sample:
+      span = 'sample'
+    if 'config_path' in self.config:
+      custom_conf = '--config {}'.format(self.config['config_path'])
+
+    mb.write("microSALT finish {} {} --input {} --rerun --email {} {}\n".\
+               format(span, self.name, self.finishdir, self.config['regex']['mail_recipient'], custom_conf))
     mb.write("touch {}/run_complete.out".format(self.finishdir))
     mb.close()
 
@@ -341,7 +344,7 @@ class Job_Creator():
         self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
         batchfile = open(self.batchfile, "w+")
         batchfile.write("#!/bin/sh\n\n")
-        batchfile.write("mkdir -p {}\n".format(self.outdir))
+        batchfile.write("mkdir -p {}\n".format(self.finishdir))
         batchfile.close()
 
         self.create_trimsection()
@@ -351,10 +354,9 @@ class Job_Creator():
         self.create_blastsection()
         self.create_resistancesection()
         batchfile = open(self.batchfile, "a+")
-        batchfile.write("cp -r {}/* {}".format(self.outdir, self.finishdir))
         batchfile.close()
 
-        self.logger.info("Created runfile for sample {} in folder {}".format(self.name, self.outdir))
+        self.logger.info("Created runfile for sample {} in folder {}".format(self.name, self.finishdir))
       except Exception as e:
         raise 
       try: 
