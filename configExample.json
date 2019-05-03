@@ -31,7 +31,9 @@
     "_comment": "ST folder. Each references sub-folder contains the .tfa file for each locus of the organism",
     "references": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/ST_loci",
     "_commment": "Resistances. Commonly from resFinder",
-    "resistances": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/resistances"
+    "resistances": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/resistances",
+    "_comment": "Download path for NCBI genomes, for alignment usage",
+    "genomes": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/genomes"
   },
 
   "_comment": "Database/Flask configuration",

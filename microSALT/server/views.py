@@ -12,7 +12,7 @@ from microSALT import config, __version__
 from microSALT.store.db_manipulator import app
 from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
 
-engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
+engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'], connect_args={'check_same_thread': False})
 Session = sessionmaker(bind=engine)
 session = Session()
 app.debug = 0
@@ -48,15 +48,26 @@ def project_page(project):
         organisms = organism_groups,
         project = project) 
 
-@app.route('/microSALT/<project>/<organism_group>')
-def report_page(project, organism_group):
+@app.route('/microSALT/<project>/qc')
+def alignment_page(project):
+    sample_info = gen_reportdata(project)
+
+    return render_template('alignment_page.html',
+        samples = sample_info['samples'],
+        date = date.today().isoformat(),
+        version = sample_info['versions'],
+    )
+
+@app.route('/microSALT/<project>/typing/<organism_group>')
+def typing_page(project, organism_group):
     sample_info = gen_reportdata(project, organism_group)
 
-    return render_template('report_page.html',
+    return render_template('typing_page.html',
         samples = sample_info['samples'],
         date = date.today().isoformat(),
         version = sample_info['versions'],
         build = __version__)
+
 
 @app.route('/microSALT/STtracker/<customer>')
 def STtracker_page(customer):
