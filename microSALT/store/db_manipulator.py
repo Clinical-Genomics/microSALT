@@ -19,9 +19,7 @@ class DB_Manipulator:
   def __init__(self, config, log):
     self.config = config
     self.logger = log
-    for k, v in config.items():
-      app.config[k] = v
-    self.engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
+    self.engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'], poolclass=SingletonThreadPool)
     Session = sessionmaker(bind=self.engine)
     self.session = Session()
     self.metadata = MetaData(self.engine)

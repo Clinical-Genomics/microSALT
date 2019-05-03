@@ -391,13 +391,15 @@ class Job_Creator():
     sb.close()
     mb.write("#!/usr/bin/env bash\n\n")
     mb.write("#Uploading of results to database and production of report\n")
+    if 'MICROSALT_CONFIG' in os.environ:
+      mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
     if not single_sample:
-      mb.write("microSALT finish project {} --input {} --rerun --email {} --config {}\n".\
-               format(self.name, self.finishdir, self.config['regex']['mail_recipient'], self.config))
+      mb.write("microSALT utils finish project {} --input {} --rerun --email {}\n".\
+               format(self.name, self.finishdir, self.config['regex']['mail_recipient']))
     else:
-      mb.write("microSALT finish sample {} --input {} --rerun --email {} --config {}\n".\
-               format(self.name, self.finishdir, self.config['regex']['mail_recipient'], self.config))
+      mb.write("microSALT utils finish sample {} --input {} --rerun --email {}\n".\
+               format(self.name, self.finishdir, self.config['regex']['mail_recipient']))
     mb.write("touch {}/run_complete.out".format(self.finishdir))
     mb.close()
 
