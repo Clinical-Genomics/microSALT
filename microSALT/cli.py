@@ -290,7 +290,7 @@ def list(ctx):
 @utils.command()
 @click.argument('project_name')
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--type', default='all', type=click.Choice(['all', 'html', 'csv', 'json', 'st']))
+@click.option('--type', default='default', type=click.Choice(['default', 'typing', 'resistence_overview', 'qc', 'json_dump', 'st_update']))
 @click.pass_context
 def report(ctx, project_name, email, type):
   """Re-generates report for a project"""
@@ -312,7 +312,7 @@ def resync(ctx):
   """Updates internal ST with pubMLST equivalent"""
 
 @resync.command()
-@click.option('--type', default='html', type=click.Choice(['html', 'list']), help="Output format")
+@click.option('--type', default='html', type=click.Choice(['report', 'list']), help="Output format")
 @click.option('--customer', default='all', help="Customer id filter")
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.pass_context
@@ -324,7 +324,7 @@ def review(ctx, type, customer, skip_update):
     fixer.update_refs()
     fixer.resync()
   print("Version check done. Generating output")
-  if type=='html':
+  if type=='report':
     codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
     codemonkey.report(type='st', customer=customer)
   elif type=='list':

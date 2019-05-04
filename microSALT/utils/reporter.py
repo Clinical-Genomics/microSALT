@@ -34,19 +34,19 @@ class Reporter():
     self.attachments = list()
     self.error = False
 
-  def report(self, type='all', customer='all'):
+  def report(self, type='default', customer='all'):
     self.start_web() 
-    if type == 'all':
-      self.gen_html()
+    if type == 'default':
+      self.gen_typing()
       self.gen_qc()
-      self.gen_csv()
-    elif type == 'html':
-      self.gen_html()
-    elif type == 'csv':
-      self.gen_csv()
+      #self.gen_resistence()
+    elif type == 'typing':
+      self.gen_typing()
+    elif type == 'resistance_overview':
+      self.gen_resistence()
     elif type == 'qc':
       self.gen_qc()
-    elif type == 'st':
+    elif type == 'st_update':
       self.gen_STtracker(customer)
     else:
       raise Exception("Report function recieved invalid format")
@@ -86,7 +86,7 @@ class Reporter():
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.error = True
  
-  def gen_html(self):
+  def gen_typing(self):
     name = self.name
     try:
       self.ticketFinder.load_lims_project_info(name)
@@ -131,7 +131,7 @@ class Reporter():
     #Hinders requests before server goes up
     time.sleep(0.05)
 
-  def gen_csv(self):
+  def gen_resistence(self):
     name = self.name
     self.ticketFinder.load_lims_project_info(name)
     excel = open("{}.csv".format(name), "w+")
