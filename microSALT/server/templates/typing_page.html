@@ -157,8 +157,8 @@
                           <th width="30%">Loci</th>
                           <th width="20%">Allele</th>
                           <th width="20%">Contig Coverage</th>
-                          <th>Identity</th>
-                          <th>Span</th>
+                          <th>Identity %</th>
+                          <th>Span %</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -169,7 +169,7 @@
                               <td> {{ seq_type.allele}}</td>
                               <td>{{ seq_type.contig_coverage|round(2)  }}</td>
                               <td>{{ seq_type.identity|round(2) }}</td>
-                              <td>{{ seq_type.span|round(2) }}</td>
+                              <td>{{ (seq_type.span*100)|round(2) }}</td>
                             </tr>
                         {% endfor %}
                       </tbody>
@@ -188,8 +188,8 @@
                           <th width="20%">Type</th>
                           <th width="15%">Reference</th>
                           <th width="20%">Contig Coverage</th>
-                          <th>Identity</th>
-                          <th>Span</th>
+                          <th>Identity %</th>
+                          <th>Span %</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -212,7 +212,7 @@
                               {% if seq_type.span == 999.0 %}
                                 <td>Undef.</td>
                               {% else %}
-                                <td>{{ seq_type.span|round(2) }}</td>
+                                <td>{{ (seq_type.span*100)|round(2) }}</td>
                               {% endif %}
                             </tr>
                         {% endfor %}
