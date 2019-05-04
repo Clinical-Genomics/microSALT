@@ -113,7 +113,7 @@ def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip
   except Exception as e:
     print("{}".format(e))
 
-  manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
+  manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'],trim=trimmed,qc_only=qc_only)
   manager.project_job()
   done() 
 
@@ -178,8 +178,9 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--input', help='Full path to result sample folder', default="")
 @click.option('--config', help="microSALT config to override default", default="")
+@click.option('--report', default='default', type=click.Choice(['default', 'qc']))
 @click.pass_context
-def sample(ctx, sample_id, rerun, email, input, config):
+def sample(ctx, sample_id, rerun, email, input, config, report):
   """Parse results from analysing a single sample"""
   if config != '':
     try:
@@ -218,7 +219,7 @@ def sample(ctx, sample_id, rerun, email, input, config):
   garbageman.scrape_sample()
 
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], scientist.data['CG_ID_project'])
-  codemonkey.report()
+  codemonkey.report(report)
   done()
 
 @finish.command()
@@ -227,8 +228,9 @@ def sample(ctx, sample_id, rerun, email, input, config):
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--input', help='Full path to result project folder', default="")
 @click.option('--config', help="microSALT config to override default", default="")
+@click.option('--report', default='default', type=click.Choice(['default', 'qc']))
 @click.pass_context
-def project(ctx, project_id, rerun, email, input, config):
+def project(ctx, project_id, rerun, email, input, config, report):
   """Parse results from analysing a single project"""
   if config != '':
     try:
@@ -259,7 +261,7 @@ def project(ctx, project_id, rerun, email, input, config):
   garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_project()
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_id)
-  codemonkey.report()
+  codemonkey.report(report)
   done()
 
 @refer.command()

@@ -9,7 +9,7 @@
               <a href="https://github.com/Clinical-Genomics/microSALT"><img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" alt="MicroSALT Logo" align="left" style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
               <!--<img src="swedac.jpg" alt="Swedac Logo" align="right" style="display:flex;">-->
               <h2 class="page-header">
-                <small><br><br>Clinical Microbiology</small>
+                <small><br><br>Quality Control Report</small>
               <small><p align="right">{{date}}</p></small></h2>
 
               <h3><strong>Project Summary</strong><br></h3>
@@ -34,8 +34,8 @@
                     <th>Reference Genome</th>
                     <th>Organism</th>
                     <th>Total Reads</th>
-                    <th>Mapping rate</th>
-                    <th>Duplication Rate</th>
+                    <th>% Mapping rate</th>
+                    <th>% Duplication Rate</th>
                     <th>Median Insert Size</th>
                     <th>Average coverage</th>
                     <th>%BP > 10x Coverage</th>
@@ -59,14 +59,14 @@
                       </td>
                       <td class="text-right">
                         {% if sample.mapped_rate is none or sample.mapped_rate == 0 %}
-                          0.0%
-                        {% else %} {{ (sample.mapped_rate*100)|round(2) }}% {% endif %}
+                          0.0
+                        {% else %} {{ (sample.mapped_rate*100)|round(2) }} {% endif %}
                       </td>
                       <td class="text-right">
                         {% if sample.duplication_rate is none or sample.duplication_rate == -1 %}
                           N/A
                         {% else %}
-                          {{ (sample.duplication_rate*100)|round(2) }}%
+                          {{ (sample.duplication_rate*100)|round(2) }}
                         {% endif %}
                       </td>
                       <td class="text-right">
@@ -81,23 +81,23 @@
                       </td>
                       <td class="text-right">
                         {% if sample.coverage_10x is none or (sample.coverage_10x*100)|round(2) == 0 %}
-                          0.0%
-                        {% else %} {{ (sample.coverage_10x*100)|round(2) }}% {% endif %}
+                          0.0
+                        {% else %} {{ (sample.coverage_10x*100)|round(2) }} {% endif %}
                       </td>
                       <td class="text-right">
                         {% if sample.coverage_30x is none or (sample.coverage_30x*100)|round(2) == 0 %}
-                          0.0%
-                        {% else %} {{ (sample.coverage_30x*100)|round(2) }}% {% endif %}
+                          0.0
+                        {% else %} {{ (sample.coverage_30x*100)|round(2) }} {% endif %}
                       </td>
                       <td class="text-right">
                         {% if sample.coverage_50x is none or (sample.coverage_50x*100)|round(2) == 0 %}
-                          0.0%
-                        {% else %} {{ (sample.coverage_50x*100)|round(2) }}% {% endif %}
+                          0.0
+                        {% else %} {{ (sample.coverage_50x*100)|round(2) }} {% endif %}
                       </td>
                       <td class="text-right">
                         {% if sample.coverage_100x is none or (sample.coverage_100x*100)|round(2) == 0 %}
-                          0.0%
-                        {% else %} {{ (sample.coverage_100x*100)|round(2) }}% {% endif %}
+                          0.0
+                        {% else %} {{ (sample.coverage_100x*100)|round(2) }} {% endif %}
                       </td>
                     </tr>
                   {% endfor %}

@@ -35,6 +35,8 @@ class Reporter():
     self.error = False
 
   def report(self, type='default', customer='all'):
+    if type == 'json_dump':
+      self.gen_json()
     self.start_web() 
     if type == 'default':
       self.gen_typing()
