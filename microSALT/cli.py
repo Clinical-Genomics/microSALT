@@ -292,7 +292,7 @@ def list(ctx):
 @utils.command()
 @click.argument('project_name')
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--type', default='default', type=click.Choice(['default', 'typing', 'resistence_overview', 'qc', 'json_dump', 'st_update']))
+@click.option('--type', default='default', type=click.Choice(['default', 'typing', 'resistance_overview', 'qc', 'json_dump', 'st_update']))
 @click.pass_context
 def report(ctx, project_name, email, type):
   """Re-generates report for a project"""
