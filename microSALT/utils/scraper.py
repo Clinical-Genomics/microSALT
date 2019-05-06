@@ -325,7 +325,7 @@ class Scraper():
          if type == 'raw':
            tot_reads = int(lsplit[0])
          elif type == 'ins':
-           if len(lsplit) == 18 and lsplit[7] in ['FF','FR']:
+           if len(lsplit) >= 18 and lsplit[7] in ['FF','FR']:
              try:
                median_ins = int(lsplit[0])
              except Exception as e:
