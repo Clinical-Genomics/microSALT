@@ -13,17 +13,6 @@ It produces a quality control of the sample, determines a sample's organism spec
 
 _microSALT uses a combination of python, sqLite and flask. Python is used for the majority of functionality, the database is handled through sqLite and the front-end is handled through flask. All analysis activity by microSALT requires a SLURM cluster._
 
-## Quick installation
-```
-conda config --add channels bioconda
-conda create -n microSALT python=3.6
-source activate microSALT
-conda install -c bioconda blast=2.5.0=h3727419_3 spades=3.12.0=py36_0 \
-trimmomatic=0.38=1 bwa==0.7.15=1 samtools=1.6=0 picard=2.18.26=0
-git clone https://github.com/Clinical-Genomics/microSALT.git
-cd microSALT && pip install -r requirements.txt && pip install.
-```
-
 Then continue with __Configuration__
 
 ## Quick installation
@@ -45,7 +34,7 @@ export MICROSALT_CONFIG=/MY/FAV/FOLDER/config.json
 __Then edit the fields to match your environment__.
 
 ### Genologics Configuration
-_Genologics is likely already installed on your system. If such, this section can be skipped_
+_Genologics ( https://github.com/SciLifeLab/genologics ) is likely already installed on your system. If such, this section can be skipped_
 
 Create `$HOME/.genologicsrc` with the following formatting:
 ```
@@ -59,8 +48,8 @@ MAIN_LOG=/tmp/lims.log
 
 
 ## Usage
-* Use the `analyse` function to start sbatch job(s), producing output to `folders['results']`. Afterwards the parsed results  are uploaded to the SQL back-end and produce reports (HTML).
-* Various functionality, including adding manually new reference organisms and re-generating reports; are stored under the `utils` commands.
+* `microSALT analyse` contains functions to start sbatch job(s) & produce output to `folders['results']`. Afterwards the parsed results  are uploaded to the SQL back-end and produce reports (HTML), which are then automatically e-mailed to the user.
+* `microSALT utils` contains various functionality, including adding manually new reference organisms and re-generating reports.
 
 ## Databases
 ### MLST Definitions
@@ -75,11 +64,12 @@ Any definitions will work, as long as they retain the same formatting.
 ### Hardware
 * A slurm enabled HPC
 * A (clarity) LIMS server
-* A sqLite service
+
 
 ### Software
-* Conda
+* Conda ( https://www.anaconda.com/distribution/ )
 * Python 3.6
+* sqLite Service ( https://www.sqlite.org/download.html )
 
 ## Credits
 * Isak Sylvin - Lead developer
