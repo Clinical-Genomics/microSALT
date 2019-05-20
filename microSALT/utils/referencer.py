@@ -110,7 +110,7 @@ class Referencer():
         currver = self.db_access.get_version("profile_{}".format(organ))
         profile_no = re.search('\d+', sample[2]).group(0)
         if organ in self.organisms and organ.replace("_", " ") not in self.updated and\
-           (int(profile_no.replace('-','')) > int(currver) or force):
+           (int(profile_no.replace('-','')) > int(currver.replace('-','')) or force):
           # Download definition files
           st_link = prefix + entry.find_all("a")[1]['href']
           output = "{}/{}".format(self.config['folders']['profiles'], organ)
