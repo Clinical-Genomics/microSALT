@@ -77,7 +77,7 @@ def refer(ctx):
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
-@click.option('--uncareful' help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
+@click.option('--uncareful', help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
 @click.pass_context
 def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip_update, uncareful):
   """Analyse a whole project"""
@@ -128,7 +128,7 @@ def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
-@click.option('--uncareful' help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
+@click.option('--uncareful', help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
 @click.pass_context
 def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_update, uncareful):
   """Analyse a single sample"""

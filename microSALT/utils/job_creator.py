@@ -101,7 +101,7 @@ class Job_Creator():
     #memory is actually 128 per node regardless of cores.
     batchfile.write("# Spades assembly\n")
     if self.trimmed:
-      trimline = '-s {}'.format(self.concat_files[i])
+      trimline = '-s {}'.format(self.concat_files['i'])
     else:
       trimline = ''
     if self.careful:
