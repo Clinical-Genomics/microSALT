@@ -328,7 +328,7 @@ def review(ctx, type, customer, skip_update):
   print("Version check done. Generating output")
   if type=='report':
     codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
-    codemonkey.report(type='st', customer=customer)
+    codemonkey.report(type='st_update', customer=customer)
   elif type=='list':
     fixer.resync(type=type)
   done()
