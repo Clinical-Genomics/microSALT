@@ -77,11 +77,13 @@ def refer(ctx):
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
+@click.option('--uncareful' help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
 @click.pass_context
-def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip_update):
+def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip_update, uncareful):
   """Analyse a whole project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   trimmed = not untrimmed
+  careful = not uncareful
   if config != '':
     try:
       with open(os.path.abspath(config), 'r') as conf:
@@ -113,7 +115,7 @@ def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip
   except Exception as e:
     print("{}".format(e))
 
-  manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'],trim=trimmed,qc_only=qc_only)
+  manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'],trim=trimmed,qc_only=qc_only, careful=careful)
   manager.project_job()
   done() 
 
@@ -126,11 +128,13 @@ def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
+@click.option('--uncareful' help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
 @click.pass_context
-def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_update):
+def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_update, uncareful):
   """Analyse a single sample"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   trimmed = not untrimmed
+  careful = not uncareful
   if config != '':
     try:
       with open(os.path.abspath(config), 'r') as conf:
@@ -166,7 +170,7 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
       print("Version check done. Creating sbatch job")
     else:
       print("Skipping version check.")
-    worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'], trim=trimmed,qc_only=qc_only)
+    worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'], trim=trimmed,qc_only=qc_only, careful=careful)
     worker.project_job(single_sample=True)
   except Exception as e:
     click.echo("Unable to process sample {} due to '{}'".format(sample_id,e))

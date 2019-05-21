@@ -16,7 +16,7 @@ from microSALT.store.db_manipulator import DB_Manipulator
 
 class Job_Creator():
 
-  def __init__(self, input, config, log, finishdir="", timestamp="", trim=True, qc_only=False):
+  def __init__(self, input, config, log, finishdir="", timestamp="", trim=True, qc_only=False,careful=False):
     self.config = config
     self.logger = log
     self.batchfile = ""
@@ -24,6 +24,7 @@ class Job_Creator():
     self.indir = ""
     self.trimmed=trim
     self.qc_only = qc_only
+    self.careful = careful
 
     if isinstance(input, str):
       self.indir = os.path.abspath(input)
@@ -100,11 +101,16 @@ class Job_Creator():
     #memory is actually 128 per node regardless of cores.
     batchfile.write("# Spades assembly\n")
     if self.trimmed:
-      batchfile.write("spades.py --threads {} --careful --memory {} -o {}/assembly -1 {} -2 {} -s {}\n"\
-      .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir, self.concat_files['f'], self.concat_files['r'], self.concat_files['i']))
+      trimline = '-s {}'.format(self.concat_files[i])
     else:
-      batchfile.write("spades.py --threads {} --careful --memory {} -o {}/assembly -1 {} -2 {}\n"\
-      .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir, self.concat_files['f'], self.concat_files['r']))
+      trimline = ''
+    if self.careful:
+      careline = '--careful'
+    else:
+      careline = ''
+    
+    batchfile.write("spades.py --threads {} {} --memory {} -o {}/assembly -1 {} -2 {} {}\n"\
+    .format(self.config["slurm_header"]["threads"], careline, 8*int(self.config["slurm_header"]["threads"]), self.outdir, self.concat_files['f'], self.concat_files['r'], trimline))
     batchfile.write("rm {} {}\n".format(self.concat_files['f'], self.concat_files['r']))
     batchfile.write("\n\n")
     batchfile.close()
