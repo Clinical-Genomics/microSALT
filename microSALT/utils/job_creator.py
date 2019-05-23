@@ -147,7 +147,7 @@ class Job_Creator():
   def create_variantsection(self):
     """ Creates a job for variant calling based on local alignment """
     ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
-    localdir = "{}/alignment".format(self.outdir)
+    localdir = "{}/alignment".format(self.finishdir)
     outbase = "{}/{}_{}".format(localdir, self.name, self.lims_fetcher.data['reference'])
     files = self.verify_fastq()
 
@@ -205,8 +205,8 @@ class Job_Creator():
         reverse.append(fullfile)
     outfile = files[0].split('_')[0]
 
-    self.concat_files['f'] = "{}/trimmed/forward_reads.fastq.gz".format(self.outdir)
-    self.concat_files['r'] = "{}/trimmed/reverse_reads.fastq.gz".format(self.outdir)
+    self.concat_files['f'] = "{}/trimmed/forward_reads.fastq.gz".format(self.finishdir)
+    self.concat_files['r'] = "{}/trimmed/reverse_reads.fastq.gz".format(self.finishdir)
     batchfile.write("cat {} > {}\n".format(' '.join(forward), self.concat_files['f']))
     batchfile.write("cat {} > {}\n".format(' '.join(reverse), self.concat_files['r']))
 
@@ -226,7 +226,7 @@ class Job_Creator():
       self.concat_files['i'] = "{}/{}_trim_unpair.fastq.gz".format(trimdir, outfile)
 
       batchfile.write("cat {} >> {}\n".format(' '.join([fu, ru]), self.concat_files['i']))
-      batchfile.write("rm {}/trimmed/forward_reads.fastq.gz {}/trimmed/reverse_reads.fastq.gz {} {}\n".format(self.outdir, self.outdir, fu, ru))
+      batchfile.write("rm {}/trimmed/forward_reads.fastq.gz {}/trimmed/reverse_reads.fastq.gz {} {}\n".format(self.finishdir, self.finishdir, fu, ru))
     batchfile.write("\n")
     batchfile.close()
 
@@ -254,18 +254,18 @@ class Job_Creator():
       batchfile.write('# Basecalling for sample {}\n'.format(name))
       ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
       outbase = "{}/{}_{}".format(item, name, self.lims_fetcher.data['reference'])
-      batchfile.write("samtools view -h -q 1 -F 4 -F 256 {}.bam_sort_rmdup | grep -v XA:Z | grep -v SA:Z| samtools view -b - > {}/{}.unique\n".format(outbase, self.outdir, name))
-      batchfile.write('freebayes -= --pvar 0.7 -j -J --standard-filters -C 6 --min-coverage 30 --ploidy 1 -f {} -b {}/{}.unique -v {}/{}.vcf\n'.format(ref, self.outdir, name , self.outdir, name))
-      batchfile.write('bcftools view {}/{}.vcf -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, name, self.outdir, name))
-      batchfile.write('bcftools index {}/{}.bcf.gz\n'.format(self.outdir, name))
+      batchfile.write("samtools view -h -q 1 -F 4 -F 256 {}.bam_sort_rmdup | grep -v XA:Z | grep -v SA:Z| samtools view -b - > {}/{}.unique\n".format(outbase, self.finishdir, name))
+      batchfile.write('freebayes -= --pvar 0.7 -j -J --standard-filters -C 6 --min-coverage 30 --ploidy 1 -f {} -b {}/{}.unique -v {}/{}.vcf\n'.format(ref, self.finishdir, name , self.finishdir, name))
+      batchfile.write('bcftools view {}/{}.vcf -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.finishdir, name, self.finishdir, name))
+      batchfile.write('bcftools index {}/{}.bcf.gz\n'.format(self.finishdir, name))
       batchfile.write('\n')
 
-      batchfile.write('vcftools --bcf {}/{}.bcf.gz {} --remove-filtered-all --recode-INFO-all --recode-bcf --out {}/{}\n'.format(self.outdir, name, vcffilter, self.outdir, name))
-      batchfile.write('bcftools view {}/{}.recode.bcf -i "{}" -o {}/{}.recode.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, name, bcffilter, self.outdir, name))
-      batchfile.write('bcftools index {}/{}.recode.bcf.gz\n\n'.format(self.outdir, name))
+      batchfile.write('vcftools --bcf {}/{}.bcf.gz {} --remove-filtered-all --recode-INFO-all --recode-bcf --out {}/{}\n'.format(self.finishdir, name, vcffilter, self.finishdir, name))
+      batchfile.write('bcftools view {}/{}.recode.bcf -i "{}" -o {}/{}.recode.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.finishdir, name, bcffilter, self.finishdir, name))
+      batchfile.write('bcftools index {}/{}.recode.bcf.gz\n\n'.format(self.finishdir, name))
 
     batchfile.write('# SNP pair-wise distance\n')
-    batchfile.write('touch {}/stats.out\n'.format(self.outdir))
+    batchfile.write('touch {}/stats.out\n'.format(self.finishdir))
     while len(snplist) > 1:
       top = snplist.pop(0)
       nameOne = top.split('/')[-2]
@@ -277,11 +277,11 @@ class Job_Creator():
           nameTwo = nameTwo.split('_')[0]
 
         pair = "{}_{}".format(nameOne, nameTwo)
-        batchfile.write('bcftools isec {}/{}.recode.bcf.gz {}/{}.recode.bcf.gz -n=1 -c all -p {}/tmp -O b\n'.format(self.outdir, nameOne, self.outdir, nameTwo, self.outdir))
-        batchfile.write('bcftools merge -O b -o {}/{}.bcf.gz --force-samples {}/tmp/0000.bcf {}/tmp/0001.bcf\n'.format(self.outdir, pair, self.outdir, self.outdir))
-        batchfile.write('bcftools index {}/{}.bcf.gz\n'.format(self.outdir, pair))
+        batchfile.write('bcftools isec {}/{}.recode.bcf.gz {}/{}.recode.bcf.gz -n=1 -c all -p {}/tmp -O b\n'.format(self.finishdir, nameOne, self.finishdir, nameTwo, self.finishdir))
+        batchfile.write('bcftools merge -O b -o {}/{}.bcf.gz --force-samples {}/tmp/0000.bcf {}/tmp/0001.bcf\n'.format(self.finishdir, pair, self.finishdir, self.finishdir))
+        batchfile.write('bcftools index {}/{}.bcf.gz\n'.format(self.finishdir, pair))
 
-        batchfile.write("echo {} $( bcftools stats {}/{}.bcf.gz |grep SNPs: | cut -d $'\\t' -f4 ) >> {}/stats.out\n".format(pair, self.outdir, pair, self.outdir))
+        batchfile.write("echo {} $( bcftools stats {}/{}.bcf.gz |grep SNPs: | cut -d $'\\t' -f4 ) >> {}/stats.out\n".format(pair, self.finishdir, pair, self.finishdir))
         batchfile.write('\n')
     batchfile.close()
 
@@ -482,12 +482,11 @@ class Job_Creator():
     self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
     batchfile = open(self.batchfile, "w+")
     batchfile.write("#!/usr/bin/env bash\n")
-    batchfile.write("mkdir -p {}\n\n".format(self.outdir))
+    batchfile.write("mkdir -p {}\n\n".format(self.finishdir))
     batchfile.close()
 
     self.create_snpsection()
     batchfile = open(self.batchfile, "a+")
-    batchfile.write("cp -r {}/* {}".format(self.outdir, self.finishdir))
     batchfile.close()
 
     headerline = "-A {} -p {} -n 1 -t 24:00:00 -J {}_{} --qos {} --output {}/slurm_{}.log".format(self.config["slurm_header"]["project"],\
