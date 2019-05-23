@@ -52,6 +52,7 @@ class Scraper():
          self.job_fallback.create_sample(self.name)
        self.scrape_all_loci()
        self.scrape_resistances()
+       self.scrape_alignment()
        self.scrape_quast()
 
   def scrape_sample(self):
@@ -72,6 +73,7 @@ class Scraper():
     self.sampledir = self.infolder
     self.scrape_all_loci()
     self.scrape_resistances()
+    self.scrape_alignment()
     self.scrape_quast()
 
   def scrape_quast(self):
@@ -99,6 +101,7 @@ class Scraper():
       self.logger.warning("Cannot generate quast statistics for {}".format(self.name))
 
   def get_locilength(self, analysis, reference, target):
+    """ Find length of target within reference """
     alleles=dict()
     targetPre = ">{}".format(target)
     lastallele=""
@@ -108,6 +111,7 @@ class Scraper():
       target = re.search('(.+)_(\w+)', target).group(1)
       filename="{}/{}/{}.tfa".format(self.config["folders"]["references"], reference, target)
 
+    #Create dict with full name as key, associated nucleotides as value. 
     f = open(filename,"r")
     for row in f:
       if ">" in row:
@@ -116,7 +120,11 @@ class Scraper():
       else:
         alleles[lastallele] = alleles[lastallele] + row.strip()
     f.close()
-    return len(alleles[targetPre])
+    try:
+      return len(alleles[targetPre])
+    except KeyError as e:
+      self.logger.error("Target '{}' has been removed from current version of resFinder! Defaulting hit to length 1".format(targetPre))
+      return 1
 
   def scrape_resistances(self):
     q_list = glob.glob("{}/resistance/*".format(self.sampledir))
@@ -293,3 +301,85 @@ class Scraper():
     for hit in hypo:
       self.logger.info("Kept {}:{} with span {} and id {}".format(hit['loci'],hit["allele"], hit['span'],hit['identity']))
       self.db_pusher.add_rec(hit, 'Seq_types')
+
+  def scrape_alignment(self):
+    """Scrapes a single alignment result"""
+    ins_list = list()
+    cov_dict = dict()
+    align_dict = dict()
+    align_dict["reference_genome"] = self.lims_fetcher.data['reference']
+
+    #Reading
+    q_list = glob.glob("{}/alignment/*.stats.*".format(self.sampledir))
+    map_rate = 0.0
+    median_ins = 0
+    ref_len = 0.0
+    tot_reads = 0
+    tot_map = 0
+    duprate = 0.0
+    for file in q_list:
+      with open(file, 'r') as fh:
+       type = file.split('.')[-1]
+       for line in fh.readlines():
+         lsplit = line.rstrip().split('\t')
+         if type == 'raw':
+           tot_reads = int(lsplit[0])
+         elif type == 'ins':
+           if len(lsplit) >= 18 and lsplit[-12] in ['FF','FR']:
+             try:
+               median_ins = int(lsplit[0])
+             except Exception as e:
+               pass
+         elif type == 'cov':
+           cov_dict[lsplit[1]] = int(lsplit[2])
+         elif type == 'ref':
+           if lsplit[0] != '*' and len(lsplit) >= 2:
+             ref_len = ref_len + int(lsplit[1])
+         elif type == 'dup':
+           if lsplit[0] == 'Unknown Library':
+             try:
+               duprate = float(lsplit[8]) 
+             except Exception as e:
+               duprate = -1.0
+         elif type == 'map':
+           dsplit = line.rstrip().split(' ')
+           if len(dsplit)>= 5 and dsplit[4] == 'total':
+             tot_map = int(dsplit[0])
+           elif len(dsplit)>=4 and dsplit[3] == 'mapped':
+             if tot_map > 0:
+               map_rate = int(dsplit[0])/float(tot_map)
+
+    #Mangling
+    sumz, plus10, plus30, plus50, plus100, total = 0, 0, 0, 0, 0, 0
+    for k, v in cov_dict.items():
+      sumz += int(k)*v
+      total += v
+      if int(k) > 10:
+        plus10 += v
+      if int(k) > 30:
+        plus30 += v
+      if int(k) > 50:
+        plus50 += v
+      if int(k) > 100:
+        plus100 += v
+    if total > 0:
+      align_dict['coverage_10x'] = plus10/float(ref_len)
+      align_dict['coverage_30x'] = plus30/float(ref_len)
+      align_dict['coverage_50x'] = plus50/float(ref_len)
+      align_dict['coverage_100x'] = plus100/float(ref_len)
+    else:
+      align_dict['coverage_10x'] = 0.0
+      align_dict['coverage_30x'] = 0.0
+      align_dict['coverage_50x'] = 0.0
+      align_dict['coverage_100x'] = 0.0
+ 
+    align_dict['mapped_rate'] = map_rate
+    align_dict['insert_size'] = median_ins
+    if ref_len > 0:
+      align_dict['duplication_rate'] = duprate
+      align_dict['average_coverage'] = sumz/float(ref_len)
+    else:
+      align_dict['duplication_rate'] = 0.0
+      align_dict['average_coverage'] = 0.0
+    align_dict['total_reads'] = tot_reads
+    self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', align_dict)

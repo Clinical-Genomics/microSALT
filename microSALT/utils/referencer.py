@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import urllib.request
 
+from Bio import Entrez
 from bs4 import BeautifulSoup
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.store.lims_fetcher import LIMS_Fetcher
@@ -29,8 +30,9 @@ class Referencer():
     self.force = force
 
   def identify_new(self, cg_id, project=False):
-   """ Automatically downloads pubMLST organisms not already downloaded """
+   """ Automatically downloads pubMLST & NCBI organisms not already downloaded """
    neworgs = list()
+   newrefs = list()
    try:
      if project:
        samplenames = self.lims.samples_in_project(cg_id)
@@ -39,15 +41,23 @@ class Referencer():
          refname = self.lims.get_organism_refname(cg_sampleid)
          if refname not in self.organisms and self.lims.data['organism'] not in neworgs:
            neworgs.append(self.lims.data['organism'])
+         if not "{}.fasta".format(self.lims.data['reference']) in os.listdir(self.config['folders']['genomes']) and not self.lims.data['reference'] in newrefs:
+           newrefs.append(self.lims.data['reference']) 
        for org in neworgs:
          self.add_pubmlst(org)
+         #self.download_external(org)
+       for org in newrefs:
+         self.download_ncbi(org)
      else:
        self.lims.load_lims_sample_info(cg_id)
        refname = self.lims.get_organism_refname(cg_id)
        if refname not in self.organisms:
          self.add_pubmlst(self.lims.data['organism'])
+         #self.download_external(self.lims.data['organism'])
+       if not "{}.fasta".format(self.lims.data['reference']) in os.listdir(self.config['folders']['genomes']):
+         self.download_ncbi(self.lims.data['reference'])
    except Exception as e:
-     raise Exception("Unable to add locate reference for organism '{}' in pubMLST. Manually compile the reference.".format(self.lims.data['organism']))
+     self.logger.error("Reference update function failed prematurely. Review immediately")
  
   def update_refs(self):
     """Updates all references. Order is important, since no object is updated twice"""
@@ -75,7 +85,7 @@ class Referencer():
         output, error = proc.communicate()
       except Exception as e:
         self.logger.error("Unable to index requested target {} in {}".format(file, full_dir))
-    self.logger.info("Indexed contents of {}".format(full_dir)) 
+    self.logger.info("Re-indexed contents of {}".format(full_dir))
 
   def fetch_external(self, force=False):
     """ Updates reference for data that IS ONLY LINKED to pubMLST """
@@ -100,7 +110,7 @@ class Referencer():
         currver = self.db_access.get_version("profile_{}".format(organ))
         profile_no = re.search('\d+', sample[2]).group(0)
         if organ in self.organisms and organ.replace("_", " ") not in self.updated and\
-           (int(profile_no.replace('-','')) > int(currver) or force):
+           (int(profile_no.replace('-','')) > int(currver.replace('-','')) or force):
           # Download definition files
           st_link = prefix + entry.find_all("a")[1]['href']
           output = "{}/{}".format(self.config['folders']['profiles'], organ)
@@ -192,42 +202,67 @@ class Referencer():
     """ Returns list of all organisms currently added """
     return self.organisms
 
+  def download_ncbi(self, reference):
+    """ Checks available references, downloads from NCBI if not present """
+    try:
+      DEVNULL = open(os.devnull, 'wb')
+      Entrez.email="2@2.com"
+      record = Entrez.efetch(db='nucleotide', id=reference, rettype='fasta', retmod='text')
+      sequence = record.read()
+      output = "{}/{}.fasta".format(self.config['folders']['genomes'], reference)
+      with open(output, 'w') as f:
+        f.write(sequence)
+      bwaindex = "bwa index {}".format(output)
+      proc = subprocess.Popen(bwaindex.split(), cwd=self.config['folders']['genomes'], stdout=DEVNULL, stderr=DEVNULL)
+      out, err = proc.communicate()
+      samindex = "samtools faidx {}".format(output)
+      proc = subprocess.Popen(samindex.split(), cwd=self.config['folders']['genomes'], stdout=DEVNULL, stderr=DEVNULL)
+      out, err = proc.communicate()
+      self.logger.info('Downloaded reference {}'.format(reference))
+    except Exception as e:
+      self.logger.warning("Unable to download genome '{}' from NCBI".format(reference))
+
+
   def add_pubmlst(self, organism):
     """ Checks pubmlst for references of given organism and downloads them """
     #Organism must be in binomial format and only resolve to one hit
-    organism = organism.lower().replace('.',' ')
-    if organism.replace(' ', '_') in self.organisms and not self.force:
-      self.logger.info("Organism {} already stored in microSALT".format(organism))
-      return
-    db_query = self.query_pubmlst()
+    errorg = organism
+    try:
+      organism = organism.lower().replace('.',' ')
+      if organism.replace(' ', '_') in self.organisms and not self.force:
+        self.logger.info("Organism {} already stored in microSALT".format(organism))
+        return
+      db_query = self.query_pubmlst()
 
-    #Doublecheck organism name is correct and unique
-    orgparts = organism.split(' ')
-    counter = 0.0
-    for item in db_query:
-      for subtype in item['databases']:
-        missingPart = False
-        for part in orgparts:
-          if not part in subtype['description'].lower():
-            missingPart = True
-        if not missingPart:
-          #Seqdef always appear after isolates, so this is fine
-          seqdef_url = subtype['href']
-          desc = subtype['description']
-          counter += 1.0
-          self.logger.info("Located pubMLST hit {} for sample".format(desc))
-    if counter > 2.0:
-      raise Exception("Organism request resolved to {} organisms. Please be more stringent".format(int(counter/2)))
-    elif counter < 1.0:
-      #add external
-      raise Exception("Unable to find requested organism in pubMLST database")  
-    else:
-      truename = desc.lower().split(' ')
-      truename = "{}_{}".format(truename[0], truename[1])
-      self.download_pubmlst(truename, seqdef_url)
-      #Update organism list
-      self.refs = self.db_access.profiles
-      self.logger.info("Created table profile_{}".format(truename))
+      #Doublecheck organism name is correct and unique
+      orgparts = organism.split(' ')
+      counter = 0.0
+      for item in db_query:
+        for subtype in item['databases']:
+          missingPart = False
+          for part in orgparts:
+            if not part in subtype['description'].lower():
+              missingPart = True
+          if not missingPart:
+            #Seqdef always appear after isolates, so this is fine
+            seqdef_url = subtype['href']
+            desc = subtype['description']
+            counter += 1.0
+            self.logger.info("Located pubMLST hit {} for sample".format(desc))
+      if counter > 2.0:
+        raise Exception("Reference '{}' resolved to {} organisms. Please be more stringent".format(errorg, int(counter/2)))
+      elif counter < 1.0:
+        #add external
+        raise Exception("Unable to find requested organism '{}' in pubMLST database".format(errorg))  
+      else:
+        truename = desc.lower().split(' ')
+        truename = "{}_{}".format(truename[0], truename[1])
+        self.download_pubmlst(truename, seqdef_url)
+        #Update organism list
+        self.refs = self.db_access.profiles
+        self.logger.info("Created table profile_{}".format(truename))
+    except Exception as e:
+      self.logger.warning(e.args[0])
 
   def query_pubmlst(self):
     """ Returns a json object containing all organisms available via pubmlst.org """
@@ -268,10 +303,15 @@ class Referencer():
     os.makedirs(output)
 
     for locipath in loci_query['loci']:
-          loci = os.path.basename(os.path.normpath(locipath))
-          urllib.request.urlretrieve("{}/alleles_fasta".format(locipath), "{}/{}.tfa".format(output, loci))
+      loci = os.path.basename(os.path.normpath(locipath))
+      urllib.request.urlretrieve("{}/alleles_fasta".format(locipath), "{}/{}.tfa".format(output, loci))
     # Create new indexes
     self.index_db(output, '.tfa')
+
+  def external_version(self, organism, subtype_href):
+    ver_req = urllib.request.Request("{}/schemes/1/profiles".format(subtype_href))
+    with urllib.request.urlopen(ver_req) as response:
+        ver_query = json.loads(response.read().decode('utf-8'))
     return ver_query['last_updated']
 
   def fetch_pubmlst(self,force=False):
@@ -280,16 +320,19 @@ class Referencer():
     db_query = self.query_pubmlst()
     
     # Fetch seqdef locations 
-    for name in self.organisms:
-      for item in db_query:
-        for subtype in item['databases']:
+    for item in db_query:
+      for subtype in item['databases']:
+        for name in self.organisms:
           if name.replace('_', ' ') in subtype['description'].lower():
             #Seqdef always appear after isolates, so this is fine
             self.updated.append(name.replace('_', ' '))
             seqdef_url[name] = subtype['href']
-    for key, val in seqdef_url.items():
-      ver = self.download_pubmlst(key, val, force)
-      self.db_access.upd_rec({'name':'profile_{}'.format(key)}, 'Versions', {'version':ver})
-      self.db_access.reload_profiletable(key)
-      self.logger.info('pubMLST reference for {} set to version {}'.format(key.replace('_',' ').capitalize(), ver))
 
+    for key, val in seqdef_url.items():
+      internal_ver = self.db_access.get_version('profile_{}'.format(key))
+      external_ver = self.external_version(key, val)  
+      if internal_ver < external_ver:
+        self.logger.info('pubMLST reference for {} updated to {} from {}'.format(key.replace('_',' ').capitalize(), external_ver, internal_ver))
+        self.download_pubmlst(key, val, force)
+        self.db_access.upd_rec({'name':'profile_{}'.format(key)}, 'Versions', {'version':external_ver})
+        self.db_access.reload_profiletable(key)
