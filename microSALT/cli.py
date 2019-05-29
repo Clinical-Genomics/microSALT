@@ -85,11 +85,13 @@ def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip
   trimmed = not untrimmed
   careful = not uncareful
   if config != '':
-    try:
-      with open(os.path.abspath(config), 'r') as conf:
-        ctx.obj['config'] = json.load(conf)
-    except Exception as e:
-      pass
+    if os.path.exists(config):
+      try:
+        with open(os.path.abspath(config), 'r') as conf:
+          ctx.obj['config'] = json.load(conf)
+        ctx.obj['config']['config_path'] = os.path.abspath(config)
+      except Exception as e:
+        pass
 
   ctx.obj['config']['dry'] = dry
   if input != "":
@@ -136,11 +138,13 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
   trimmed = not untrimmed
   careful = not uncareful
   if config != '':
-    try:
-      with open(os.path.abspath(config), 'r') as conf:
-        ctx.obj['config'] = json.load(conf)
-    except Exception as e:
-      pass
+    if os.path.exists(config):
+      try:
+        with open(os.path.abspath(config), 'r') as conf:
+          ctx.obj['config'] = json.load(conf)
+        ctx.obj['config']['config_path'] = os.path.abspath(config)
+      except Exception as e:
+        pass
 
   ctx.obj['config']['dry'] = dry
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
@@ -187,11 +191,13 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
 def sample(ctx, sample_id, rerun, email, input, config, report):
   """Parse results from analysing a single sample"""
   if config != '':
-    try:
-      with open(os.path.abspath(config), 'r') as conf:
-        ctx.obj['config'] = json.load(conf)
-    except Exception as e:
-      pass
+    if os.path.exists(config):
+      try:
+        with open(os.path.abspath(config), 'r') as conf:
+          ctx.obj['config'] = json.load(conf)
+        ctx.obj['config']['config_path'] = os.path.abspath(config)
+      except Exception as e:
+        pass
 
   ctx.obj['config']['rerun'] = rerun
   ctx.obj['config']['regex']['mail_recipient'] = email
@@ -237,11 +243,13 @@ def sample(ctx, sample_id, rerun, email, input, config, report):
 def project(ctx, project_id, rerun, email, input, config, report):
   """Parse results from analysing a single project"""
   if config != '':
-    try:
-      with open(os.path.abspath(config), 'r') as conf:
-        ctx.obj['config'] = json.load(conf)
-    except Exception as e:
-      pass
+    if os.path.exists(config):
+      try:
+        with open(os.path.abspath(config), 'r') as conf:
+          ctx.obj['config'] = json.load(conf)
+        ctx.obj['config']['config_path'] = os.path.abspath(config)
+      except Exception as e:
+        pass
 
   ctx.obj['config']['rerun'] = rerun
   ctx.obj['config']['regex']['mail_recipient'] = email
