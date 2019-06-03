@@ -130,7 +130,7 @@ class Scraper():
     import pdb; pdb.set_trace()
 
   def scrape_resistances(self):
-    q_list = glob.glob("{}/resistance/*".format(self.sampledir))
+    q_list = glob.glob("{}/blast_search/resistance/*".format(self.sampledir))
     hypo = list()
     res_cols = self.db_pusher.get_columns('Resistances')
     for file in q_list:
@@ -222,7 +222,7 @@ class Scraper():
 
   def scrape_all_loci(self):
     """Scrapes all BLAST output in a folder"""
-    q_list = glob.glob("{}/blast/loci_query_*".format(self.sampledir))
+    q_list = glob.glob("{}/blast_search/mlst/loci_query_*".format(self.sampledir))
     organism = self.lims_fetcher.get_organism_refname(self.name)
     self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
 
