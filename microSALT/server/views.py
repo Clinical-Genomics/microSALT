@@ -140,10 +140,16 @@ def gen_reportdata(pid='all', organism_group='all'):
     else:
       s.threshold = 'Failed'
 
-    #Resistence filter
+    #Motif filter
     for r in s.resistances:
-      if (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity >= config["threshold"]["res_id"] and \
-      r.span >= config["threshold"]["res_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
+      if (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity >= config["threshold"]["motif_id"] and \
+      r.span >= config["threshold"]["motif_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
+        r.threshold = 'Passed'
+      else:
+        r.threshold = 'Failed'
+    for r in s.virulence:
+      if (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity >= config["threshold"]["motif_id"] and \
+      r.span >= config["threshold"]["motif_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
         r.threshold = 'Passed'
       else:
         r.threshold = 'Failed'
@@ -151,6 +157,7 @@ def gen_reportdata(pid='all', organism_group='all'):
     #Seq_type and resistance sorting
     s.seq_types=sorted(s.seq_types, key=lambda x: x.loci)
     s.resistances=sorted(s.resistances, key=lambda x: x.instance)
+    s.virulence=sorted(s.virulence, key=lambda x: x.instance)
     output['samples'].append(s)
 
   versions = session.query(Versions).all()

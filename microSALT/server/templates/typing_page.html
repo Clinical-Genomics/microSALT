@@ -132,23 +132,23 @@
                     <tr><th scope="row" >N50 (min. contig length for 50% of genome)</th><td>{{'{0:,}'.format(sample.n50)|replace(","," ")}}</td></tr>
                     <tr><th scope="row" >Necessary contigs</th><td>{{sample.contigs}}</td></tr>
                   {% else %}
-                    <tr><th scope="row" >Estimated genome length</th><td>Insufficient data for QUAST</td></tr>
-                    <tr><th scope="row" >GC content</th><td>Insufficient data for QUAST</td></tr>
-                    <tr><th scope="row" >N50 (min. contig length for 50% of genome)</th><td>Insufficient data for QUAST</td></tr>
-                    <tr><th scope="row" >Necessary contigs</th><td>Insufficient data for QUAST</td></tr>
+                    <i>No assembly data found</i>
                   {% endif %}
                 </table></div>
 
                 </div>
               </div>
             </footer>
-          {% if sample.genome_length > -1 %}
+          {% if not sample.genome_length > -1 %}
             <footer>
               <div class="panel">
               <div class="panel-body"> 
 
                 <div class="table-responsive">
-                  {% if not sample.seq_types|length == 0 and 'Invalid' not in sample.ST_status%}
+                  {% if sample.seq_types|length == 0 and 'Invalid' not in sample.ST_status %}
+                      <h4>MLST</h4>
+                     <i>No MLST data found</i>
+                  {% else %}
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                       <h4>MLST</h4>
                       <thead>
@@ -178,7 +178,10 @@
                 </div>
 
                 <div class="table-responsive">
-                  {% if not sample.resistances|selectattr('threshold', 'equalto', 'Passed')|list|length == 0 %}
+                  {% if sample.resistances|selectattr('threshold', 'equalto', 'Passed')|list|length == 0 %}
+                    <h4>Resistance</h4>
+                     <i>No resistence data found</i>
+                  {% else %}
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                     <h4>Resistance</h4>
                       <thead>
@@ -199,6 +202,53 @@
                               <td>{{seq_type.gene}}</td>
                               {% if seq_type.resistance is not none %}
                                 <td>{{seq_type.resistance|title}}</td>
+                              {% else %}
+                                <td>{{seq_type.instance|title}}</td>
+                              {% endif %}
+                              {% if seq_type.reference is not none %}
+                                <td>{{seq_type.reference}}</td>
+                              {% else %}
+                                <td>Unknown</td>
+                              {% endif %}
+                              <td>{{ seq_type.contig_coverage|round(2)  }}</td>
+                              <td>{{ seq_type.identity|round(2) }}</td>
+                              {% if seq_type.span == 999.0 %}
+                                <td>Undef.</td>
+                              {% else %}
+                                <td>{{ (seq_type.span*100)|round(2) }}</td>
+                              {% endif %}
+                            </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  {% endif %}
+                </div>
+
+                <div class="table-responsive">
+                  {% if sample.virulence|selectattr('threshold', 'equalto', 'Passed')|list|length == 0 %}
+                    <h4>Virulence</h4>
+                     <i>No virulence data found</i>
+                  {% else %}
+                    <table  class="table table-bordered" style='table-layout:fixed;'>
+                    <h4>Virulence</h4>
+                      <thead>
+                        <tr>
+                          <th width="4%">#</th>
+                          <th width="15%">Gene</th>
+                          <th width="20%">Type</th>
+                          <th width="15%">Reference</th>
+                          <th width="20%">Kmer Coverage</th>
+                          <th>Identity %</th>
+                          <th>Span %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for seq_type in sample.virulence if seq_type.threshold == 'Passed' %}
+                            <tr>
+                              <td>{{loop.index}}</td>
+                              <td>{{seq_type.gene}}</td>
+                              {% if seq_type.virulence is not none %}
+                                <td>{{seq_type.virulence|title}}</td>
                               {% else %}
                                 <td>{{seq_type.instance|title}}</td>
                               {% endif %}
