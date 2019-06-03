@@ -16,6 +16,7 @@ class Samples(db.Model):
   seq_types = relationship("Seq_types", back_populates="samples")
   projects = relationship('Projects', back_populates='samples')
   resistances = relationship("Resistances", back_populates="samples")
+  virulences = relationship("Virulences", back_populates="samples")
 
   CG_ID_sample = db.Column(db.String(15), primary_key=True, nullable=False)
   CG_ID_project = db.Column(db.String(15), ForeignKey('projects.CG_ID_project'))
@@ -81,9 +82,9 @@ class Resistances(db.Model):
   contig_start = db.Column(db.Integer)
   contig_end = db.Column(db.Integer)
 
-class Virulence(db.Model):
-  __tablename__ = 'virulence'
-  samples = relationship('Samples', back_populates='virulence')
+class Virulences(db.Model):
+  __tablename__ = 'virulences'
+  samples = relationship('Samples', back_populates='virulences')
 
   CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
   gene = db.Column(db.String(50), primary_key=True)

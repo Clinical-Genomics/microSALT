@@ -52,7 +52,7 @@ class Scraper():
          self.job_fallback.create_sample(self.name)
        self.scrape_all_loci()
        self.scrape_motif(type='resistance')
-       self.resistance_motif(type='virulence')
+       self.scrape_motif(type='virulence')
        self.scrape_alignment()
        self.scrape_quast()
 
@@ -74,7 +74,7 @@ class Scraper():
     self.sampledir = self.infolder
     self.scrape_all_loci()
     self.scrape_motif(type='resistance')
-    self.resistance_motif(type='virulence')
+    self.scrape_motif(type='virulence')
     self.scrape_alignment()
     self.scrape_quast()
 
@@ -112,7 +112,7 @@ class Scraper():
     elif analysis=="Seq_types":
       target = re.search('(.+)_(\w+)', target).group(1)
       filename="{}/{}/{}.tfa".format(self.config["folders"]["references"], reference, target)
-    elif analysis='Virulence':
+    elif analysis=='Virulence':
       filename="{}/{}.fsa".format(self.config["folders"]["virulence"], reference)
     else:
       self.logger.errror("Attempted to use function get_locilength() without a target type")
@@ -134,7 +134,7 @@ class Scraper():
 
 
   def scrape_motif(self, type='resistance'):
-    type2db = type.capitalize() 's'
+    type2db = type.capitalize() + 's'
     q_list = glob.glob("{}/blast_search/{}/*".format(self.sampledir, type))
     hypo = list()
     res_cols = self.db_pusher.get_columns('{}'.format(type2db))
@@ -147,6 +147,7 @@ class Scraper():
             if not elem_list[1] == 'N/A':
               hypo.append(dict())
               hypo[-1]["CG_ID_sample"] = self.name
+
               hypo[-1]["identity"] = elem_list[4]
               hypo[-1]["evalue"] = elem_list[5]
               hypo[-1]["bitscore"] = elem_list[6]
@@ -157,25 +158,44 @@ class Scraper():
                 hypo[-1]["contig_start"] = int(elem_list[8])
                 hypo[-1]["contig_end"] = int(elem_list[7])
               hypo[-1]["subject_length"] =  int(elem_list[11])
-              hypo[-1]["instance"] = os.path.basename(file[:-4])
 
-              # Split elem 3 in loci (name) and allele (number)
-              partials = re.search('(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3])
-              hypo[-1]["reference"] = partials.group(3)
+              if type == 'resistance':
+                hypo[-1]["instance"] = os.path.basename(file[:-4])
+                # Split elem 3 in loci (name) and allele (number)
+                partials = re.search('(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3])
+                hypo[-1]["reference"] = partials.group(3)
+                hypo[-1]["gene"] = partials.group(1)
+                if hypo[-1]["gene"] in self.gene2resistance.keys():
+                  hypo[-1]["resistance"] = self.gene2resistance[hypo[-1]["gene"]]
+                else:
+                  hypo[-1]["{}".format(type)] = hypo[-1]["instance"].capitalize()
+              elif type == 'virulence':
+                if '>' in elem_list[3]:
+                  partials = re.search('>*(\w+_\w+\.*\w+).+\((\w+)\).+\((\w+)\)_(\w+)_\[.+\]', elem_list[3]
+                  #NC/Protein reference
+                  hypo[-1]["reference"] = partials.group(1)
+                  #Full gene name
+                  hypo[-1]["gene"] = partials.group(2)
+                  #More generic group
+                  hypo[-1]["instance"] = partials.group(3)
+                  #Description
+                  hypo[-1]["virulence"] = partials.group(4).replace('_', ' ').capitalize()
+                else:
+                  partials = re.search('(\w+)\(gb\|\w+\)_\((\w+)\)_(.+)_\[(\w+)_.+\]_\[.+\]', elem_list[3])
+                  hypo[-1]["reference"] = partials.group(1)
+                  hypo[-1]["gene"] = partials.group(2)
+                  hypo[-1]["instance"] = partials.group(4)
+                  hypo[-1]["virulence"] = partials.group(3).replace('_', ' ').capitalize()
 
-              hypo[-1]["gene"] = partials.group(1)
-              if hypo[-1]["gene"] in self.gene2resistance.keys():
-                hypo[-1]["resistance"] = self.gene2resistance[hypo[-1]["gene"]]
-              else:
-                hypo[-1]["resistance"] = hypo[-1]["instance"].capitalize()
-
+              import pdb; pdb.set_trace()
+              print("CHECK THIS SHIT OUT!!")
               hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('{}'.format(type2db), hypo[-1]["instance"], partials.group(0))
-
               # split elem 2 into contig node_NO, length, cov
               nodeinfo = elem_list[2].split('_')
               hypo[-1]["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
               hypo[-1]["contig_length"] = int(nodeinfo[3])
               hypo[-1]["contig_coverage"] = nodeinfo[5]
+
     self.logger.info("{} candidate {} hits found".format(len(hypo), type2db))
 
     #Cleanup of overlapping hits

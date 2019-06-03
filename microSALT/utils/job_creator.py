@@ -110,7 +110,7 @@ class Job_Creator():
     
     batchfile.write("spades.py --threads {} {} --memory {} -o {}/assembly -1 {} -2 {} {}\n"\
     .format(self.config["slurm_header"]["threads"], careline, 8*int(self.config["slurm_header"]["threads"]), self.finishdir, self.concat_files['f'], self.concat_files['r'], trimline))
-    batchfile.write("rm {}/trimmed\n".format(self.finishdir)
+    batchfile.write("rm {}/trimmed\n".format(self.finishdir))
     batchfile.write("\n\n")
     batchfile.close()
 
