@@ -135,13 +135,13 @@ class Job_Creator():
     #Create run
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# BLAST Virulence section\n")
-    batchfile.write("mkdir {}/virulence\n".format(self.outdir))
+    batchfile.write("mkdir {}/virulence\n".format(self.finishdir))
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
     res_list = glob.glob("{}/*.fsa".format(self.config["folders"]["virulence"]))
     for entry in res_list:
       batchfile.write("## BLAST Virulence search in {} for {}\n".format(self.organism, os.path.basename(entry[:-4])))
       batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/virulence/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
-      entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
+      entry[:-4], self.finishdir, self.finishdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
     batchfile.close()
 

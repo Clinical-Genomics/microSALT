@@ -213,7 +213,7 @@ def sample(ctx, sample_id, rerun, email, input, config, report):
       click.echo("Multiple instances of that analysis exists. Specify full path using --input")
       sys.exit(-1)
     elif len(prohits) <1:
-      click.echo("No analysis folder prefixed by {} found.".format(project_id))
+      click.echo("No analysis folder prefixed by {} found.".format(sample_id))
       sys.exit(-1)
     else:
       sample_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
