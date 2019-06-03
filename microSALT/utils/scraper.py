@@ -51,7 +51,8 @@ class Scraper():
          self.logger.error("Re-filling sample {}".format(self.name))
          self.job_fallback.create_sample(self.name)
        self.scrape_all_loci()
-       self.scrape_resistances()
+       self.scrape_motif(type='resistance')
+       self.resistance_motif(type='virulence')
        self.scrape_alignment()
        self.scrape_quast()
 
@@ -72,7 +73,8 @@ class Scraper():
     #Scrape order matters a lot!
     self.sampledir = self.infolder
     self.scrape_all_loci()
-    self.scrape_resistances()
+    self.scrape_motif(type='resistance')
+    self.resistance_motif(type='virulence')
     self.scrape_alignment()
     self.scrape_quast()
 
@@ -110,6 +112,10 @@ class Scraper():
     elif analysis=="Seq_types":
       target = re.search('(.+)_(\w+)', target).group(1)
       filename="{}/{}/{}.tfa".format(self.config["folders"]["references"], reference, target)
+    elif analysis='Virulence':
+      filename="{}/{}.fsa".format(self.config["folders"]["virulence"], reference)
+    else:
+      self.logger.errror("Attempted to use function get_locilength() without a target type")
 
     #Create dict with full name as key, associated nucleotides as value. 
     f = open(filename,"r")
@@ -126,13 +132,12 @@ class Scraper():
       self.logger.error("Target '{}' has been removed from current version of resFinder! Defaulting hit to length 1".format(targetPre))
       return 1
 
-  def scrape_virulence(self):
-    import pdb; pdb.set_trace()
 
-  def scrape_resistances(self):
-    q_list = glob.glob("{}/blast_search/resistance/*".format(self.sampledir))
+  def scrape_motif(self, type='resistance'):
+    type2db = type.capitalize() 's'
+    q_list = glob.glob("{}/blast_search/{}/*".format(self.sampledir, type))
     hypo = list()
-    res_cols = self.db_pusher.get_columns('Resistances')
+    res_cols = self.db_pusher.get_columns('{}'.format(type2db))
     for file in q_list:
       with open("{}".format(file), 'r') as sample:
         for line in sample:
@@ -156,9 +161,6 @@ class Scraper():
 
               # Split elem 3 in loci (name) and allele (number)
               partials = re.search('(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3])
-              #if partials is None:
-              #  print("DEBUG!")
-              #  import pdb; pdb.set_trace()
               hypo[-1]["reference"] = partials.group(3)
 
               hypo[-1]["gene"] = partials.group(1)
@@ -167,15 +169,14 @@ class Scraper():
               else:
                 hypo[-1]["resistance"] = hypo[-1]["instance"].capitalize()
 
-              hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('Resistances', hypo[-1]["instance"], partials.group(0))
+              hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('{}'.format(type2db), hypo[-1]["instance"], partials.group(0))
 
               # split elem 2 into contig node_NO, length, cov
               nodeinfo = elem_list[2].split('_')
               hypo[-1]["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
               hypo[-1]["contig_length"] = int(nodeinfo[3])
               hypo[-1]["contig_coverage"] = nodeinfo[5]
-
-    self.logger.info("{} candidate resistance hits found".format(len(hypo)))
+    self.logger.info("{} candidate {} hits found".format(len(hypo), type2db))
 
     #Cleanup of overlapping hits
     ind = 0
@@ -203,12 +204,12 @@ class Scraper():
           pass
       ind += 1
 
-    self.logger.info("{} resistance hits were added after removing overlaps and duplicate hits".format( len(hypo)))
+    self.logger.info("{} {} hits were added after removing overlaps and duplicate hits".format( len(hypo), type))
     for hit in hypo:
-      self.db_pusher.add_rec(hit, 'Resistances')
+      self.db_pusher.add_rec(hit, '{}'.format(type2db))
 
   def load_resistances(self):
-    """Loads common resistance names for genes"""
+    """Legacy function, loads common resistance names for genes from notes file"""
     conversions = dict()
     with open("{}/notes.txt".format(self.config["folders"]["resistances"])) as fh:
       for line in fh:
