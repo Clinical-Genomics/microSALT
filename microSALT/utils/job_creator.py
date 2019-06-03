@@ -110,7 +110,7 @@ class Job_Creator():
     
     batchfile.write("spades.py --threads {} {} --memory {} -o {}/assembly -1 {} -2 {} {}\n"\
     .format(self.config["slurm_header"]["threads"], careline, 8*int(self.config["slurm_header"]["threads"]), self.finishdir, self.concat_files['f'], self.concat_files['r'], trimline))
-    batchfile.write("rm {} {}\n".format(self.concat_files['f'], self.concat_files['r']))
+    batchfile.write("rm {}/trimmed\n".format(self.finishdir)
     batchfile.write("\n\n")
     batchfile.close()
 
@@ -192,7 +192,7 @@ class Job_Creator():
     #Total reads, no dedup,dedup in MWGS (trimming has no effect)!
     batchfile.write("samtools view -c {}.bam_sort &> {}.stats.raw\n".format(outbase, outbase))
 
-    batchfile.write("\n")
+    batchfile.write("\n\n")
     batchfile.close()
 
   def create_preprocsection(self):
