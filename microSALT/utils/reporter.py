@@ -58,7 +58,6 @@ class Reporter():
       os.remove(file)
 
   def gen_STtracker(self, customer="all"):
-    self.start_web()
     self.name ="Sequence Type Update"
     try:
       r = requests.get("http://127.0.0.1:5000/microSALT/STtracker/{}".format(customer), allow_redirects=True)
@@ -69,7 +68,6 @@ class Reporter():
     outname = "ST_updates.html"
     open(outname, 'wb').write(r.content)
     self.attachments.append(outname)
-    self.kill_flask()
 
   def gen_qc(self):
     name = self.name

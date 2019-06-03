@@ -77,17 +77,21 @@ def refer(ctx):
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
+@click.option('--uncareful', help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
 @click.pass_context
-def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip_update):
+def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip_update, uncareful):
   """Analyse a whole project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   trimmed = not untrimmed
+  careful = not uncareful
   if config != '':
-    try:
-      with open(os.path.abspath(config), 'r') as conf:
-        ctx.obj['config'] = json.load(conf)
-    except Exception as e:
-      pass
+    if os.path.exists(config):
+      try:
+        with open(os.path.abspath(config), 'r') as conf:
+          ctx.obj['config'] = json.load(conf)
+        ctx.obj['config']['config_path'] = os.path.abspath(config)
+      except Exception as e:
+        pass
 
   ctx.obj['config']['dry'] = dry
   if input != "":
@@ -113,7 +117,7 @@ def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip
   except Exception as e:
     print("{}".format(e))
 
-  manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'],trim=trimmed,qc_only=qc_only)
+  manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'],trim=trimmed,qc_only=qc_only, careful=careful)
   manager.project_job()
   done() 
 
@@ -126,17 +130,21 @@ def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
+@click.option('--uncareful', help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
 @click.pass_context
-def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_update):
+def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_update, uncareful):
   """Analyse a single sample"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   trimmed = not untrimmed
+  careful = not uncareful
   if config != '':
-    try:
-      with open(os.path.abspath(config), 'r') as conf:
-        ctx.obj['config'] = json.load(conf)
-    except Exception as e:
-      pass
+    if os.path.exists(config):
+      try:
+        with open(os.path.abspath(config), 'r') as conf:
+          ctx.obj['config'] = json.load(conf)
+        ctx.obj['config']['config_path'] = os.path.abspath(config)
+      except Exception as e:
+        pass
 
   ctx.obj['config']['dry'] = dry
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
@@ -166,7 +174,7 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
       print("Version check done. Creating sbatch job")
     else:
       print("Skipping version check.")
-    worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'], trim=trimmed,qc_only=qc_only)
+    worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'], trim=trimmed,qc_only=qc_only, careful=careful)
     worker.project_job(single_sample=True)
   except Exception as e:
     click.echo("Unable to process sample {} due to '{}'".format(sample_id,e))
@@ -183,11 +191,13 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
 def sample(ctx, sample_id, rerun, email, input, config, report):
   """Parse results from analysing a single sample"""
   if config != '':
-    try:
-      with open(os.path.abspath(config), 'r') as conf:
-        ctx.obj['config'] = json.load(conf)
-    except Exception as e:
-      pass
+    if os.path.exists(config):
+      try:
+        with open(os.path.abspath(config), 'r') as conf:
+          ctx.obj['config'] = json.load(conf)
+        ctx.obj['config']['config_path'] = os.path.abspath(config)
+      except Exception as e:
+        pass
 
   ctx.obj['config']['rerun'] = rerun
   ctx.obj['config']['regex']['mail_recipient'] = email
@@ -233,11 +243,13 @@ def sample(ctx, sample_id, rerun, email, input, config, report):
 def project(ctx, project_id, rerun, email, input, config, report):
   """Parse results from analysing a single project"""
   if config != '':
-    try:
-      with open(os.path.abspath(config), 'r') as conf:
-        ctx.obj['config'] = json.load(conf)
-    except Exception as e:
-      pass
+    if os.path.exists(config):
+      try:
+        with open(os.path.abspath(config), 'r') as conf:
+          ctx.obj['config'] = json.load(conf)
+        ctx.obj['config']['config_path'] = os.path.abspath(config)
+      except Exception as e:
+        pass
 
   ctx.obj['config']['rerun'] = rerun
   ctx.obj['config']['regex']['mail_recipient'] = email
@@ -328,7 +340,7 @@ def review(ctx, type, customer, skip_update):
   print("Version check done. Generating output")
   if type=='report':
     codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
-    codemonkey.report(type='st', customer=customer)
+    codemonkey.report(type='st_update', customer=customer)
   elif type=='list':
     fixer.resync(type=type)
   done()

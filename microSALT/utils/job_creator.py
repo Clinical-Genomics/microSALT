@@ -16,7 +16,7 @@ from microSALT.store.db_manipulator import DB_Manipulator
 
 class Job_Creator():
 
-  def __init__(self, input, config, log, finishdir="", timestamp="", trim=True, qc_only=False):
+  def __init__(self, input, config, log, finishdir="", timestamp="", trim=True, qc_only=False,careful=False):
     self.config = config
     self.logger = log
     self.batchfile = ""
@@ -24,6 +24,7 @@ class Job_Creator():
     self.indir = ""
     self.trimmed=trim
     self.qc_only = qc_only
+    self.careful = careful
 
     if isinstance(input, str):
       self.indir = os.path.abspath(input)
@@ -42,11 +43,10 @@ class Job_Creator():
       self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
       format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
-    self.outdir = "/scratch/$SLURM_JOB_ID/workdir/{}_{}".format(self.name, self.now)
     self.finishdir = finishdir
     if self.finishdir == "":
       self.finishdir="{}/{}_{}".format(config["folders"]["results"], self.name, self.now)
-    
+ 
     self.db_pusher=DB_Manipulator(config, log)
     self.concat_files = dict()
     self.organism = ""
@@ -100,11 +100,16 @@ class Job_Creator():
     #memory is actually 128 per node regardless of cores.
     batchfile.write("# Spades assembly\n")
     if self.trimmed:
-      batchfile.write("spades.py --threads {} --careful --memory {} -o {}/assembly -1 {} -2 {} -s {}\n"\
-      .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir, self.concat_files['f'], self.concat_files['r'], self.concat_files['i']))
+      trimline = '-s {}'.format(self.concat_files['i'])
     else:
-      batchfile.write("spades.py --threads {} --careful --memory {} -o {}/assembly -1 {} -2 {}\n"\
-      .format(self.config["slurm_header"]["threads"], 8*int(self.config["slurm_header"]["threads"]), self.outdir, self.concat_files['f'], self.concat_files['r']))
+      trimline = ''
+    if self.careful:
+      careline = '--careful'
+    else:
+      careline = ''
+    
+    batchfile.write("spades.py --threads {} {} --memory {} -o {}/assembly -1 {} -2 {} {}\n"\
+    .format(self.config["slurm_header"]["threads"], careline, 8*int(self.config["slurm_header"]["threads"]), self.finishdir, self.concat_files['f'], self.concat_files['r'], trimline))
     batchfile.write("rm {} {}\n".format(self.concat_files['f'], self.concat_files['r']))
     batchfile.write("\n\n")
     batchfile.close()
@@ -114,14 +119,13 @@ class Job_Creator():
 
     #Create run
     batchfile = open(self.batchfile, "a+")
-    batchfile.write("# BLAST Resistance section\n")
-    batchfile.write("mkdir {}/resistance\n".format(self.outdir))
+    batchfile.write("mkdir {}/resistance\n\n".format(self.finishdir))
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
     res_list = glob.glob("{}/*.fsa".format(self.config["folders"]["resistances"]))
     for entry in res_list:
       batchfile.write("## BLAST Resistance search in {} for {}\n".format(self.organism, os.path.basename(entry[:-4])))
       batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/resistance/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
-      entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
+      entry[:-4], self.finishdir, self.finishdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
     batchfile.close()
 
@@ -146,21 +150,20 @@ class Job_Creator():
     
     #Create run
     batchfile = open(self.batchfile, "a+")
-    batchfile.write("# BLAST MLST Section\n")
-    batchfile.write("mkdir {}/blast\n".format(self.outdir))
+    batchfile.write("mkdir {}/blast\n\n".format(self.finishdir))
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
     tfa_list = glob.glob("{}/{}/*.tfa".format(self.config["folders"]["references"], self.organism))
     for entry in tfa_list:
-      batchfile.write("## BLAST MLST alignment for {}, {}\n".format(self.organism, os.path.basename(entry[:-4])))
-      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n"\
-                      .format(entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
+      batchfile.write("# BLAST MLST alignment for {}, {}\n".format(self.organism, os.path.basename(entry[:-4])))
+      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
+      entry[:-4], self.finishdir, self.finishdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
     batchfile.close()
 
   def create_variantsection(self):
     """ Creates a job for variant calling based on local alignment """
     ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
-    localdir = "{}/alignment".format(self.outdir)
+    localdir = "{}/alignment".format(self.finishdir)
     outbase = "{}/{}_{}".format(localdir, self.name, self.lims_fetcher.data['reference'])
     files = self.verify_fastq()
 
@@ -178,18 +181,6 @@ class Job_Creator():
     batchfile.write("samtools idxstats {}.bam_sort_rmdup &> {}.stats.ref\n".format(outbase, outbase))
     #Removal of temp aligment files
     batchfile.write("rm {}.bam {}.sam\n".format(outbase, outbase))
-
-    #Samtools duplicate calling, legacy
-    #batchfile.write("samtools fixmate --threads {} -r -m {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
-    #batchfile.write("samtools sort --threads {} -o {}.bam_sort {}.bam_sort_ms\n".format(self.config["slurm_header"]["threads"], outbase, outbase))
-    #batchfile.write("samtools markdup -r -s --threads {} --reference {} --output-fmt bam {}.bam_sort {}.bam_sort_mkdup &> {}.stats.dup\n"\
-    #                .format(self.config["slurm_header"]["threads"], ref, outbase, outbase, outbase))
-    #batchfile.write("samtools rmdup --reference {} {}.bam_sort_mkdup {}.bam_sort_rmdup\n".format(ref, outbase, outbase))
-    #batchfile.write("## Indexing\n")
-    #batchfile.write("samtools index {}.bam_sort_mkdup\n".format(outbase))
-    #batchfile.write("samtools idxstats {}.bam_sort_mkdup &> {}.stats.ref\n".format(outbase, outbase))
-    #Insert stats, dedupped
-    #batchfile.write("samtools stats -m 0.999 {}.bam_sort_rmdup |grep ^IS | cut -f 2- &> {}.stats.ins\n".format(outbase, outbase))
 
     batchfile.write("## Primary stats generation\n")
     #Insert stats, dedupped
@@ -214,7 +205,7 @@ class Job_Creator():
         self.logger.error("Adapters folder at {} does not contain NexteraPE-PE.fa. Review paths.yml")
       else:
         break
-    trimdir = "{}/trimmed".format(self.outdir)
+    trimdir = "{}/trimmed".format(self.finishdir)
     files = self.verify_fastq()
     batchfile = open(self.batchfile, "a+")
     batchfile.write("#Trimmomatic section\n")
@@ -230,8 +221,8 @@ class Job_Creator():
         reverse.append(fullfile)
     outfile = files[0].split('_')[0]
 
-    self.concat_files['f'] = "{}/trimmed/forward_reads.fastq.gz".format(self.outdir)
-    self.concat_files['r'] = "{}/trimmed/reverse_reads.fastq.gz".format(self.outdir)
+    self.concat_files['f'] = "{}/trimmed/forward_reads.fastq.gz".format(self.finishdir)
+    self.concat_files['r'] = "{}/trimmed/reverse_reads.fastq.gz".format(self.finishdir)
     batchfile.write("cat {} > {}\n".format(' '.join(forward), self.concat_files['f']))
     batchfile.write("cat {} > {}\n".format(' '.join(reverse), self.concat_files['r']))
 
@@ -251,15 +242,15 @@ class Job_Creator():
       self.concat_files['i'] = "{}/{}_trim_unpair.fastq.gz".format(trimdir, outfile)
 
       batchfile.write("cat {} >> {}\n".format(' '.join([fu, ru]), self.concat_files['i']))
-      batchfile.write("rm {}/trimmed/forward_reads.fastq.gz {}/trimmed/reverse_reads.fastq.gz {} {}\n".format(self.outdir, self.outdir, fu, ru))
+      batchfile.write("rm {}/trimmed/forward_reads.fastq.gz {}/trimmed/reverse_reads.fastq.gz {} {}\n".format(self.finishdir, self.finishdir, fu, ru))
     batchfile.write("\n")
     batchfile.close()
 
   def create_assemblystats_section(self):
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# QUAST QC metrics\n")
-    batchfile.write("mkdir {}/quast\n".format(self.outdir))
-    batchfile.write("quast.py {}/assembly/contigs.fasta -o {}/quast\n\n".format(self.outdir, self.outdir))
+    batchfile.write("mkdir {}/quast\n".format(self.finishdir))
+    batchfile.write("quast.py {}/assembly/contigs.fasta -o {}/quast\n\n".format(self.finishdir, self.finishdir))
     batchfile.close()
 
   def create_snpsection(self):
@@ -279,18 +270,18 @@ class Job_Creator():
       batchfile.write('# Basecalling for sample {}\n'.format(name))
       ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
       outbase = "{}/{}_{}".format(item, name, self.lims_fetcher.data['reference'])
-      batchfile.write("samtools view -h -q 1 -F 4 -F 256 {}.bam_sort_rmdup | grep -v XA:Z | grep -v SA:Z| samtools view -b - > {}/{}.unique\n".format(outbase, self.outdir, name))
-      batchfile.write('freebayes -= --pvar 0.7 -j -J --standard-filters -C 6 --min-coverage 30 --ploidy 1 -f {} -b {}/{}.unique -v {}/{}.vcf\n'.format(ref, self.outdir, name , self.outdir, name))
-      batchfile.write('bcftools view {}/{}.vcf -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, name, self.outdir, name))
-      batchfile.write('bcftools index {}/{}.bcf.gz\n'.format(self.outdir, name))
+      batchfile.write("samtools view -h -q 1 -F 4 -F 256 {}.bam_sort_rmdup | grep -v XA:Z | grep -v SA:Z| samtools view -b - > {}/{}.unique\n".format(outbase, self.finishdir, name))
+      batchfile.write('freebayes -= --pvar 0.7 -j -J --standard-filters -C 6 --min-coverage 30 --ploidy 1 -f {} -b {}/{}.unique -v {}/{}.vcf\n'.format(ref, self.finishdir, name , self.finishdir, name))
+      batchfile.write('bcftools view {}/{}.vcf -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.finishdir, name, self.finishdir, name))
+      batchfile.write('bcftools index {}/{}.bcf.gz\n'.format(self.finishdir, name))
       batchfile.write('\n')
 
-      batchfile.write('vcftools --bcf {}/{}.bcf.gz {} --remove-filtered-all --recode-INFO-all --recode-bcf --out {}/{}\n'.format(self.outdir, name, vcffilter, self.outdir, name))
-      batchfile.write('bcftools view {}/{}.recode.bcf -i "{}" -o {}/{}.recode.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.outdir, name, bcffilter, self.outdir, name))
-      batchfile.write('bcftools index {}/{}.recode.bcf.gz\n\n'.format(self.outdir, name))
+      batchfile.write('vcftools --bcf {}/{}.bcf.gz {} --remove-filtered-all --recode-INFO-all --recode-bcf --out {}/{}\n'.format(self.finishdir, name, vcffilter, self.finishdir, name))
+      batchfile.write('bcftools view {}/{}.recode.bcf -i "{}" -o {}/{}.recode.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.finishdir, name, bcffilter, self.finishdir, name))
+      batchfile.write('bcftools index {}/{}.recode.bcf.gz\n\n'.format(self.finishdir, name))
 
     batchfile.write('# SNP pair-wise distance\n')
-    batchfile.write('touch {}/stats.out\n'.format(self.outdir))
+    batchfile.write('touch {}/stats.out\n'.format(self.finishdir))
     while len(snplist) > 1:
       top = snplist.pop(0)
       nameOne = top.split('/')[-2]
@@ -302,11 +293,11 @@ class Job_Creator():
           nameTwo = nameTwo.split('_')[0]
 
         pair = "{}_{}".format(nameOne, nameTwo)
-        batchfile.write('bcftools isec {}/{}.recode.bcf.gz {}/{}.recode.bcf.gz -n=1 -c all -p {}/tmp -O b\n'.format(self.outdir, nameOne, self.outdir, nameTwo, self.outdir))
-        batchfile.write('bcftools merge -O b -o {}/{}.bcf.gz --force-samples {}/tmp/0000.bcf {}/tmp/0001.bcf\n'.format(self.outdir, pair, self.outdir, self.outdir))
-        batchfile.write('bcftools index {}/{}.bcf.gz\n'.format(self.outdir, pair))
+        batchfile.write('bcftools isec {}/{}.recode.bcf.gz {}/{}.recode.bcf.gz -n=1 -c all -p {}/tmp -O b\n'.format(self.finishdir, nameOne, self.finishdir, nameTwo, self.finishdir))
+        batchfile.write('bcftools merge -O b -o {}/{}.bcf.gz --force-samples {}/tmp/0000.bcf {}/tmp/0001.bcf\n'.format(self.finishdir, pair, self.finishdir, self.finishdir))
+        batchfile.write('bcftools index {}/{}.bcf.gz\n'.format(self.finishdir, pair))
 
-        batchfile.write("echo {} $( bcftools stats {}/{}.bcf.gz |grep SNPs: | cut -d $'\\t' -f4 ) >> {}/stats.out\n".format(pair, self.outdir, pair, self.outdir))
+        batchfile.write("echo {} $( bcftools stats {}/{}.bcf.gz |grep SNPs: | cut -d $'\\t' -f4 ) >> {}/stats.out\n".format(pair, self.finishdir, pair, self.finishdir))
         batchfile.write('\n')
     batchfile.close()
 
@@ -417,8 +408,16 @@ class Job_Creator():
     if 'MICROSALT_CONFIG' in os.environ:
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
-    mb.write("microSALT utils finish {} {} --input {} --rerun --email {} --report {}\n".\
-               format(scope, self.name, self.finishdir, self.config['regex']['mail_recipient'], report))
+
+    span = 'project'
+    custom_conf = ''
+    if single_sample:
+      span = 'sample'
+    if 'config_path' in self.config:
+      custom_conf = '--config {}'.format(self.config['config_path'])
+
+    mb.write("microSALT utils finish {} {} --input {} --rerun --email {} {}\n".\
+               format(span, self.name, self.finishdir, self.config['regex']['mail_recipient'], custom_conf))
     mb.write("touch {}/run_complete.out".format(self.finishdir))
     mb.close()
 
@@ -466,8 +465,8 @@ class Job_Creator():
         # This is one job 
         self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
         batchfile = open(self.batchfile, "w+")
-        batchfile.write("#!/usr/bin/env bash\n")
-        batchfile.write("mkdir -p {}\n\n".format(self.outdir))
+        batchfile.write("#!/bin/sh\n\n")
+        batchfile.write("mkdir -p {}\n".format(self.finishdir))
         batchfile.close()
         self.create_preprocsection()
         self.create_variantsection()
@@ -478,10 +477,9 @@ class Job_Creator():
           self.create_resistancesection()
           self.create_virulencesection()
         batchfile = open(self.batchfile, "a+")
-        batchfile.write("cp -r {}/* {}".format(self.outdir, self.finishdir))
         batchfile.close()
 
-        self.logger.info("Created runfile for sample {} in folder {}".format(self.name, self.outdir))
+        self.logger.info("Created runfile for sample {} in folder {}".format(self.name, self.finishdir))
       except Exception as e:
         raise 
       try: 
@@ -501,12 +499,11 @@ class Job_Creator():
     self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
     batchfile = open(self.batchfile, "w+")
     batchfile.write("#!/usr/bin/env bash\n")
-    batchfile.write("mkdir -p {}\n\n".format(self.outdir))
+    batchfile.write("mkdir -p {}\n\n".format(self.finishdir))
     batchfile.close()
 
     self.create_snpsection()
     batchfile = open(self.batchfile, "a+")
-    batchfile.write("cp -r {}/* {}".format(self.outdir, self.finishdir))
     batchfile.close()
 
     headerline = "-A {} -p {} -n 1 -t 24:00:00 -J {}_{} --qos {} --output {}/slurm_{}.log".format(self.config["slurm_header"]["project"],\
