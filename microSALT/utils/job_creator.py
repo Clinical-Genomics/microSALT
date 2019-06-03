@@ -110,7 +110,7 @@ class Job_Creator():
     batchfile.close()
 
   def create_resistancesection(self):
-    """Creates a blast job for instances where many loci definition files make up an organism"""
+    """Creates a blast job for resistance finding"""
 
     #Create run
     batchfile = open(self.batchfile, "a+")
@@ -121,6 +121,22 @@ class Job_Creator():
     for entry in res_list:
       batchfile.write("## BLAST Resistance search in {} for {}\n".format(self.organism, os.path.basename(entry[:-4])))
       batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/resistance/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
+      entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
+    batchfile.write("\n")
+    batchfile.close()
+
+  def create_virulencesection(self):
+    """Creates a blast job for virulence finding"""
+
+    #Create run
+    batchfile = open(self.batchfile, "a+")
+    batchfile.write("# BLAST Virulence section\n")
+    batchfile.write("mkdir {}/virulence\n".format(self.outdir))
+    blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
+    res_list = glob.glob("{}/*.fsa".format(self.config["folders"]["virulence"]))
+    for entry in res_list:
+      batchfile.write("## BLAST Virulence search in {} for {}\n".format(self.organism, os.path.basename(entry[:-4])))
+      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/virulence/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
       entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
     batchfile.close()
@@ -460,6 +476,7 @@ class Job_Creator():
           self.create_assemblystats_section()
           self.create_mlstsection()
           self.create_resistancesection()
+          self.create_virulencesection()
         batchfile = open(self.batchfile, "a+")
         batchfile.write("cp -r {}/* {}".format(self.outdir, self.finishdir))
         batchfile.close()

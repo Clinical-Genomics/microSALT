@@ -126,6 +126,9 @@ class Scraper():
       self.logger.error("Target '{}' has been removed from current version of resFinder! Defaulting hit to length 1".format(targetPre))
       return 1
 
+  def scrape_virulence(self):
+    import pdb; pdb.set_trace()
+
   def scrape_resistances(self):
     q_list = glob.glob("{}/resistance/*".format(self.sampledir))
     hypo = list()
