@@ -79,7 +79,7 @@ class Scraper():
   def scrape_quast(self):
     """Scrapes a quast report for assembly information"""
     quast = dict()
-    report = "{}/quast/report.tsv".format(self.sampledir)
+    report = "{}/assembly/quast/report.tsv".format(self.sampledir)
     try:
       with open(report, 'r') as infile:
         for line in infile:

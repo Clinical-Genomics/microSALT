@@ -249,8 +249,8 @@ class Job_Creator():
   def create_assemblystats_section(self):
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# QUAST QC metrics\n")
-    batchfile.write("mkdir {}/quast\n".format(self.finishdir))
-    batchfile.write("quast.py {}/assembly/contigs.fasta -o {}/quast\n\n".format(self.finishdir, self.finishdir))
+    batchfile.write("mkdir {}/assembly/quast\n".format(self.finishdir))
+    batchfile.write("quast.py {}/assembly/contigs.fasta -o {}/assembly/quast\n\n".format(self.finishdir, self.finishdir))
     batchfile.close()
 
   def create_snpsection(self):
