@@ -228,7 +228,7 @@ def sample(ctx, sample_id, rerun, email, input, config, report):
   garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_sample()
 
-  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], scientist.data['CG_ID_project'])
+  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], scientist.data['CG_ID_project'], output=sample_dir)
   codemonkey.report(report)
   done()
 
@@ -272,7 +272,7 @@ def project(ctx, project_id, rerun, email, input, config, report):
 
   garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_project()
-  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_id)
+  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_id, output=project_dir)
   codemonkey.report(report)
   done()
 
@@ -305,11 +305,12 @@ def list(ctx):
 @click.argument('project_name')
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--type', default='default', type=click.Choice(['default', 'typing', 'resistance_overview', 'qc', 'json_dump', 'st_update']))
+@click.option('--output,'help='Full path to output folder',default="")
 @click.pass_context
-def report(ctx, project_name, email, type):
+def report(ctx, project_name, email, type, output):
   """Re-generates report for a project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
-  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_name)
+  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_name, output)
   codemonkey.report(type)
   done()
 
@@ -329,10 +330,12 @@ def resync(ctx):
 @click.option('--type', default='html', type=click.Choice(['report', 'list']), help="Output format")
 @click.option('--customer', default='all', help="Customer id filter")
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.pass_context
-def review(ctx, type, customer, skip_update):
+def review(ctx, type, customer, skip_update, email):
   """Generates information about novel ST"""
   #Trace exists by some samples having pubMLST_ST filled in. Make trace function later
+  ctx.obj['config']['regex']['mail_recipient'] = email
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
   if not skip_update:
     fixer.update_refs()

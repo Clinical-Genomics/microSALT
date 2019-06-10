@@ -9,6 +9,7 @@ import os
 import sys
 import smtplib
 
+from datetime import datetime
 
 from os.path import basename
 from email.mime.text  import MIMEText
@@ -23,8 +24,9 @@ from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Reporter():
 
-  def __init__(self, config, log, name = ""):
+  def __init__(self, config, log, name = "", output = ""):
     self.name = name
+    self.output = output
     self.config = config
     self.logger = log
     for k, v in config.items():
@@ -33,6 +35,9 @@ class Reporter():
     self.ticketFinder = LIMS_Fetcher(self.config, self.logger)
     self.attachments = list()
     self.error = False
+    self.dt = datetime.now() 
+    self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
+    format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
   def report(self, type='default', customer='all'):
     if type == 'json_dump':
@@ -54,10 +59,12 @@ class Reporter():
       raise Exception("Report function recieved invalid format")
     self.kill_flask()
     self.mail()
-    for file in self.attachments:
-      os.remove(file)
+    if output != "":
+      for file in self.attachments:
+        os.remove(file)
 
   def gen_STtracker(self, customer="all"):
+    outname = ""
     self.name ="Sequence Type Update"
     try:
       r = requests.get("http://127.0.0.1:5000/microSALT/STtracker/{}".format(customer), allow_redirects=True)
@@ -65,11 +72,14 @@ class Reporter():
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.kill_flask()
       sys.exit(-1)
-    outname = "ST_updates.html"
+      if self.output != "":
+        outname.append("{}".format(self.output))
+    outname.append("ST_updates.html")
     open(outname, 'wb').write(r.content)
     self.attachments.append(outname)
 
   def gen_qc(self):
+    outqc = ""
     name = self.name
     try:
       self.ticketFinder.load_lims_project_info(name)
@@ -79,7 +89,9 @@ class Reporter():
       sys.exit(-1)
     try:
       q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(name), allow_redirects=True)
-      outqc = "{}_QC.html".format(self.ticketFinder.data['Customer_ID_project'])
+      if self.output != "":
+        outqc.append("{}".format(self.output))
+      outqc.append("{}_QC.html".format(self.ticketFinder.data['Customer_ID_project']))
       open(outqc, 'wb').write(q.content)
       self.attachments.append(outqc)  
     except Exception as e:
@@ -87,6 +99,7 @@ class Reporter():
       self.error = True
  
   def gen_typing(self):
+    outtype = self.output
     name = self.name
     try:
       self.ticketFinder.load_lims_project_info(name)
@@ -96,7 +109,9 @@ class Reporter():
       sys.exit(-1)
     try:
       r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(name), allow_redirects=True)
-      outtype = "{}_Typing.html".format(self.ticketFinder.data['Customer_ID_project'])
+      if self.output != "":
+        outtype.append("{}".format(self.output))
+      outtype.append("{}_Typing.html".format(self.ticketFinder.data['Customer_ID_project']))
       open(outtype, 'wb').write(r.content)
       self.attachments.append(outtype)
     except Exception as e:
@@ -134,10 +149,14 @@ class Reporter():
   def gen_resistence(self):
     name = self.name
     self.ticketFinder.load_lims_project_info(name)
-    excel = open("{}.csv".format(name), "w+")
+
+    output = self.output
+    if self.output != "":
+      output.append("{}".format(self.output))
+    output.append("{}_{}.csv".format(name,self.now))
+    excel = open(output, "w+")
     sample_info = gen_reportdata(name)
     resdict = dict()
-
 
     #Load ALL resistance & genes
     for s in sample_info['samples']:
@@ -187,11 +206,15 @@ class Reporter():
       excel.write("{}{}\n".format(pref, hits))
        
     excel.close()
-    inpath = "{}/{}.csv".format(os.getcwd(), name)
-    self.attachments.append(inpath)
+    self.attachments.append(output)
 
   def gen_json(self):
     report = dict()
+    output = self.output
+    if self.output != "":
+      output.append("{}".format(self.output))
+    output.append("{}_{}.json".format(name, self.now))
+
 
     sample_info = gen_reportdata(self.name)
     analyses = ['blast_pubmlst', 'quast_assembly', 'blast_resfinder_resistence', 'picard_markduplicate', 'microsalt_samtools_stats']
@@ -211,10 +234,9 @@ class Reporter():
           report[s.CG_ID_sample]['blast_resfinder_resistence'].append(r.gene)
 
     #json.dumps(report) #Dumps the json directly
-    inpath = "{}/{}.json".format(os.getcwd(), self.name)
-    with open(inpath, 'w') as outfile: 
+    with open(output, 'w') as outfile: 
       json.dump(report, outfile)
-    self.attachments.append(inpath)
+    self.attachments.append(output)
 
   def kill_flask(self):
     self.server.terminate()
