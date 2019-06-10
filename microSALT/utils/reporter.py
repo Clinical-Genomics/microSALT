@@ -74,7 +74,7 @@ class Reporter():
       sys.exit(-1)
       if self.output != "":
         outname.append("{}".format(self.output))
-    outname.append("ST_updates.html")
+    outname.append("ST_updates_{}.html".format(self.now))
     open(outname, 'wb').write(r.content)
     self.attachments.append(outname)
 
@@ -91,7 +91,7 @@ class Reporter():
       q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(name), allow_redirects=True)
       if self.output != "":
         outqc.append("{}".format(self.output))
-      outqc.append("{}_QC.html".format(self.ticketFinder.data['Customer_ID_project']))
+      outqc.append("{}_QC_{}.html".format(self.ticketFinder.data['Customer_ID_project'], self.now))
       open(outqc, 'wb').write(q.content)
       self.attachments.append(outqc)  
     except Exception as e:
@@ -111,7 +111,7 @@ class Reporter():
       r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(name), allow_redirects=True)
       if self.output != "":
         outtype.append("{}".format(self.output))
-      outtype.append("{}_Typing.html".format(self.ticketFinder.data['Customer_ID_project']))
+      outtype.append("{}_Typing_{}.html".format(self.ticketFinder.data['Customer_ID_project'], self.now))
       open(outtype, 'wb').write(r.content)
       self.attachments.append(outtype)
     except Exception as e:
