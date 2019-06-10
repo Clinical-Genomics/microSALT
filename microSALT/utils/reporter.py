@@ -43,10 +43,10 @@ class Reporter():
     format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
   def report(self, type='default', customer='all'):
+    self.start_web()
     if type == 'json_dump':
       self.gen_json()
-    self.start_web() 
-    if type == 'default':
+    elif type == 'default':
       self.gen_typing()
       self.gen_qc()
       #self.gen_resistence()
@@ -67,7 +67,6 @@ class Reporter():
         os.remove(file)
 
   def gen_STtracker(self, customer="all"):
-    outname = self.output
     self.name ="Sequence Type Update"
     try:
       r = requests.get("http://127.0.0.1:5000/microSALT/STtracker/{}".format(customer), allow_redirects=True)
@@ -75,12 +74,11 @@ class Reporter():
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.kill_flask()
       sys.exit(-1)
-    outname += "/ST_updates_{}.html".format(self.now)
+    outname = "{}/ST_updates_{}.html".format(self.output, self.now)
     open(outname, 'wb').write(r.content)
     self.attachments.append(outname)
 
   def gen_qc(self):
-    outqc = self.output
     try:
       self.ticketFinder.load_lims_project_info(self.name)
     except Exception as e:
@@ -89,7 +87,7 @@ class Reporter():
       sys.exit(-1)
     try:
       q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(self.name), allow_redirects=True)
-      outqc += "/{}_QC_{}.html".format(self.ticketFinder.data['Customer_ID_project'], self.now)
+      outqc = "{}/{}_QC_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
       open(outqc, 'wb').write(q.content)
       self.attachments.append(outqc)  
     except Exception as e:
@@ -97,7 +95,6 @@ class Reporter():
       self.error = True
  
   def gen_typing(self):
-    outtype = self.output
     try:
       self.ticketFinder.load_lims_project_info(self.name)
     except Exception as e:
@@ -106,7 +103,7 @@ class Reporter():
       sys.exit(-1)
     try:
       r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
-      outtype += "/{}_Typing_{}.html".format(self.ticketFinder.data['Customer_ID_project'], self.now)
+      outtype = "{}/{}_Typing_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
       open(outtype, 'wb').write(r.content)
       self.attachments.append(outtype)
     except Exception as e:
@@ -115,10 +112,9 @@ class Reporter():
 
   def gen_resistence(self):
     self.ticketFinder.load_lims_project_info(self.name)
-    output = self.output
-    output += "/{}_{}.csv".format(self.name,self.now)
+    output = "{}/{}_{}.csv".format(self.output,self.name,self.now)
     excel = open(output, "w+")
-    sample_info = gen_reportdata(elf.ame)
+    sample_info = gen_reportdata(self.name)
     resdict = dict()
 
     #Load ALL resistance & genes
@@ -173,8 +169,7 @@ class Reporter():
 
   def gen_json(self):
     report = dict()
-    output = self.output
-    output += "/{}_{}.json".format(self.name, self.now)
+    output = "{}/{}_{}.json".format(self.output, self.name, self.now)
 
     sample_info = gen_reportdata(self.name)
     analyses = ['blast_pubmlst', 'quast_assembly', 'blast_resfinder_resistence', 'picard_markduplicate', 'microsalt_samtools_stats']
