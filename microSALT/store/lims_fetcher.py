@@ -6,14 +6,13 @@ import re
 from datetime import datetime
 from genologics.lims import Lims
 # Should probably call these items directly since we're now up to 3 config files
-from genologics.config import BASEURI,USERNAME,PASSWORD
 from genologics.entities import Project, Sample
 
 class LIMS_Fetcher():
 
   def __init__(self, config, log):
     self.data = {}
-    self.lims = Lims(BASEURI, USERNAME, PASSWORD)
+    self.lims = Lims(config['genologics']['baseuri'], config['genologics']['username'], config['genologics']['password'])
     self.logger = log
     self.config = config
 
