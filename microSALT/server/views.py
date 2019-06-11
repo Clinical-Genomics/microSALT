@@ -111,13 +111,6 @@ def gen_reportdata(pid='all', organism_group='all'):
     s.Customer_ID_sample.startswith('CTRL') or s.Customer_ID_sample.startswith('Neg') or \
     s.Customer_ID_sample.startswith('blank') or s.Customer_ID_sample.startswith('dual-NTC'):
       s.ST_status = 'Control (prefix)'
-    elif s.ST < 0:
-      if s.ST == -1:
-        s.ST_status = 'Invalid data'
-      elif s.ST <= -4 or s.ST == -2:
-        s.ST_status = 'Novel'
-      else:
-        s.ST_status='None'
 
     if 'Control' in s.ST_status or s.ST == -1:
       s.threshold = '-'
@@ -136,9 +129,19 @@ def gen_reportdata(pid='all', organism_group='all'):
           s.threshold = 'Failed'
 
       if near_hits > 0 and s.threshold == 'Passed':
-        s.ST_status = 'Novel alleles ({})'.format(near_hits)
+        s.ST_status = 'Unknown ({} novel alleles)'.format(near_hits)
     else:
       s.threshold = 'Failed'
+
+    if not 'Control' in s.ST_status and s.ST < 0:
+      if s.ST == -1:
+        s.ST_status = 'Invalid data'
+      elif (s.ST <= -4 or s.ST == -2) and s.threshold == 'Passed':
+        s.ST_status = 'Novel'
+      elif (s.ST <= -4 or s.ST == -2) and s.threshold == 'Failed':
+        s.ST_status = 'Unknown'
+      else:
+        s.ST_status='None'
 
     #Resistence filter
     for r in s.resistances:
