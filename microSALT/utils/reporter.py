@@ -6,6 +6,7 @@ import json
 import requests
 import time
 import os
+import socket
 import sys
 import smtplib
 
@@ -110,7 +111,7 @@ class Reporter():
       msg['Subject'] = '{} ({}) Reports'.format(self.name, file_name[0].split('_')[0])
     else:
       msg['Subject'] = '{} ({}) Failed Generating Report'.format(self.name, file_name[0].split('_')[0])
-    msg['From'] = 'microSALT'
+    msg['From'] = 'microSALT@{}'.format(socket.gethostname())
     msg['To'] = self.config['regex']['mail_recipient']
    
     if not self.error: 
