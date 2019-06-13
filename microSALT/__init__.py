@@ -4,7 +4,7 @@ import sys
 
 from flask import Flask
 
-__version__ = '2.5.0'
+__version__ = '2.6.0'
 
 app = Flask(__name__, template_folder='server/templates')
 app.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:///:memory:')
