@@ -110,7 +110,7 @@ def gen_reportdata(pid='all', organism_group='all'):
     s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or \
     s.Customer_ID_sample.startswith('CTRL') or s.Customer_ID_sample.startswith('Neg') or \
     s.Customer_ID_sample.startswith('blank') or s.Customer_ID_sample.startswith('dual-NTC'):
-      s.ST_status = 'Control (prefix)'
+      s.ST_status = 'Kontroll (prefix)'
     elif s.ST < 0:
       if s.ST == -1:
         s.ST_status = 'Invalid data'
@@ -119,7 +119,7 @@ def gen_reportdata(pid='all', organism_group='all'):
       else:
         s.ST_status='None'
 
-    if 'Control' in s.ST_status or s.ST == -1:
+    if 'Kontroll' in s.ST_status or 'Control' in s.ST_status or s.ST == -1:
       s.threshold = '-'
     elif s.ST == -3:
       s.threshold = 'Failed'

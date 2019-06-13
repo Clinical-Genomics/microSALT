@@ -11,7 +11,6 @@ from microSALT import app
 
 db = SQLAlchemy(app)
 class Samples(db.Model):
-
   __tablename__ = 'samples'
   seq_types = relationship("Seq_types", back_populates="samples")
   projects = relationship('Projects', back_populates='samples')
@@ -40,6 +39,13 @@ class Samples(db.Model):
   coverage_100x = db.Column(db.Float)
   average_coverage = db.Column(db.Float)
   reference_genome = db.Column(db.String(32))
+
+  application_tag = db.Column(db.String(15))
+  date_analysis = db.Column(db.DateTime)
+  date_sequencing = db.Column(db.DateTime)
+  date_libprep = db.Column(db.DateTime)
+  method_sequencing = db.Column(db.String(15))
+  method_libprep = db.Column(db.String(15))
 
 class Seq_types(db.Model):
   __tablename__ = 'seq_types'
@@ -80,6 +86,14 @@ class Resistances(db.Model):
   resistance = db.Column(db.String(120))
   contig_start=db.Column(db.Integer)
   contig_end=db.Column(db.Integer)
+
+#Debug: Multi-date support for libprep/sequencing
+#class Steps(db.Model):
+#  __tablename__ = 'steps'
+#  CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
+#  date = db.Column(db.DateTime)
+#  method = db.Column(db.String(40))
+#  step = db.Column(db.String(40))
 
 class Projects(db.Model):
   __tablename__ = 'projects'

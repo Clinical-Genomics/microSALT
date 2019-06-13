@@ -56,14 +56,24 @@ class LIMS_Fetcher():
 
   def load_lims_sample_info(self, cg_sampleid, external=False):
     """ Loads all utilized LIMS info. Organism assumed to be written as binomial name """
+    libprep_date = ""
+    seq_date = ""
     if external:
       sample = self.lims.get_samples(name=cg_sampleid)
       if len(sample) != 1:
         self.logger.error("Sample ID {} resolves to multiple entries".format(cg_sampleid))
       sample = sample[0]
+      method_libprep = self.get_method(cg_sampleid,type='libprep')
+      method_sequencing = self.get_method(cg_sampleid,type='sequencing')
+      date_libprep = self.get_date(cg_sampleid,type="libprep")
+      date_sequencing = self.get_date(cg_sampleid,type="sequencing")
     else:
       try:
         sample = Sample(self.lims, id=cg_sampleid)
+        method_libprep = self.get_method(cg_sampleid,type='libprep')
+        method_sequencing = self.get_method(cg_sampleid,type='sequencing')
+        date_libprep = self.get_date(cg_sampleid,type="libprep")
+        date_sequencing = self.get_date(cg_sampleid,type="sequencing")
       except Exception as e:
         self.logger.error("LIMS connection timeout")
     organism = "Unset"
@@ -119,7 +129,13 @@ class LIMS_Fetcher():
                            'organism' : organism,
                            'priority' : prio,
                            'reference' : sample.udf['Reference Genome Microbial'],
-                           'Customer_ID': sample.udf['customer']})
+                           'Customer_ID': sample.udf['customer'],
+                           'application_tag': sample.udf['Sequencing Analysis'],
+                           'date_sequencing': date_sequencing,
+                           'date_libprep': date_libprep,
+                           'method_libprep': method_libprep,
+                           'method_sequencing': method_sequencing
+})
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for sample {}. Review LIMS data.\nSource: {}"\
       .format(cg_sampleid, str(e)))
@@ -146,5 +162,48 @@ class LIMS_Fetcher():
         if hit == len(organism):
           return target
     except Exception as e:
-      self.logger.warn("Unable to find existing reference for {}, strain {} has no reference match\nSource: {}".format(sample_name, lims_organ, e))
+      self.logger.warn("Unable to find existing reference for {}, strain {} has no reference match\nSource: {}"\
+      .format(sample_name, lims_organ, e))
 
+  def get_date(self, sample_id, type=""):
+    """ Returns the most recent sequencing date of a sample """
+    date_list = list()
+    if type == "sequencing":
+      steps = ["CG002 - Illumina Sequencing (Illumina SBS)", "CG002 Illumina SBS (HiSeq X)"]
+    elif type == "libprep":
+      steps = ["CG002 - Aggregate QC (Library Validation)"]
+    else:
+      raise Exception("Attempted to get date for {} but no step defined".format(sample_id))
+    for step in steps:
+      try:
+        arts = self.lims.get_artifacts(samplelimsid = sample_id, process_type = step)
+        date_list = date_list + [a.parent_process.date_run for a in arts]
+      except Exception as e:
+        pass
+    dp = max(date_list).split('-')
+    return datetime(int(dp[0]), int(dp[1]), int(dp[2]))
+
+  def get_method(self, sample_id, type=""):
+    """Retrives method document name and version for a sample"""
+    key_values = dict()
+    if type == "libprep":
+      #MIGHT BE CALLED JUST METHOD AND NOT METHOD DOCUMENT HERE!
+      steps = ['CG002 - Microbial Library Prep (Nextera)']
+      key_values['method'] = "Method"
+      key_values['version'] = "Method Version"
+    elif type == "sequencing":
+      steps = ['CG002 - Cluster Generation (Illumina SBS)', 'CG002 - Cluster Generation (HiSeq X)']
+      key_values['method'] = "Method Document 1"
+      key_values['version'] = "Document 1 Version"
+    else:
+      raise Exception("Attempted to get info for {} but no step defined".format(sample_id))
+    for step in steps:
+      try:
+        arts = self.lims.get_artifacts(samplelimsid = sample_id, process_type = step)
+        processes = [(a.parent_process.udf[key_values['method']], a.parent_process.udf[key_values['version']]) for a in arts]
+        processes = list(set(processes))
+        process = sorted(processes)[-1]
+        out = "{}:{}".format(process[0], process[1])
+      except Exception as e:
+        pass
+    return out
