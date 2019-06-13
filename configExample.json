@@ -56,6 +56,6 @@
   "genologics": {
     "baseuri": "https://lims.facility.se/",
     "username": "genologicsuser",
-    "password: "mypassword123"
+    "password": "mypassword123"
   }
 }
