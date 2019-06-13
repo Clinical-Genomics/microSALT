@@ -190,8 +190,9 @@ class Reporter():
       report[s.CG_ID_sample]['blast_pubmlst'] = {'sequence_type':s.ST_status, 'thresholds':s.threshold}
       report[s.CG_ID_sample]['quast_assembly'] = {'estimated_genome_length':s.genome_length, 'gc_percentage':float(s.gc_percentage), 'n50':s.n50, 'necessary_contigs':s.contigs}
       report[s.CG_ID_sample]['picard_markduplicate'] = {'insert_size':s.insert_size, 'duplication_rate':s.duplication_rate}
-      report[s.CG_ID_sample]['microsalt_samtools_stats'] = {'total_reads':s.total_reads, 'mapped_rate':s.mapped_rate, 'average_coverage':s.average_coverage, 
-                                                            'coverage_10x':s.coverage_10x, 'coverage_30x':coverage_30x, 'coverage_50x':coverage_50x, 'coverage_100x':coverage_100x}
+      report[s.CG_ID_sample]['microsalt_samtools_stats'] = {'total_reads':s.total_reads, 'mapped_rate':s.mapped_rate, 'average_coverage':s.average_coverage, \
+                                                            'coverage_10x':s.coverage_10x, 'coverage_30x':s.coverage_30x, \
+                                                            'coverage_50x':s.coverage_50x, 'coverage_100x':s.coverage_100x}
 
       for r in s.resistances:
         if not (r.gene in report[s.CG_ID_sample]['blast_resfinder_resistence']) and r.threshold == 'Passed':
@@ -223,7 +224,7 @@ class Reporter():
     s.connect()
     s.sendmail(msg['From'], msg['To'], msg.as_string())
     s.quit()
-    self.logger.info("Mail containing report sent to {}".format(msg['To'])) 
+    self.logger.info("Mail containing report sent to {} from {}".format(msg['To'], msg['From'])) 
 
   def start_web(self):
     self.server.start()

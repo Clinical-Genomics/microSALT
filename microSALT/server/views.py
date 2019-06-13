@@ -129,7 +129,7 @@ def gen_reportdata(pid='all', organism_group='all'):
           s.threshold = 'Failed'
 
       if near_hits > 0 and s.threshold == 'Passed':
-        s.ST_status = 'Unknown ({} novel alleles)'.format(near_hits)
+        s.ST_status = 'Unknown ({} alleles)'.format(near_hits)
     else:
       s.threshold = 'Failed'
 
@@ -145,8 +145,8 @@ def gen_reportdata(pid='all', organism_group='all'):
 
     #Resistence filter
     for r in s.resistances:
-      if (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity >= config["threshold"]["res_id"] and \
-      r.span >= config["threshold"]["res_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
+      if (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity >= config["threshold"]["motif_id"] and \
+      r.span >= config["threshold"]["motif_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
         r.threshold = 'Passed'
       else:
         r.threshold = 'Failed'
