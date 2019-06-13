@@ -48,8 +48,8 @@
     "mlst_id": 100,
     "mlst_novel_id": 99.5,
     "mlst_span": 0.9,
-    "res_id": 97,
-    "res_span": 0.9
+    "motif_id": 97,
+    "motif_span": 0.9
   },
 
   "_comment": "Genologics temporary configuration file",
