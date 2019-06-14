@@ -112,7 +112,7 @@ class Scraper():
     elif analysis=="Seq_types":
       target = re.search('(.+)_(\w+)', target).group(1)
       filename="{}/{}/{}.tfa".format(self.config["folders"]["references"], reference, target)
-    elif analysis=='Virulence':
+    elif analysis=='Virulences':
       filename="{}/{}.fsa".format(self.config["folders"]["virulence"], reference)
     else:
       self.logger.errror("Attempted to use function get_locilength() without a target type")
@@ -169,25 +169,28 @@ class Scraper():
                   hypo[-1]["resistance"] = self.gene2resistance[hypo[-1]["gene"]]
                 else:
                   hypo[-1]["{}".format(type)] = hypo[-1]["instance"].capitalize()
+                hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('{}'.format(type2db), hypo[-1]["instance"], partials.group(0))
               elif type == 'virulence':
+                #Thanks, precompiled list standards
                 if '>' in elem_list[3]:
                   partials = re.search('>*(\w+_\w+\.*\w+).+\((\w+)\).+\((\w+)\)_(\w+)_\[.+\]', elem_list[3])
-                  #NC/Protein reference
-                  hypo[-1]["reference"] = partials.group(1)
-                  #Full gene name
-                  hypo[-1]["gene"] = partials.group(2)
-                  #More generic group
-                  hypo[-1]["instance"] = partials.group(3)
-                  #Description
-                  hypo[-1]["virulence"] = partials.group(4).replace('_', ' ').capitalize()
                 else:
                   partials = re.search('(\w+)\(gb\|\w+\)_\((\w+)\)_(.+)_\[(\w+)_.+\]_\[.+\]', elem_list[3])
-                  hypo[-1]["reference"] = partials.group(1)
-                  hypo[-1]["gene"] = partials.group(2)
-                  hypo[-1]["instance"] = partials.group(4)
-                  hypo[-1]["virulence"] = partials.group(3).replace('_', ' ').capitalize()
+                if not partials:
+                  partials = re.search('(\w+\.*\w+)\:*\(\w+\-\w+\)_\((\w+)\)_(\w+)_\[\w+\.*\w+\-*\w+\.*\w+\]', elem_list[3])
+                #NC/Protein reference
+                hypo[-1]["reference"] = partials.group(1)
+                #Full gene name
+                hypo[-1]["gene"] = partials.group(2)
+                #More generic group
+                hypo[-1]["instance"] = partials.group(3)
+                #Description
+                if len(partials.groups()) >= 4:
+                  hypo[-1]["virulence"] = partials.group(4).replace('_', ' ').capitalize()
+                else:
+                  hypo[-1]["virulence"] = ""
+                hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('{}'.format(type2db), "curated_virulence", partials.group(0))
 
-              hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('{}'.format(type2db), hypo[-1]["instance"], partials.group(0))
               # split elem 2 into contig node_NO, length, cov
               nodeinfo = elem_list[2].split('_')
               hypo[-1]["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
