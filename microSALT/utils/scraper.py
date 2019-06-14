@@ -171,7 +171,7 @@ class Scraper():
                   hypo[-1]["{}".format(type)] = hypo[-1]["instance"].capitalize()
               elif type == 'virulence':
                 if '>' in elem_list[3]:
-                  partials = re.search('>*(\w+_\w+\.*\w+).+\((\w+)\).+\((\w+)\)_(\w+)_\[.+\]', elem_list[3]
+                  partials = re.search('>*(\w+_\w+\.*\w+).+\((\w+)\).+\((\w+)\)_(\w+)_\[.+\]', elem_list[3])
                   #NC/Protein reference
                   hypo[-1]["reference"] = partials.group(1)
                   #Full gene name
@@ -187,8 +187,6 @@ class Scraper():
                   hypo[-1]["instance"] = partials.group(4)
                   hypo[-1]["virulence"] = partials.group(3).replace('_', ' ').capitalize()
 
-              import pdb; pdb.set_trace()
-              print("CHECK THIS SHIT OUT!!")
               hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('{}'.format(type2db), hypo[-1]["instance"], partials.group(0))
               # split elem 2 into contig node_NO, length, cov
               nodeinfo = elem_list[2].split('_')
