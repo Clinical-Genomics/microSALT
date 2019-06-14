@@ -39,7 +39,8 @@ class Reporter():
     self.ticketFinder = LIMS_Fetcher(self.config, self.logger)
     self.attachments = list()
     self.error = False
-    self.dt = datetime.now() 
+    self.dt = datetime.now()
+    self.filelist = list() 
     self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
     format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
@@ -65,7 +66,7 @@ class Reporter():
     self.kill_flask()
     self.mail()
     if self.output == "" or self.output == os.getcwd():
-      for file in self.attachments:
+      for file in self.filelist:
         os.remove(file)
 
   def gen_STtracker(self, customer="all", silent=False):
@@ -78,6 +79,7 @@ class Reporter():
       sys.exit(-1)
     outname = "{}/ST_updates_{}.html".format(self.output, self.now)
     open(outname, 'wb').write(r.content)
+    self.filelist.append(outname)
     if not silent:
       self.attachments.append(outname)
 
@@ -92,6 +94,7 @@ class Reporter():
       q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(self.name), allow_redirects=True)
       outqc = "{}/{}_QC_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
       open(outqc, 'wb').write(q.content)
+      self.filelist.append(outqc)
       if not silent:
         self.attachments.append(outqc)  
     except Exception as e:
@@ -109,6 +112,7 @@ class Reporter():
       r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
       outtype = "{}/{}_Typing_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
       open(outtype, 'wb').write(r.content)
+      self.filelist.append(outtype)
       if not silent:
         self.attachments.append(outtype)
     except Exception as e:
@@ -170,6 +174,7 @@ class Reporter():
       excel.write("{}{}\n".format(pref, hits))
 
     excel.close()
+    self.filelist.append(output)
     if not silent:
       self.attachments.append(output)
 
@@ -201,6 +206,7 @@ class Reporter():
     #json.dumps(report) #Dumps the json directly
     with open(output, 'w') as outfile:
       json.dump(report, outfile)
+    self.filelist.append(output)
     if not silent:
       self.attachments.append(output)
 
