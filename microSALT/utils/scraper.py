@@ -175,15 +175,19 @@ class Scraper():
                 if '>' in elem_list[3]:
                   partials = re.search('>*(\w+_\w+\.*\w+).+\((\w+)\).+\((\w+)\)_(\w+)_\[.+\]', elem_list[3])
                 else:
-                  partials = re.search('(\w+)\(gb\|\w+\)_\((\w+)\)_(.+)_\[(\w+)_.+\]_\[.+\]', elem_list[3])
+                  partials = re.search('(\w+)\(gb\|\w+\)_\((\S+)\)_(.+)_\[(\S+)_.+\]_\[\S+\]', elem_list[3])
                 if not partials:
-                  partials = re.search('(\w+\.*\w+)\:*\(\w+\-\w+\)_\((\w+)\)_(\w+)_\[\w+\.*\w+\-*\w+\.*\w+\]', elem_list[3])
+                  partials = re.search('(\w+\.*\w+)\:*\w*_*(?:\(\w+\-\w+\))*_\((\w+)\)_([^[]+)\[\S+\]', elem_list[3])
+                   
                 #NC/Protein reference
                 hypo[-1]["reference"] = partials.group(1)
                 #Full gene name
                 hypo[-1]["gene"] = partials.group(2)
                 #More generic group
-                hypo[-1]["instance"] = partials.group(3)
+                if partials.group(3)[-1] == '_':
+                  hypo[-1]["instance"] = partials.group(3)[:-1]
+                else:
+                  hypo[-1]["instance"] = partials.group(3)
                 #Description
                 if len(partials.groups()) >= 4:
                   hypo[-1]["virulence"] = partials.group(4).replace('_', ' ').capitalize()

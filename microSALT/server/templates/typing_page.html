@@ -200,7 +200,7 @@
                               <tr>
                                 <td>{{loop.index}}</td>
                                 <td>{{seq_type.gene}}</td>
-                                {% if seq_type.resistance is not none %}
+                                {% if seq_type.resistance != "" %}
                                   <td>{{seq_type.resistance|title}}</td>
                                 {% else %}
                                   <td>{{seq_type.instance|title}}</td>
@@ -247,10 +247,10 @@
                               <tr>
                                 <td>{{loop.index}}</td>
                                 <td>{{seq_type.gene}}</td>
-                                {% if seq_type.virulences is not none %}
-                                  <td>{{seq_type.virulences|title}}</td>
+                                {% if seq_type.virulence != "" %}
+                                  <td>{{seq_type.virulence|title}}</td>
                                 {% else %}
-                                  <td>{{seq_type.instances|title}}</td>
+                                  <td>{{seq_type.instance|title|replace("_", " ")}}</td>
                                 {% endif %}
                                 {% if seq_type.reference is not none %}
                                   <td>{{seq_type.reference}}</td>

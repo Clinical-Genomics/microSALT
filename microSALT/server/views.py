@@ -160,7 +160,7 @@ def gen_reportdata(pid='all', organism_group='all'):
     #Seq_type and resistance sorting
     s.seq_types=sorted(s.seq_types, key=lambda x: x.loci)
     s.resistances=sorted(s.resistances, key=lambda x: x.instance)
-    s.virulences=sorted(s.virulences, key=lambda x: x.instance)
+    s.virulences=sorted(s.virulences, key=lambda x: x.gene)
     output['samples'].append(s)
 
   versions = session.query(Versions).all()
