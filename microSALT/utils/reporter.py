@@ -187,10 +187,12 @@ class Reporter():
             hits += ","
             if gen in tdict[res]:
               hits +="1"
+            else:
+              hits +="0"
         else:
           #Commas eq to res + gen length
-          hits += ",,"
-          pad = [''] * len(resdict[res])
+          hits += ",0,0"
+          pad = ['0'] * len(resdict[res])
           hits += ','.join(pad)
 
       excel.write("{}{}\n".format(pref, hits))
