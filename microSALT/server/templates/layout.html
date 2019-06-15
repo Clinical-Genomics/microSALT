@@ -9,8 +9,9 @@
     name="viewport"
     content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-    <style type="text/css">
-      footer {page-break-after:always }
+  <style type="text/css">
+    footer {page-break-after:always}
+    tr:nth-child(even) {background-color: #e2e2e2}
   </style>
 
   <!-- Bootstrap CSS -->
@@ -20,25 +21,17 @@
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/buttons/1.1.2/css/buttons.bootstrap.min.css">
   <link rel="stylesheet" href="{{url_for('static', filename='style.css')}}">
-
-  
 </head>
 
 <body>
-
   <div id="wrapper">
-    
-        <nav class="navbar navbar-default navbar-static-top" role="navigation" style="margin-bottom: 0">
-            <div class="navbar-header">
-                <a href="{{ url_for('start_page')}}" class="navbar-brand">microSALT </a>
-            </div>
-        </nav>
-        {% block body %}{% endblock %}
-    
+   <nav class="navbar navbar-default navbar-static-top" role="navigation" style="margin-bottom: 0">
+     <div class="navbar-header">
+       <a href="{{ url_for('start_page')}}" class="navbar-brand">microSALT </a>
+     </div>
+   </nav>
+   {% block body %}{% endblock %}
   </div>
-
-    
-  
 
   <!-- Optional JavaScript -->
   <!-- jQuery first, then Popper.js, then Bootstrap JS -->
@@ -48,7 +41,6 @@
   </script>
  
 </body>
-
 </html>
 
 
