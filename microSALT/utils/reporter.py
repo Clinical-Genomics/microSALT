@@ -127,72 +127,73 @@ class Reporter():
     output = "{}/{}_{}_{}.csv".format(self.output,self.name,motif,self.now)
     excel = open(output, "w+")
     sample_info = gen_reportdata(self.name)
-    resdict = dict()
+    motifdict = dict()
 
-    #Load ALL resistance & genes
+    #Load motif & gene names into dict
     for s in sample_info['samples']:
       if motif=='resistance':
         for r in s.resistances:
-          if not (r.resistance in resdict.keys()) and r.threshold == 'Passed':
-            resdict[r.resistance] =list()
-          if r.threshold == 'Passed' and not r.gene in resdict[r.resistance]:
-            resdict[r.resistance].append(r.gene)
+          if not (r.resistance in motifdict.keys()) and r.threshold == 'Passed':
+            motifdict[r.resistance] =list()
+          if r.threshold == 'Passed' and not r.gene in motifdict[r.resistance]:
+            motifdict[r.resistance].append(r.gene)
       elif motif=='virulence':
         for r in s.virulences:
-          if not (r.virulence in resdict.keys()) and r.threshold == 'Passed':
-            resdict[r.virulence] =list()
-          if r.threshold == 'Passed' and not r.gene in resdict[r.virulence]:
-            resdict[r.virulence].append(r.gene)
-    for k, v in resdict.items():
-      resdict[k] = sorted(v)
+          if not (r.virulence in motifdict.keys()) and r.threshold == 'Passed':
+            motifdict[r.virulence] =list()
+          if r.threshold == 'Passed' and not r.gene in motifdict[r.virulence]:
+            motifdict[r.virulence].append(r.gene)
+    for k, v in motifdict.items():
+      motifdict[k] = sorted(v)
 
-    #Header
+    #Top 2 Header
     topline = "Identity {}% & Span {}%,,,".format(self.config['threshold']['motif_id'], self.config['threshold']['motif_span']*100)
     botline = "CG Sample ID,Sample ID,Organism,Sequence Type,Thresholds"
-    for k in sorted(resdict.keys()):
-      genes = [''] * len(resdict[k])
+    for k in sorted(motifdict.keys()):
+      genes = [''] * len(motifdict[k])
       active_gene = k.replace(',',' &')
       if active_gene == "":
         active_gene = "Uncategorized hits"
       geneholder = ','.join(genes)
       topline += ",,{}{}".format(active_gene,geneholder)
-      resnames = ','.join(sorted(resdict[k]))
+      resnames = ','.join(sorted(motifdict[k]))
       botline += ",,{}".format(resnames)
     excel.write("{}\n".format(topline))
     excel.write("{}\n".format(botline))
 
-    #Individual searches
+    #Create each individual roaw past the 2nd, per iteration
     for s in sample_info['samples']:
-      tdict = dict()
+      rowdict = dict()
       pref = "{},{},{},{},{}".format(s.CG_ID_sample,s.Customer_ID_sample, s.organism, s.ST_status, s.threshold)
       #Load single sample
       if motif=='resistance':
         for r in s.resistances:
-          if not (r.resistance in tdict.keys()) and r.threshold == 'Passed':
-            tdict[r.resistance] =list()
-          if r.threshold == 'Passed' and not r.gene in tdict[r.resistance]:
-            tdict[r.resistance].append(r.gene)
+          if not (r.resistance in rowdict.keys()) and r.threshold == 'Passed':
+            rowdict[r.resistance] =dict()
+          if r.threshold == 'Passed' and not r.gene in rowdict[r.resistance]:
+            rowdict[r.resistance][r.gene] = r.identity
       elif motif=="virulence":
         for r in s.virulences:
-          if not (r.virulence in tdict.keys()) and r.threshold == 'Passed':
-            tdict[r.virulence] =list()
-          if r.threshold == 'Passed' and not r.gene in tdict[r.virulence]:
-            tdict[r.virulence].append(r.gene)
+          if not (r.virulence in rowdict.keys()) and r.threshold == 'Passed':
+            rowdict[r.virulence] =dict()
+          if r.threshold == 'Passed' and not r.gene in rowdict[r.virulence]:
+            rowdict[r.virulence][r.gene] = r.identity
       #Compare single sample to all
       hits = ""
-      for res in sorted(resdict.keys()):
-        if res in tdict.keys():
+      for res in sorted(motifdict.keys()):
+        if res in rowdict.keys():
           hits += ",1"
-          for gen in sorted(resdict[res]):
+          for gen in sorted(motifdict[res]):
             hits += ","
-            if gen in tdict[res]:
-              hits +="1"
+            if gen in rowdict[res].keys():
+              #UPD: Change this to identity of hit
+              hits +="{}".format(rowdict[res][gen])
             else:
               hits +="0"
         else:
           #Commas eq to res + gen length
           hits += ",0,0"
-          pad = ['0'] * len(resdict[res])
+          pad = ['0'] * len(motifdict[res])
           hits += ','.join(pad)
 
       excel.write("{}{}\n".format(pref, hits))
