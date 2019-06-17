@@ -48,9 +48,9 @@
     "_comment": "Typing thresholds",
     "mlst_id": 100,
     "mlst_novel_id": 99.5,
-    "mlst_span": 0.9,
+    "mlst_span": 90,
     "motif_id": 97,
-    "motif_span": 0.9
+    "motif_span": 90,
     "_comment": "Quality Control thresholds",
     "total_reads_warn": 75,
     "total_reads_fail": 70,
@@ -68,7 +68,7 @@
     "bp_10x_fail": 80,
     "bp_30x_warn": 70,
     "bp_50x_warn": 50,
-    "bp_100x_warn": 20,
+    "bp_100x_warn": 20
   },
 
   "_comment": "Genologics temporary configuration file",
