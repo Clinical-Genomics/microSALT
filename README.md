@@ -33,20 +33,6 @@ export MICROSALT_CONFIG=/MY/FAV/FOLDER/config.json
 
 __Then edit the fields to match your environment__.
 
-### Genologics Configuration
-_Genologics ( https://github.com/SciLifeLab/genologics ) is likely already installed on your system. If such, this section can be skipped_
-
-Create `$HOME/.genologicsrc` with the following formatting:
-```
-[genologics]
-BASEURI=https://yourlims.corporation.se/
-USERNAME=your_username
-PASSWORD=your_password
-[logging]
-MAIN_LOG=/tmp/lims.log
-```
-
-
 ## Usage
 * `microSALT analyse` contains functions to start sbatch job(s) & produce output to `folders['results']`. Afterwards the parsed results  are uploaded to the SQL back-end and produce reports (HTML), which are then automatically e-mailed to the user.
 * `microSALT utils` contains various functionality, including adding manually new reference organisms and re-generating reports.

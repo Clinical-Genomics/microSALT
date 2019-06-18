@@ -6,6 +6,7 @@ import json
 import requests
 import time
 import os
+import socket
 import sys
 import smtplib
 
@@ -49,6 +50,7 @@ class Reporter():
     elif type == 'default':
       self.gen_typing()
       self.gen_qc()
+      self.gen_json(silent=True)
       #self.gen_resistence()
     elif type == 'typing':
       self.gen_typing()
@@ -66,7 +68,7 @@ class Reporter():
       for file in self.attachments:
         os.remove(file)
 
-  def gen_STtracker(self, customer="all"):
+  def gen_STtracker(self, customer="all", silent=False):
     self.name ="Sequence Type Update"
     try:
       r = requests.get("http://127.0.0.1:5000/microSALT/STtracker/{}".format(customer), allow_redirects=True)
@@ -76,9 +78,10 @@ class Reporter():
       sys.exit(-1)
     outname = "{}/ST_updates_{}.html".format(self.output, self.now)
     open(outname, 'wb').write(r.content)
-    self.attachments.append(outname)
+    if not silent:
+      self.attachments.append(outname)
 
-  def gen_qc(self):
+  def gen_qc(self,silent=False):
     try:
       self.ticketFinder.load_lims_project_info(self.name)
     except Exception as e:
@@ -89,12 +92,13 @@ class Reporter():
       q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(self.name), allow_redirects=True)
       outqc = "{}/{}_QC_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
       open(outqc, 'wb').write(q.content)
-      self.attachments.append(outqc)  
+      if not silent:
+        self.attachments.append(outqc)  
     except Exception as e:
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.error = True
  
-  def gen_typing(self):
+  def gen_typing(self,silent=False):
     try:
       self.ticketFinder.load_lims_project_info(self.name)
     except Exception as e:
@@ -105,12 +109,13 @@ class Reporter():
       r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
       outtype = "{}/{}_Typing_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
       open(outtype, 'wb').write(r.content)
-      self.attachments.append(outtype)
+      if not silent:
+        self.attachments.append(outtype)
     except Exception as e:
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.error = True
 
-  def gen_resistence(self):
+  def gen_resistence(self, silent=False):
     self.ticketFinder.load_lims_project_info(self.name)
     output = "{}/{}_{}.csv".format(self.output,self.name,self.now)
     excel = open(output, "w+")
@@ -165,9 +170,10 @@ class Reporter():
       excel.write("{}{}\n".format(pref, hits))
 
     excel.close()
-    self.attachments.append(output)
+    if not silent:
+      self.attachments.append(output)
 
-  def gen_json(self):
+  def gen_json(self, silent=False):
     report = dict()
     output = "{}/{}_{}.json".format(self.output, self.name, self.now)
 
@@ -183,6 +189,10 @@ class Reporter():
 
       report[s.CG_ID_sample]['blast_pubmlst'] = {'sequence_type':s.ST_status, 'thresholds':s.threshold}
       report[s.CG_ID_sample]['quast_assembly'] = {'estimated_genome_length':s.genome_length, 'gc_percentage':float(s.gc_percentage), 'n50':s.n50, 'necessary_contigs':s.contigs}
+      report[s.CG_ID_sample]['picard_markduplicate'] = {'insert_size':s.insert_size, 'duplication_rate':s.duplication_rate}
+      report[s.CG_ID_sample]['microsalt_samtools_stats'] = {'total_reads':s.total_reads, 'mapped_rate':s.mapped_rate, 'average_coverage':s.average_coverage, \
+                                                            'coverage_10x':s.coverage_10x, 'coverage_30x':s.coverage_30x, \
+                                                            'coverage_50x':s.coverage_50x, 'coverage_100x':s.coverage_100x}
 
       for r in s.resistances:
         if not (r.gene in report[s.CG_ID_sample]['blast_resfinder_resistence']) and r.threshold == 'Passed':
@@ -191,7 +201,8 @@ class Reporter():
     #json.dumps(report) #Dumps the json directly
     with open(output, 'w') as outfile:
       json.dump(report, outfile)
-    self.attachments.append(output)
+    if not silent:
+      self.attachments.append(output)
 
   def mail(self):
     file_name = self.attachments
@@ -200,7 +211,7 @@ class Reporter():
       msg['Subject'] = '{} ({}) Reports'.format(self.name, file_name[0].split('_')[0])
     else:
       msg['Subject'] = '{} ({}) Failed Generating Report'.format(self.name, file_name[0].split('_')[0])
-    msg['From'] = 'microSALT'
+    msg['From'] = 'microSALT@{}'.format(socket.gethostname())
     msg['To'] = self.config['regex']['mail_recipient']
    
     if not self.error: 
@@ -213,7 +224,7 @@ class Reporter():
     s.connect()
     s.sendmail(msg['From'], msg['To'], msg.as_string())
     s.quit()
-    self.logger.info("Mail containing report sent to {}".format(msg['To'])) 
+    self.logger.info("Mail containing report sent to {} from {}".format(msg['To'], msg['From'])) 
 
   def start_web(self):
     self.server.start()
