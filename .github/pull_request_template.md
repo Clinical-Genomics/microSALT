@@ -9,8 +9,9 @@ If not self-evident obvious, also mention what prompted the change._
 - [ ] Hotfix
 - [ ] Patch
 - [ ] Minor functionality improvement
-- [ ] New type of analysis
+- [ ] New type of analysis
 - [ ] Backward-breaking functionality improvement
+
 
 - [ ] This change requires internal documents to be updated
 - [ ] This change requires another repository to be updated
