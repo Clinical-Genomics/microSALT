@@ -15,11 +15,11 @@
               <h3><strong>Project Summary</strong><br></h3>
               <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
                   <tr>
-                    <td><b>Project ID <i>(CG Project ID)</i></b>
+                    <td><b>Projekt ID <i>(CG Projekt ID)</i></b>
                     <td>{{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></td>
                   </tr>
                   <tr>
-                    <td><b>Analysis date</b></td>
+                    <td><b>Analysdatum</b></td>
                     <td>{{samples[0].date_analysis.date()}}</td>
                   </tr>
                 </table>
@@ -29,33 +29,35 @@
               <div class="table-responsive">
                 <table  class="table table-bordered" style='table-layout:fixed;'>
                   <tr>
-                    <th>Sample ID</th>
-                    <th>CG Sample ID</th>
-                    <th>Reference Genome</th>
+                    <th>Prov ID</th>
+                    <th>CG Prov ID</th>
+                    <th>Applikationstag</th>
                     <th>Organism</th>
-                    <th>Total Reads</th>
-                    <th>Mapping rate %</th>
-                    <th>Duplication Rate %</th>
-                    <th>Median Insert Size</th>
-                    <th>Average coverage</th>
-                    <th>%BP > 10x Coverage</th>
-                    <th>%BP > 30x Coverage</th>
-                    <th>%BP > 50x Coverage</th>
-                    <th>%BP > 100x Coverage</th>
+                    <th>Referensgenome</th>
+                    <th>Antal Reads</th>
+                    <th>Mappningsgrad %</th>
+                    <th>Duplikationsgrad %</th>
+                    <th>Insert Storlek (Median)</th>
+                    <th>Medeltäckning</th>
+                    <th>%BP > 10x Täckning</th>
+                    <th>%BP > 30x Täckning</th>
+                    <th>%BP > 50x Täckning</th>
+                    <th>%BP > 100x Täckning</th>
 
                   </tr>
                   {% for sample in samples %}
                     <tr>
                       <td>{{ sample.Customer_ID_sample }}</td>
                       <td>{{ sample.CG_ID_sample }}</td>
-                      <td>{{ sample.reference_genome }}</td>
+                      <td>{{ sample.application_tag }}</td>
                       {% if sample.organism is not none %}
                         <td>{{sample.organism.replace('_', ' ').capitalize()}}</td>
                       {% else %}<td>Undetermined</td>{% endif %}
+                      <td>{{ sample.reference_genome }}</td>
                       <td class="text-right">
                         {% if sample.total_reads is none %}
                           0
-                        {% else %} {{'{0:,}'.format(sample.total_reads)|replace(","," ")}} {% endif %}
+                        {% else %} {{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{(sample.total_reads/((sample.application_tag[-1:]|float)*10000))|round(2)}}%){% endif %}
                       </td>
                       <td class="text-right">
                         {% if sample.mapped_rate is none or sample.mapped_rate == 0 %}

@@ -64,8 +64,8 @@
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                   <tr>
                     <th>Prov ID (*)</th>
-                    <th>Organism (*)</th>
                     <th>Applikationstag (*)</th>
+                    <th>Organism (*)</th>
                     <th>Ankomstdatum</th>
                     <th>Datum prep</th>
                     <th>Metod prep</th>
@@ -77,28 +77,22 @@
                   {% for sample in samples %}
                     <tr>
                       <td>{{sample.Customer_ID_sample}}</td>
-                      <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
                       <td>{{sample.application_tag}}</td>
+                      <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
                       <td>{{samples[0].projects.date_ordered.date()}}</td>
                       {% if sample.date_libprep is not none %}
                         <td>{{sample.date_libprep.date()}}</td>
                       {% else %}
-                        <td><i>Unknown</i></td>
-                      {% endif %}
-                      {% if sample.ST_status == 'None' or sample.ST == -1 %}
-                        <td><font color="red">{{ sample.ST_status }}</font></td>
-                      {% elif sample.ST <= -4 %}
-                        <td>I{{sample.ST|int|abs}} (Novel)</td>                  
-                        <td>0000-00-00</td>
+                        <td><i>Okänd</i></td>
                       {% endif %}
                       <td>{{sample.method_libprep}}</td>
                       {% if sample.date_sequencing is not none %}
                         <td>{{sample.date_sequencing.date()}}</td>
                       {% else %}
-                        <td>0000-00-00</td>
+                        <td><i>Okänd</i></td>
                       {% endif %}
                       <td>{{sample.method_sequencing}}</td>
-                      <td>{{sample.priority}}</td>
+                      <td>{{sample.priority.capitalize()}}</td>
                       {% if sample.priority == 'standard' %}
                         <td><i>✔︎</i></td>
                       {% else %}
@@ -172,7 +166,7 @@
             <footer>
               <div class="panel">
                 <div class="panel-body">
-                  <h2 class="page-header"><div class="row"></div><strong>microSALT Resultat</strong><br>
+                  <h2 class="page-header"><div class="row"></div><strong>Detaljresultat</strong><br>
                     <small>Klinisk Mikrobiologi</small>
                     <small><p align="center">Rapport genererad: {{date}}</p></small></h2>
                     {% if sample.priority == 'standard' %}
@@ -221,13 +215,13 @@
                     </tr>
                     {% if sample.organism in version %}
                       <tr>
-                        <th scope="row">Version av referens</th>
+                        <th scope="row">Referensversion</th>
                         <td>{{version[sample.organism]}}</td>
                       </tr>
                     {% endif %}
                     {% if sample.priority is not none %}
                       <tr>
-                        <th scope="row">Priority</th>
+                        <th scope="row">Prioritet</th>
                         <td>{{sample.priority}}</td>
                       </tr>
                     {% endif %}
@@ -293,7 +287,7 @@
                           <th width="15%">Referens</th>
                           <th width="20%">Kmer Täckning</th>
                           <th>Identitet %</th>
-                          <th>Längd %</th>
+                          <th>Längd (HSP) %</th>
                         </tr>
                       </thead>
                       <tbody>
