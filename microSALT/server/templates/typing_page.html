@@ -10,7 +10,7 @@
               <!--<img src="swedac.jpg" alt="Swedac Logo" align="right" style="display:flex;">-->
               <img src="https://github.com/Clinical-Genomics/microSALT/blob/accreditation-changes-to-report/artwork/swedac.jpg?raw=true" alt="Swedac Logo" align="right" style="display:flex;">
               <h2 class="page-header">
-                <small><br><br>Klinisk Mikrobiologi</small>
+                <small><br><br>Typningsrapport</small>
               <small><p align="center">Rapport genererad: {{date}}</p></small></h2>
               <div class="row">
                 <div class="col">
@@ -234,7 +234,7 @@
                   </footer>
                 {% endif %}
                 </div>
-            <!-- </footer> -->
+           <!-- </footer> -->
           {% if sample.genome_length > -1 %}
 
           <!--  <footer> -->
@@ -245,6 +245,7 @@
                   {% if not sample.seq_types|length == 0 and 'Invalid' not in sample.ST_status%}
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                       <h4>MLST</h4>
+                      <h6>Identity threshold: {{threshold.mlst_id}}%, Span threshold: {{(threshold.mlst_span*100)|round(2)}}%, Novel suspicion threshold: {{threshold.mlst_novel_id}}%</h6>
                       <thead>
                         <tr>
                           <th width="4%">#</th>
@@ -275,6 +276,7 @@
                   {% if not sample.resistances|selectattr('threshold', 'equalto', 'Passed')|list|length == 0 %}
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                     <h4>Resistenser</h4>
+                      <h6>Identity threshold: {{threshold.motif_id}}%, Span threshold: {{(threshold.motif_span*100)|round(2)}}%</h6>
                       <thead>
                         <tr>
                           <th width="4%">#</th>
