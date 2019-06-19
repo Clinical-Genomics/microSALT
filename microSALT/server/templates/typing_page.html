@@ -6,11 +6,14 @@
           <!-- Summary pages  -->
           <footer>
             <div class="panel"><div class="panel-body">
-              <a href="https://github.com/Clinical-Genomics/microSALT"><img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" alt="MicroSALT Logo" align="left" style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
+              <a href="https://github.com/Clinical-Genomics/microSALT">
+              <img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" \
+              alt="MicroSALT Logo" align="left" \
+              style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
               <!--<img src="swedac.jpg" alt="Swedac Logo" align="right" style="display:flex;">-->
               <img src="https://github.com/Clinical-Genomics/microSALT/blob/accreditation-changes-to-report/artwork/swedac.jpg?raw=true" alt="Swedac Logo" align="right" style="display:flex;">
               <h2 class="page-header">
-                <small><br><br>Typningsrapport</small>
+                <small><br><br><br>Typningsrapport</small>
               <small><p align="center">Rapport genererad: {{date}}</p></small></h2>
               <div class="row">
                 <div class="col">
@@ -49,49 +52,48 @@
                       </tr>
                     </table></div>
               </div></div>
-              <br />
 
               <div class="panel"><div class="panel-body">
                 <h3>Provsammanställning<br></h3>
                   <div class="table-responsive">
                     <table  class="table table-bordered" style='table-layout:fixed;'>
-                  <tr>
-                    <th>Prov ID (*)</th>
-                    <th>Applikationstag (*)</th>
-                    <th>Organism (*)</th>
-                    <th>Ankomstdatum</th>
-                    <th>Datum prep</th>
-                    <th>Metod prep</th>
-                    <th>Datum sekvensering</th>
-                    <th>Metod sekvensering</th>
-                    <th>Prioritet (*)(**)</th>
-                    <th>Verifierad</th>
-                  </tr>
-                  {% for sample in samples %}
-                    <tr>
-                      <td>{{sample.Customer_ID_sample}}</td>
-                      <td>{{sample.application_tag}}</td>
-                      <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
-                      <td>{{samples[0].projects.date_ordered.date()}}</td>
-                      {% if sample.date_libprep is not none %}
-                        <td>{{sample.date_libprep.date()}}</td>
-                      {% else %}
-                        <td><i>Okänd</i></td>
-                      {% endif %}
-                      <td>{{sample.method_libprep}}</td>
-                      {% if sample.date_sequencing is not none %}
-                        <td>{{sample.date_sequencing.date()}}</td>
-                      {% else %}
-                        <td><i>Okänd</i></td>
-                      {% endif %}
-                      <td>{{sample.method_sequencing}}</td>
-                      <td>{{sample.priority.capitalize()}}</td>
-                      {% if sample.priority == 'standard' %}
-                        <td><i>✔︎</i></td>
-                      {% else %}
-                        <td><i>-</i></td>
-                      {% endif %}
+                      <tr>
+                        <th>Prov ID (*)</th>
+                        <th>Applikationstag (*)</th>
+                        <th>Organism (*)</th>
+                        <th>Ankomstdatum</th>
+                        <th>Datum prep</th>
+                        <th>Metod prep</th>
+                        <th>Datum sekvensering</th>
+                        <th>Metod sekvensering</th>
+                        <th>Prioritet (*)(**)</th>
+                        <th>Verifierad</th>
                       </tr>
+                      {% for sample in samples %}
+                        <tr>
+                          <td>{{sample.Customer_ID_sample}}</td>
+                          <td>{{sample.application_tag}}</td>
+                          <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
+                          <td>{{samples[0].projects.date_ordered.date()}}</td>
+                          {% if sample.date_libprep is not none %}
+                            <td>{{sample.date_libprep.date()}}</td>
+                          {% else %}
+                            <td><i>Okänd</i></td>
+                          {% endif %}
+                          <td>{{sample.method_libprep}}</td>
+                          {% if sample.date_sequencing is not none %}
+                            <td>{{sample.date_sequencing.date()}}</td>
+                          {% else %}
+                            <td><i>Okänd</i></td>
+                          {% endif %}
+                          <td>{{sample.method_sequencing}}</td>
+                          <td>{{sample.priority.capitalize()}}</td>
+                          {% if sample.priority == 'standard' %}
+                            <td><i>✔︎</i></td>
+                          {% else %}
+                            <td><i>-</i></td>
+                          {% endif %}
+                        </tr>
                       {% endfor %}
                     </table>
                   </div>
@@ -150,6 +152,44 @@
 	    </div></div>
           </footer>
 
+          <footer>
+            <div class="panel"><div class="panel-body">
+
+              <h3><strong>Teknisk beskrivning av analysen : {{samples[0].application_tag}}</strong><br></h3>
+              <p>
+              Mikrobiell helgenomssekvensering av rutinprov, med krav på minst 3 miljoner läspar.
+              Nextera library preparation.
+              <br></p>
+
+              <h3><strong>Begränsningar av analysen : {{samples[0].application_tag}}</strong><br></h3>
+              <p>
+              Analysen kan enbart att beställas av gruppen Klinisk Mikrobiologi.
+              Typningen utgår från de publikt tillgängliga databaserna pubMLST och resFinder.
+              Typningen av prover är enbart att anses som tillförlitlig om desamma uppnår de fördefinierade tröskelvärdena.
+              Uppnåelse av tröskelvärdena garanteras i sin tur enbart för prover som vars förhantering och detaljer tidigare verifierats av personal på Clinical Genomics.
+              </p>
+
+              <h3><strong>Avvikelser från metoden</strong><br></h3>
+              <p>
+              All kommunikation gällande order såsom tillägg, avvikelser eller
+              ev undantag i metoden från Clinical Genomics finns tillgängligt i
+              SupportSystem för dess ticket id. En stängd ticket kan närsomhelst
+              öppnas upp igen för frågor.
+              </p>
+
+              <h3><strong>Signatur för godkännande av rapport</strong><br></h3>
+              <p>
+                Valtteri Wirta<br>
+                Head of unit, Clinical Genomics
+              </p>
+
+              <div class="text-muted text-center">Slut på rapport</div>
+
+            </div>
+            </div>
+          </footer>
+
+
           <!-- Sample pages -->
           {% for sample in samples %}
             <footer>
@@ -157,14 +197,13 @@
         	<div class="panel-body">
         	  <h2 class="page-header"><div class="row"></div><strong>Detaljresultat</strong><br>
         	  <small>Klinisk Mikrobiologi</small>
-        	  <small><p align="center">Rapport genererad: {{date}}</p></small></h2>
                   {% if sample.priority == 'standard' %}
                     <img src="https://github.com/Clinical-Genomics/microSALT/blob/accreditation-changes-to-report/artwork/swedac.jpg?raw=true" alt="Swedac Logo" \
                     align="right" style="width:40px;height:60px;display:flex;">
                   {% else %}
                     <p align="right">Icke verifierad organism</p>
                   {% endif %}
-
+                  <small><p align="center">Rapport genererad: {{date}}</p></small></h2>
         	  <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
         	    <h4>Översikt</h4>
         	    <tr>
@@ -212,7 +251,7 @@
         	    {% if sample.priority is not none %}
         	      <tr>
         		<th scope="row">Prioritet</th>
-        		<td>{{sample.priority}}</td>
+        		<td>{{sample.priority.capitalize()}}</td>
         	      </tr>
         	    {% endif %}
         	  </table></div>
@@ -225,61 +264,54 @@
         	      <tr><th scope="row" >Nödvändiga contigs</th><td>{{sample.contigs}}</td></tr>
         	  </table></div>
         	{% else %}
-                  <i>No assembly data found</i>
+                  <i>Assemblydata saknas</i>
         	{% endif %}
         	</div>
 
                 {% if sample.genome_length > -1 %}
-                  <div class="panel"><div class="panel-body"><div class="table-responsive">
-                  <table  class="table table-bordered" style='table-layout:fixed;'>
+                  <div class="panel"><div class="panel-body">
                   <h4>MLST</h4>
-                  <h6>Identity threshold: {{threshold.mlst_id}}%, Span threshold: {{(threshold.mlst_span*100)|round(2)}}%, Novel suspicion threshold: {{threshold.mlst_novel_id}}%</h6>
+                  <h6>Identitetströskel: {{threshold.mlst_id}}%, Längdtröskel: {{(threshold.mlst_span*100)|round(2)}}%, Novel misstankströskel: {{threshold.mlst_novel_id}}%</h6>
+                  <div class="table-responsive"><table  class="table table-bordered" style='table-layout:fixed;'>
                   {% if not sample.seq_types|length == 0 and 'Invalid' not in sample.ST_status%}
-                      <thead>
-                        <tr>
-                          <th width="4%">#</th>
-                          <th width="30%">Loci</th>
-                          <th width="20%">Allel</th>
-                          <th width="20%">Kmer Täckning</th>
-                          <th>Identitet %</th>
-                          <th>Längd %</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {% for seq_type in sample.seq_types if seq_type.st_predictor%}
-                          <tr>
-                            <td>{{loop.index}}</td>
-                            <td>{{seq_type.loci}}</td>
-                            <td>{{seq_type.allele}}</td>
-                            <td>{{seq_type.contig_coverage|round(2)}}x</td>
-                            <td>{{seq_type.identity|round(2)}}%</td>
-                            <td>{{(seq_type.span*100)|round(2)}}%</td>
-                          </tr>
-                        {% endfor %}
-                     </tbody>
-                    </table>
+                    <tr>
+                      <th width="4%">#</th>
+                      <th width="30%">Loci</th>
+                      <th width="20%">Allel</th>
+                      <th width="20%">Kmer Täckning</th>
+                      <th>Identitet %</th>
+                      <th>Längd %</th>
+                    </tr>
+                  {% for seq_type in sample.seq_types if seq_type.st_predictor%}
+                    <tr>
+                      <td>{{loop.index}}</td>
+                      <td>{{seq_type.loci}}</td>
+                      <td>{{seq_type.allele}}</td>
+                      <td>{{seq_type.contig_coverage|round(2)}}x</td>
+                      <td>{{seq_type.identity|round(2)}}%</td>
+                      <td>{{(seq_type.span*100)|round(2)}}%</td>
+                    </tr>
+                  {% endfor %}
+                  </table>
                   {% else %}
-                    <i>No MLST data found</i>
+                    <i>MLST data saknas</i>
                   {% endif %}
                   </div>
 
                   <div class="table-responsive">
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                     <h4>Resistenser</h4>
-                    <h6>Identity threshold: {{threshold.motif_id}}%, Span threshold: {{(threshold.motif_span*100)|round(2)}}%</h6>
+                    <h6>Identitetströskel: {{threshold.motif_id}}%, Längdtröskel: {{(threshold.motif_span*100)|round(2)}}%</h6>
                     {% if not sample.resistances|selectattr('threshold', 'equalto', 'Passed')|list|length == 0 %}
-                      <thead>
                         <tr>
                           <th width="4%">#</th>
                           <th width="15%">Gen</th>
-                          <th width="20%">Typ</th>
+                          <th width="20%">Grupp</th>
                           <th width="15%">Referens</th>
                           <th width="20%">Kmer Täckning</th>
                           <th>Identitet %</th>
                           <th>Längd (HSP) %</th>
                         </tr>
-                      </thead>
-                      <tbody>
                         {% for seq_type in sample.resistances if seq_type.threshold == 'Passed' %}
                           <tr>
                            <td>{{loop.index}}</td>
@@ -303,10 +335,9 @@
                             {% endif %}
                           </tr>
                         {% endfor %}
-                      </tbody>
                     </table>
                     {% else %}
-                      <i>No typing data found</i>
+                      <i>Resistensdata saknas</i>
                     {% endif %}
                   </div>
                 {% endif %}
@@ -314,42 +345,6 @@
               </div>
             </footer>
           {% endfor %}
-          <footer>
-            <div class="panel"><div class="panel-body">
-
-              <h3><strong>Teknisk beskrivning av analysen : {{samples[0].application_tag}}</strong><br></h3>
-              <p>
-              Mikrobiell helgenomssekvensering av rutinprov. Minst 3 miljoner läspar. Nextera prep.<br>
-
-              </p>
-
-              <h3><strong>Begränsningar av analysen : {{samples[0].application_tag}}</strong><br></h3>
-              <p>
-              Analysen kan enbart att beställas av gruppen klinisk mikrobiologi.
-              Typningen utgår från de publikt tillgängliga databaserna pubMLST och resFinder.
-              Typningen av prover är enbart att anses som tillförlitlig om desamma uppnår de fördefinierade tröskelvärdena.
-              Uppnåelse av tröskelvärdena garanteras i sin tur enbart för de prover som flaggats som ackrediterade.
-              </p>
-
-              <h3><strong>Avvikelser från metoden</strong><br></h3>
-              <p>
-              All kommunikation gällande ordern såsom tillägg, avvikelser eller
-              ev undantag i metoden från Clinical Genomics finns tillgängligt i
-              SupportSystem för dess ticket id. En stängd ticket kan närsomhelst
-              öppnas upp igen för frågor.
-              </p>
-
-              <h3><strong>Signatur för godkännande av rapport</strong><br></h3>
-              <p>
-                Valtteri Wirta<br>
-                Head of unit, Clinical Genomics
-              </p>
-
-              <div class="text-muted text-center">Slut på rapport</div>
-
-            </div>
-            </div>
-          </footer>
 
         </div>
       </div>

@@ -6,24 +6,53 @@
           <!-- Summary pages  -->
           <footer>
             <div class="panel"><div class="panel-body">
-              <a href="https://github.com/Clinical-Genomics/microSALT"><img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" alt="MicroSALT Logo" align="left" style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
+              <a href="https://github.com/Clinical-Genomics/microSALT">
+              <img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" \
+              alt="MicroSALT Logo" align="left" \
+              style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
               <!--<img src="swedac.jpg" alt="Swedac Logo" align="right" style="display:flex;">-->
               <h2 class="page-header">
-                <small><br><br>Kvalitetskontrollsrapport</small>
-              <small><p align="right">{{date}}</p></small></h2>
+                <small><br><br><br>Kvalitetskontrollsrapport</small>
 
-              <h3><strong>Projektsammanställning</strong><br></h3>
-              <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
-                  <tr>
-                    <td><b>Projekt ID <i>(CG Projekt ID)</i></b>
-                    <td>{{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></td>
-                  </tr>
-                  <tr>
-                    <td><b>Analysdatum</b></td>
-                    <td>{{samples[0].date_analysis.date()}}</td>
-                  </tr>
-                </table>
+              <small><p align="center">Rapport genererad: {{date}}</p></small></h2>
+              <div class="row">
+                <div class="col">
+                 <h3>Kontakt Clinical Genomics</h3>
+                 <address>
+                   <strong>Clinical Genomics</strong><br>
+                   Science for Life Laboratory<br>
+                   Tomtebodavägen 23<br>
+                   171 65 Solna<br>
+                  <abbr title="Phone">P:</abbr> (08) 524 81 500
+                 </address>
               </div>
+               <div class="col">
+                 <h3>Kund:</h3>
+                 <address>
+                 <h2>{{samples[0].projects.Customer_ID}}</h2><br>
+                </address>
+              </div>
+              <br />
+              <br />
+
+              <div class="panel"><div class="panel-body">
+                <h3>Projektsammanställning<br></h3>
+                    <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
+                      <tr>
+                      <td><b>Ticket ID <i>(CG Projekt ID)</i></b>
+                        <td>{{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></td>
+                      </tr>
+                      <tr>
+                      <td><b>Kund ID (*)</b>
+                        <td>{{samples[0].projects.Customer_ID}}<i></i></td>
+                      </tr>
+                      <tr>
+                        <td><b>microSALT version</b></td>
+                        <td>{{build}}</td>
+                      </tr>
+                    </table></div>
+              </div></div>
+              <br />
 
               <h3><strong>Provsammanställning</strong><br></h3>
               <div class="table-responsive">
@@ -33,7 +62,7 @@
                     <th>CG Prov ID</th>
                     <th>Applikationstag</th>
                     <th>Organism</th>
-                    <th>Referensgenome</th>
+                    <th>Referensgenom</th>
                     <th>Antal Reads</th>
                     <th>Mappningsgrad %</th>
                     <th>Duplikationsgrad %</th>
@@ -105,6 +134,25 @@
                   {% endfor %}
                 </table>
               </div>
+              <h3><strong>Begränsningar av analysen : {{samples[0].application_tag}}</strong><br></h3>
+              <p>
+              -
+              </p>
+
+              <h3><strong>Avvikelser från metoden</strong><br></h3>
+              <p>
+              All kommunikation gällande ordern såsom tillägg, avvikelser eller
+              ev undantag i metoden från Clinical Genomics finns tillgängligt i
+              SupportSystem för dess ticket id. En stängd ticket kan närsomhelst
+              öppnas upp igen för frågor.
+              </p>
+
+              <h3><strong>Signatur för godkännande av rapport</strong><br></h3>
+              <p>
+                Valtteri Wirta<br>
+                Head of unit, Clinical Genomics
+              </p>
+              <div class="text-muted text-center">Slut på rapport</div>
               </div>
             </div>
           </footer>
