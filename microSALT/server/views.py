@@ -135,7 +135,7 @@ def gen_reportdata(pid='all', organism_group='all'):
     else:
       s.threshold = 'Failed'
 
-    if not 'Control' in s.ST_status and s.ST < 0:
+    if not ('Control' in s.ST_status or 'Kontroll' in s.ST_status) and s.ST < 0:
       if s.ST == -1:
         s.ST_status = 'Invalid data'
       elif (s.ST <= -4 or s.ST == -2) and s.threshold == 'Passed':
