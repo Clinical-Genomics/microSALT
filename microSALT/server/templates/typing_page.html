@@ -32,26 +32,23 @@
               <br />
               <br />
 
-
               <div class="panel"><div class="panel-body">
                 <h3>Projektsammanställning<br></h3>
                     <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
-                          <tr>
-                          <td><b>Ticket ID <i>(CG Projekt ID)</i></b>
-                            <td>{{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></td>
-                          </tr>
-                          <tr>
-                          <td><b>Kund ID (*)</b>
-                            <td>{{samples[0].projects.Customer_ID}}<i></i></td>
-                          </tr>
-                          <tr>
-                            <td><b>Version av analys pipeline</b></td>
-                            <td>{{build}}</td>
-                          </tr>
-                        </table>
-                      </div>
-                </div>
-              </div>
+                      <tr>
+                      <td><b>Ticket ID <i>(CG Projekt ID)</i></b>
+                        <td>{{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></td>
+                      </tr>
+                      <tr>
+                      <td><b>Kund ID (*)</b>
+                        <td>{{samples[0].projects.Customer_ID}}<i></i></td>
+                      </tr>
+                      <tr>
+                        <td><b>microSALT version</b></td>
+                        <td>{{build}}</td>
+                      </tr>
+                    </table></div>
+              </div></div>
               <br />
 
               <div class="panel"><div class="panel-body">
@@ -100,152 +97,144 @@
                   </div>
                 </div>
                 <p>
-                  (*) Information om prover som kommer från kund <br/>
-                  (**) Standard = Verifierad organim,
-                  Research = Icke verifierad organism <br/>
-                  Kvalitetskontrollen har verifierats för ett antal bestämda organismer.
-                  För andra organismer kan ej kriterierna för metoden appliceras.
-
-              </div>
-         </footer>
+                (*) Information om prover som kommer från kund <br/>
+                (**) Standard = Verifierad organim,
+                Research = Icke verifierad organism <br/>
+                Kvalitetskontrollen har verifierats för ett antal bestämda organismer.
+                För andra organismer kan ej kriterierna för metoden appliceras.
+            </div>
+          </footer>
 
 
           <footer>
-              <div class="panel"><div class="panel-body">
-                <h3>Resultatsammanställning(***)<br></h3>
-                <p>
-                 (***) Laboratoriet har inte haft ansvar för provtagningsstadiet och
-                 extraktion, resultaten gäller för provet såsom det har mottagits.
-                 </p>
-                <div class="table-responsive">
-                  <table  class="table table-bordered" style='table-layout:fixed;'>
+            <div class="panel"><div class="panel-body">
+              <h3>Resultatsammanställning(***)<br></h3>
+              <p>
+              (***) Laboratoriet har inte haft ansvar för provtagningsstadiet och
+              extraktion, resultaten gäller för provet såsom det har mottagits.
+              </p>
+              <div class="table-responsive">
+                <table  class="table table-bordered" style='table-layout:fixed;'>
+                  <tr>
+                    <th>Prov ID(*)</th>
+                    <th>CG Prov ID</th>
+                    <th>Organism (*)</th>
+                    <th>Sekvenstyp</th>
+                    <th>Tröskelvärden</th>
+                  </tr>
+                  {% for sample in samples %}
                     <tr>
-                      <th>Prov ID(*)</th>
-                      <th>CG Prov ID</th>
-                      <th>Organism (*)</th>
-                      <th>Sekvenstyp</th>
-                      <th>Tröskelvärden</th>
-                    </tr>
-                    {% for sample in samples %}
-                      <tr>
-                        <td>{{sample.Customer_ID_sample}}</td>
-                        <td>{{sample.CG_ID_sample}}</td>
-                        {% if sample.organism is not none %}
-                          <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
-                          {% else %}
-                          <td><i>Kontroll</i></td>
-                        {% endif %}
-                          {% if sample.ST_status == 'None' or sample.ST == -1 %}
-                          <td><font color="red">{{ sample.ST_status }}</font></td>
-                          {% elif sample.ST <= -4 %}
-                          <td>{{sample.ST}} (Novel)</td>
-                          {% else %}
-                          <td>{{sample.ST_status }}</td>
-                          {% endif %}
-                          {% if sample.threshold == 'Failed' %}
-                          <td><font color="red">Underkända</font></td>
-                          {% else %}
-                          <td>Godkända</td>
-                          {% endif %}
-                        </tr>
-                        {% endfor %}
-                      </table>
-                    </div>
-                  </div>
-                </div>
-            </footer>
-
-
+                      <td>{{sample.Customer_ID_sample}}</td>
+                      <td>{{sample.CG_ID_sample}}</td>
+                      {% if sample.organism is not none %}
+                        <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
+                        {% else %}
+                        <td><i>Kontroll</i></td>
+                      {% endif %}
+                      {% if sample.ST_status == 'None' or sample.ST == -1 %}
+                        <td><font color="red">{{ sample.ST_status }}</font></td>
+                      {% elif sample.ST <= -4 %}
+		        <td>{{sample.ST}} (Novel)</td>
+		      {% else %}
+		        <td>{{sample.ST_status }}</td>
+		      {% endif %}
+		      {% if sample.threshold == 'Failed' %}
+		        <td><font color="red">Underkända</font></td>
+		      {% else %}
+		        <td>Godkända</td>
+		      {% endif %}
+	            </tr>
+		  {% endfor %}
+	        </table>
+	      </div>
+	    </div></div>
+          </footer>
 
           <!-- Sample pages -->
           {% for sample in samples %}
             <footer>
               <div class="panel">
-                <div class="panel-body">
-                  <h2 class="page-header"><div class="row"></div><strong>Detaljresultat</strong><br>
-                    <small>Klinisk Mikrobiologi</small>
-                    <small><p align="center">Rapport genererad: {{date}}</p></small></h2>
-                    {% if sample.priority == 'standard' %}
-                      <img src="https://github.com/Clinical-Genomics/microSALT/blob/accreditation-changes-to-report/artwork/swedac.jpg?raw=true" alt="Swedac Logo" align="right" style="width:40px;height:60px;display:flex;">
-                    {% else %}
-                      <p align="right">Icke verifierad organism</p>
-                    {% endif %}
+        	<div class="panel-body">
+        	  <h2 class="page-header"><div class="row"></div><strong>Detaljresultat</strong><br>
+        	  <small>Klinisk Mikrobiologi</small>
+        	  <small><p align="center">Rapport genererad: {{date}}</p></small></h2>
+                  {% if sample.priority == 'standard' %}
+                    <img src="https://github.com/Clinical-Genomics/microSALT/blob/accreditation-changes-to-report/artwork/swedac.jpg?raw=true" alt="Swedac Logo" \
+                    align="right" style="width:40px;height:60px;display:flex;">
+                  {% else %}
+                    <p align="right">Icke verifierad organism</p>
+                  {% endif %}
 
-                   <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
-                    <h4>Översikt</h4>
-                    <tr>
-                      <td><b>Ticket ID <i>(CG Projekt ID)</i></b></td>
-                      <td>{{sample.projects.Customer_ID_project}} <i>({{sample.projects.CG_ID_project}})</i></td>
-                    </tr>
-                    <tr>
-                      <td><b>Prov ID <i>(CG Prov ID)</i></b></td>
-                      <td>{{sample.Customer_ID_sample}}  <i>({{sample.CG_ID_sample}})</i></td>
-                    </tr>
-                    <tr>
-                      <th scope="row" >Analys datum</th>
-                      <td>{{sample.date_analysis.date()}}</td>
-                    </tr>
-                    <tr>
-                      <th scope="row" >Organism</th>
-                      {% if sample.organism is not none %}
-                        <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
-                      {% else %}
-                        <td><i>Okänd</i></td>
-                      {% endif %}
-                    </tr>
-                    <tr><th scope="row" >Sekvenstyp</th>
-                      {% if sample.ST_status == 'None' %}
-                        <td><font color="red">{{sample.ST_status }}</font></td>
-                      {% elif sample.ST <= -4 %}
-                        <td>I{{sample.ST|int|abs}} (Novel)</td>
-                      {% else %}
-                        <td>{{sample.ST_status }}</td>
-                      {% endif %}
-                    </tr>
-                    <tr><th scope="row" >Tröskelvärden</th>
-                      {% if sample.threshold=='Failed' %}
-                        <td><font color="red">Underkända</font></td>
-                      {% else %}
-                        <td>Godkända</td>
-                      {% endif %}
-                    </tr>
-                    {% if sample.organism in version %}
-                      <tr>
-                        <th scope="row">Referensversion</th>
-                        <td>{{version[sample.organism]}}</td>
-                      </tr>
-                    {% endif %}
-                    {% if sample.priority is not none %}
-                      <tr>
-                        <th scope="row">Prioritet</th>
-                        <td>{{sample.priority}}</td>
-                      </tr>
-                    {% endif %}
-                  </table></div>
+        	  <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
+        	    <h4>Översikt</h4>
+        	    <tr>
+        	      <td><b>Ticket ID <i>(CG Projekt ID)</i></b></td>
+        	      <td>{{sample.projects.Customer_ID_project}} <i>({{sample.projects.CG_ID_project}})</i></td>
+        	    </tr>
+        	    <tr>
+        	      <td><b>Prov ID <i>(CG Prov ID)</i></b></td>
+        	      <td>{{sample.Customer_ID_sample}}  <i>({{sample.CG_ID_sample}})</i></td>
+        	    </tr>
+        	    <tr>
+        	      <th scope="row" >Analys datum</th>
+        	      <td>{{sample.date_analysis.date()}}</td>
+        	    </tr>
+        	    <tr>
+        	      <th scope="row" >Organism</th>
+        	      {% if sample.organism is not none %}
+        		<td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
+        	      {% else %}
+        		<td><i>Okänd</i></td>
+        	      {% endif %}
+        	    </tr>
+        	    <tr><th scope="row" >Sekvenstyp</th>
+        	      {% if sample.ST_status == 'None' %}
+        		<td><font color="red">{{sample.ST_status }}</font></td>
+        	      {% elif sample.ST <= -4 %}
+        		<td>I{{sample.ST|int|abs}} (Novel)</td>
+        	      {% else %}
+        		<td>{{sample.ST_status }}</td>
+        	      {% endif %}
+        	    </tr>
+        	    <tr><th scope="row" >Tröskelvärden</th>
+        	      {% if sample.threshold=='Failed' %}
+        		<td><font color="red">Underkända</font></td>
+        	      {% else %}
+        		<td>Godkända</td>
+        	      {% endif %}
+        	    </tr>
+        	    {% if sample.organism in version %}
+        	      <tr>
+        		<th scope="row">Referensversion</th>
+        		<td>{{version[sample.organism]}}</td>
+        	      </tr>
+        	    {% endif %}
+        	    {% if sample.priority is not none %}
+        	      <tr>
+        		<th scope="row">Prioritet</th>
+        		<td>{{sample.priority}}</td>
+        	      </tr>
+        	    {% endif %}
+        	  </table></div>
+        	<div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
+        	<h4>Assembly</h4>
+        	{% if sample.genome_length > -1 %}
+        	      <tr><th scope="row" >Förväntad genomstorlek</th><td>{{'{0:,}'.format(sample.genome_length)|replace(","," ")}}</td></tr>
+        	      <tr><th scope="row" >GC halt</th><td>{{sample.gc_percentage| round(2)}}%</td></tr>
+        	      <tr><th scope="row" >N50 (minsta contiglängd för 50% av genomet)</th><td>{{'{0:,}'.format(sample.n50)|replace(","," ")}}</td></tr>
+        	      <tr><th scope="row" >Nödvändiga contigs</th><td>{{sample.contigs}}</td></tr>
+        	  </table></div>
+        	{% else %}
+                  <i>No assembly data found</i>
+        	{% endif %}
+        	</div>
+
                 {% if sample.genome_length > -1 %}
-                  <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
-                    <h4>Assembly</h4>
-                      <tr><th scope="row" >Förväntad genomstorlek</th><td>{{'{0:,}'.format(sample.genome_length)|replace(","," ")}}</td></tr>
-                      <tr><th scope="row" >GC halt</th><td>{{sample.gc_percentage| round(2)}}%</td></tr>
-                      <tr><th scope="row" >N50 (minsta contiglängd för 50% av genomet)</th><td>{{'{0:,}'.format(sample.n50)|replace(","," ")}}</td></tr>
-                      <tr><th scope="row" >Nödvändiga contigs</th><td>{{sample.contigs}}</td></tr>
-                  </table></div>
-                {% else %}
-                  </footer>
-                {% endif %}
-                </div>
-           <!-- </footer> -->
-          {% if sample.genome_length > -1 %}
-
-          <!--  <footer> -->
-              <div class="panel">
-              <div class="panel-body">
-
-                <div class="table-responsive">
+                  <div class="panel"><div class="panel-body"><div class="table-responsive">
+                  <table  class="table table-bordered" style='table-layout:fixed;'>
+                  <h4>MLST</h4>
+                  <h6>Identity threshold: {{threshold.mlst_id}}%, Span threshold: {{(threshold.mlst_span*100)|round(2)}}%, Novel suspicion threshold: {{threshold.mlst_novel_id}}%</h6>
                   {% if not sample.seq_types|length == 0 and 'Invalid' not in sample.ST_status%}
-                    <table  class="table table-bordered" style='table-layout:fixed;'>
-                      <h4>MLST</h4>
-                      <h6>Identity threshold: {{threshold.mlst_id}}%, Span threshold: {{(threshold.mlst_span*100)|round(2)}}%, Novel suspicion threshold: {{threshold.mlst_novel_id}}%</h6>
                       <thead>
                         <tr>
                           <th width="4%">#</th>
@@ -258,25 +247,27 @@
                       </thead>
                       <tbody>
                         {% for seq_type in sample.seq_types if seq_type.st_predictor%}
-                            <tr>
-                              <td>{{loop.index}}</td>
-                              <td>{{seq_type.loci}}</td>
-                              <td>{{seq_type.allele}}</td>
-                              <td>{{seq_type.contig_coverage|round(2)}}x</td>
-                              <td>{{seq_type.identity|round(2)}}%</td>
-                              <td>{{(seq_type.span*100)|round(2)}}%</td>
-                            </tr>
+                          <tr>
+                            <td>{{loop.index}}</td>
+                            <td>{{seq_type.loci}}</td>
+                            <td>{{seq_type.allele}}</td>
+                            <td>{{seq_type.contig_coverage|round(2)}}x</td>
+                            <td>{{seq_type.identity|round(2)}}%</td>
+                            <td>{{(seq_type.span*100)|round(2)}}%</td>
+                          </tr>
                         {% endfor %}
-                      </tbody>
+                     </tbody>
                     </table>
+                  {% else %}
+                    <i>No MLST data found</i>
                   {% endif %}
-                </div>
+                  </div>
 
-                <div class="table-responsive">
-                  {% if not sample.resistances|selectattr('threshold', 'equalto', 'Passed')|list|length == 0 %}
+                  <div class="table-responsive">
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                     <h4>Resistenser</h4>
-                      <h6>Identity threshold: {{threshold.motif_id}}%, Span threshold: {{(threshold.motif_span*100)|round(2)}}%</h6>
+                    <h6>Identity threshold: {{threshold.motif_id}}%, Span threshold: {{(threshold.motif_span*100)|round(2)}}%</h6>
+                    {% if not sample.resistances|selectattr('threshold', 'equalto', 'Passed')|list|length == 0 %}
                       <thead>
                         <tr>
                           <th width="4%">#</th>
@@ -290,39 +281,39 @@
                       </thead>
                       <tbody>
                         {% for seq_type in sample.resistances if seq_type.threshold == 'Passed' %}
-                            <tr>
-                              <td>{{loop.index}}</td>
-                              <td>{{seq_type.gene}}</td>
-                              {% if seq_type.resistance is not none %}
-                                <td>{{seq_type.resistance|title}}</td>
-                              {% else %}
-                                <td>{{seq_type.instance|title}}</td>
-                              {% endif %}
-                              {% if seq_type.reference is not none %}
-                                <td>{{seq_type.reference}}</td>
-                              {% else %}
-                                <td>Okänd</td>
-                              {% endif %}
-                              <td>{{seq_type.contig_coverage|round(2)  }}x</td>
-                              <td>{{seq_type.identity|round(2) }}%</td>
-                              {% if seq_type.span == 999.0 %}
-                                <td>Odefinierad</td>
-                              {% else %}
-                                <td>{{(seq_type.span*100)|round(2) }}%</td>
-                              {% endif %}
-                            </tr>
+                          <tr>
+                           <td>{{loop.index}}</td>
+                            <td>{{seq_type.gene}}</td>
+                            {% if seq_type.resistance is not none %}
+                              <td>{{seq_type.resistance|title}}</td>
+                            {% else %}
+                              <td>{{seq_type.instance|title}}</td>
+                            {% endif %}
+                            {% if seq_type.reference is not none %}
+                              <td>{{seq_type.reference}}</td>
+                            {% else %}
+                              <td>Okänd</td>
+                            {% endif %}
+                            <td>{{seq_type.contig_coverage|round(2) }}x</td>
+                            <td>{{seq_type.identity|round(2) }}%</td>
+                            {% if seq_type.span == 999.0 %}
+                              <td>Odefinierad</td>
+                            {% else %}
+                              <td>{{(seq_type.span*100)|round(2) }}%</td>
+                            {% endif %}
+                          </tr>
                         {% endfor %}
                       </tbody>
                     </table>
-                  {% endif %}
+                    {% else %}
+                      <i>No typing data found</i>
+                    {% endif %}
+                  </div>
+                {% endif %}
                 </div>
-
-              </div>
               </div>
             </footer>
-          {% endif %}
           {% endfor %}
-
           <footer>
             <div class="panel"><div class="panel-body">
 
@@ -359,6 +350,7 @@
             </div>
             </div>
           </footer>
+
         </div>
       </div>
   {% endblock %}
