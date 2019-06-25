@@ -18,7 +18,7 @@ _If not self-evident, also mention what prompted the change._
 _This is a description of the tests necessary to verify the stability of the PR._
 
 _Basic test routine:_
-- _`bash /home/proj/production/servers/resources/hasta.scilifelab.se`_
+- _`bash /home/proj/production/servers/resources/hasta.scilifelab.se/update-microsalt-stage.sh`_
 - _`us`_
 - _`source activate S_microSALT`_
 - _`export MICROSALT_CONFIG=/home/proj/dropbox/microSALT.json`_
