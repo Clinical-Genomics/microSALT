@@ -97,13 +97,12 @@
                       {% endfor %}
                     </table>
                   </div>
-                </div>
-                <p>
                 (*) Information om prover som kommer från kund <br/>
                 (**) Standard = Verifierad organim,
                 Research = Icke verifierad organism <br/>
                 Kvalitetskontrollen har verifierats för ett antal bestämda organismer.
                 För andra organismer kan ej kriterierna för metoden appliceras.
+                </div>
             </div>
           </footer>
 
@@ -183,7 +182,6 @@
                 Head of unit, Clinical Genomics
               </p>
 
-              <div class="text-muted text-center">Slut på rapport</div>
 
             </div>
             </div>
@@ -195,14 +193,15 @@
             <footer>
               <div class="panel">
         	<div class="panel-body">
-        	  <h2 class="page-header"><div class="row"></div><strong>Detaljresultat</strong><br>
-        	  <small>Klinisk Mikrobiologi</small>
+        	  <h2 class="page-header"><div class="row"></div><strong>Detaljresultat</strong>
                   {% if sample.priority == 'standard' %}
                     <img src="https://github.com/Clinical-Genomics/microSALT/blob/accreditation-changes-to-report/artwork/swedac.jpg?raw=true" alt="Swedac Logo" \
                     align="right" style="width:40px;height:60px;display:flex;">
                   {% else %}
                     <p align="right">Icke verifierad organism</p>
                   {% endif %}
+                  <br>
+                  <small>Klinisk Mikrobiologi</small>
                   <small><p align="center">Rapport genererad: {{date}}</p></small></h2>
         	  <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
         	    <h4>Översikt</h4>
@@ -262,10 +261,10 @@
         	      <tr><th scope="row" >GC halt</th><td>{{sample.gc_percentage| round(2)}}%</td></tr>
         	      <tr><th scope="row" >N50 (minsta contiglängd för 50% av genomet)</th><td>{{'{0:,}'.format(sample.n50)|replace(","," ")}}</td></tr>
         	      <tr><th scope="row" >Nödvändiga contigs</th><td>{{sample.contigs}}</td></tr>
-        	  </table></div>
         	{% else %}
                   <i>Assemblydata saknas</i>
         	{% endif %}
+                </table></div>
         	</div>
 
                 {% if sample.genome_length > -1 %}
@@ -280,7 +279,7 @@
                       <th width="20%">Allel</th>
                       <th width="20%">Kmer Täckning</th>
                       <th>Identitet %</th>
-                      <th>Längd %</th>
+                      <th>Längd (HSP) %</th>
                     </tr>
                   {% for seq_type in sample.seq_types if seq_type.st_predictor%}
                     <tr>
@@ -294,6 +293,7 @@
                   {% endfor %}
                   </table>
                   {% else %}
+                    
                     <i>MLST data saknas</i>
                   {% endif %}
                   </div>
@@ -345,7 +345,7 @@
               </div>
             </footer>
           {% endfor %}
-
+          <div class="text-muted text-center">Slut på rapport</div>
         </div>
       </div>
   {% endblock %}

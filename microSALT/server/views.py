@@ -57,7 +57,7 @@ def alignment_page(project):
         date = date.today().isoformat(),
         version = sample_info['versions'],
         threshold = config['threshold'],
-    )
+        build = __version__)
 
 @app.route('/microSALT/<project>/typing/<organism_group>')
 def typing_page(project, organism_group):

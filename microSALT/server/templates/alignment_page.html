@@ -52,8 +52,7 @@
                       </tr>
                     </table></div>
               </div></div>
-              <br />
-
+              <div class="panel"><div class="panel-body">
               <h3><strong>Provsammanställning</strong><br></h3>
               <div class="table-responsive">
                 <table  class="table table-bordered" style='table-layout:fixed;'>
@@ -134,12 +133,15 @@
                   {% endfor %}
                 </table>
               </div>
-              <h3><strong>Begränsningar av analysen : {{samples[0].application_tag}}</strong><br></h3>
+              </div></div>
+
+              <div class="panel"><div class="panel-body">
+              <h3>Analysbegränsningar för: {{samples[0].application_tag}}<br></h3>
               <p>
               -
               </p>
 
-              <h3><strong>Avvikelser från metoden</strong><br></h3>
+              <h3>Avvikelser från metoden<br></h3>
               <p>
               All kommunikation gällande ordern såsom tillägg, avvikelser eller
               ev undantag i metoden från Clinical Genomics finns tillgängligt i
@@ -147,13 +149,14 @@
               öppnas upp igen för frågor.
               </p>
 
-              <h3><strong>Signatur för godkännande av rapport</strong><br></h3>
+              <h3>Signatur för godkännande av rapport<br></h3>
               <p>
                 Valtteri Wirta<br>
                 Head of unit, Clinical Genomics
               </p>
-              <div class="text-muted text-center">Slut på rapport</div>
+              </div></div>
               </div>
+              <div class="text-muted text-center">Slut på rapport</div>
             </div>
           </footer>
         </div>
