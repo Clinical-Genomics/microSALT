@@ -18,16 +18,15 @@ _If not self-evident, also mention what prompted the change._
 _This is a description of the tests necessary to verify the stability of the PR._
 
 _Basic test routine:_
-- _Pull branch into /home/proj/stage/bin/git/microSALT_
-- _us_
-- _source activate S_microSALT_
-- _export MICROSALT_CONFIG=/home/proj/dropbox/microSALT.json_
-- _pip install ._
-- _microSALT analyse project MIC3109_
-- _microSALT analyse project MIC3552_
-- _microSALT analyse project MIC3557_
-- _microSALT analyse project MIC4107_
-- _microSALT analyse project MIC4109_
+- _`bash /home/proj/production/servers/resources/hasta.scilifelab.se`_
+- _`us`_
+- _`source activate S_microSALT`_
+- _`export MICROSALT_CONFIG=/home/proj/dropbox/microSALT.json`_
+- _`microSALT analyse project MIC3109`_
+- _`microSALT analyse project MIC3552`_
+- _`microSALT analyse project MIC3557`_
+- _`microSALT analyse project MIC4107`_
+- _`microSALT analyse project MIC4109`_
 
 ## Test results
 _These are the results of the tests, and necessary conclusions, that prove the stability of the PR._
