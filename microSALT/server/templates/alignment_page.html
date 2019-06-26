@@ -10,7 +10,7 @@
               <img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" \
               alt="MicroSALT Logo" align="left" \
               style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
-              <!--<img src="swedac.jpg" alt="Swedac Logo" align="right" style="display:flex;">-->
+              <img src="https://github.com/Clinical-Genomics/microSALT/blob/accreditation-changes-to-report/artwork/swedac.jpg?raw=true" alt="Swedac Logo" align="right" style="display:flex;">
               <h2 class="page-header">
                 <small><br><br><br>Kvalitetskontrollsrapport</small>
 
@@ -188,9 +188,25 @@
               </div></div>
 
               <div class="panel"><div class="panel-body">
+              <h3><strong>Teknisk beskrivning av analysen: {{samples[0].application_tag}}</strong><br></h3>
+              <p>
+              {% if samples[0].application_tag == "MWRNXTR003" %}
+              Mikrobiell helgenomssekvensering av rutinprov, med krav på minst 3 miljoner läspar.
+              Nextera library preparation.
+              {% elif samples[0].application_tag in ["MWGNXTR003", "MWMNXTR003", "MWLNXTR003"] %}
+              Mikrobiell helgenomssekvensering, med krav på minst 3 miljoner läspar.
+              Nextera library preparation.
+              {% elif samples[0].application_tag == "MWXNXTR003" %}
+              Storskalig mikrobiell helgenomssekvensering av minst 176 prover, med krav på minst 3 miljoner läspar.
+              Nextera library preparation.
+              {% elif samples[0].application_tag in ["VWGNXTR001", "VWLNXTR001"] %}
+              Virologisk helgenomssekvensering, med krav på minst 1 miljon läspar.
+              Nextera library preparation.
+              {% endif %}
+              </p>
               <h3>Analysbegränsningar för: {{samples[0].application_tag}}<br></h3>
               <p>
-              -
+              Tillförlitligheten hos resultaten förutsätter dels att informationen som bifogats från kund är korrekt.
               </p>
 
               <h3>Avvikelser från metoden<br></h3>
