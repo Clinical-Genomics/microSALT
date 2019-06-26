@@ -73,7 +73,11 @@
                         <tr>
                           <td>{{sample.Customer_ID_sample}}</td>
                           <td>{{sample.application_tag}}</td>
-                          <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
+                          {% if sample.organism is not none %}
+                            <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
+                          {% else %}
+                            <td><i>N/A</i></td>
+                          {% endif %}
                           <td>{{samples[0].projects.date_ordered.date()}}</td>
                           {% if sample.date_libprep is not none %}
                             <td>{{sample.date_libprep.date()}}</td>
@@ -241,7 +245,7 @@
         		<td>Godkända</td>
         	      {% endif %}
         	    </tr>
-        	    {% if sample.organism in version %}
+        	    {% if sample.organism in version and sample.organism is not none %}
         	      <tr>
         		<th scope="row">Referensversion</th>
         		<td>{{version[sample.organism]}}</td>

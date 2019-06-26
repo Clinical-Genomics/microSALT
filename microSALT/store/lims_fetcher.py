@@ -179,8 +179,11 @@ class LIMS_Fetcher():
         date_list = date_list + [a.parent_process.date_run for a in arts]
       except Exception as e:
         pass
-    dp = max(date_list).split('-')
-    return datetime(int(dp[0]), int(dp[1]), int(dp[2]))
+    if date_list:
+      dp = max(date_list).split('-')
+      return datetime(int(dp[0]), int(dp[1]), int(dp[2]))
+    else:
+      return datetime.min
 
   def get_method(self, sample_id, type=""):
     """Retrives method document name and version for a sample"""
@@ -201,8 +204,11 @@ class LIMS_Fetcher():
         arts = self.lims.get_artifacts(samplelimsid = sample_id, process_type = step)
         processes = [(a.parent_process.udf[key_values['method']], a.parent_process.udf[key_values['version']]) for a in arts]
         processes = list(set(processes))
-        process = sorted(processes)[-1]
-        out = "{}:{}".format(process[0], process[1])
+        if processes:
+          process = sorted(processes)[-1]
+          out = "{}:{}".format(process[0], process[1])
       except Exception as e:
         pass
+    if not 'out' in locals():
+      out = "Not in LIMS"
     return out
