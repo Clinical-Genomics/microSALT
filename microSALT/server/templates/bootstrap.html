@@ -1,0 +1,41 @@
+{% macro css() %}
+  <style>
+    /*!
+ * Bootstrap v4.0.0-alpha.6 (https://getbootstrap.com)
+ * Copyright 2011-2017 The Bootstrap Authors
+ * Copyright 2011-2017 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+  </style>
+{% endmacro %}
+
+{% macro custom_css() %}
+  <style>
+
+
+    @page {
+      size: A4;
+      margin-left: 0rem;
+      margin-right: 0rem;
+    }
+
+    @bottom-left {
+    content: "Page " counter(page) " of " counter(pages);
+    }
+
+    @media print {
+      body {
+        font-size: .6rem;
+      }
+      .container {
+        width: 100%;
+      }
+      .table {
+        margin-bottom: 0;
+        font-size: inherit;
+      }
+      .card-block {
+        padding: .3rem 1.25rem;
+      }
+    }
+  </style>
+{% endmacro %}

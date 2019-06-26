@@ -38,6 +38,7 @@ class Reporter():
     self.server = Process(target=app.run)
     self.ticketFinder = LIMS_Fetcher(self.config, self.logger)
     self.attachments = list()
+    self.filelist = list()
     self.error = False
     self.dt = datetime.now() 
     self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
@@ -65,7 +66,7 @@ class Reporter():
     self.kill_flask()
     self.mail()
     if self.output == "" or self.output == os.getcwd():
-      for file in self.attachments:
+      for file in self.filelist:
         os.remove(file)
 
   def gen_STtracker(self, customer="all", silent=False):
@@ -77,7 +78,8 @@ class Reporter():
       self.kill_flask()
       sys.exit(-1)
     outname = "{}/ST_updates_{}.html".format(self.output, self.now)
-    open(outname, 'wb').write(r.content)
+    open(outname, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
+    self.filelist.append(outname)
     if not silent:
       self.attachments.append(outname)
 
@@ -91,7 +93,8 @@ class Reporter():
     try:
       q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(self.name), allow_redirects=True)
       outqc = "{}/{}_QC_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
-      open(outqc, 'wb').write(q.content)
+      open(outqc, 'wb').write(q.content.decode("iso-8859-1").encode("utf8"))
+      self.filelist.append(outqc)
       if not silent:
         self.attachments.append(outqc)  
     except Exception as e:
@@ -108,7 +111,8 @@ class Reporter():
     try:
       r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
       outtype = "{}/{}_Typing_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
-      open(outtype, 'wb').write(r.content)
+      open(outtype, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
+      self.filelist.append(outtype)
       if not silent:
         self.attachments.append(outtype)
     except Exception as e:
@@ -170,6 +174,7 @@ class Reporter():
       excel.write("{}{}\n".format(pref, hits))
 
     excel.close()
+    self.filelist.append(output)
     if not silent:
       self.attachments.append(output)
 
@@ -190,7 +195,8 @@ class Reporter():
       report[s.CG_ID_sample]['blast_pubmlst'] = {'sequence_type':s.ST_status, 'thresholds':s.threshold}
       report[s.CG_ID_sample]['quast_assembly'] = {'estimated_genome_length':s.genome_length, 'gc_percentage':float(s.gc_percentage), 'n50':s.n50, 'necessary_contigs':s.contigs}
       report[s.CG_ID_sample]['picard_markduplicate'] = {'insert_size':s.insert_size, 'duplication_rate':s.duplication_rate}
-      report[s.CG_ID_sample]['microsalt_samtools_stats'] = {'total_reads':s.total_reads, 'mapped_rate':s.mapped_rate, 'average_coverage':s.average_coverage, \
+      report[s.CG_ID_sample]['microsalt_samtools_stats'] = {'total_reads':s.total_reads, 'mapped_rate':s.mapped_rate, \
+                                                            'average_coverage':s.average_coverage, \
                                                             'coverage_10x':s.coverage_10x, 'coverage_30x':s.coverage_30x, \
                                                             'coverage_50x':s.coverage_50x, 'coverage_100x':s.coverage_100x}
 
@@ -201,6 +207,7 @@ class Reporter():
     #json.dumps(report) #Dumps the json directly
     with open(output, 'w') as outfile:
       json.dump(report, outfile)
+    self.filelist.append(output)
     if not silent:
       self.attachments.append(output)
 

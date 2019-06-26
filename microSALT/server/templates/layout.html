@@ -1,4 +1,5 @@
 <!doctype html>
+
 <html lang="en">
 
 <head>
@@ -9,8 +10,41 @@
     name="viewport"
     content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-    <style type="text/css">
+  <style type="text/css">
+
       footer {page-break-after:always }
+      tr:nth-child(even) {background-color: #e9e9e9}
+
+      @page {
+          size: A4;
+          margin-left: 0rem;
+          margin-right: 0rem;
+
+        @bottom-right {
+          padding-right: 20px;
+          content: "Page " counter(page);
+        }
+      }
+
+      @media print {
+      body {
+        font-size: .6rem;
+      }
+      .container {
+        width: 100%;
+      }
+      .table {
+        margin-bottom: 0;
+        font-size: inherit;
+      }
+      .card-body {
+        padding: 5rem 5rem;
+
+      }
+      .card-deck{
+        margin-bottom: 5rem;
+      }
+    }
   </style>
 
   <!-- Bootstrap CSS -->
@@ -20,25 +54,23 @@
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/buttons/1.1.2/css/buttons.bootstrap.min.css">
   <link rel="stylesheet" href="{{url_for('static', filename='style.css')}}">
+  <!-- Added new Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
 
-  
 </head>
 
 <body>
 
   <div id="wrapper">
-    
+
         <nav class="navbar navbar-default navbar-static-top" role="navigation" style="margin-bottom: 0">
             <div class="navbar-header">
                 <a href="{{ url_for('start_page')}}" class="navbar-brand">microSALT </a>
             </div>
         </nav>
         {% block body %}{% endblock %}
-    
-  </div>
 
-    
-  
+  </div>
 
   <!-- Optional JavaScript -->
   <!-- jQuery first, then Popper.js, then Bootstrap JS -->
@@ -46,9 +78,6 @@
     var d = new Date();
     document.getElementById("date").innerHTML = d.toDateString();
   </script>
- 
+
 </body>
-
 </html>
-
-

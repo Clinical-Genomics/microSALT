@@ -56,7 +56,8 @@ def alignment_page(project):
         samples = sample_info['samples'],
         date = date.today().isoformat(),
         version = sample_info['versions'],
-    )
+        threshold = config['threshold'],
+        build = __version__)
 
 @app.route('/microSALT/<project>/typing/<organism_group>')
 def typing_page(project, organism_group):
@@ -66,6 +67,7 @@ def typing_page(project, organism_group):
         samples = sample_info['samples'],
         date = date.today().isoformat(),
         version = sample_info['versions'],
+        threshold = config['threshold'],
         build = __version__)
 
 
@@ -110,9 +112,9 @@ def gen_reportdata(pid='all', organism_group='all'):
     s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or \
     s.Customer_ID_sample.startswith('CTRL') or s.Customer_ID_sample.startswith('Neg') or \
     s.Customer_ID_sample.startswith('blank') or s.Customer_ID_sample.startswith('dual-NTC'):
-      s.ST_status = 'Control (prefix)'
+      s.ST_status = 'Kontroll (prefix)'
 
-    if 'Control' in s.ST_status or s.ST == -1:
+    if 'Kontroll' in s.ST_status or 'Control' in s.ST_status or s.ST == -1:
       s.threshold = '-'
     elif s.ST == -3:
       s.threshold = 'Failed'
@@ -133,7 +135,7 @@ def gen_reportdata(pid='all', organism_group='all'):
     else:
       s.threshold = 'Failed'
 
-    if not 'Control' in s.ST_status and s.ST < 0:
+    if not ('Control' in s.ST_status or 'Kontroll' in s.ST_status) and s.ST < 0:
       if s.ST == -1:
         s.ST_status = 'Invalid data'
       elif (s.ST <= -4 or s.ST == -2) and s.threshold == 'Passed':
