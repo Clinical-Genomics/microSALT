@@ -74,6 +74,7 @@
 
                   </tr>
                   {% for sample in samples %}
+                    {% if 'Kontroll' in sample.ST_status %}<i>{% endif %}
                     <tr>
                       <td>{{ sample.Customer_ID_sample }}</td>
                       <td>{{ sample.CG_ID_sample }}</td>
@@ -89,18 +90,28 @@
                           <td class="text-right">0
                         {% else %}
                           {% set bp_perc = ((sample.total_reads/((sample.application_tag[-1:]|float)*10000))|round(2)) %}
-                          {% if bp_perc < threshold.total_reads_fail %}
-                            <td class="text-right" bgcolor="#fa8072">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%)
-                          {% elif bp_perc < threshold.total_reads_warn %}
-                            <td class="text-right" bgcolor="#fffacd">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%)
+                          {% if 'Kontroll' in sample.ST_status %}
+                            {% if bp_perc > threshold.NTC_total_reads_fail %}
+                              <td class="text-right" bgcolor="#fa8072">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%)
+                            {% elif bp_perc > threshold.NTC_total_reads_warn %}
+                              <td class="text-right" bgcolor="#fffacd">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%)
+                            {% else %}
+                              <td class="text-right">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%) 
+                            {% endif %} 
                           {% else %}
-                            <td class="text-right">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%) 
-                          {% endif %} 
+                            {% if bp_perc < threshold.total_reads_fail %}
+                              <td class="text-right" bgcolor="#fa8072">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%)
+                            {% elif bp_perc < threshold.total_reads_warn %}
+                              <td class="text-right" bgcolor="#fffacd">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%)
+                            {% else %}
+                              <td class="text-right">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%) 
+                            {% endif %} 
+                          {% endif %}
                         {% endif %}
                       </td>
                         {% if sample.mapped_rate is none or sample.mapped_rate == 0 %}
                            <td class="text-right">0.0
-                        {% elif (sample.mapped_rate*100)|round(2) <= threshold.mapped_rate_warn %}
+                        {% elif (sample.mapped_rate*100)|round(2) <= threshold.mapped_rate_warn and not 'Kontroll' in sample.ST_status %}
                           {% if (sample.mapped_rate*100)|round(2) <= threshold.mapped_rate_fail %}
                             <td class="text-right" bgcolor="#fa8072">{{ (sample.mapped_rate*100)|round(2) }}</font>
                           {% else %}
@@ -110,7 +121,7 @@
                       </td>
                         {% if sample.duplication_rate is none or sample.duplication_rate == -1 or sample.duplication_rate == 0.0 %}
                          <td class="text-right"> N/A
-                        {% elif (sample.duplication_rate*100)|round(2) >= threshold.duplication_rate_warn %}
+                        {% elif (sample.duplication_rate*100)|round(2) >= threshold.duplication_rate_warn and not 'Kontroll' in sample.ST_status %}
                           {% if (sample.duplication_rate*100)|round(2) >= threshold.duplication_rate_fail %}
                             <td class="text-right" bgcolor="#fa8072">{{ (sample.duplication_rate*100)|round(2) }}</font>
                           {% else %}
@@ -121,8 +132,8 @@
                         {% endif %}
                       </td>
                         {% if sample.insert_size is none or sample.insert_size == 0%}
-                         <td class="text-right"> N/A
-                        {% elif sample.insert_size <= threshold.insert_size_warn %}
+                         <td class="text-right">N/A
+                        {% elif sample.insert_size <= threshold.insert_size_warn and not 'Kontroll' in sample.ST_status %}
                           {% if sample.insert_size <= threshold.insert_size_fail %}
                             <td class="text-right" bgcolor="#fa8072">{{ insert_size }}</font>
                           {% else %}
@@ -132,7 +143,7 @@
                       </td>
                         {% if sample.average_coverage is none or sample.average_coverage|round(2) == 0 %}
                           <td class="text-right">0.0x
-                        {% elif (sample.average_coverage)|round(2) <= threshold.average_coverage_warn %}
+                        {% elif (sample.average_coverage)|round(2) <= threshold.average_coverage_warn and not 'Kontroll' in sample.ST_status %}
                           {% if (sample.average_coverage)|round(2) <= threshold.average_coverage_fail %}
                             <td class="text-right" bgcolor="#fa8072">{{ (sample.average_coverage)|round(2) }}</font>
                           {% else %}
@@ -142,7 +153,7 @@
                       </td>
                         {% if sample.coverage_10x is none or (sample.coverage_10x*100)|round(2) == 0 %}
                           <td class="text-right">0.0
-                        {% elif (sample.coverage_10x*100)|round(2) <= threshold.bp_10x_warn %}
+                        {% elif (sample.coverage_10x*100)|round(2) <= threshold.bp_10x_warn and not 'Kontroll' in sample.ST_status %}
                           {% if (sample.coverage_10x*100)|round(2) <= threshold.bp_10x_fail %}
                             <td class="text-right" bgcolor="#fa8072">{{ (sample.coverage_10x*100)|round(2) }}</font>
                           {% else %}
@@ -152,23 +163,24 @@
                       </td>
                         {% if sample.coverage_30x is none or (sample.coverage_30x*100)|round(2) == 0 %}
                           <td class="text-right">0.0
-                        {% elif (sample.coverage_30x*100)|round(2) <= threshold.bp_30x_warn %}
+                        {% elif (sample.coverage_30x*100)|round(2) <= threshold.bp_30x_warn and not 'Kontroll' in sample.ST_status %}
                             <td class="text-right" bgcolor="#fffacd">{{ (sample.coverage_30x*100)|round(2) }}</font>
                         {% else %} <td class="text-right">{{ (sample.coverage_30x*100)|round(2) }} {% endif %}
                       </td>
                         {% if sample.coverage_50x is none or (sample.coverage_50x*100)|round(2) == 0 %}
                           <td class="text-right">0.0
-                        {% elif (sample.coverage_50x*100)|round(2) <= threshold.bp_50x_warn %}
+                        {% elif (sample.coverage_50x*100)|round(2) <= threshold.bp_50x_warn and not 'Kontroll' in sample.ST_status %}
                             <td class="text-right" bgcolor="#fffacd">{{ (sample.coverage_50x*100)|round(2) }}</font>
                         {% else %} <td class="text-right">{{ (sample.coverage_50x*100)|round(2) }} {% endif %}
                       </td>
                         {% if sample.coverage_100x is none or (sample.coverage_100x*100)|round(2) == 0 %}
                           <td class="text-right">0.0
-                        {% elif (sample.coverage_100x*100)|round(2) <= threshold.bp_100x_warn %}
+                        {% elif (sample.coverage_100x*100)|round(2) <= threshold.bp_100x_warn and not 'Kontroll' in sample.ST_status %}
                             <td class="text-right" bgcolor="#fffacd">{{ (sample.coverage_100x*100)|round(2) }}</font>
                         {% else %} <td class="text-right">{{ (sample.coverage_100x*100)|round(2) }} {% endif %}
                       </td>
                     </tr>
+                  {% if 'Kontroll' in sample.ST_status %}</i>{% endif %}
                   {% endfor %}
                 </table>
               </div>
