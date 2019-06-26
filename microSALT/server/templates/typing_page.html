@@ -270,7 +270,7 @@
                 {% if sample.genome_length > -1 %}
                   <div class="panel"><div class="panel-body">
                   <h4>MLST</h4>
-                  <h6>Identitetströskel: {{threshold.mlst_id}}%, Längdtröskel: {{(threshold.mlst_span*100)|round(2)}}%, Novel misstankströskel: {{threshold.mlst_novel_id}}%</h6>
+                  <h6>Identitetströskel: {{threshold.mlst_id}}%, Längdtröskel: {{threshold.mlst_span}}%, Novel misstankströskel: {{threshold.mlst_novel_id}}%</h6>
                   <div class="table-responsive"><table  class="table table-bordered" style='table-layout:fixed;'>
                   {% if not sample.seq_types|length == 0 and 'Invalid' not in sample.ST_status%}
                     <tr>
@@ -301,7 +301,7 @@
                   <div class="table-responsive">
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                     <h4>Resistenser</h4>
-                    <h6>Identitetströskel: {{threshold.motif_id}}%, Längdtröskel: {{(threshold.motif_span*100)|round(2)}}%</h6>
+                    <h6>Identitetströskel: {{threshold.motif_id}}%, Längdtröskel: {{threshold.motif_span}}%</h6>
                     {% if not sample.resistances|selectattr('threshold', 'equalto', 'Passed')|list|length == 0 %}
                         <tr>
                           <th width="4%">#</th>

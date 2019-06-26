@@ -26,9 +26,9 @@ if config == '':
   sys.exit(-1)
 else:
   #Makes sure DB inherits correct permissions if freshly created
-  bash_cmd="touch {}".format(re.search('sqlite\:\/\/\/(.+)', config['database']['SQLALCHEMY_DATABASE_URI']).group(0))
-  subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
-  output, error = samproc.communicate()
+  bash_cmd="touch {}".format(re.search('sqlite\:\/\/\/(.+)', config['database']['SQLALCHEMY_DATABASE_URI']).group(1))
+  proc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+  output, error = proc.communicate()
 
 def done():
   click.echo("Execution finished!")
