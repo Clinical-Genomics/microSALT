@@ -507,7 +507,7 @@ class DB_Manipulator:
   def get_unique_alleles(self, cg_sid, organism, threshold=True):
     """ Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
     tid = float(self.config["threshold"]["mlst_id"])
-    tspan = float(self.config["threshold"]["mlst_span"])
+    tspan = (self.config["threshold"]["mlst_span"])/100.0
     if threshold:
       hits = self.session.query(Seq_types.loci, Seq_types.allele)\
            .filter(Seq_types.CG_ID_sample==cg_sid, Seq_types.identity >= tid, Seq_types.span >= tspan).all()
