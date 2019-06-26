@@ -80,90 +80,93 @@
                       <td>{{ sample.application_tag }}</td>
                       {% if sample.organism is not none %}
                         <td>{{sample.organism.replace('_', ' ').capitalize()}}</td>
-                      {% else %}<td>Undetermined</td>{% endif %}
+                      {% else %}
+                        <td>Undetermined</td>
+                      {% endif %}
                       <td>{{ sample.reference_genome }}</td>
-                      <td class="text-right">
+
                         {% if sample.total_reads is none %}
-                          0
-                        {% else %} {{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{(sample.total_reads/((sample.application_tag[-1:]|float)*10000))|round(2)}}%){% endif %}
-                      </td>
-                      <td class="text-right">
-                        {% if sample.mapped_rate is none or sample.mapped_rate == 0 %}
-                           0.0
-                        {% elif (sample.mapped_rate*100)|round(2) <= threshold.mapped_rate_warn %}
-                          {% if (sample.mapped_rate*100)|round(2) <= threshold.mapped_rate_fail %}
-                            <font color="red">{{ (sample.mapped_rate*100)|round(2) }}</font>
-                          {% else %}
-                            <font color="yellow">{{ (sample.mapped_rate*100)|round(2) }}</font>
-                          {% endif %}
-                        {% else %} {{ (sample.mapped_rate*100)|round(2) }} {% endif %}
-                      </td>
-                      <td class="text-right">
-                        {% if sample.duplication_rate is none or sample.duplication_rate == -1 %}
-                          N/A
-                        {% elif (sample.duplication_rate*100)|round(2) <= threshold.duplication_rate_warn %}
-                          {% if (sample.duplication_rate*100)|round(2) <= threshold.duplication_rate_fail %}
-                            <font color="red">{{ (sample.duplication_rate*100)|round(2) }}</font>
-                          {% else %}
-                            <font color="yellow">{{ (sample.duplication_rate*100)|round(2) }}</font>
-                          {% endif %}
+                          <td class="text-right">0
                         {% else %}
-                          {{ (sample.duplication_rate*100)|round(2) }}
+                          {% set bp_perc = ((sample.total_reads/((sample.application_tag[-1:]|float)*10000))|round(2)) %}
+                          {% if bp_perc < threshold.total_reads_fail %}
+                            <td class="text-right" bgcolor="#fa8072">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%)
+                          {% elif bp_perc < threshold.total_reads_warn %}
+                            <td class="text-right" bgcolor="#fffacd">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%)
+                          {% else %}
+                            <td class="text-right">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%) 
+                          {% endif %} 
                         {% endif %}
                       </td>
-                      <td class="text-right">
+                        {% if sample.mapped_rate is none or sample.mapped_rate == 0 %}
+                           <td class="text-right">0.0
+                        {% elif (sample.mapped_rate*100)|round(2) <= threshold.mapped_rate_warn %}
+                          {% if (sample.mapped_rate*100)|round(2) <= threshold.mapped_rate_fail %}
+                            <td class="text-right" bgcolor="#fa8072">{{ (sample.mapped_rate*100)|round(2) }}</font>
+                          {% else %}
+                            <td class="text-right" bgcolor="#fffacd">{{ (sample.mapped_rate*100)|round(2) }}</font>
+                          {% endif %}
+                        {% else %} <td class="text-right">{{ (sample.mapped_rate*100)|round(2) }} {% endif %}
+                      </td>
+                        {% if sample.duplication_rate is none or sample.duplication_rate == -1 or sample.duplication_rate == 0.0 %}
+                         <td class="text-right"> N/A
+                        {% elif (sample.duplication_rate*100)|round(2) >= threshold.duplication_rate_warn %}
+                          {% if (sample.duplication_rate*100)|round(2) >= threshold.duplication_rate_fail %}
+                            <td class="text-right" bgcolor="#fa8072">{{ (sample.duplication_rate*100)|round(2) }}</font>
+                          {% else %}
+                            <td class="text-right" bgcolor="#fffacd">{{ (sample.duplication_rate*100)|round(2) }}</font>
+                          {% endif %}
+                        {% else %}
+                          <td class="text-right">{{ (sample.duplication_rate*100)|round(2) }}
+                        {% endif %}
+                      </td>
                         {% if sample.insert_size is none or sample.insert_size == 0%}
-                          N/A
+                         <td class="text-right"> N/A
                         {% elif sample.insert_size <= threshold.insert_size_warn %}
                           {% if sample.insert_size <= threshold.insert_size_fail %}
-                            <font color="red">{{ insert_size }}</font>
+                            <td class="text-right" bgcolor="#fa8072">{{ insert_size }}</font>
                           {% else %}
-                            <font color="yellow">{{ insert_size }}</font>
+                            <td class="text-right" bgcolor="#fffacd">{{ insert_size }}</font>
                           {% endif %}
-                        {% else %} {{ sample.insert_size }} {% endif %}
+                        {% else %} <td class="text-right">{{ sample.insert_size }} {% endif %}
                       </td>
-                      <td class="text-right">
                         {% if sample.average_coverage is none or sample.average_coverage|round(2) == 0 %}
-                          0.0x
+                          <td class="text-right">0.0x
                         {% elif (sample.average_coverage)|round(2) <= threshold.average_coverage_warn %}
                           {% if (sample.average_coverage)|round(2) <= threshold.average_coverage_fail %}
-                            <font color="red">{{ (sample.average_coverage)|round(2) }}</font>
+                            <td class="text-right" bgcolor="#fa8072">{{ (sample.average_coverage)|round(2) }}</font>
                           {% else %}
-                            <font color="yellow">{{ (sample.average_coverage)|round(2) }}</font>
+                            <td class="text-right" bgcolor="#fffacd">{{ (sample.average_coverage)|round(2) }}</font>
                           {% endif %}
-                        {% else %} {{ (sample.average_coverage)|round(2) }}x {% endif %}
+                        {% else %} <td class="text-right">{{ (sample.average_coverage)|round(2) }}x {% endif %}
                       </td>
-                      <td class="text-right">
                         {% if sample.coverage_10x is none or (sample.coverage_10x*100)|round(2) == 0 %}
-                          0.0
+                          <td class="text-right">0.0
                         {% elif (sample.coverage_10x*100)|round(2) <= threshold.bp_10x_warn %}
                           {% if (sample.coverage_10x*100)|round(2) <= threshold.bp_10x_fail %}
-                            <font color="red">{{ (sample.coverage_10x*100)|round(2) }}</font>
+                            <td class="text-right" bgcolor="#fa8072">{{ (sample.coverage_10x*100)|round(2) }}</font>
                           {% else %}
-                            <font color="yellow">{{ (sample.coverage_10x*100)|round(2) }}</font>
+                            <td class="text-right" bgcolor="#fffacd">{{ (sample.coverage_10x*100)|round(2) }}</font>
                           {% endif %}
-                        {% else %} {{ (sample.coverage_10x*100)|round(2) }} {% endif %}
+                        {% else %} <td class="text-right">{{ (sample.coverage_10x*100)|round(2) }} {% endif %}
                       </td>
-                      <td class="text-right">
                         {% if sample.coverage_30x is none or (sample.coverage_30x*100)|round(2) == 0 %}
-                          0.0
+                          <td class="text-right">0.0
                         {% elif (sample.coverage_30x*100)|round(2) <= threshold.bp_30x_warn %}
-                            <font color="yellow">{{ (sample.coverage_30x*100)|round(2) }}</font>
-                        {% else %} {{ (sample.coverage_30x*100)|round(2) }} {% endif %}
+                            <td class="text-right" bgcolor="#fffacd">{{ (sample.coverage_30x*100)|round(2) }}</font>
+                        {% else %} <td class="text-right">{{ (sample.coverage_30x*100)|round(2) }} {% endif %}
                       </td>
-                      <td class="text-right">
                         {% if sample.coverage_50x is none or (sample.coverage_50x*100)|round(2) == 0 %}
-                          0.0
+                          <td class="text-right">0.0
                         {% elif (sample.coverage_50x*100)|round(2) <= threshold.bp_50x_warn %}
-                            <font color="yellow">{{ (sample.coverage_50x*100)|round(2) }}</font>
-                        {% else %} {{ (sample.coverage_50x*100)|round(2) }} {% endif %}
+                            <td class="text-right" bgcolor="#fffacd">{{ (sample.coverage_50x*100)|round(2) }}</font>
+                        {% else %} <td class="text-right">{{ (sample.coverage_50x*100)|round(2) }} {% endif %}
                       </td>
-                      <td class="text-right">
                         {% if sample.coverage_100x is none or (sample.coverage_100x*100)|round(2) == 0 %}
-                          0.0
+                          <td class="text-right">0.0
                         {% elif (sample.coverage_100x*100)|round(2) <= threshold.bp_100x_warn %}
-                            <font color="yellow">{{ (sample.coverage_100x*100)|round(2) }}</font>
-                        {% else %} {{ (sample.coverage_100x*100)|round(2) }} {% endif %}
+                            <td class="text-right" bgcolor="#fffacd">{{ (sample.coverage_100x*100)|round(2) }}</font>
+                        {% else %} <td class="text-right">{{ (sample.coverage_100x*100)|round(2) }} {% endif %}
                       </td>
                     </tr>
                   {% endfor %}
