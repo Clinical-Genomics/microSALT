@@ -11,6 +11,7 @@ import sys
 import smtplib
 
 from datetime import datetime
+from shutil import copyfile
 
 from os.path import basename
 from email.mime.text  import MIMEText
@@ -92,11 +93,17 @@ class Reporter():
       sys.exit(-1)
     try:
       q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(self.name), allow_redirects=True)
-      outqc = "{}/{}_QC_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
-      open(outqc, 'wb').write(q.content.decode("iso-8859-1").encode("utf8"))
-      self.filelist.append(outqc)
+      outfile = "{}_QC_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
+      output ="{}/{}".format(self.output, outfile)
+      storage = "{}/{}".format(self.config['folders']['reports'], outfile)
+
+      open(output, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
+      copyfile(primary, storage)
+
+      self.filelist.append(output)
+      self.filelist.append(storage)
       if not silent:
-        self.attachments.append(outqc)  
+        self.attachments.append(output)  
     except Exception as e:
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.error = True
@@ -110,11 +117,17 @@ class Reporter():
       sys.exit(-1)
     try:
       r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
-      outtype = "{}/{}_Typing_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
-      open(outtype, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
-      self.filelist.append(outtype)
+      outfile = "{}/{}_Typing_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
+      output ="{}/{}".format(self.output, outfile)
+      storage = "{}/{}".format(self.config['folders']['reports'], outfile)
+
+      open(output, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
+      copyfile(primary, storage)
+      
+      self.filelist.append(output)
+      self.filelist.append(storage)
       if not silent:
-        self.attachments.append(outtype)
+        self.attachments.append(output)
     except Exception as e:
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.error = True

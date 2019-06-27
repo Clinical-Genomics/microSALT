@@ -19,6 +19,8 @@
   "folders":  {
     "_comment": "Root folder for ALL output",
     "results": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/results/",
+    "_comment": "Report collection folder",
+    "reports": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/reports/",
     "_comment": "Log file position and name",
     "log_file": "~/microsalt.log",
     
