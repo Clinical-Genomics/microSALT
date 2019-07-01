@@ -79,16 +79,16 @@
                             <td><i>N/A</i></td>
                           {% endif %}
                           <td>{{samples[0].projects.date_ordered.date()}}</td>
-                          {% if sample.date_libprep is not none %}
-                            <td>{{sample.date_libprep.date()}}</td>
-                          {% else %}
+                          {% if sample.date_libprep is not none or 'Not in LIMS' in sample.date_libprep %}
                             <td><i>Okänd</i></td>
+                          {% else %}
+                            <td>{{sample.date_libprep.date()}}</td>
                           {% endif %}
                           <td>{{sample.method_libprep}}</td>
-                          {% if sample.date_sequencing is not none %}
-                            <td>{{sample.date_sequencing.date()}}</td>
-                          {% else %}
+                          {% if sample.date_sequencing is not none 'Not in LIMS' in sample.date_sequencing %}
                             <td><i>Okänd</i></td>
+                          {% else %}
+                            <td>{{sample.date_sequencing.date()}}</td>
                           {% endif %}
                           <td>{{sample.method_sequencing}}</td>
                           <td>{{sample.priority.capitalize()}}</td>
