@@ -456,7 +456,7 @@ class Job_Creator():
       if not os.path.exists(self.finishdir):
         os.makedirs(self.finishdir)
       try:
-        self.organism = self.lims_fetcher.get_organism_refname(self.name, external=False)
+        self.organism = self.lims_fetcher.get_organism_refname(self.name)
         # This is one job
         self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
         batchfile = open(self.batchfile, "w+")

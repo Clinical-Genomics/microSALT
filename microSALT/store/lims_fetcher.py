@@ -42,39 +42,40 @@ class LIMS_Fetcher():
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for project {}\nSource: {}".format(cg_projid, str(e)))
 
-  def samples_in_project(self, cg_projid, external=False):
+  def samples_in_project(self, cg_projid):
     """ Returns a list of sample names for a project"""
     output = list()
-    if not external:
-      samples = self.lims.get_samples(projectlimsid=cg_projid)
-    else:
-      samples = self.lims.get_samples(projectname=cg_projid)
+    #Uses internal names, then external on empty
+    samples = self.lims.get_samples(projectlimsid=cg_projid)
+    if not samples:
+     samples = self.lims.get_samples(projectname=cg_projid)
+
     for s in samples:
       output.append(s.id)
     return output
 
-  def load_lims_sample_info(self, cg_sampleid, external=False):
+  def load_lims_sample_info(self, cg_sampleid):
     """ Loads all utilized LIMS info. Organism assumed to be written as binomial name """
     libprep_date = ""
     seq_date = ""
-    if external:
-      sample = self.lims.get_samples(name=cg_sampleid)
-      if len(sample) != 1:
-        self.logger.error("Sample ID {} resolves to multiple entries".format(cg_sampleid))
-      sample = sample[0]
+
+    try:
+      #Internal
+      sample = Sample(self.lims, id=cg_sampleid)
+      #External
+      if not sample:
+        sample = self.lims.get_samples(name=cg_sampleid)
+        if len(sample) != 1:
+          self.logger.error("Sample ID {} resolves to multiple entries".format(cg_sampleid
+        sample = sample[0]
+
       method_libprep = self.get_method(cg_sampleid,type='libprep')
       method_sequencing = self.get_method(cg_sampleid,type='sequencing')
       date_libprep = self.get_date(cg_sampleid,type="libprep")
       date_sequencing = self.get_date(cg_sampleid,type="sequencing")
-    else:
-      try:
-        sample = Sample(self.lims, id=cg_sampleid)
-        method_libprep = self.get_method(cg_sampleid,type='libprep')
-        method_sequencing = self.get_method(cg_sampleid,type='sequencing')
-        date_libprep = self.get_date(cg_sampleid,type="libprep")
-        date_sequencing = self.get_date(cg_sampleid,type="sequencing")
-      except Exception as e:
-        self.logger.error("LIMS connection timeout")
+    except Exception as e:
+      self.logger.error("LIMS connection timeout")
+
     organism = "Unset"
     if 'Strain' in sample.udf and organism == "Unset":
       #Predefined genus usage. All hail buggy excel files
@@ -139,10 +140,10 @@ class LIMS_Fetcher():
       self.logger.warn("Unable to fetch LIMS info for sample {}. Review LIMS data.\nSource: {}"\
       .format(cg_sampleid, str(e)))
 
-  def get_organism_refname(self, sample_name, external=False):
+  def get_organism_refname(self, sample_name):
     """Finds which reference contains the same words as the LIMS reference
        and returns it in a format for database calls."""
-    self.load_lims_sample_info(sample_name, external)
+    self.load_lims_sample_info(sample_name)
     lims_organ = self.data['organism'].lower()
     orgs = os.listdir(self.config["folders"]["references"])
     organism = re.split('\W+', lims_organ)
