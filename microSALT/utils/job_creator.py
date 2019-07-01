@@ -94,7 +94,7 @@ class Job_Creator():
       raise Exception("No files in directory {} match file_pattern '{}'.".format(self.indir, self.config['regex']['file_pattern']))
     #Warn about file sizes
     for vfile in verified_files:
-      bsize = os.stat("{}/{}".format(self.indir,vfile).st_size
+      bsize = os.stat("{}/{}".format(self.indir,vfile)).st_size
       bsize = bsize >> 20
       if bsize > 1000:
         self.logger.warning("Input fastq {} exceeds 1000MB")
