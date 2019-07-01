@@ -117,7 +117,7 @@ class Reports(db.Model):
   __tablename__ = 'reports'
   projects = relationship('Projects', back_populates='reports')
 
-  CG_ID_project = db.Column(db.String(15), ForeignKey('projects.CG_ID_project'))
+  CG_ID_project = db.Column(db.String(15), ForeignKey('projects.CG_ID_project'), primary_key=True)
   steps_aggregate = db.Column(db.String(100))
   date = db.Column(db.DateTime)
   version = db.Column(db.Integer, default=1)
