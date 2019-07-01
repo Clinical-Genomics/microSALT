@@ -145,6 +145,8 @@
 		      {% endif %}
 		      {% if sample.threshold == 'Failed' %}
 		        <td><font color="red">Underkända</font></td>
+                      {% elif sample.threshold == '-' %}
+                        <td><font color="red">-</font></td>
 		      {% else %}
 		        <td>Godkända</td>
 		      {% endif %}
@@ -241,6 +243,8 @@
         	    <tr><th scope="row" >Tröskelvärden</th>
         	      {% if sample.threshold=='Failed' %}
         		<td><font color="red">Underkända</font></td>
+                      {% elif sample.threshold == '-' %}
+                        <td><font color="red">-</font></td>
         	      {% else %}
         		<td>Godkända</td>
         	      {% endif %}
@@ -276,7 +280,7 @@
                   <h4>MLST</h4>
                   <h6>Identitetströskel: {{threshold.mlst_id}}%, Längdtröskel: {{(threshold.mlst_span*100)|round(2)}}%, Novel misstankströskel: {{threshold.mlst_novel_id}}%</h6>
                   <div class="table-responsive"><table  class="table table-bordered" style='table-layout:fixed;'>
-                  {% if not sample.seq_types|length == 0 and 'Invalid' not in sample.ST_status%}
+                  {% if not sample.seq_types|length == 0 and 'saknas' not in sample.ST_status%}
                     <tr>
                       <th width="4%">#</th>
                       <th width="30%">Loci</th>

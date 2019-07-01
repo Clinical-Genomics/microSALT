@@ -405,8 +405,8 @@ class Job_Creator():
     if 'config_path' in self.config:
       custom_conf = '--config {}'.format(self.config['config_path'])
 
-    mb.write("microSALT utils finish {} {} --input {} --rerun --email {} {}\n".\
-               format(span, self.name, self.finishdir, self.config['regex']['mail_recipient'], custom_conf))
+    mb.write("microSALT utils finish {} {} --input {} --rerun --email {} --report {} {}\n".\
+               format(span, self.name, self.finishdir, self.config['regex']['mail_recipient'], report, custom_conf))
     mb.write("touch {}/run_complete.out".format(self.finishdir))
     mb.close()
 

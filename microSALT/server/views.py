@@ -114,7 +114,7 @@ def gen_reportdata(pid='all', organism_group='all'):
     s.Customer_ID_sample.startswith('blank') or s.Customer_ID_sample.startswith('dual-NTC'):
       s.ST_status = 'Kontroll (prefix)'
 
-    if 'Kontroll' in s.ST_status or 'Control' in s.ST_status or s.ST == -1:
+    if ('Kontroll' in s.ST_status or 'Control' in s.ST_status) or s.ST == -1:
       s.threshold = '-'
     elif s.ST == -3:
       s.threshold = 'Failed'
@@ -137,7 +137,7 @@ def gen_reportdata(pid='all', organism_group='all'):
 
     if not ('Control' in s.ST_status or 'Kontroll' in s.ST_status) and s.ST < 0:
       if s.ST == -1:
-        s.ST_status = 'Invalid data'
+        s.ST_status = 'Data saknas'
       elif (s.ST <= -4 or s.ST == -2) and s.threshold == 'Passed':
         s.ST_status = 'Novel'
       elif (s.ST <= -4 or s.ST == -2) and s.threshold == 'Failed':
