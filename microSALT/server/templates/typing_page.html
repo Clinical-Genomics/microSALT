@@ -79,25 +79,25 @@
                             <td><i>N/A</i></td>
                           {% endif %}
                           <td>{{samples[0].projects.date_ordered.date()}}</td>
-                          {% if sample.date_libprep is none or 'Not in LIMS' in sample.date_libprep %}
-                            <td><i>Okänt</i></td>
-                          {% else %}
+                          {% if sample.date_libprep is not none and not 'Not in LIMS' in sample.date_libprep %}
                             <td>{{sample.date_libprep.date()}}</td>
-                          {% endif %}
-                          {% if sample.method_libprep is none or 'Not in LIMS' in sample.method_libprep %}
-                            <td><i>Okänt</i></td>
                           {% else %}
+                            <td><i>Okänt</i></td>
+                          {% endif %}
+                          {% if sample.method_libprep is not none and not 'Not in LIMS' in sample.method_libprep %}
                             <td>{{sample.method_libprep}}</td>
-                          {% endif %}
-                          {% if sample.date_sequencing is none or 'Not in LIMS' in sample.date_sequencing %}
-                            <td><i>Okänt</i></td>
                           {% else %}
+                            <td><i>Okänt</i></td>
+                          {% endif %}
+                          {% if sample.date_sequencing is not none and not 'Not in LIMS' in sample.date_sequencing %}
                             <td>{{sample.date_sequencing.date()}}</td>
-                          {% endif %}
-                          {% if sample.method_sequencing is none or 'Not in LIMS' in sample.method_sequencing %}
-                            <td><i>Okänt</i></td>
                           {% else %}
+                            <td><i>Okänt</i></td>
+                          {% endif %}
+                          {% if sample.method_sequencing is not none and not 'Not in LIMS' in sample.method_sequencing %}
                             <td>{{sample.method_sequencing}}</td>
+                          {% else %}
+                            <td><i>Okänt</i></td>
                           {% endif %}
                           <td>{{sample.priority.capitalize()}}</td>
                           {% if sample.priority == 'standard' %}
