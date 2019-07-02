@@ -66,7 +66,7 @@ class LIMS_Fetcher():
       if not sample:
         sample = self.lims.get_samples(name=cg_sampleid)
         if len(sample) != 1:
-          self.logger.error("Sample ID {} resolves to multiple entries".format(cg_sampleid
+          self.logger.error("Sample ID {} resolves to multiple entries".format(cg_sampleid))
         sample = sample[0]
 
       method_libprep = self.get_method(cg_sampleid,type='libprep')

@@ -187,6 +187,69 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
     click.echo("Unable to process sample {} due to '{}'".format(sample_id,e))
   done()
 
+
+#WIP WIP
+@analyse.command()
+@click.argument('collection_id')
+@click.option('--input', help='Full path to sample folder', default="")
+@click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
+@click.option('--qc_only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
+@click.option('--config', help="microSALT config to override default", default="")
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
+@click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
+@click.option('--uncareful', help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
+@click.pass_context
+def collection(ctx, collection_id, input, dry, config, email, qc_only, untrimmed, skip_update, uncareful):
+  """Analyse a collection of samples"""
+  ctx.obj['config']['regex']['mail_recipient'] = email
+  trimmed = not untrimmed
+  careful = not uncareful
+  if config != '':
+    if os.path.exists(config):
+      try:
+        with open(os.path.abspath(config), 'r') as conf:
+          ctx.obj['config'] = json.load(conf)
+        ctx.obj['config']['config_path'] = os.path.abspath(config)
+      except Exception as e:
+        pass
+
+  ctx.obj['config']['dry'] = dry
+  scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
+
+  pool = list()
+  if input != "":
+    collection_dir = os.path.abspath(input)
+    for sample in os.listdir(input):
+      if os.path.isdir(sample):
+        pool.append(sample)
+  try:
+    scientist.load_lims_sample_info(sample)
+  except Exception as e:
+    click.echo("Unable to load LIMS sample info for sample {}.".format(sample))
+    sys.exit(-1)
+
+  click.echo("Checking versions of references..")
+  for sample in pool:
+    try:
+      if not skip_update:
+        fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+        fixer.identify_new(sample,project=False)
+        fixer.update_refs()
+        print("Version check done. Creating sbatch job")
+      else:
+        print("Skipping version check.")
+    except Exception as e:
+      click.echo("Unable to update references for sample {} due to '{}'".format(sample,e))
+
+  #APPLY POOL IN A NEAT WAY
+  try: 
+    worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'], trim=trimmed,qc_only=qc_only, careful=careful, pool=pool)
+    worker.project_job(pool=True)
+  except Exception as e:
+    click.echo("Unable to process sample {} due to '{}'".format(sample_id,e))
+  done()
+
 @finish.command()
 @click.argument('sample_id')
 @click.option('--rerun', is_flag=True, default=False, help='Overwrite existing data')

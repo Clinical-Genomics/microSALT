@@ -16,7 +16,7 @@ from microSALT.store.db_manipulator import DB_Manipulator
 
 class Job_Creator():
 
-  def __init__(self, input, config, log, finishdir="", timestamp="", trim=True, qc_only=False,careful=False):
+  def __init__(self, input, config, log, finishdir="", timestamp="", trim=True, qc_only=False,careful=False,pool=list()):
     self.config = config
     self.logger = log
     self.batchfile = ""
@@ -25,6 +25,7 @@ class Job_Creator():
     self.trimmed=trim
     self.qc_only = qc_only
     self.careful = careful
+    self.pool = pool
 
     if isinstance(input, str):
       self.indir = os.path.abspath(input)
@@ -334,14 +335,22 @@ class Job_Creator():
     jobarray = list()
     if not os.path.exists(self.finishdir):
       os.makedirs(self.finishdir)
+    #Loads project level info.
     try:
        if single_sample:
          self.create_project(os.path.normpath(self.indir).split('/')[-2])
+       elif self.pool:
+         addedprojs = list()
+         for sample in pool:
+           proj = sample[:-3]
+           if proj not in addedprojs:
+             self.create_project(proj)
+             addedprojs.append(proj)
        else:
         self.create_project(self.name)
     except Exception as e:
       self.logger.error("LIMS interaction failed. Unable to read/write project {}".format(self.name))
-      #Start every sample job
+    #Writes the job creation sbatch
     if single_sample:
       try:
         self.sample_job()
@@ -357,6 +366,28 @@ class Job_Creator():
           self.logger.info("Suppressed command: {}".format(bash_cmd))
       except Exception as e:
         self.logger.error("Unable to analyze single sample {}".format(self.name))
+    elif self.pool:
+      for (dirpath, dirnames, filenames) in os.walk(self.indir):
+        for dir in dirnames:
+          try:
+            sample_in = "{}/{}".format(dirpath, dir)
+            sample_out = "{}/{}".format(self.finishdir, dir)
+            sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now, trim=self.trimmed)
+            sample_instance.sample_job()
+            headerargs = sample_instance.get_headerargs()
+            outfile = ""
+            if os.path.isfile(sample_instance.get_sbatch()):
+              outfile = sample_instance.get_sbatch()
+            bash_cmd="sbatch {} {}".format(headerargs, outfile)
+            if not dry and outfile != "":
+              projproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+              output, error = projproc.communicate()
+              jobno = re.search('(\d+)', str(output)).group(0)
+              jobarray.append(jobno)
+            else:
+              self.logger.info("Suppressed command: {}".format(bash_cmd))
+          except Exception as e:
+            pass
     else:
       for (dirpath, dirnames, filenames) in os.walk(self.indir):
         for dir in dirnames:
