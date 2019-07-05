@@ -176,7 +176,7 @@ class LIMS_Fetcher():
     for step in steps:
       try:
         arts = self.lims.get_artifacts(samplelimsid = sample_id, process_type = step)
-        date_list = date_list + [a.parent_process.date_run for a in arts]
+        date_list = date_list + [a.parent_process.udf['Finish Date'] for a in arts]
       except Exception as e:
         pass
     if date_list:
