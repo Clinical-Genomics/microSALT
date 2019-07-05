@@ -115,7 +115,6 @@ def gen_reportdata(pid='all', organism_group='all'):
   sample_info = sorted(sample_info, key=lambda sample: \
                 int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
 
-<<<<<<< HEAD
   sample_info = gen_add_info(sample_info)
 
   def gen_add_info(sample_info=dict()):
