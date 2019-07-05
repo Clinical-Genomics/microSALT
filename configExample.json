@@ -12,7 +12,9 @@
   "_comment": "File finding patterns. Only single capture group accepted (for reverse/forward identifier)",
   "regex":  {
     "mail_recipient": "user@examplegroup.com",
-    "file_pattern": "\\w{8,12}_\\w{8,10}(?:-\\d+)*_L\\d_(?:R)*(\\d{1}).fastq.gz"
+    "file_pattern": "\\w{8,12}_\\w{8,10}(?:-\\d+)*_L\\d_(?:R)*(\\d{1}).fastq.gz",
+    "_comment": "Organisms recognized enough to be considered stable",
+    "verified_organisms": ["Enterococcus faecalis","Enterococcus faecium","Escherichia coli","Klebsiella pneumoniae","Staphylococcus aureus"]
   },
 
   "_comment": "Folders",

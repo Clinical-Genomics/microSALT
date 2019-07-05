@@ -100,7 +100,7 @@
                             <td><i>Okänt</i></td>
                           {% endif %}
                           <td>{{sample.priority.capitalize()}}</td>
-                          {% if sample.priority == 'standard' %}
+                          {% if sample.priority == 'standard' and sample.organism.replace('_', ' ').capitalize() in verified_organisms %}
                             <td><i>✔︎</i></td>
                           {% else %}
                             <td><i>-</i></td>
@@ -208,11 +208,9 @@
               <div class="panel">
         	<div class="panel-body">
         	  <h2 class="page-header"><div class="row"></div><strong>Detaljresultat</strong>
-                  {% if sample.priority == 'standard' %}
+                  {% if sample.priority == 'standard' and sample.organism.replace('_', ' ').capitalize() in verified_organisms %}
                     <img src="https://github.com/Clinical-Genomics/microSALT/blob/accreditation-changes-to-report/artwork/swedac.jpg?raw=true" alt="Swedac Logo" \
                     align="right" style="width:40px;height:60px;display:flex;">
-                  {% else %}
-                    <p align="right">Icke verifierad organism</p>
                   {% endif %}
                   <br>
                   <small>Klinisk Mikrobiologi</small>

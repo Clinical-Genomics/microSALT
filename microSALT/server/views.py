@@ -68,6 +68,7 @@ def typing_page(project, organism_group):
         date = date.today().isoformat(),
         version = sample_info['versions'],
         threshold = config['threshold'],
+        verified_organisms = config['regex']['verified_organisms']
         build = __version__)
 
 
