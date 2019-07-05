@@ -66,8 +66,8 @@
                         <th>Metod prep</th>
                         <th>Datum sekvensering</th>
                         <th>Metod sekvensering</th>
-                        <th>Prioritet (*)(**)</th>
-                        <th>Verifierad</th>
+                        <th>Prioritet (*)</th>
+                        <th>Verifierad (**)</th>
                       </tr>
                       {% for sample in samples %}
                         <tr>
@@ -114,10 +114,7 @@
                     </table>
                   </div>
                 (*) Information om prover som kommer från kund <br/>
-                (**) Standard = Verifierad organim,
-                Research = Icke verifierad organism <br/>
-                Kvalitetskontrollen har verifierats för ett antal bestämda organismer.
-                För andra organismer kan ej kriterierna för metoden appliceras.
+                (**) Provet har processerats enligt standardförfarande, och består av en väl studerad organism<br/>
                 </div>
             </div>
           </footer>
@@ -125,10 +122,8 @@
 
           <footer>
             <div class="panel"><div class="panel-body">
-              <h3>Resultatsammanställning(***)<br></h3>
+              <h3>Resultatsammanställning<br></h3>
               <p>
-              (***) Laboratoriet har inte haft ansvar för provtagningsstadiet och
-              extraktion, resultaten gäller för provet såsom det har mottagits.
               </p>
               <div class="table-responsive">
                 <table  class="table table-bordered" style='table-layout:fixed;'>
@@ -136,7 +131,7 @@
                     <th>Prov ID(*)</th>
                     <th>CG Prov ID</th>
                     <th>Organism (*)</th>
-                    <th>Sekvenstyp</th>
+                    <th>Sekvenstyp (**)</th>
                     <th>Tröskelvärden</th>
                   </tr>
                   {% for sample in samples %}
@@ -166,6 +161,8 @@
 		  {% endfor %}
 	        </table>
 	      </div>
+                (*) Information om prover som kommer från kund <br/>
+                (**) För förbättrad översikt rapporteras resultaten för kontrollprover enbart i detaljrapporten <br/> 
 	    </div></div>
           </footer>
 
@@ -181,6 +178,7 @@
               <h3><strong>Begränsningar av analysen : {{samples[0].application_tag}}</strong><br></h3>
               <p>
               Analysen kan enbart beställas av gruppen Klinisk Mikrobiologi.
+              Laboratoriet har inte haft ansvar för provtagningsstadiet och extraktion, resultaten gäller för provet såsom det har mottagits.
               Typningen utgår från de publikt tillgängliga databaserna pubMLST och resFinder.
               Typningen av prover är enbart att anses som tillförlitlig om desamma uppnår de fördefinierade tröskelvärdena.
               Uppnåelse av tröskelvärdena garanteras i sin tur enbart för prover vars förhantering och detaljer tidigare verifierats av personal på Clinical Genomics.
