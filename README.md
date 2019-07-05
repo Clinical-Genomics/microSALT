@@ -57,6 +57,10 @@ Any definitions will work, as long as they retain the same formatting.
 * Python 3.6
 * sqLite Service ( https://www.sqlite.org/download.html )
 
+## Contributing to this repo
+This repository follows the Github flow approach to adding updates.
+For more information, see https://guides.github.com/introduction/flow/
+
 ## Credits
 * Isak Sylvin - Lead developer
 * Emma Sernstad - Accreditation ready reports
