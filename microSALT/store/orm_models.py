@@ -15,6 +15,7 @@ class Samples(db.Model):
   seq_types = relationship("Seq_types", back_populates="samples")
   projects = relationship('Projects', back_populates='samples')
   resistances = relationship("Resistances", back_populates="samples")
+  steps = relationship("Steps", back_populates="samples")
 
   CG_ID_sample = db.Column(db.String(15), primary_key=True, nullable=False)
   CG_ID_project = db.Column(db.String(15), ForeignKey('projects.CG_ID_project'))
@@ -90,7 +91,7 @@ class Resistances(db.Model):
 #Multi-date support for libprep/sequencing/analysis
 class Steps(db.Model):
   __tablename__ = 'steps'
-  samples= relationship("Samples", back_populates="steps")
+  samples = relationship("Samples", back_populates="steps")
 
   CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
   step = db.Column(db.String(40))
@@ -100,6 +101,7 @@ class Steps(db.Model):
 class Projects(db.Model):
   __tablename__ = 'projects'
   samples = relationship('Samples', back_populates='projects')
+  reports = relationship('Reports', back_populates='projects')
 
   CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
   Customer_ID_project = db.Column(db.String(15))
@@ -121,3 +123,9 @@ class Reports(db.Model):
   steps_aggregate = db.Column(db.String(100))
   date = db.Column(db.DateTime)
   version = db.Column(db.Integer, default=1)
+
+class Collections(db.Model):
+  __tablename__ = 'collections'
+
+  ID_collection = db.Column(db.String(15), primary_key=True)
+  CG_ID_sample = db.Column(db.String(15))
