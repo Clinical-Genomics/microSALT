@@ -72,20 +72,32 @@
                         <tr>
                           <td>{{sample.Customer_ID_sample}}</td>
                           <td>{{sample.application_tag}}</td>
-                          <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
+                          {% if sample.organism is not none %}
+                            <td><i>{{sample.organism.replace('_', ' ').capitalize()}}</i></td>
+                          {% else %}
+                            <td><i>N/A</i></td>
+                          {% endif %}
                           <td>{{samples[0].projects.date_ordered.date()}}</td>
                           {% if sample.date_libprep is not none %}
                             <td>{{sample.date_libprep.date()}}</td>
                           {% else %}
-                            <td><i>Okänd</i></td>
+                            <td><i>Okänt</i></td>
                           {% endif %}
-                          <td>{{sample.method_libprep}}</td>
+                          {% if sample.method_libprep is not none and 'Not in LIMS' not in sample.method_libprep %}
+                            <td>{{sample.method_libprep}}</td>
+                          {% else %}
+                            <td><i>Okänt</i></td>
+                          {% endif %}
                           {% if sample.date_sequencing is not none %}
                             <td>{{sample.date_sequencing.date()}}</td>
                           {% else %}
-                            <td><i>Okänd</i></td>
+                            <td><i>Okänt</i></td>
                           {% endif %}
-                          <td>{{sample.method_sequencing}}</td>
+                          {% if sample.method_sequencing is not none and 'Not in LIMS' not in sample.method_sequencing %}
+                            <td>{{sample.method_sequencing}}</td>
+                          {% else %}
+                            <td><i>Okänt</i></td>
+                          {% endif %}
                           <td>{{sample.priority.capitalize()}}</td>
                           {% if sample.priority == 'standard' %}
                             <td><i>✔︎</i></td>
@@ -140,6 +152,8 @@
 		      {% endif %}
 		      {% if sample.threshold == 'Failed' %}
 		        <td><font color="red">Underkända</font></td>
+                      {% elif sample.threshold == '-' %}
+                        <td><font color="red">-</font></td>
 		      {% else %}
 		        <td>Godkända</td>
 		      {% endif %}
@@ -246,11 +260,13 @@
         	    <tr><th scope="row" >Tröskelvärden</th>
         	      {% if sample.threshold=='Failed' %}
         		<td><font color="red">Underkända</font></td>
+                      {% elif sample.threshold == '-' %}
+                        <td><font color="red">-</font></td>
         	      {% else %}
         		<td>Godkända</td>
         	      {% endif %}
         	    </tr>
-        	    {% if sample.organism in version %}
+        	    {% if sample.organism in version and sample.organism is not none %}
         	      <tr>
         		<th scope="row">Referensversion</th>
         		<td>{{version[sample.organism]}}</td>
@@ -281,7 +297,7 @@
                   <h4>MLST</h4>
                   <h6>Identitetströskel: {{threshold.mlst_id}}%, Längdtröskel: {{threshold.mlst_span}}%, Novel misstankströskel: {{threshold.mlst_novel_id}}%</h6>
                   <div class="table-responsive"><table  class="table table-bordered" style='table-layout:fixed;'>
-                  {% if not sample.seq_types|length == 0 and 'Invalid' not in sample.ST_status%}
+                  {% if not sample.seq_types|length == 0 and 'saknas' not in sample.ST_status%}
                     <tr>
                       <th width="4%">#</th>
                       <th width="30%">Loci</th>

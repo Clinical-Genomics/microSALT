@@ -115,6 +115,7 @@ def gen_reportdata(pid='all', organism_group='all'):
   sample_info = sorted(sample_info, key=lambda sample: \
                 int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
 
+<<<<<<< HEAD
   sample_info = gen_add_info(sample_info)
 
   def gen_add_info(sample_info=dict()):
@@ -138,34 +139,23 @@ def gen_reportdata(pid='all', organism_group='all'):
         for seq_type in s.seq_types:
           #Identify single deviating allele
           if seq_type.st_predictor and seq_type.identity >= config["threshold"]["mlst_novel_id"] and \
-          config["threshold"]["mlst_id"] > seq_type.identity and 1-abs(1-seq_type.span) >= (config["threshold"]["mlst_span"]/100.0):
+          config["threshold"]["mlst_id"] > seq_type.identity and 1-abs(1-seq_type.span) >= (config["threshold"]["mlst_span"]):
             near_hits = near_hits + 1
           elif (seq_type.identity < config["threshold"]["mlst_novel_id"] or \
-                seq_type.span < (config["threshold"]["mlst_span"]/100.0)) and seq_type.st_predictor:
+                seq_type.span < (config["threshold"]["mlst_span"])) and seq_type.st_predictor:
             s.threshold = 'Failed'
 
         if near_hits > 0 and s.threshold == 'Passed':
           s.ST_status = 'Unknown ({} alleles)'.format(near_hits)
+      s.threshold = 'Failed'
+
+    #Resistence filter
+    for r in s.resistances:
+      if (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity >= config["threshold"]["motif_id"] and \
+      r.span >= config["threshold"]["motif_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
+        r.threshold = 'Passed'
       else:
         s.threshold = 'Failed'
-
-      if not ('Control' in s.ST_status or 'Kontroll' in s.ST_status) and s.ST < 0:
-        if s.ST == -1:
-          s.ST_status = 'Invalid data'
-        elif (s.ST <= -4 or s.ST == -2) and s.threshold == 'Passed':
-          s.ST_status = 'Novel'
-        elif (s.ST <= -4 or s.ST == -2) and s.threshold == 'Failed':
-          s.ST_status = 'Unknown'
-        else:
-          s.ST_status='None'
-
-      #Resistence filter
-      for r in s.resistances:
-        if (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity >= config["threshold"]["motif_id"] and \
-        r.span >= (config["threshold"]["motif_span"]/100.0)) or (s.ST < 0 and not 'Novel' in s.ST_status):
-          r.threshold = 'Passed'
-        else:
-          r.threshold = 'Failed'
 
       #Seq_type and resistance sorting
       s.seq_types=sorted(s.seq_types, key=lambda x: x.loci)

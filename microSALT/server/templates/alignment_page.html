@@ -81,9 +81,7 @@
                       <td>{{ sample.application_tag }}</td>
                       {% if sample.organism is not none %}
                         <td>{{sample.organism.replace('_', ' ').capitalize()}}</td>
-                      {% else %}
-                        <td>Undetermined</td>
-                      {% endif %}
+                      {% else %}<td>Okänd</td>{% endif %}
                       <td>{{ sample.reference_genome }}</td>
 
                         {% if sample.total_reads is none %}

@@ -204,7 +204,6 @@ class LIMS_Fetcher():
         arts = self.lims.get_artifacts(samplelimsid = sample_id, process_type = step)
         processes = [(a.parent_process.udf[key_values['method']], a.parent_process.udf[key_values['version']]) for a in arts]
         processes = list(set(processes))
-        process = sorted(processes)[-1]
         if processes:
           process = sorted(processes)[-1]
           out = "{}:{}".format(process[0], process[1])
