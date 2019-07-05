@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 # maintain the same connection per thread
 from sqlalchemy.pool import SingletonThreadPool
 
-from microSALT.store.orm_models import app, Collections, Projects, Reports, Resistances, Samples, Seq_types, Steps, Versions
+from microSALT.store.orm_models import app, Collections, Projects, Reports, Resistances, Samples, Seq_types, Steps, Versions, Virulences
 from microSALT.store.models import Profiles, Novel
 
 class DB_Manipulator:
@@ -56,6 +56,9 @@ class DB_Manipulator:
     if not self.engine.dialect.has_table(self.engine, 'collections'):
       Collections.__table__.create(self.engine)
       self.logger.info("Created collections table")
+    if not self.engine.dialect.has_table(self.engine, 'virulences'):
+      Virulences.__table__.create(self.engine)
+      self.logger.info("Created virulence table")
     for k,v in self.profiles.items():
       if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
         self.profiles[k].create()

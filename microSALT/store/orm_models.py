@@ -16,6 +16,7 @@ class Samples(db.Model):
   projects = relationship('Projects', back_populates='samples')
   resistances = relationship("Resistances", back_populates="samples")
   steps = relationship("Steps", back_populates="samples")
+  virulences = relationship("Virulences", back_populates="samples")
 
   CG_ID_sample = db.Column(db.String(15), primary_key=True, nullable=False)
   CG_ID_project = db.Column(db.String(15), ForeignKey('projects.CG_ID_project'))
@@ -64,8 +65,8 @@ class Seq_types(db.Model):
   bitscore = db.Column(db.SmallInteger)
   subject_length = db.Column(db.Integer)
   st_predictor = db.Column(db.Boolean, default = 0)
-  contig_start=db.Column(db.Integer)
-  contig_end=db.Column(db.Integer)
+  contig_start = db.Column(db.Integer)
+  contig_end = db.Column(db.Integer)
 
 
 class Resistances(db.Model):
@@ -85,8 +86,28 @@ class Resistances(db.Model):
   subject_length = db.Column(db.Integer)
   reference = db.Column(db.String(40))
   resistance = db.Column(db.String(120))
-  contig_start=db.Column(db.Integer)
-  contig_end=db.Column(db.Integer)
+  contig_start = db.Column(db.Integer)
+  contig_end = db.Column(db.Integer)
+
+class Virulences(db.Model):
+  __tablename__ = 'virulences'
+  samples = relationship('Samples', back_populates='virulences')
+
+  CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
+  gene = db.Column(db.String(50), primary_key=True)
+  instance = db.Column(db.String(30), primary_key=True)
+  contig_name = db.Column(db.String(20), primary_key=True)
+  contig_length = db.Column(db.Integer)
+  contig_coverage = db.Column(db.Float(6,2))
+  identity = db.Column(db.Float(3,2), default= 0.0)
+  span = db.Column(db.Float(3,2), default= 0.0)
+  evalue = db.Column(db.String(10))
+  bitscore = db.Column(db.SmallInteger)
+  subject_length = db.Column(db.Integer)
+  reference = db.Column(db.String(40))
+  virulence = db.Column(db.String(120))
+  contig_start = db.Column(db.Integer)
+  contig_end = db.Column(db.Integer)
 
 #Multi-date support for libprep/sequencing/analysis
 class Steps(db.Model):

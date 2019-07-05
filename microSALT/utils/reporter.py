@@ -42,7 +42,8 @@ class Reporter():
     self.attachments = list()
     self.filelist = list()
     self.error = False
-    self.dt = datetime.now() 
+    self.dt = datetime.now()
+    self.filelist = list() 
     self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
     format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
@@ -57,8 +58,9 @@ class Reporter():
       #self.gen_resistence()
     elif type == 'typing':
       self.gen_typing()
-    elif type == 'resistance_overview':
-      self.gen_resistence()
+    elif type == 'motif_overview':
+      self.gen_motif(motif="resistance")
+      self.gen_motif(motif="virulence")
     elif type == 'qc':
       self.gen_qc()
     elif type == 'st_update':
@@ -137,59 +139,80 @@ class Reporter():
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.error = True
 
-  def gen_resistence(self, silent=False):
-    if self.collection:
-      sample_info = gen_collectiondata(self.name)
-    else:
-      self.ticketFinder.load_lims_project_info(self.name)
-      sample_info = gen_reportdata(self.name)
-    output = "{}/{}_{}.csv".format(self.output,self.name,self.now)
+  def gen_motif(self, motif="resistance", silent=False):
+    if motif not in ["resistance", "virulence"]:
+      self.logger.error("Invalid motif type specified for gen_motif function")
+    self.ticketFinder.load_lims_project_info(self.name)
+    output = "{}/{}_{}_{}.csv".format(self.output,self.name,motif,self.now)
     excel = open(output, "w+")
-    resdict = dict()
+    sample_info = gen_reportdata(self.name)
+    motifdict = dict()
 
-    #Load ALL resistance & genes
+    #Load motif & gene names into dict
     for s in sample_info['samples']:
-      for r in s.resistances:
-        if not (r.resistance in resdict.keys()) and r.threshold == 'Passed':
-          resdict[r.resistance] =list()
-        if r.threshold == 'Passed' and not r.gene in resdict[r.resistance]:
-          resdict[r.resistance].append(r.gene)
-    for k, v in resdict.items():
-      resdict[k] = sorted(v)
+      if motif=='resistance':
+        for r in s.resistances:
+          if not (r.resistance in motifdict.keys()) and r.threshold == 'Passed':
+            motifdict[r.resistance] =list()
+          if r.threshold == 'Passed' and not r.gene in motifdict[r.resistance]:
+            motifdict[r.resistance].append(r.gene)
+      elif motif=='virulence':
+        for r in s.virulences:
+          if not (r.virulence in motifdict.keys()) and r.threshold == 'Passed':
+            motifdict[r.virulence] =list()
+          if r.threshold == 'Passed' and not r.gene in motifdict[r.virulence]:
+            motifdict[r.virulence].append(r.gene)
+    for k, v in motifdict.items():
+      motifdict[k] = sorted(v)
 
-    #Header
-    topline = ",,,"
+    #Top 2 Header
+    topline = "Identity {}% & Span {}%,,,".format(self.config['threshold']['motif_id'], self.config['threshold']['motif_span']*100)
     botline = "CG Sample ID,Sample ID,Organism,Sequence Type,Thresholds"
-    for k in sorted(resdict.keys()):
-      genes = [''] * len(resdict[k])
-      topline += ",,{}{}".format(k.replace(',',';'),','.join(genes))
-      botline += ",,{}".format(','.join(sorted(resdict[k])))
+    for k in sorted(motifdict.keys()):
+      genes = [''] * len(motifdict[k])
+      active_gene = k.replace(',',' &')
+      if active_gene == "":
+        active_gene = "Uncategorized hits"
+      geneholder = ','.join(genes)
+      topline += ",,{}{}".format(active_gene,geneholder)
+      resnames = ','.join(sorted(motifdict[k]))
+      botline += ",,{}".format(resnames)
     excel.write("{}\n".format(topline))
     excel.write("{}\n".format(botline))
 
-    #Individual searches
+    #Create each individual roaw past the 2nd, per iteration
     for s in sample_info['samples']:
-      tdict = dict()
+      rowdict = dict()
       pref = "{},{},{},{},{}".format(s.CG_ID_sample,s.Customer_ID_sample, s.organism, s.ST_status, s.threshold)
       #Load single sample
-      for r in s.resistances:
-        if not (r.resistance in tdict.keys()) and r.threshold == 'Passed':
-          tdict[r.resistance] =list()
-        if r.threshold == 'Passed' and not r.gene in tdict[r.resistance]:
-          tdict[r.resistance].append(r.gene)
+      if motif=='resistance':
+        for r in s.resistances:
+          if not (r.resistance in rowdict.keys()) and r.threshold == 'Passed':
+            rowdict[r.resistance] =dict()
+          if r.threshold == 'Passed' and not r.gene in rowdict[r.resistance]:
+            rowdict[r.resistance][r.gene] = r.identity
+      elif motif=="virulence":
+        for r in s.virulences:
+          if not (r.virulence in rowdict.keys()) and r.threshold == 'Passed':
+            rowdict[r.virulence] =dict()
+          if r.threshold == 'Passed' and not r.gene in rowdict[r.virulence]:
+            rowdict[r.virulence][r.gene] = r.identity
       #Compare single sample to all
       hits = ""
-      for res in sorted(resdict.keys()):
-        if res in tdict.keys():
+      for res in sorted(motifdict.keys()):
+        if res in rowdict.keys():
           hits += ",1"
-          for gen in sorted(resdict[res]):
+          for gen in sorted(motifdict[res]):
             hits += ","
-            if gen in tdict[res]:
-              hits +="1"
+            if gen in rowdict[res].keys():
+              #UPD: Change this to identity of hit
+              hits +="{}".format(rowdict[res][gen])
+            else:
+              hits +="0"
         else:
           #Commas eq to res + gen length
-          hits += ",,"
-          pad = [''] * len(resdict[res])
+          hits += ",0,0"
+          pad = ['0'] * len(motifdict[res])
           hits += ','.join(pad)
 
       excel.write("{}{}\n".format(pref, hits))
@@ -216,7 +239,7 @@ class Reporter():
       report[s.CG_ID_sample]['blast_pubmlst'] = {'sequence_type':s.ST_status, 'thresholds':s.threshold}
       report[s.CG_ID_sample]['quast_assembly'] = {'estimated_genome_length':s.genome_length, 'gc_percentage':float(s.gc_percentage), 'n50':s.n50, 'necessary_contigs':s.contigs}
       report[s.CG_ID_sample]['picard_markduplicate'] = {'insert_size':s.insert_size, 'duplication_rate':s.duplication_rate}
-      report[s.CG_ID_sample]['microsalt_samtools_stats'] = {'total_reads':s.total_reads, 'mapped_rate':s.mapped_rate, \
+      report[s.CG_ID_sample]['microsalt_samtools_stats'] = {'total_reads':s.total_reads, 'mapped_rate':s.mapped_rate,\
                                                             'average_coverage':s.average_coverage, \
                                                             'coverage_10x':s.coverage_10x, 'coverage_30x':s.coverage_30x, \
                                                             'coverage_50x':s.coverage_50x, 'coverage_100x':s.coverage_100x}

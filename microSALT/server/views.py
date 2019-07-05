@@ -167,10 +167,17 @@ def gen_add_info(sample_info=dict()):
         r.threshold = 'Passed'
       else:
         r.threshold = 'Failed'
+    for v in s.virulences:
+      if (s.ST > 0 or 'Novel' in s.ST_status ) and (v.identity >= config["threshold"]["motif_id"] and \
+      v.span >= config["threshold"]["motif_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
+        v.threshold = 'Passed'
+      else:
+        v.threshold = 'Failed'
 
     #Seq_type and resistance sorting
     s.seq_types=sorted(s.seq_types, key=lambda x: x.loci)
     s.resistances=sorted(s.resistances, key=lambda x: x.instance)
+    s.virulences=sorted(s.virulences, key=lambda x: x.gene)
     output['samples'].append(s)
 
   versions = session.query(Versions).all()
