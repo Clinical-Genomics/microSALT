@@ -291,13 +291,22 @@ class Job_Creator():
         batchfile.write('\n')
     batchfile.close()
 
+  def create_collection(self):
+    """Creates collection entry in database"""
+    if self.db_pusher.exists('Collections', {'ID_collection':self.name}):
+      self.db_pusher.purge_rec(name=self.name, type='Collections')
+      for sample in self.pool:
+        self.db_pusher.add_rec({'ID_collection':self.name, 'CG_ID_sample':sample}, 'Collections')
+
+    addedprojs = list()
+    for sample in self.pool:
+      proj = re.search('(\w+)A(?:\w+)', sample).group(1)
+      if proj not in addedprojs:
+        self.create_project(proj)
+        addedprojs.append(proj)
 
   def create_project(self, name):
     """Creates project in database"""
-    if self.pool:
-      self.db_pusher.purge_rec(self.name, 'Collections')
-      for sample in self.pool:
-        self.db_pusher.add_rec({'collection_ID':self.name, 'CG_ID_sample':sample}, 'Collections')
     try:
       self.lims_fetcher.load_lims_project_info(name)
     except Exception as e:
@@ -344,12 +353,7 @@ class Job_Creator():
        if single_sample:
          self.create_project(os.path.normpath(self.indir).split('/')[-2])
        elif self.pool:
-         addedprojs = list()
-         for sample in self.pool:
-           proj = re.search('(\w+)A(?:\w+)', sample).group(1)
-           if proj not in addedprojs:
-             self.create_project(proj)
-             addedprojs.append(proj)
+         self.create_collection()
        else:
         self.create_project(self.name)
     except Exception as e:
@@ -425,8 +429,12 @@ class Job_Creator():
       scope = 'sample' 
     elif self.pool:
       scope = 'collection'
+      report = 'resistance_overview'
     if self.qc_only:
       report = 'qc'
+    custom_conf = ''
+    if 'config_path' in self.config:
+      custom_conf = '--config {}'.format(self.config['config_path'])
 
 
     startfile = "{}/run_started.out".format(self.finishdir)
@@ -441,15 +449,8 @@ class Job_Creator():
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
 
-    span = 'project'
-    custom_conf = ''
-    if single_sample:
-      span = 'sample'
-    if 'config_path' in self.config:
-      custom_conf = '--config {}'.format(self.config['config_path'])
-
     mb.write("microSALT utils finish {} {} --input {} --rerun --email {} --report {} {}\n".\
-               format(span, self.name, self.finishdir, self.config['regex']['mail_recipient'], report, custom_conf))
+               format(scope, self.name, self.finishdir, self.config['regex']['mail_recipient'], report, custom_conf))
     mb.write("touch {}/run_complete.out".format(self.finishdir))
     mb.close()
 

@@ -128,4 +128,4 @@ class Collections(db.Model):
   __tablename__ = 'collections'
 
   ID_collection = db.Column(db.String(15), primary_key=True)
-  CG_ID_sample = db.Column(db.String(15))
+  CG_ID_sample = db.Column(db.String(15), primary_key=True)

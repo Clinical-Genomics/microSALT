@@ -21,18 +21,22 @@ class Scraper():
   def __init__(self, infolder, config, log):
     self.config = config
     self.logger = log
+    self.db_pusher=DB_Manipulator(config, log)
+    self.lims_fetcher=LIMS_Fetcher(config, log)
+    self.job_fallback=Job_Creator("", config, log)
     self.infolder = os.path.abspath(infolder)
     self.sampledir = ""
    
     last_folder = self.infolder.split('/')[-1]
     self.name = last_folder.split('_')[0]
+    #Cruddy internal check
+    if not 'ACC' in self.name and not 'MIC' in self.name:
+      self.lims_fetcher.load_lims_sample_info(self.name)
+      self.name = self.lims_fetcher.data['CG_ID_sample']
     #TODO: Replace date from dir with entry from analysis files/database
     if not '_' in last_folder:
       last_folder = self.infolder.split('/')[-2]
     self.date = "{} {}".format(re.sub('\.','-', last_folder.split('_')[1]), re.sub('\.',':', last_folder.split('_')[2]))
-    self.db_pusher=DB_Manipulator(config, log)
-    self.lims_fetcher=LIMS_Fetcher(config, log)
-    self.job_fallback=Job_Creator("", config, log)
     self.lims_sample_info = {}
     self.gene2resistance = self.load_resistances()
 

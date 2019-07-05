@@ -360,7 +360,7 @@ def project(ctx, project_id, rerun, email, input, config, report):
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--input', help='Full path to result sample folder', default="")
 @click.option('--config', help="microSALT config to override default", default="")
-@click.option('--report', default='default', type=click.Choice(['default', 'qc']))
+@click.option('--report', default='default', type=click.Choice(['default', 'qc','resistance_overview']))
 @click.pass_context
 def collection(ctx, collection_id, rerun, email, input, config, report):
   """Parse results from analysing a set of sample"""
