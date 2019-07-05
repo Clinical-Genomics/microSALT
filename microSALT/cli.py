@@ -373,7 +373,7 @@ def collection(ctx, collection_id, rerun, email, input, config, report):
       except Exception as e:
         pass
 
-  ctx.obj['config']['rerun'] = rerun
+  ctx.obj['config']['rerun'] = False
   ctx.obj['config']['regex']['mail_recipient'] = email
 
   pool = []
