@@ -41,6 +41,7 @@ class Samples(db.Model):
   reference_genome = db.Column(db.String(32))
 
   application_tag = db.Column(db.String(15))
+  date_arrival = db.Column(db.DateTime)
   date_analysis = db.Column(db.DateTime)
   date_sequencing = db.Column(db.DateTime)
   date_libprep = db.Column(db.DateTime)

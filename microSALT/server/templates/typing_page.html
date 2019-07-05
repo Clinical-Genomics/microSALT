@@ -78,7 +78,11 @@
                           {% else %}
                             <td><i>N/A</i></td>
                           {% endif %}
-                          <td>{{samples[0].projects.date_ordered.date()}}</td>
+                          {% if sample.date_arrival is not none %}
+                            <td>{{sample.date_arrival.date()}}</td>
+                          {% else %}
+                            <td><i>Okänt</i></td>
+                          {% endif %}
                           {% if sample.date_libprep is not none %}
                             <td>{{sample.date_libprep.date()}}</td>
                           {% else %}

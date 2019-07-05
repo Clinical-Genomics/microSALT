@@ -311,6 +311,7 @@ class Job_Creator():
       sample_col['organism']=self.lims_fetcher.data['organism']
       sample_col["application_tag"] = self.lims_fetcher.data['application_tag']
       sample_col["priority"] = self.lims_fetcher.data['priority']
+      sample_col["date_arrival"] = self.lims_fetcher.data['date_arrival']
       sample_col["date_sequencing"] = self.lims_fetcher.data['date_sequencing']
       sample_col["date_libprep"] = self.lims_fetcher.data['date_libprep']
       sample_col["method_libprep"] = self.lims_fetcher.data['method_libprep']

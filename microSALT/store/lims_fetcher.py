@@ -64,6 +64,7 @@ class LIMS_Fetcher():
       sample = sample[0]
       method_libprep = self.get_method(cg_sampleid,type='libprep')
       method_sequencing = self.get_method(cg_sampleid,type='sequencing')
+      date_arrival = self.get_date(cg_sampleid,type="arrival")
       date_libprep = self.get_date(cg_sampleid,type="libprep")
       date_sequencing = self.get_date(cg_sampleid,type="sequencing")
     else:
@@ -71,6 +72,7 @@ class LIMS_Fetcher():
         sample = Sample(self.lims, id=cg_sampleid)
         method_libprep = self.get_method(cg_sampleid,type='libprep')
         method_sequencing = self.get_method(cg_sampleid,type='sequencing')
+        date_arrival = self.get_date(cg_sampleid,type="arrival")
         date_libprep = self.get_date(cg_sampleid,type="libprep")
         date_sequencing = self.get_date(cg_sampleid,type="sequencing")
       except Exception as e:
@@ -167,7 +169,9 @@ class LIMS_Fetcher():
   def get_date(self, sample_id, type=""):
     """ Returns the most recent sequencing date of a sample """
     date_list = list()
-    if type == "sequencing":
+    if type == "arrival":
+      steps = ["CG002 - Reception Control"]
+    elif type == "sequencing":
       steps = ["CG002 - Illumina Sequencing (Illumina SBS)", "CG002 Illumina SBS (HiSeq X)"]
     elif type == "libprep":
       steps = ["CG002 - Aggregate QC (Library Validation)"]
@@ -176,7 +180,12 @@ class LIMS_Fetcher():
     for step in steps:
       try:
         arts = self.lims.get_artifacts(samplelimsid = sample_id, process_type = step)
-        date_list = date_list + [a.parent_process.udf['Finish Date'] for a in arts]
+        if type == "arrival":
+          date_list = date_list + [a.parent_process.udf['date arrived at clinical genomics'] for a in arts]
+        elif type == "sequencing":
+          date_list = date_list + [a.parent_process.udf['Finish Date'] for a in arts]
+        elif type == "libprep":
+          date_list = date_list + [a.parent_process.date_run for a in arts]
       except Exception as e:
         pass
     if date_list:
