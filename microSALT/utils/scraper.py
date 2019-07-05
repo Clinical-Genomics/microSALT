@@ -24,9 +24,11 @@ class Scraper():
     self.infolder = os.path.abspath(infolder)
     self.sampledir = ""
    
-    last_folder = os.path.basename(os.path.normpath(self.infolder)) 
+    last_folder = self.infolder.split('/')[-1]
     self.name = last_folder.split('_')[0]
     #TODO: Replace date from dir with entry from analysis files/database
+    if not '_' in last_folder:
+      last_folder = self.infolder.split('/')[-2]
     self.date = "{} {}".format(re.sub('\.','-', last_folder.split('_')[1]), re.sub('\.',':', last_folder.split('_')[2]))
     self.db_pusher=DB_Manipulator(config, log)
     self.lims_fetcher=LIMS_Fetcher(config, log)

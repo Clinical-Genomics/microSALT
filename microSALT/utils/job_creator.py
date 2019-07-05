@@ -294,6 +294,10 @@ class Job_Creator():
 
   def create_project(self, name):
     """Creates project in database"""
+    if self.pool:
+      self.db_pusher.purge_rec(self.name, 'Collections')
+      for sample in self.pool:
+        self.db_pusher.add_rec({'collection_ID':self.name, 'CG_ID_sample':sample}, 'Collections')
     try:
       self.lims_fetcher.load_lims_project_info(name)
     except Exception as e:
@@ -341,8 +345,8 @@ class Job_Creator():
          self.create_project(os.path.normpath(self.indir).split('/')[-2])
        elif self.pool:
          addedprojs = list()
-         for sample in pool:
-           proj = sample[:-3]
+         for sample in self.pool:
+           proj = re.search('(\w+)A(?:\w+)', sample).group(1)
            if proj not in addedprojs:
              self.create_project(proj)
              addedprojs.append(proj)
@@ -418,7 +422,9 @@ class Job_Creator():
     report = 'default'
     scope = 'project'
     if single_sample:
-      scope = 'sample'
+      scope = 'sample' 
+    elif self.pool:
+      scope = 'collection'
     if self.qc_only:
       report = 'qc'
 

@@ -20,14 +20,15 @@ from email.mime.application import MIMEApplication
 
 from multiprocessing import Process
 
-from microSALT.server.views import app, session, gen_reportdata
+from microSALT.server.views import app, session, gen_reportdata, gen_collectiondata
 from microSALT.store.orm_models import Samples
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Reporter():
 
-  def __init__(self, config, log, name = "", output = ""):
+  def __init__(self, config, log, name = "", output = "", collection=False):
     self.name = name
+    self.collection = collection
     if output == "":
       self.output = os.getcwd()
     else:
@@ -109,21 +110,25 @@ class Reporter():
       self.error = True
  
   def gen_typing(self,silent=False):
-    try:
-      self.ticketFinder.load_lims_project_info(self.name)
-    except Exception as e:
-      self.logger.error("Project {} does not exist".format(self.name))
-      self.kill_flask()
-      sys.exit(-1)
-    try:
-      r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
+    if len(self.name) == 1:
+      try:
+        self.ticketFinder.load_lims_project_info(self.name)
+      except Exception as e:
+        self.logger.error("Project {} does not exist".format(self.name))
+        self.kill_flask()
+        sys.exit(-1)
       outfile = "{}/{}_Typing_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
+      r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
+    else:
+      outfile = "{}/{}-{}_Typing_{}.html".format(self.output, "collection", self.name, self.now)
+      r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
+    try:
       output ="{}/{}".format(self.output, outfile)
       storage = "{}/{}".format(self.config['folders']['reports'], outfile)
 
       open(output, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
       copyfile(primary, storage)
-      
+    
       self.filelist.append(output)
       self.filelist.append(storage)
       if not silent:
@@ -133,10 +138,13 @@ class Reporter():
       self.error = True
 
   def gen_resistence(self, silent=False):
-    self.ticketFinder.load_lims_project_info(self.name)
+    if self.collection:
+      sample_info = gen_collectiondata(self.name)
+    else:
+      self.ticketFinder.load_lims_project_info(self.name)
+      sample_info = gen_reportdata(self.name)
     output = "{}/{}_{}.csv".format(self.output,self.name,self.now)
     excel = open(output, "w+")
-    sample_info = gen_reportdata(self.name)
     resdict = dict()
 
     #Load ALL resistance & genes

@@ -21,11 +21,7 @@ class LIMS_Fetcher():
     samplelist = self.samples_in_project(cg_projid)
 
     custids = list()
-    for sample in samplelist:
-      self.load_lims_sample_info(sample)
-      custids.append(self.data['Customer_ID'])
-    if not custids[1:] == custids[:-1]:
-      raise Exception("Project {} contains multiple Customer IDs".format(cg_projid))
+    self.load_lims_sample_info(samplelist[0])
     try:
       #Resolves old format
       if ' ' in project.name:
@@ -38,7 +34,7 @@ class LIMS_Fetcher():
       self.data.update({'date_received': newdate,
                                'CG_ID_project': cg_projid,
                                'Customer_ID_project' : realname,
-                               'Customer_ID': custids[0]})
+                               'Customer_ID': self.data['Customer_ID']})
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for project {}\nSource: {}".format(cg_projid, str(e)))
 
@@ -54,27 +50,30 @@ class LIMS_Fetcher():
       output.append(s.id)
     return output
 
-  def load_lims_sample_info(self, cg_sampleid):
+  def load_lims_sample_info(self, cg_sampleid, warnings=False):
     """ Loads all utilized LIMS info. Organism assumed to be written as binomial name """
     libprep_date = ""
     seq_date = ""
-
     try:
-      #Internal
-      sample = Sample(self.lims, id=cg_sampleid)
       #External
-      if not sample:
+      if self.lims.get_samples(name=cg_sampleid):
         sample = self.lims.get_samples(name=cg_sampleid)
         if len(sample) != 1:
-          self.logger.error("Sample ID {} resolves to multiple entries".format(cg_sampleid))
+          errnames = list()
+          for s in sample:
+            errnames.append(s.id)
+          if warnings:
+            self.logger.warn("Sample name {} resolves to entries '{}'. Arbitarily picking {}".format(s.name, (', '.join(errnames)), sample[0].id )) 
         sample = sample[0]
-
+      #Internal
+      else:
+        sample = Sample(self.lims, id=cg_sampleid)
       method_libprep = self.get_method(cg_sampleid,type='libprep')
       method_sequencing = self.get_method(cg_sampleid,type='sequencing')
       date_libprep = self.get_date(cg_sampleid,type="libprep")
       date_sequencing = self.get_date(cg_sampleid,type="sequencing")
     except Exception as e:
-      self.logger.error("LIMS connection timeout")
+      self.logger.error("LIMS connection timeout: '{}'".format(str(e)))
 
     organism = "Unset"
     if 'Strain' in sample.udf and organism == "Unset":
@@ -180,8 +179,11 @@ class LIMS_Fetcher():
         date_list = date_list + [a.parent_process.date_run for a in arts]
       except Exception as e:
         pass
-    dp = max(date_list).split('-')
-    return datetime(int(dp[0]), int(dp[1]), int(dp[2]))
+    if date_list:
+      dp = max(date_list).split('-')
+      return datetime(int(dp[0]), int(dp[1]), int(dp[2]))
+    else:
+      return datetime.min
 
   def get_method(self, sample_id, type=""):
     """Retrives method document name and version for a sample"""
@@ -203,7 +205,11 @@ class LIMS_Fetcher():
         processes = [(a.parent_process.udf[key_values['method']], a.parent_process.udf[key_values['version']]) for a in arts]
         processes = list(set(processes))
         process = sorted(processes)[-1]
-        out = "{}:{}".format(process[0], process[1])
+        if processes:
+          process = sorted(processes)[-1]
+          out = "{}:{}".format(process[0], process[1])
       except Exception as e:
         pass
+    if not 'out' in locals():
+      out = "Not in LIMS"
     return out

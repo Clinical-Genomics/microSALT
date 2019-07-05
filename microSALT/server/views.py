@@ -10,7 +10,7 @@ from sqlalchemy.sql.expression import case, func
 
 from microSALT import config, __version__
 from microSALT.store.db_manipulator import app
-from microSALT.store.orm_models import Projects, Samples, Seq_types, Versions
+from microSALT.store.orm_models import Collections, Projects, Samples, Seq_types, Versions
 
 engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'], connect_args={'check_same_thread': False})
 Session = sessionmaker(bind=engine)
@@ -86,6 +86,16 @@ def STtracker_page(customer):
     return render_template('STtracker_page.html',
         internal = final_samples)
 
+def gen_collectiondata(samples=[]):
+  """ Queries database using a set of samples"""
+  session.query(Collections).filter(Collections.ID_collection==samples)
+  print("TO BE IMPLEMENTED")
+
+  #prefix_sam = ["CG_ID_sample=="+ x for x in samples]
+  #sample_info = session.query(Samples).filter(or_(','.join(prefix_sam)))
+
+  #sample_info = gen_add_info(sample_info)
+
 def gen_reportdata(pid='all', organism_group='all'):
   """ Queries database for all necessary information for the reports """
   output = dict()
@@ -105,62 +115,66 @@ def gen_reportdata(pid='all', organism_group='all'):
   sample_info = sorted(sample_info, key=lambda sample: \
                 int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
 
-  #Set ST status
-  for s in sample_info:
-    s.ST_status=str(s.ST)
-    if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or \
-    s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or \
-    s.Customer_ID_sample.startswith('CTRL') or s.Customer_ID_sample.startswith('Neg') or \
-    s.Customer_ID_sample.startswith('blank') or s.Customer_ID_sample.startswith('dual-NTC'):
-      s.ST_status = 'Kontroll (prefix)'
+  sample_info = gen_add_info(sample_info)
 
-    if 'Kontroll' in s.ST_status or 'Control' in s.ST_status or s.ST == -1:
-      s.threshold = '-'
-    elif s.ST == -3:
-      s.threshold = 'Failed'
-    elif hasattr(s, 'seq_types') and s.seq_types != [] or s.ST == -2:
-      near_hits=0
-      s.threshold = 'Passed'
-      for seq_type in s.seq_types:
-        #Identify single deviating allele
-        if seq_type.st_predictor and seq_type.identity >= config["threshold"]["mlst_novel_id"] and \
-        config["threshold"]["mlst_id"] > seq_type.identity and 1-abs(1-seq_type.span) >= (config["threshold"]["mlst_span"]/100.0):
-          near_hits = near_hits + 1
-        elif (seq_type.identity < config["threshold"]["mlst_novel_id"] or \
-              seq_type.span < (config["threshold"]["mlst_span"]/100.0)) and seq_type.st_predictor:
-          s.threshold = 'Failed'
+  def gen_add_info(sample_info=dict()):
+    """ Enhances a sample info struct by adding ST_status, threshold info, versioning and sorting """
+    #Set ST status
+    for s in sample_info:
+      s.ST_status=str(s.ST)
+      if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or \
+      s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or \
+      s.Customer_ID_sample.startswith('CTRL') or s.Customer_ID_sample.startswith('Neg') or \
+      s.Customer_ID_sample.startswith('blank') or s.Customer_ID_sample.startswith('dual-NTC'):
+        s.ST_status = 'Kontroll (prefix)'
 
-      if near_hits > 0 and s.threshold == 'Passed':
-        s.ST_status = 'Unknown ({} alleles)'.format(near_hits)
-    else:
-      s.threshold = 'Failed'
+      if 'Kontroll' in s.ST_status or 'Control' in s.ST_status or s.ST == -1:
+        s.threshold = '-'
+      elif s.ST == -3:
+        s.threshold = 'Failed'
+      elif hasattr(s, 'seq_types') and s.seq_types != [] or s.ST == -2:
+        near_hits=0
+        s.threshold = 'Passed'
+        for seq_type in s.seq_types:
+          #Identify single deviating allele
+          if seq_type.st_predictor and seq_type.identity >= config["threshold"]["mlst_novel_id"] and \
+          config["threshold"]["mlst_id"] > seq_type.identity and 1-abs(1-seq_type.span) >= (config["threshold"]["mlst_span"]/100.0):
+            near_hits = near_hits + 1
+          elif (seq_type.identity < config["threshold"]["mlst_novel_id"] or \
+                seq_type.span < (config["threshold"]["mlst_span"]/100.0)) and seq_type.st_predictor:
+            s.threshold = 'Failed'
 
-    if not ('Control' in s.ST_status or 'Kontroll' in s.ST_status) and s.ST < 0:
-      if s.ST == -1:
-        s.ST_status = 'Invalid data'
-      elif (s.ST <= -4 or s.ST == -2) and s.threshold == 'Passed':
-        s.ST_status = 'Novel'
-      elif (s.ST <= -4 or s.ST == -2) and s.threshold == 'Failed':
-        s.ST_status = 'Unknown'
+        if near_hits > 0 and s.threshold == 'Passed':
+          s.ST_status = 'Unknown ({} alleles)'.format(near_hits)
       else:
-        s.ST_status='None'
+        s.threshold = 'Failed'
 
-    #Resistence filter
-    for r in s.resistances:
-      if (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity >= config["threshold"]["motif_id"] and \
-      r.span >= (config["threshold"]["motif_span"]/100.0)) or (s.ST < 0 and not 'Novel' in s.ST_status):
-        r.threshold = 'Passed'
-      else:
-        r.threshold = 'Failed'
+      if not ('Control' in s.ST_status or 'Kontroll' in s.ST_status) and s.ST < 0:
+        if s.ST == -1:
+          s.ST_status = 'Invalid data'
+        elif (s.ST <= -4 or s.ST == -2) and s.threshold == 'Passed':
+          s.ST_status = 'Novel'
+        elif (s.ST <= -4 or s.ST == -2) and s.threshold == 'Failed':
+          s.ST_status = 'Unknown'
+        else:
+          s.ST_status='None'
 
-    #Seq_type and resistance sorting
-    s.seq_types=sorted(s.seq_types, key=lambda x: x.loci)
-    s.resistances=sorted(s.resistances, key=lambda x: x.instance)
-    output['samples'].append(s)
+      #Resistence filter
+      for r in s.resistances:
+        if (s.ST > 0 or 'Novel' in s.ST_status ) and (r.identity >= config["threshold"]["motif_id"] and \
+        r.span >= (config["threshold"]["motif_span"]/100.0)) or (s.ST < 0 and not 'Novel' in s.ST_status):
+          r.threshold = 'Passed'
+        else:
+          r.threshold = 'Failed'
 
-  versions = session.query(Versions).all()
-  for version in versions:
-    name = version.name[8:]
-    output['versions'][name] = version.version
+      #Seq_type and resistance sorting
+      s.seq_types=sorted(s.seq_types, key=lambda x: x.loci)
+      s.resistances=sorted(s.resistances, key=lambda x: x.instance)
+      output['samples'].append(s)
 
-  return output
+    versions = session.query(Versions).all()
+    for version in versions:
+      name = version.name[8:]
+      output['versions'][name] = version.version
+
+    return output

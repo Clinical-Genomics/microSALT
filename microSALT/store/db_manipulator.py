@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 # maintain the same connection per thread
 from sqlalchemy.pool import SingletonThreadPool
 
-from microSALT.store.orm_models import app, Projects, Reports, Resistances, Samples, Seq_types, Steps, Versions
+from microSALT.store.orm_models import app, Collections, Projects, Reports, Resistances, Samples, Seq_types, Steps, Versions
 from microSALT.store.models import Profiles, Novel
 
 class DB_Manipulator:
@@ -53,6 +53,9 @@ class DB_Manipulator:
     if not self.engine.dialect.has_table(self.engine, 'reports'):
       Reports.__table__.create(self.engine)
       self.logger.info("Created reports table")
+    if not self.engine.dialect.has_table(self.engine, 'collections'):
+      Collections.__table__.create(self.engine)
+      self.logger.info("Created collections table")
     for k,v in self.profiles.items():
       if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
         self.profiles[k].create()
@@ -124,16 +127,17 @@ class DB_Manipulator:
   def purge_rec(self, name, type):
     """Removes seq_data, resistances, sample(s) and possibly project"""
     entries = list()
-    if type == "project":
+    if type == "Projects":
       entries.append(self.session.query(Projects).filter(Projects.CG_ID_project==name).all())
       entries.append(self.session.query(Seq_types).filter(Seq_types.CG_ID_sample.like('{}%'.format(name))).all())
       entries.append(self.session.query(Resistances).filter(Resistances.CG_ID_sample.like('{}%'.format(name))).all())
       entries.append(self.session.query(Samples).filter(Samples.CG_ID_sample.like('{}%'.format(name))).all())
-    elif type == "sample":
+    elif type == "Samples":
       entries.append(self.session.query(Seq_types).filter(Seq_types.CG_ID_sample==name).all())
       entries.append(self.session.query(Resistances).filter(Resistances.CG_ID_sample==name).all())
       entries.append(self.session.query(Samples).filter(Samples.CG_ID_sample==name).all())
-      pass
+    elif type == "Collections":
+      entries.append(self.session.query(Collections).filter(Collections.ID_collection==name).all())
     else:
       self.logger.error("Incorrect type {} specified for removal of {}. Check code".format(type, name))
       sys.exit()

@@ -188,7 +188,6 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
   done()
 
 
-#WIP WIP
 @analyse.command()
 @click.argument('collection_id')
 @click.option('--input', help='Full path to sample folder', default="")
@@ -200,7 +199,7 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.option('--uncareful', help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
 @click.pass_context
-def collection(ctx, collection_id, input, dry, config, email, qc_only, untrimmed, skip_update, uncareful):
+def collection(ctx, collection_id, input, dry, qc_only, config, email, untrimmed, skip_update, uncareful):
   """Analyse a collection of samples"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   trimmed = not untrimmed
@@ -217,37 +216,46 @@ def collection(ctx, collection_id, input, dry, config, email, qc_only, untrimmed
   ctx.obj['config']['dry'] = dry
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
 
-  pool = list()
+  pool = []
   if input != "":
     collection_dir = os.path.abspath(input)
-    for sample in os.listdir(input):
-      if os.path.isdir(sample):
-        pool.append(sample)
-  try:
-    scientist.load_lims_sample_info(sample)
-  except Exception as e:
-    click.echo("Unable to load LIMS sample info for sample {}.".format(sample))
+  else:
+    collection_dir = "{}/{}".format(ctx.obj['config']['folders']['seqdata'], collection_id)
+  for sample in os.listdir(collection_dir):
+    if os.path.isdir("{}/{}".format(collection_dir,sample)):
+      pool.append(sample)
+  if pool == []:
+    click.echo("Input collection lacks any valid of samples")
     sys.exit(-1)
 
-  click.echo("Checking versions of references..")
+  pool_cg = []
   for sample in pool:
+    try:
+      scientist.load_lims_sample_info(sample,warnings=True)
+      pool_cg.append(scientist.data['CG_ID_sample'])
+    except Exception as e:
+      click.echo("Unable to load LIMS sample info for sample {}.".format(sample))
+      sys.exit(-1)
+
+  click.echo("Checking versions of references..")
+  for sample in pool_cg:
     try:
       if not skip_update:
         fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
         fixer.identify_new(sample,project=False)
-        fixer.update_refs()
-        print("Version check done. Creating sbatch job")
-      else:
-        print("Skipping version check.")
     except Exception as e:
-      click.echo("Unable to update references for sample {} due to '{}'".format(sample,e))
+      click.echo("Unable to update references for sample {} due to '{}'".format(sample,str(e)))
+  if not skip_update:
+    fixer.update_refs()
+    print("Version check done. Creating sbatch job")
+  else:
+    print("Skipping version check.")
 
-  #APPLY POOL IN A NEAT WAY
   try: 
-    worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'], trim=trimmed,qc_only=qc_only, careful=careful, pool=pool)
-    worker.project_job(pool=True)
+    worker = Job_Creator(collection_dir, ctx.obj['config'], ctx.obj['log'], trim=trimmed,qc_only=qc_only, careful=careful, pool=pool_cg)
+    worker.project_job()
   except Exception as e:
-    click.echo("Unable to process sample {} due to '{}'".format(sample_id,e))
+    click.echo("Unable to process collection due to '{}'".format(str(e)))
   done()
 
 @finish.command()
@@ -346,6 +354,67 @@ def project(ctx, project_id, rerun, email, input, config, report):
   codemonkey.report(report)
   done()
 
+@finish.command()
+@click.argument('collection_id')
+@click.option('--rerun', is_flag=True, default=False, help='Overwrite existing data')
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.option('--input', help='Full path to result sample folder', default="")
+@click.option('--config', help="microSALT config to override default", default="")
+@click.option('--report', default='default', type=click.Choice(['default', 'qc']))
+@click.pass_context
+def collection(ctx, collection_id, rerun, email, input, config, report):
+  """Parse results from analysing a set of sample"""
+  if config != '':
+    if os.path.exists(config):
+      try:
+        with open(os.path.abspath(config), 'r') as conf:
+          ctx.obj['config'] = json.load(conf)
+        ctx.obj['config']['config_path'] = os.path.abspath(config)
+      except Exception as e:
+        pass
+
+  ctx.obj['config']['rerun'] = rerun
+  ctx.obj['config']['regex']['mail_recipient'] = email
+
+  pool = []
+  if input != "":
+    collection_dir = os.path.abspath(input)
+  else:
+    prohits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(collection_id))]
+    if len(prohits) > 1:
+      click.echo("Multiple instances of that analysis exists. Specify full path using --input")
+      sys.exit(-1)
+    elif len(prohits) <1:
+      click.echo("No analysis folder prefixed by {} found.".format(project_id))
+      sys.exit(-1)
+    else:
+      collection_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
+
+  for sample in os.listdir(collection_dir):
+    if os.path.isdir("{}/{}".format(collection_dir,sample)):
+      pool.append(sample)
+  if pool == []:
+    click.echo("Input collection lacks any valid of samples")
+    sys.exit(-1)
+
+  pool_cg = []
+  scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
+  for sample in pool:
+    try:
+      scientist.load_lims_sample_info(sample,warnings=True)
+      pool_cg.append(scientist.data['CG_ID_sample'])
+    except Exception as e:
+      click.echo("Unable to load LIMS sample info for sample {}.".format(sample))
+      sys.exit(-1)
+
+  for sample in pool:
+    garbageman = Scraper("{}/{}".format(collection_dir, sample), ctx.obj['config'], ctx.obj['log'])
+    garbageman.scrape_sample()
+  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], collection_id, output=collection_dir, collection=True)
+  codemonkey.report(report)
+  done()
+
+
 @refer.command()
 @click.argument('organism')
 @click.pass_context
@@ -376,11 +445,12 @@ def list(ctx):
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--type', default='default', type=click.Choice(['default', 'typing', 'resistance_overview', 'qc', 'json_dump', 'st_update']))
 @click.option('--output',help='Full path to output folder',default="")
+@click.option('--collection',default=False, is_flag=True)
 @click.pass_context
-def report(ctx, project_name, email, type, output):
+def report(ctx, project_name, email, type, output, collection):
   """Re-generates report for a project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
-  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_name, output)
+  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_name, output, collection=collection)
   codemonkey.report(type)
   done()
 
