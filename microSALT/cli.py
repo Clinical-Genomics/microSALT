@@ -159,7 +159,6 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
     scientist.load_lims_sample_info(sample_id)
   except Exception as e:
     click.echo("Unable to load LIMS sample info.")
-    sys.exit(-1)
 
   if input != "":
     sample_dir = os.path.abspath(input)
@@ -235,7 +234,6 @@ def collection(ctx, collection_id, input, dry, qc_only, config, email, untrimmed
       pool_cg.append(scientist.data['CG_ID_sample'])
     except Exception as e:
       click.echo("Unable to load LIMS sample info for sample {}.".format(sample))
-      sys.exit(-1)
 
   click.echo("Checking versions of references..")
   for sample in pool_cg:

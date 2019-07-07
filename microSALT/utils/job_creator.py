@@ -441,11 +441,13 @@ class Job_Creator():
     """ Uploads data and sends an email once all analysis jobs are complete. """
     report = 'default'
     scope = 'project'
+    extraflag = '--rerun'
     if single_sample:
       scope = 'sample' 
     elif self.pool:
       scope = 'collection'
       report = 'resistance_overview'
+      extraflag = '--collection'
     if self.qc_only:
       report = 'qc'
     custom_conf = ''
@@ -465,8 +467,8 @@ class Job_Creator():
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
 
-    mb.write("microSALT utils finish {} {} --input {} --rerun --email {} --report {} {}\n".\
-               format(scope, self.name, self.finishdir, self.config['regex']['mail_recipient'], report, custom_conf))
+    mb.write("microSALT utils finish {} {} --input {} {} --email {} --report {} {}\n".\
+               format(scope, self.name, self.finishdir, extraflag, self.config['regex']['mail_recipient'], report, custom_conf))
     mb.write("touch {}/run_complete.out".format(self.finishdir))
     mb.close()
 
