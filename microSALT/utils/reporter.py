@@ -55,7 +55,6 @@ class Reporter():
       self.gen_typing()
       self.gen_qc()
       self.gen_json(silent=True)
-      #self.gen_resistence()
     elif type == 'typing':
       self.gen_typing()
     elif type == 'motif_overview':
@@ -142,10 +141,13 @@ class Reporter():
   def gen_motif(self, motif="resistance", silent=False):
     if motif not in ["resistance", "virulence"]:
       self.logger.error("Invalid motif type specified for gen_motif function")
-    self.ticketFinder.load_lims_project_info(self.name)
+    if self.collection:
+      sample_info = gen_collectiondata(self.name)
+    else:
+      self.ticketFinder.load_lims_project_info(self.name)
+      sample_info = gen_reportdata(self.name)
     output = "{}/{}_{}_{}.csv".format(self.output,self.name,motif,self.now)
     excel = open(output, "w+")
-    sample_info = gen_reportdata(self.name)
     motifdict = dict()
 
     #Load motif & gene names into dict
@@ -180,7 +182,7 @@ class Reporter():
     excel.write("{}\n".format(topline))
     excel.write("{}\n".format(botline))
 
-    #Create each individual roaw past the 2nd, per iteration
+    #Create each individual row past the 2nd, per iteration
     for s in sample_info['samples']:
       rowdict = dict()
       pref = "{},{},{},{},{}".format(s.CG_ID_sample,s.Customer_ID_sample, s.organism, s.ST_status, s.threshold)

@@ -168,8 +168,8 @@ def gen_add_info(sample_info=dict()):
       else:
         r.threshold = 'Failed'
     for v in s.virulences:
-      if (s.ST > 0 or 'Novel' in s.ST_status ) and (v.identity >= config["threshold"]["motif_id"] and \
-      v.span >= config["threshold"]["motif_span"]) or (s.ST < 0 and not 'Novel' in s.ST_status):
+      if (v.identity >= config["threshold"]["motif_id"] and \
+      v.span >= config["threshold"]["motif_span"]/100.0):
         v.threshold = 'Passed'
       else:
         v.threshold = 'Failed'

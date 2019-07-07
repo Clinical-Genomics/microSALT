@@ -446,8 +446,8 @@ class Job_Creator():
       scope = 'sample' 
     elif self.pool:
       scope = 'collection'
-      report = 'resistance_overview'
-      extraflag = '--collection'
+      report = 'motif_overview'
+      extraflag = ''
     if self.qc_only:
       report = 'qc'
     custom_conf = ''
