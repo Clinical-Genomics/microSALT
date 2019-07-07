@@ -56,15 +56,23 @@ class LIMS_Fetcher():
     seq_date = ""
     try:
       #External
+      num = 0
       if self.lims.get_samples(name=cg_sampleid):
         sample = self.lims.get_samples(name=cg_sampleid)
         if len(sample) != 1:
+          prio = ['MIC1474', 'MIC2201', 'ACC4805']
           errnames = list()
           for s in sample:
             errnames.append(s.id)
+          for p in prio:
+            for s in sample:
+              if p in s.id:
+                num=sample.index(s)
+                break
           if warnings:
-            self.logger.warn("Sample name {} resolves to entries '{}'. Arbitarily picking {}".format(s.name, (', '.join(errnames)), sample[0].id )) 
-        sample = sample[0]
+            self.logger.warn("Sample name {} resolves to entries '{}'. Arbitarily picking {}".format(s.name, (', '.join(errnames)), sample[num].id ))
+        sample = sample[num]
+
       #Internal
       else:
         sample = Sample(self.lims, id=cg_sampleid)

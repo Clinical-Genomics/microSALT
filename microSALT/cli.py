@@ -235,7 +235,6 @@ def collection(ctx, collection_id, input, dry, qc_only, config, email, untrimmed
       pool_cg.append(scientist.data['CG_ID_sample'])
     except Exception as e:
       click.echo("Unable to load LIMS sample info for sample {}.".format(sample))
-      sys.exit(-1)
 
   click.echo("Checking versions of references..")
   for sample in pool_cg:
