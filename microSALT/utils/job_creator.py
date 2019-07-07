@@ -431,7 +431,7 @@ class Job_Creator():
     elif self.pool:
       scope = 'collection'
       report = 'resistance_overview'
-      extraflag = '--collection'
+      extraflag = ''
     if self.qc_only:
       report = 'qc'
     custom_conf = ''
