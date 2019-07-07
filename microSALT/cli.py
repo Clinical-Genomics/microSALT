@@ -159,7 +159,6 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
     scientist.load_lims_sample_info(sample_id)
   except Exception as e:
     click.echo("Unable to load LIMS sample info.")
-    sys.exit(-1)
 
   if input != "":
     sample_dir = os.path.abspath(input)

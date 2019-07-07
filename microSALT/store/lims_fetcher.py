@@ -60,7 +60,8 @@ class LIMS_Fetcher():
       if self.lims.get_samples(name=cg_sampleid):
         sample = self.lims.get_samples(name=cg_sampleid)
         if len(sample) != 1:
-          prio = ['MIC1474', 'MIC2201', 'ACC4805']
+          #External priority list
+          prio = []
           errnames = list()
           for s in sample:
             errnames.append(s.id)

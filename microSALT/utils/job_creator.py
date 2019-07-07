@@ -114,7 +114,7 @@ class Job_Creator():
     else:
       careline = ''
     
-    batchfile.write("spades.py -k 81 --threads {} {} --memory {} -o {}/assembly -1 {} -2 {} {}\n"\
+    batchfile.write("spades.py --threads {} {} --memory {} -o {}/assembly -1 {} -2 {} {}\n"\
     .format(self.config["slurm_header"]["threads"], careline, 8*int(self.config["slurm_header"]["threads"]), self.finishdir, self.concat_files['f'], self.concat_files['r'], trimline))
     batchfile.write("rm {} {}\n".format(self.concat_files['f'], self.concat_files['r']))
     batchfile.write("\n\n")
@@ -482,7 +482,7 @@ class Job_Creator():
           final = entry
           break
 
-    head = "-A {} -p core -n 1 -t 16:00:00 -J {}_{}_MAILJOB --qos {} --open-mode append --dependency=afterany:{} --output {}"\
+    head = "-A {} -p core -n 1 -t 06:00:00 -J {}_{}_MAILJOB --qos {} --open-mode append --dependency=afterany:{} --output {}"\
             .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"],\
                     self.name,self.config["slurm_header"]["qos"],\
            final, self.config['folders']['log_file'],  self.config['regex']['mail_recipient'])
