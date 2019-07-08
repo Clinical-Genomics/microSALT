@@ -89,14 +89,14 @@ class Resistances(db.Model):
   contig_end=db.Column(db.Integer)
 
 #Multi-date support for libprep/sequencing/analysis
-class Steps(db.Model):
-  __tablename__ = 'steps'
-  samples = relationship("Samples", back_populates="steps")
-
-  CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
-  step = db.Column(db.String(40))
-  method = db.Column(db.String(40))
-  date = db.Column(db.DateTime)
+#class Steps(db.Model):
+#  __tablename__ = 'steps'
+#  samples = relationship("Samples", back_populates="steps")
+#
+#  CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
+#  step = db.Column(db.String(40), primary_key=True)
+#  method = db.Column(db.String(40), primary_key=True)
+#  date = db.Column(db.DateTime)
 
 class Projects(db.Model):
   __tablename__ = 'projects'
