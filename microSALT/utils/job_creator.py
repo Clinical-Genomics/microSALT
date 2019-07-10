@@ -16,7 +16,7 @@ from microSALT.store.db_manipulator import DB_Manipulator
 
 class Job_Creator():
 
-  def __init__(self, input, config, log, finishdir="", timestamp="", trim=True, qc_only=False,careful=False):
+  def __init__(self, input, config, log, finishdir="", timestamp="", trim=True, qc_only=False,careful=False,pool=list()):
     self.config = config
     self.logger = log
     self.batchfile = ""
@@ -25,6 +25,7 @@ class Job_Creator():
     self.trimmed=trim
     self.qc_only = qc_only
     self.careful = careful
+    self.pool = pool
 
     if isinstance(input, str):
       self.indir = os.path.abspath(input)
@@ -92,6 +93,12 @@ class Job_Creator():
           raise Exception("Some fastq files have no mate in directory {}.".format(self.indir))
     if verified_files == []:
       raise Exception("No files in directory {} match file_pattern '{}'.".format(self.indir, self.config['regex']['file_pattern']))
+    #Warn about file sizes
+    for vfile in verified_files:
+      bsize = os.stat("{}/{}".format(self.indir,vfile)).st_size
+      bsize = bsize >> 20
+      if bsize > 1000:
+        self.logger.warning("Input fastq {} exceeds 1000MB")
     return verified_files
  
   def create_assemblysection(self):
@@ -284,6 +291,19 @@ class Job_Creator():
         batchfile.write('\n')
     batchfile.close()
 
+  def create_collection(self):
+    """Creates collection entry in database"""
+    if self.db_pusher.exists('Collections', {'ID_collection':self.name}):
+      self.db_pusher.purge_rec(name=self.name, type='Collections')
+      for sample in self.pool:
+        self.db_pusher.add_rec({'ID_collection':self.name, 'CG_ID_sample':sample}, 'Collections')
+
+    addedprojs = list()
+    for sample in self.pool:
+      proj = re.search('(\w+)A(?:\w+)', sample).group(1)
+      if proj not in addedprojs:
+        self.create_project(proj)
+        addedprojs.append(proj)
 
   def create_project(self, name):
     """Creates project in database"""
@@ -329,14 +349,17 @@ class Job_Creator():
     jobarray = list()
     if not os.path.exists(self.finishdir):
       os.makedirs(self.finishdir)
+    #Loads project level info.
     try:
        if single_sample:
          self.create_project(os.path.normpath(self.indir).split('/')[-2])
+       elif self.pool:
+         self.create_collection()
        else:
         self.create_project(self.name)
     except Exception as e:
       self.logger.error("LIMS interaction failed. Unable to read/write project {}".format(self.name))
-      #Start every sample job
+    #Writes the job creation sbatch
     if single_sample:
       try:
         self.sample_job()
@@ -352,6 +375,28 @@ class Job_Creator():
           self.logger.info("Suppressed command: {}".format(bash_cmd))
       except Exception as e:
         self.logger.error("Unable to analyze single sample {}".format(self.name))
+    elif self.pool:
+      for (dirpath, dirnames, filenames) in os.walk(self.indir):
+        for dir in dirnames:
+          try:
+            sample_in = "{}/{}".format(dirpath, dir)
+            sample_out = "{}/{}".format(self.finishdir, dir)
+            sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now, trim=self.trimmed)
+            sample_instance.sample_job()
+            headerargs = sample_instance.get_headerargs()
+            outfile = ""
+            if os.path.isfile(sample_instance.get_sbatch()):
+              outfile = sample_instance.get_sbatch()
+            bash_cmd="sbatch {} {}".format(headerargs, outfile)
+            if not dry and outfile != "":
+              projproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+              output, error = projproc.communicate()
+              jobno = re.search('(\d+)', str(output)).group(0)
+              jobarray.append(jobno)
+            else:
+              self.logger.info("Suppressed command: {}".format(bash_cmd))
+          except Exception as e:
+            pass
     else:
       for (dirpath, dirnames, filenames) in os.walk(self.indir):
         for dir in dirnames:
@@ -381,10 +426,18 @@ class Job_Creator():
     """ Uploads data and sends an email once all analysis jobs are complete. """
     report = 'default'
     scope = 'project'
+    extraflag = '--rerun'
     if single_sample:
-      scope = 'sample'
+      scope = 'sample' 
+    elif self.pool:
+      scope = 'collection'
+      report = 'resistance_overview'
+      extraflag = ''
     if self.qc_only:
       report = 'qc'
+    custom_conf = ''
+    if 'config_path' in self.config:
+      custom_conf = '--config {}'.format(self.config['config_path'])
 
 
     startfile = "{}/run_started.out".format(self.finishdir)
@@ -399,15 +452,8 @@ class Job_Creator():
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
 
-    span = 'project'
-    custom_conf = ''
-    if single_sample:
-      span = 'sample'
-    if 'config_path' in self.config:
-      custom_conf = '--config {}'.format(self.config['config_path'])
-
-    mb.write("microSALT utils finish {} {} --input {} --rerun --email {} --report {} {}\n".\
-               format(span, self.name, self.finishdir, self.config['regex']['mail_recipient'], report, custom_conf))
+    mb.write("microSALT utils finish {} {} --input {} {} --email {} --report {} {}\n".\
+               format(scope, self.name, self.finishdir, extraflag, self.config['regex']['mail_recipient'], report, custom_conf))
     mb.write("touch {}/run_complete.out".format(self.finishdir))
     mb.close()
 
@@ -451,7 +497,7 @@ class Job_Creator():
       if not os.path.exists(self.finishdir):
         os.makedirs(self.finishdir)
       try:
-        self.organism = self.lims_fetcher.get_organism_refname(self.name, external=False)
+        self.organism = self.lims_fetcher.get_organism_refname(self.name)
         # This is one job
         self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
         batchfile = open(self.batchfile, "w+")

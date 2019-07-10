@@ -10,7 +10,6 @@
               <img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" \
               alt="MicroSALT Logo" align="left" \
               style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
-              <!--<img src="swedac.jpg" alt="Swedac Logo" align="right" style="display:flex;">-->
               <img src="https://github.com/Clinical-Genomics/microSALT/blob/accreditation-changes-to-report/artwork/swedac.jpg?raw=true" alt="Swedac Logo" align="right" style="display:flex;">
               <h2 class="page-header">
                 <small><br><br><br>Typningsrapport</small>
@@ -45,6 +44,13 @@
                       <tr>
                       <td><b>Kund ID (*)</b>
                         <td>{{samples[0].projects.Customer_ID}}<i></i></td>
+                      </tr>
+                      <tr>
+                        <td><b>Rapport version</b></td>
+                        {% if len(reports) == 1 %}
+                          <td>Version {{reports[0].version}}, {{reports[0].date.date()}}</td>
+                        {% len(reports) > 1 %}
+                          <td>Version {{reports[0].version}}, {{reports[0].date.date()}} (Ersätter version {{reports[0].version}}, {{reports[0].date.date()}})</td>
                       </tr>
                       <tr>
                         <td><b>microSALT version</b></td>
@@ -168,20 +174,30 @@
 
           <footer>
             <div class="panel"><div class="panel-body">
-
-              <h3><strong>Teknisk beskrivning av analysen : {{samples[0].application_tag}}</strong><br></h3>
+              {% if samples[0].application_tag == "MWRNXTR003" %}
+              <h3><strong>Teknisk beskrivning av analysen: {{samples[0].application_tag}}</strong><br></h3>
               <p>
+              {% if samples[0].application_tag == "MWRNXTR003" %}
               Mikrobiell helgenomssekvensering av rutinprov, med krav på minst 3 miljoner läspar.
               Nextera library preparation.
+              {% elif samples[0].application_tag in ["MWGNXTR003", "MWMNXTR003", "MWLNXTR003"] %}
+              Mikrobiell helgenomssekvensering, med krav på minst 3 miljoner läspar.
+              Nextera library preparation.
+              {% elif samples[0].application_tag == "MWXNXTR003" %}
+              Storskalig mikrobiell helgenomssekvensering av minst 176 prover, med krav på minst 3 miljoner läspar.
+              Nextera library preparation.
+              {% elif samples[0].application_tag in ["VWGNXTR001", "VWLNXTR001"] %}
+              Virologisk helgenomssekvensering, med krav på minst 1 miljon läspar.
+              Nextera library preparation.
+              {% endif %}
               <br></p>
 
-              <h3><strong>Begränsningar av analysen : {{samples[0].application_tag}}</strong><br></h3>
+              <h3><strong>Analysbegränsningar för: {{samples[0].application_tag}}</strong><br></h3>
               <p>
               Analysen kan enbart beställas av gruppen Klinisk Mikrobiologi.
               Laboratoriet har inte haft ansvar för provtagningsstadiet och extraktion, resultaten gäller för provet såsom det har mottagits.
-              Typningen utgår från de publikt tillgängliga databaserna pubMLST och resFinder.
-              Typningen av prover är enbart att anses som tillförlitlig om desamma uppnår de fördefinierade tröskelvärdena.
-              Uppnåelse av tröskelvärdena garanteras i sin tur enbart för prover vars förhantering och detaljer tidigare verifierats av personal på Clinical Genomics.
+              Typningen begränsas av den information som vid analys återfinns i de publikt tillgängliga databaserna pubMLST och resFinder.
+              Tillförlitligheten hos resultaten förutsätter dels att informationen som bifogats från kund är korrekt. Dels att proverna uppnår de fördefinierade tröskelvärdena; och dels att de organismerna som analyseras har tidigare manuellt verifierats tidigare av personal på Clinical Genomics.
               </p>
 
               <h3><strong>Avvikelser från metoden</strong><br></h3>
@@ -197,7 +213,7 @@
                 Valtteri Wirta<br>
                 Head of unit, Clinical Genomics
               </p>
-
+              {% endif %}
 
             </div>
             </div>
@@ -286,7 +302,7 @@
                 {% if sample.genome_length > -1 %}
                   <div class="panel"><div class="panel-body">
                   <h4>MLST</h4>
-                  <h6>Identitetströskel: {{threshold.mlst_id}}%, Längdtröskel: {{(threshold.mlst_span*100)|round(2)}}%, Novel misstankströskel: {{threshold.mlst_novel_id}}%</h6>
+                  <h6>Identitetströskel: {{threshold.mlst_id}}%, Längdtröskel: {{threshold.mlst_span}}%, Novel misstankströskel: {{threshold.mlst_novel_id}}%</h6>
                   <div class="table-responsive"><table  class="table table-bordered" style='table-layout:fixed;'>
                   {% if not sample.seq_types|length == 0 and 'saknas' not in sample.ST_status%}
                     <tr>
@@ -317,7 +333,7 @@
                   <div class="table-responsive">
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                     <h4>Resistenser</h4>
-                    <h6>Identitetströskel: {{threshold.motif_id}}%, Längdtröskel: {{(threshold.motif_span*100)|round(2)}}%</h6>
+                    <h6>Identitetströskel: {{threshold.motif_id}}%, Längdtröskel: {{threshold.motif_span}}%</h6>
                     {% if not sample.resistances|selectattr('threshold', 'equalto', 'Passed')|list|length == 0 %}
                         <tr>
                           <th width="4%">#</th>

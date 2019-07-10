@@ -21,11 +21,7 @@ class LIMS_Fetcher():
     samplelist = self.samples_in_project(cg_projid)
 
     custids = list()
-    for sample in samplelist:
-      self.load_lims_sample_info(sample)
-      custids.append(self.data['Customer_ID'])
-    if not custids[1:] == custids[:-1]:
-      raise Exception("Project {} contains multiple Customer IDs".format(cg_projid))
+    self.load_lims_sample_info(samplelist[0])
     try:
       #Resolves old format
       if ' ' in project.name:
@@ -38,45 +34,57 @@ class LIMS_Fetcher():
       self.data.update({'date_received': newdate,
                                'CG_ID_project': cg_projid,
                                'Customer_ID_project' : realname,
-                               'Customer_ID': custids[0]})
+                               'Customer_ID': self.data['Customer_ID']})
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for project {}\nSource: {}".format(cg_projid, str(e)))
 
-  def samples_in_project(self, cg_projid, external=False):
+  def samples_in_project(self, cg_projid):
     """ Returns a list of sample names for a project"""
     output = list()
-    if not external:
-      samples = self.lims.get_samples(projectlimsid=cg_projid)
-    else:
-      samples = self.lims.get_samples(projectname=cg_projid)
+    #Uses internal names, then external on empty
+    samples = self.lims.get_samples(projectlimsid=cg_projid)
+    if not samples:
+     samples = self.lims.get_samples(projectname=cg_projid)
+
     for s in samples:
       output.append(s.id)
     return output
 
-  def load_lims_sample_info(self, cg_sampleid, external=False):
+  def load_lims_sample_info(self, cg_sampleid, warnings=False):
     """ Loads all utilized LIMS info. Organism assumed to be written as binomial name """
     libprep_date = ""
     seq_date = ""
-    if external:
-      sample = self.lims.get_samples(name=cg_sampleid)
-      if len(sample) != 1:
-        self.logger.error("Sample ID {} resolves to multiple entries".format(cg_sampleid))
-      sample = sample[0]
+    try:
+      #External
+      num = 0
+      if self.lims.get_samples(name=cg_sampleid):
+        sample = self.lims.get_samples(name=cg_sampleid)
+        if len(sample) != 1:
+          #External priority list
+          prio = []
+          errnames = list()
+          for s in sample:
+            errnames.append(s.id)
+          for p in prio:
+            for s in sample:
+              if p in s.id:
+                num=sample.index(s)
+                break
+          if warnings:
+            self.logger.warn("Sample name {} resolves to entries '{}'. Arbitarily picking {}".format(s.name, (', '.join(errnames)), sample[num].id ))
+        sample = sample[num]
+
+      #Internal
+      else:
+        sample = Sample(self.lims, id=cg_sampleid)
       method_libprep = self.get_method(cg_sampleid,type='libprep')
       method_sequencing = self.get_method(cg_sampleid,type='sequencing')
       date_arrival = self.get_date(cg_sampleid,type="arrival")
       date_libprep = self.get_date(cg_sampleid,type="libprep")
       date_sequencing = self.get_date(cg_sampleid,type="sequencing")
-    else:
-      try:
-        sample = Sample(self.lims, id=cg_sampleid)
-        method_libprep = self.get_method(cg_sampleid,type='libprep')
-        method_sequencing = self.get_method(cg_sampleid,type='sequencing')
-        date_arrival = self.get_date(cg_sampleid,type="arrival")
-        date_libprep = self.get_date(cg_sampleid,type="libprep")
-        date_sequencing = self.get_date(cg_sampleid,type="sequencing")
-      except Exception as e:
-        self.logger.error("LIMS connection timeout")
+    except Exception as e:
+      self.logger.error("LIMS connection timeout: '{}'".format(str(e)))
+
     organism = "Unset"
     if 'Strain' in sample.udf and organism == "Unset":
       #Predefined genus usage. All hail buggy excel files
@@ -141,10 +149,10 @@ class LIMS_Fetcher():
       self.logger.warn("Unable to fetch LIMS info for sample {}. Review LIMS data.\nSource: {}"\
       .format(cg_sampleid, str(e)))
 
-  def get_organism_refname(self, sample_name, external=False):
+  def get_organism_refname(self, sample_name):
     """Finds which reference contains the same words as the LIMS reference
        and returns it in a format for database calls."""
-    self.load_lims_sample_info(sample_name, external)
+    self.load_lims_sample_info(sample_name)
     lims_organ = self.data['organism'].lower()
     orgs = os.listdir(self.config["folders"]["references"])
     organism = re.split('\W+', lims_organ)

@@ -11,6 +11,7 @@ import sys
 import smtplib
 
 from datetime import datetime
+from shutil import copyfile
 
 from os.path import basename
 from email.mime.text  import MIMEText
@@ -19,14 +20,18 @@ from email.mime.application import MIMEApplication
 
 from multiprocessing import Process
 
-from microSALT.server.views import app, session, gen_reportdata
+from microSALT import __version__
+from microSALT.server.views import app, session, gen_reportdata, gen_collectiondata
+from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.store.orm_models import Samples
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Reporter():
 
-  def __init__(self, config, log, name = "", output = ""):
+  def __init__(self, config, log, name = "", output = "", collection=False):
+    self.db_pusher=DB_Manipulator(config, log)
     self.name = name
+    self.collection = collection
     if output == "":
       self.output = os.getcwd()
     else:
@@ -45,6 +50,7 @@ class Reporter():
     format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
   def report(self, type='default', customer='all'):
+    self.gen_version(self.name)
     self.start_web()
     if type == 'json_dump':
       self.gen_json()
@@ -69,6 +75,10 @@ class Reporter():
       for file in self.filelist:
         os.remove(file)
 
+  def gen_version(self, name):
+    self.db_pusher.get_report(name)
+    self.db_pusher.set_report(name)
+
   def gen_STtracker(self, customer="all", silent=False):
     self.name ="Sequence Type Update"
     try:
@@ -92,38 +102,57 @@ class Reporter():
       sys.exit(-1)
     try:
       q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(self.name), allow_redirects=True)
-      outqc = "{}/{}_QC_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
-      open(outqc, 'wb').write(q.content.decode("iso-8859-1").encode("utf8"))
-      self.filelist.append(outqc)
+      outfile = "{}_QC_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
+      output ="{}/{}".format(self.output, outfile)
+      storage = "{}/{}".format(self.config['folders']['reports'], outfile)
+
+      open(output, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
+      copyfile(primary, storage)
+
+      self.filelist.append(output)
+      self.filelist.append(storage)
       if not silent:
-        self.attachments.append(outqc)  
+        self.attachments.append(output)  
     except Exception as e:
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.error = True
  
   def gen_typing(self,silent=False):
-    try:
-      self.ticketFinder.load_lims_project_info(self.name)
-    except Exception as e:
-      self.logger.error("Project {} does not exist".format(self.name))
-      self.kill_flask()
-      sys.exit(-1)
-    try:
+    if len(self.name) == 1:
+      try:
+        self.ticketFinder.load_lims_project_info(self.name)
+      except Exception as e:
+        self.logger.error("Project {} does not exist".format(self.name))
+        self.kill_flask()
+        sys.exit(-1)
+      outfile = "{}/{}_Typing_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
       r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
-      outtype = "{}/{}_Typing_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
-      open(outtype, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
-      self.filelist.append(outtype)
+    else:
+      outfile = "{}/{}-{}_Typing_{}.html".format(self.output, "collection", self.name, self.now)
+      r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
+    try:
+      output ="{}/{}".format(self.output, outfile)
+      storage = "{}/{}".format(self.config['folders']['reports'], outfile)
+
+      open(output, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
+      copyfile(primary, storage)
+    
+      self.filelist.append(output)
+      self.filelist.append(storage)
       if not silent:
-        self.attachments.append(outtype)
+        self.attachments.append(output)
     except Exception as e:
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.error = True
 
   def gen_resistence(self, silent=False):
-    self.ticketFinder.load_lims_project_info(self.name)
+    if self.collection:
+      sample_info = gen_collectiondata(self.name)
+    else:
+      self.ticketFinder.load_lims_project_info(self.name)
+      sample_info = gen_reportdata(self.name)
     output = "{}/{}_{}.csv".format(self.output,self.name,self.now)
     excel = open(output, "w+")
-    sample_info = gen_reportdata(self.name)
     resdict = dict()
 
     #Load ALL resistance & genes
