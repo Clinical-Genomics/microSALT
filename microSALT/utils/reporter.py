@@ -20,13 +20,16 @@ from email.mime.application import MIMEApplication
 
 from multiprocessing import Process
 
+from microSALT import __version__
 from microSALT.server.views import app, session, gen_reportdata, gen_collectiondata
+from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.store.orm_models import Samples
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Reporter():
 
   def __init__(self, config, log, name = "", output = "", collection=False):
+    self.db_pusher=DB_Manipulator(config, log)
     self.name = name
     self.collection = collection
     if output == "":
@@ -47,6 +50,7 @@ class Reporter():
     format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
   def report(self, type='default', customer='all'):
+    self.gen_version(self.name)
     self.start_web()
     if type == 'json_dump':
       self.gen_json()
@@ -70,6 +74,10 @@ class Reporter():
     if self.output == "" or self.output == os.getcwd():
       for file in self.filelist:
         os.remove(file)
+
+  def gen_version(self, name):
+    self.db_pusher.get_report(name)
+    self.db_pusher.set_report(name)
 
   def gen_STtracker(self, customer="all", silent=False):
     self.name ="Sequence Type Update"

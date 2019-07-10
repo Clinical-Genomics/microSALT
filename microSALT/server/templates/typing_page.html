@@ -46,6 +46,13 @@
                         <td>{{samples[0].projects.Customer_ID}}<i></i></td>
                       </tr>
                       <tr>
+                        <td><b>Rapport version</b></td>
+                        {% if len(reports) == 1 %}
+                          <td>Version {{reports[0].version}}, {{reports[0].date.date()}}</td>
+                        {% len(reports) > 1 %}
+                          <td>Version {{reports[0].version}}, {{reports[0].date.date()}} (Ersätter version {{reports[0].version}}, {{reports[0].date.date()}})</td>
+                      </tr>
+                      <tr>
                         <td><b>microSALT version</b></td>
                         <td>{{build}}</td>
                       </tr>

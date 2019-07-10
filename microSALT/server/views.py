@@ -57,6 +57,7 @@ def alignment_page(project):
         date = date.today().isoformat(),
         version = sample_info['versions'],
         threshold = config['threshold'],
+        reports = sample_info['reports'],
         build = __version__)
 
 @app.route('/microSALT/<project>/typing/<organism_group>')
@@ -68,6 +69,7 @@ def typing_page(project, organism_group):
         date = date.today().isoformat(),
         version = sample_info['versions'],
         threshold = config['threshold'],
+        reports = sample_info['reports'],
         build = __version__)
 
 
@@ -109,6 +111,10 @@ def gen_reportdata(pid='all', organism_group='all'):
                   filter(Samples.CG_ID_project==pid, Samples.organism==organism_group)
      
   sample_info = gen_add_info(sample_info)
+
+  reports = session.query(Reports).filter(Reports.CG_ID_project==pid).all()
+  sample_info['reports'] = reports=sorted(reports, key=lambda x: x.version reverse=True)
+
   return sample_info
 
 def gen_add_info(sample_info=dict()):

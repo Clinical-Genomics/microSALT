@@ -122,7 +122,7 @@ class Reports(db.Model):
   CG_ID_project = db.Column(db.String(15), ForeignKey('projects.CG_ID_project'), primary_key=True)
   steps_aggregate = db.Column(db.String(100))
   date = db.Column(db.DateTime)
-  version = db.Column(db.Integer, default=1)
+  version = db.Column(db.Integer, default=1, primary_key=True)
 
 class Collections(db.Model):
   __tablename__ = 'collections'
