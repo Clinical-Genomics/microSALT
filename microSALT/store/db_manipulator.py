@@ -223,7 +223,7 @@ class DB_Manipulator:
 
   def get_report(self, name):
     #Sort based on version
-    prev_reports = self.sessions.query(Reports).filter(Reports.CG_ID_project==name).order_by(desc(Reports.version)i).all()
+    prev_reports = self.sessions.query(Reports).filter(Reports.CG_ID_project==name).order_by(desc(Reports.version)).all()
     if len(prev_reports) > 0:
       prev_report = prev_reports[0]
     return prev_report
