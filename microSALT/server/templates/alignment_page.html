@@ -48,10 +48,11 @@
                       </tr>
                       <tr>
                         <td><b>Rapport version</b></td>
-                        {% if len(reports) == 1 %}
-                          <td>Version {{reports[0].version}}, {{reports[0].date.date()}}</td>
-                        {% len(reports) > 1 %}
+                        {% if reports|length > 1 %}
                           <td>Version {{reports[0].version}}, {{reports[0].date.date()}} (Ersätter version {{reports[0].version}}, {{reports[0].date.date()}})</td>
+                        {% else %}
+                          <td>Version {{reports[0].version}}, {{reports[0].date.date()}}</td>
+                        {% endif %}
                       </tr>
                       <tr>
                         <td><b>microSALT version</b></td>

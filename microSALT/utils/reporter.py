@@ -102,12 +102,12 @@ class Reporter():
       sys.exit(-1)
     try:
       q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(self.name), allow_redirects=True)
-      outfile = "{}_QC_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
+      outfile = "{}_QC_{}.html".format(self.ticketFinder.data['Customer_ID_project'], self.now)
       output ="{}/{}".format(self.output, outfile)
       storage = "{}/{}".format(self.config['folders']['reports'], outfile)
 
-      open(output, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
-      copyfile(primary, storage)
+      open(output, 'wb').write(q.content.decode("iso-8859-1").encode("utf8"))
+      copyfile(output, storage)
 
       self.filelist.append(output)
       self.filelist.append(storage)
@@ -118,24 +118,20 @@ class Reporter():
       self.error = True
  
   def gen_typing(self,silent=False):
-    if len(self.name) == 1:
-      try:
-        self.ticketFinder.load_lims_project_info(self.name)
-      except Exception as e:
-        self.logger.error("Project {} does not exist".format(self.name))
-        self.kill_flask()
-        sys.exit(-1)
-      outfile = "{}/{}_Typing_{}.html".format(self.output, self.ticketFinder.data['Customer_ID_project'], self.now)
-      r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
-    else:
-      outfile = "{}/{}-{}_Typing_{}.html".format(self.output, "collection", self.name, self.now)
-      r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
     try:
+      self.ticketFinder.load_lims_project_info(self.name)
+    except Exception as e:
+      self.logger.error("Project {} does not exist".format(self.name))
+      self.kill_flask()
+      sys.exit(-1)
+    try:
+      r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
+      outfile = "{}_Typing_{}.html".format(self.ticketFinder.data['Customer_ID_project'], self.now)
       output ="{}/{}".format(self.output, outfile)
       storage = "{}/{}".format(self.config['folders']['reports'], outfile)
 
       open(output, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
-      copyfile(primary, storage)
+      copyfile(output, storage)
     
       self.filelist.append(output)
       self.filelist.append(storage)
@@ -246,7 +242,7 @@ class Reporter():
     if not self.error:
       msg['Subject'] = '{} ({}) Reports'.format(self.name, file_name[0].split('_')[0])
     else:
-      msg['Subject'] = '{} ({}) Failed Generating Report'.format(self.name, file_name[0].split('_')[0])
+      msg['Subject'] = '{} Failed Generating Report'.format(self.name)
     msg['From'] = 'microSALT@{}'.format(socket.gethostname())
     msg['To'] = self.config['regex']['mail_recipient']
    

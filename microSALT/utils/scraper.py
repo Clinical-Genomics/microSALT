@@ -43,7 +43,7 @@ class Scraper():
   def scrape_project(self):
     """Scrapes a project folder for information"""
     if self.config['rerun']:
-      self.db_pusher.purge_rec(self.name, 'project')
+      self.db_pusher.purge_rec(self.name, 'Projects')
     if not self.db_pusher.exists('Projects', {'CG_ID_project':self.name}):
       self.logger.error("Re-filling project {}".format(self.name))
       self.job_fallback.create_project(self.name)
@@ -64,7 +64,7 @@ class Scraper():
   def scrape_sample(self):
     """Scrapes a sample folder for information"""
     if self.config['rerun']:
-      self.db_pusher.purge_rec(self.name, 'sample')
+      self.db_pusher.purge_rec(self.name, 'Samples')
 
     self.lims_fetcher.load_lims_sample_info(self.name)
     if not self.db_pusher.exists('Projects', {'CG_ID_project':self.lims_fetcher.data['CG_ID_project']}):
