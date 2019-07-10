@@ -15,7 +15,7 @@ class Samples(db.Model):
   seq_types = relationship("Seq_types", back_populates="samples")
   projects = relationship('Projects', back_populates='samples')
   resistances = relationship("Resistances", back_populates="samples")
-  steps = relationship("Steps", back_populates="samples")
+  #steps = relationship("Steps", back_populates="samples")
 
   CG_ID_sample = db.Column(db.String(15), primary_key=True, nullable=False)
   CG_ID_project = db.Column(db.String(15), ForeignKey('projects.CG_ID_project'))
