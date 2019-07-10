@@ -245,9 +245,9 @@ class DB_Manipulator:
     prev_report = self.get_report(name)
     #Compare
     if 'steps_aggregate' in prev_report and prev_report.steps_aggregate != hashstring:
-      self.add_rec({'CG_ID_project':name, 'steps_aggregate':hashstring, 'date':dt 'version':prev_report.version+1} ,'Reports')
+      self.add_rec({'CG_ID_project':name, 'steps_aggregate':hashstring, 'date':dt, 'version':prev_report.version+1} ,'Reports')
     else:
-      self.add_rec({'CG_ID_project':name, 'steps_aggregate':hashstring, 'date':dt 'version':prev_report.version+1} ,'Reports')
+      self.add_rec({'CG_ID_project':name, 'steps_aggregate':hashstring, 'date':dt, 'version':prev_report.version+1} ,'Reports')
 
   def add_external(self,overwrite=False, sample=""):
     """Looks at each novel table. See if any record has a profile match in the profile table.

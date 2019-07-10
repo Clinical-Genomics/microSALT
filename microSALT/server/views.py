@@ -114,7 +114,7 @@ def gen_reportdata(pid='all', organism_group='all'):
   sample_info = gen_add_info(sample_info)
 
   reports = session.query(Reports).filter(Reports.CG_ID_project==pid).all()
-  sample_info['reports'] = reports=sorted(reports, key=lambda x: x.version reverse=True)
+  sample_info['reports'] = reports=sorted(reports, key=lambda x: x.version, reverse=True)
 
   return sample_info
 
