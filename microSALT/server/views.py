@@ -136,10 +136,8 @@ def gen_reportdata(pid='all', organism_group='all'):
     if not 'Control' in s.ST_status and s.ST < 0:
       if s.ST == -1:
         s.ST_status = 'Invalid data'
-      elif (s.ST <= -4 or s.ST == -2) and s.threshold == 'Passed':
-        s.ST_status = 'Novel'
-      elif (s.ST <= -4 or s.ST == -2) and s.threshold == 'Failed':
-        s.ST_status = 'Unknown'
+      elif (s.ST <= -4 or s.ST == -2):
+        s.ST_status = 'Unknown (Novel ST, Novel allele[s])'
       else:
         s.ST_status='None'
 
