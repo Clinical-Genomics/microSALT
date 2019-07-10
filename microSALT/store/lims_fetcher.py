@@ -140,6 +140,7 @@ class LIMS_Fetcher():
                            'reference' : sample.udf['Reference Genome Microbial'],
                            'Customer_ID': sample.udf['customer'],
                            'application_tag': sample.udf['Sequencing Analysis'],
+                           'date_arrival': date_arrival,
                            'date_sequencing': date_sequencing,
                            'date_libprep': date_libprep,
                            'method_libprep': method_libprep,
