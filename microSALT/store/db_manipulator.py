@@ -223,7 +223,7 @@ class DB_Manipulator:
 
   def get_report(self, name):
     #Sort based on version
-    prev_reports = self.sessions.query(Reports).filter(Reports.CG_ID_project==name).order_by(desc(Reports.version).all()
+    prev_reports = self.sessions.query(Reports).filter(Reports.CG_ID_project==name).order_by(desc(Reports.version)i).all()
     if len(prev_reports) > 0:
       prev_report = prev_reports[0]
     return prev_report
@@ -232,7 +232,7 @@ class DB_Manipulator:
     #Generate string
     totalstring = list()
     dt = datetime.now()
-    samples = self.sessions.query(Samples).filter(Samples.CG_ID_project==name).order_by(desc(Samples.CG_ID_sample).all()
+    samples = self.sessions.query(Samples).filter(Samples.CG_ID_project==name).order_by(desc(Samples.CG_ID_sample)).all()
     for sample in samples:
       totalstring.append(sample.date_libprep)
       totalstring.append(sample.method_libprep)
