@@ -197,8 +197,11 @@ class LIMS_Fetcher():
       except Exception as e:
         pass
     if date_list:
-      dp = max(date_list).split('-')
-      return datetime(int(dp[0]), int(dp[1]), int(dp[2]))
+      try:
+        dp = max(date_list).split('-')
+        return datetime(int(dp[0]), int(dp[1]), int(dp[2]))
+      except Exception as e:
+        return max(date_list)
     else:
       return datetime.min
 
