@@ -329,7 +329,10 @@ class Scraper():
        for line in fh.readlines():
          lsplit = line.rstrip().split('\t')
          if type == 'raw':
-           tot_reads = int(lsplit[0])
+           try:
+             tot_reads = int(lsplit[0])
+           except Exception as e:
+             pass
          elif type == 'ins':
            if len(lsplit) >= 18 and lsplit[-12] in ['FF','FR']:
              try:

@@ -85,7 +85,12 @@ class LIMS_Fetcher():
     except Exception as e:
       self.logger.error("LIMS connection timeout: '{}'".format(str(e)))
 
+    #Figuring out the organism
     organism = "Unset"
+    reference = "None"
+    if 'Reference Genome Microbial' in sample.udf:
+      reference = sample.udf['Reference Genome Microbial']
+
     if 'Strain' in sample.udf and organism == "Unset":
       #Predefined genus usage. All hail buggy excel files
       if 'gonorrhoeae' in sample.udf['Strain']:
@@ -94,12 +99,11 @@ class LIMS_Fetcher():
         organism = "Propionibacterium acnes" 
       #Backwards compat, MUST hit first
       elif sample.udf['Strain'] == 'VRE':
-        if 'Reference Genome Microbial' in sample.udf:
-          if sample.udf['Reference Genome Microbial'] == 'NC_017960.1':
-            organism = 'Enterococcus faecium'
-          elif sample.udf['Reference Genome Microbial'] == 'NC_004668.1':
-            organism = 'Enterococcus faecalis'
-        elif 'Comment' in sample.udf:
+        if reference == 'NC_017960.1':
+          organism = 'Enterococcus faecium'
+        elif reference == 'NC_004668.1':
+          organism = 'Enterococcus faecalis'
+        elif 'Comment' in sample.udf and not re.match('\w{4}\d{2,3}', sample.udf['Comment']):
           organism = sample.udf['Comment']
       elif sample.udf['Strain'] != 'Other' and sample.udf['Strain'] != 'other':
         organism = sample.udf['Strain']
@@ -111,16 +115,16 @@ class LIMS_Fetcher():
           organism = "Propionibacterium acnes"
         else:
           organism = sample.udf['Other species']
-    if 'Reference Genome Microbial' in sample.udf and organism == "Unset":
-      if sample.udf['Reference Genome Microbial'] == 'NC_002163':
+    if reference != 'None' and organism == "Unset":
+      if reference == 'NC_002163':
         organism = "Campylobacter jejuni"
-      elif sample.udf['Reference Genome Microbial'] == 'NZ_CP007557.1':
+      elif reference == 'NZ_CP007557.1':
         organism = 'Klebsiella oxytoca'
-      elif sample.udf['Reference Genome Microbial'] == 'NC_000913.3':
+      elif reference == 'NC_000913.3':
         organism = 'Citrobacter freundii'
-      elif sample.udf['Reference Genome Microbial'] == 'NC_002516.2':
+      elif reference == 'NC_002516.2':
         organism = 'Pseudomonas aeruginosa'
-    elif 'Comment' in sample.udf and organism == "Unset":
+    elif 'Comment' in sample.udf and not re.match('\w{4}\d{2,3}', sample.udf['Comment']) and organism == "Unset":
       organism = sample.udf['Comment']
     # Consistent safe-guard
     elif organism == "Unset":
@@ -131,13 +135,14 @@ class LIMS_Fetcher():
       prio = sample.udf['priority']
     else:
       prio = ""
+
     try:
       self.data.update({'CG_ID_project': sample.project.id,
                            'CG_ID_sample': sample.id,
                            'Customer_ID_sample' : sample.name,
                            'organism' : organism,
                            'priority' : prio,
-                           'reference' : sample.udf['Reference Genome Microbial'],
+                           'reference' : reference,
                            'Customer_ID': sample.udf['customer'],
                            'application_tag': sample.udf['Sequencing Analysis'],
                            'date_arrival': date_arrival,
