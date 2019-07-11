@@ -237,7 +237,7 @@ class DB_Manipulator:
     for sample in samples:
       totalstring.append(str(datetime.timestamp(sample.date_libprep.replace(tzinfo=timezone.utc))))
       totalstring.append(sample.method_libprep)
-      totalstring.append(str(datetime.timestamp(sample.date_sequencing.replace(tzinfo=timezone.utc)))
+      totalstring.append(str(datetime.timestamp(sample.date_sequencing.replace(tzinfo=timezone.utc))))
       totalstring.append(sample.method_sequencing)
     totalstring.append(__version__)
     totalstring = ''.join(totalstring).encode()
