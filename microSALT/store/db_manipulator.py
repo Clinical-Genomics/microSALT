@@ -235,9 +235,9 @@ class DB_Manipulator:
     dt = datetime.now()
     samples = self.session.query(Samples).filter(Samples.CG_ID_project==name).order_by(desc(Samples.CG_ID_sample)).all()
     for sample in samples:
-      totalstring.append(str(datetime.timestamp(sample.date_libprep)/1000.0))
+      totalstring.append(str(datetime.timestamp(sample.date_libprep)))
       totalstring.append(sample.method_libprep)
-      totalstring.append(str(datetime.timestamp(sample.date_sequencing)/1000.0))
+      totalstring.append(str(datetime.timestamp(sample.date_sequencing)))
       totalstring.append(sample.method_sequencing)
     totalstring.append(__version__)
     totalstring = ''.join(totalstring).encode()
