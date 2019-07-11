@@ -3,7 +3,7 @@
 import os
 import re
 
-from datetime import datetime, timezone
+from datetime import datetime
 from genologics.lims import Lims
 # Should probably call these items directly since we're now up to 3 config files
 from genologics.entities import Project, Sample
@@ -209,7 +209,7 @@ class LIMS_Fetcher():
       except Exception as e:
         return max(date_list)
     else:
-      return datetime.min.replace(tzinfo=timezone.utc)
+      return datetime.min
 
   def get_method(self, sample_id, type=""):
     """Retrives method document name and version for a sample"""
