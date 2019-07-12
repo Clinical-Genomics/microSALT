@@ -151,11 +151,11 @@
                           <td class="text-right">0.0x
                         {% elif (sample.average_coverage)|round(2) <= threshold.average_coverage_warn and not 'Kontroll' in sample.ST_status %}
                           {% if (sample.average_coverage)|round(2) <= threshold.average_coverage_fail %}
-                            <td class="text-right" bgcolor="#fa8072">{{ (sample.average_coverage)|round(2) }}</font>
+                            <td class="text-right" bgcolor="#fa8072">{{ (sample.average_coverage)|round(2) }}x</font>
                           {% else %}
-                            <td class="text-right" bgcolor="#fffacd">{{ (sample.average_coverage)|round(2) }}</font>
+                            <td class="text-right" bgcolor="#fffacd">{{ (sample.average_coverage)|round(2) }}x</font>
                           {% endif %}
-                        {% else %} <td class="text-right">{{ (sample.average_coverage)|round(2) }}x {% endif %}
+                        {% else %} <td class="text-right">{{ (sample.average_coverage)|round(2) }}x{% endif %}
                       </td>
                         {% if sample.coverage_10x is none or (sample.coverage_10x*100)|round(2) == 0 %}
                           <td class="text-right">0.0
