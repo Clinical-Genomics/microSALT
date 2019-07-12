@@ -4,7 +4,7 @@ import sys
 
 from flask import Flask
 
-__version__ = '2.7.1'
+__version__ = '2.8.0'
 
 app = Flask(__name__, template_folder='server/templates')
 app.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:///:memory:')
@@ -21,20 +21,20 @@ if 'MICROSALT_CONFIG' in os.environ:
     with open(envvar, 'r') as conf:
       config = json.load(conf)
   except Exception as e:
-    print("Config error: {}".format(e.args))
+    print("Config error: {}".format(str(e)))
     pass
 elif os.path.exists(defaulto):
   try:
     with open(defaulto, 'r') as conf:
       config = json.load(conf)
   except Exception as e:
-    print("Config error: {}".format(e.args)) 
+    print("Config error: {}".format(str(e))) 
     pass
 # Load flask instance
 if config != '':
   try:
     app.config.update(config['database'])
   except Exception as e:
-    print("Config error: {}".format(e.args))
+    print("Config error: {}".format(str(e)))
     pass
 

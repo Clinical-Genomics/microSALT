@@ -11,11 +11,11 @@ from microSALT import app
 
 db = SQLAlchemy(app)
 class Samples(db.Model):
-
   __tablename__ = 'samples'
   seq_types = relationship("Seq_types", back_populates="samples")
   projects = relationship('Projects', back_populates='samples')
   resistances = relationship("Resistances", back_populates="samples")
+  #steps = relationship("Steps", back_populates="samples")
 
   CG_ID_sample = db.Column(db.String(15), primary_key=True, nullable=False)
   CG_ID_project = db.Column(db.String(15), ForeignKey('projects.CG_ID_project'))
@@ -40,6 +40,14 @@ class Samples(db.Model):
   coverage_100x = db.Column(db.Float)
   average_coverage = db.Column(db.Float)
   reference_genome = db.Column(db.String(32))
+
+  application_tag = db.Column(db.String(15))
+  date_arrival = db.Column(db.DateTime)
+  date_analysis = db.Column(db.DateTime)
+  date_sequencing = db.Column(db.DateTime)
+  date_libprep = db.Column(db.DateTime)
+  method_sequencing = db.Column(db.String(15))
+  method_libprep = db.Column(db.String(15))
 
 class Seq_types(db.Model):
   __tablename__ = 'seq_types'
@@ -81,9 +89,20 @@ class Resistances(db.Model):
   contig_start=db.Column(db.Integer)
   contig_end=db.Column(db.Integer)
 
+#Multi-date support for libprep/sequencing/analysis
+#class Steps(db.Model):
+#  __tablename__ = 'steps'
+#  samples = relationship("Samples", back_populates="steps")
+#
+#  CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
+#  step = db.Column(db.String(40), primary_key=True)
+#  method = db.Column(db.String(40), primary_key=True)
+#  date = db.Column(db.DateTime)
+
 class Projects(db.Model):
   __tablename__ = 'projects'
   samples = relationship('Samples', back_populates='projects')
+  reports = relationship('Reports', back_populates='projects')
 
   CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
   Customer_ID_project = db.Column(db.String(15))
@@ -95,3 +114,19 @@ class Versions(db.Model):
 
   name = db.Column(db.String(45), primary_key=True, nullable=False)
   version = db.Column(db.String(10))
+
+#Keeps and aggregate step string, makes a new version whenever one is not found
+class Reports(db.Model):
+  __tablename__ = 'reports'
+  projects = relationship('Projects', back_populates='reports')
+
+  CG_ID_project = db.Column(db.String(15), ForeignKey('projects.CG_ID_project'), primary_key=True)
+  steps_aggregate = db.Column(db.String(100))
+  date = db.Column(db.DateTime)
+  version = db.Column(db.Integer, default=1, primary_key=True)
+
+class Collections(db.Model):
+  __tablename__ = 'collections'
+
+  ID_collection = db.Column(db.String(15), primary_key=True)
+  CG_ID_sample = db.Column(db.String(15), primary_key=True)

@@ -6,104 +6,231 @@
           <!-- Summary pages  -->
           <footer>
             <div class="panel"><div class="panel-body">
-              <a href="https://github.com/Clinical-Genomics/microSALT"><img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" alt="MicroSALT Logo" align="left" style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
-              <!--<img src="swedac.jpg" alt="Swedac Logo" align="right" style="display:flex;">-->
+              <a href="https://github.com/Clinical-Genomics/microSALT">
+              <img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" \
+              alt="MicroSALT Logo" align="left" \
+              style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
+              <img src="https://github.com/Clinical-Genomics/microSALT/blob/accreditation-changes-to-report/artwork/swedac.jpg?raw=true" alt="Swedac Logo" align="right" style="display:flex;">
               <h2 class="page-header">
-                <small><br><br>Quality Control Report</small>
-              <small><p align="right">{{date}}</p></small></h2>
+                <small><br><br><br>Kvalitetskontrollsrapport</small>
 
-              <h3><strong>Project Summary</strong><br></h3>
-              <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
-                  <tr>
-                    <td><b>Project ID <i>(CG Project ID)</i></b>
-                    <td>{{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></td>
-                  </tr>
-                  <tr>
-                    <td><b>Analysis date</b></td>
-                    <td>{{samples[0].date_analysis.date()}}</td>
-                  </tr>
-                </table>
+              <small><p align="center">Rapport genererad: {{date}}</p></small></h2>
+              <div class="row">
+                <div class="col">
+                 <h3>Kontakt Clinical Genomics</h3>
+                 <address>
+                   <strong>Clinical Genomics</strong><br>
+                   Science for Life Laboratory<br>
+                   Tomtebodavägen 23<br>
+                   171 65 Solna<br>
+                  <abbr title="Telefonnummer">T:</abbr> (08) 524 81 500
+                 </address>
               </div>
+               <div class="col">
+                 <h3>Kund:</h3>
+                 <address>
+                 <h2>{{samples[0].projects.Customer_ID}}</h2><br>
+                </address>
+              </div>
+              <br />
+              <br />
 
-              <h3><strong>Sample Summary</strong><br></h3>
+              <div class="panel"><div class="panel-body">
+                <h3>Projektsammanställning<br></h3>
+                    <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
+                      <tr>
+                      <td><b>Ticket ID <i>(CG Projekt ID)</i></b>
+                        <td>{{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></td>
+                      </tr>
+                      <tr>
+                      <td><b>Kund ID (*)</b>
+                        <td>{{samples[0].projects.Customer_ID}}<i></i></td>
+                      </tr>
+                      <tr>
+                        <td><b>Rapport version</b></td>
+                        {% if reports|length > 1 %}
+                          <td>Version {{reports[0].version}}, {{reports[0].date.date()}} (Ersätter version {{reports[0].version}}, {{reports[0].date.date()}})</td>
+                        {% else %}
+                          <td>Version {{reports[0].version}}, {{reports[0].date.date()}}</td>
+                        {% endif %}
+                      </tr>
+                      <tr>
+                        <td><b>microSALT version</b></td>
+                        <td>{{build}}</td>
+                      </tr>
+                    </table></div>
+              </div></div>
+              <div class="panel"><div class="panel-body">
+              <h3>Provsammanställning<br></h3>
               <div class="table-responsive">
                 <table  class="table table-bordered" style='table-layout:fixed;'>
                   <tr>
-                    <th>Sample ID</th>
-                    <th>CG Sample ID</th>
-                    <th>Reference Genome</th>
-                    <th>Organism</th>
-                    <th>Total Reads</th>
-                    <th>Mapping rate %</th>
-                    <th>Duplication Rate %</th>
-                    <th>Median Insert Size</th>
-                    <th>Average coverage</th>
-                    <th>%BP > 10x Coverage</th>
-                    <th>%BP > 30x Coverage</th>
-                    <th>%BP > 50x Coverage</th>
-                    <th>%BP > 100x Coverage</th>
+                    <th>Prov ID (*)</th>
+                    <th>CG Prov ID</th>
+                    <th>Applikationstag</th>
+                    <th>Organism (*)</th>
+                    <th>Referensgenom (*)</th>
+                    <th>Antal Reads</th>
+                    <th>Mappningsgrad %</th>
+                    <th>Duplikationsgrad %</th>
+                    <th>Insert Storlek (Median)</th>
+                    <th>Medeltäckning</th>
+                    <th>%BP > 10x Täckning</th>
+                    <th>%BP > 30x Täckning</th>
+                    <th>%BP > 50x Täckning</th>
+                    <th>%BP > 100x Täckning</th>
 
                   </tr>
                   {% for sample in samples %}
+                    {% if 'Kontroll' in sample.ST_status %}<i>{% endif %}
                     <tr>
                       <td>{{ sample.Customer_ID_sample }}</td>
                       <td>{{ sample.CG_ID_sample }}</td>
-                      <td>{{ sample.reference_genome }}</td>
+                      <td>{{ sample.application_tag }}</td>
                       {% if sample.organism is not none %}
                         <td>{{sample.organism.replace('_', ' ').capitalize()}}</td>
-                      {% else %}<td>Undetermined</td>{% endif %}
-                      <td class="text-right">
+                      {% else %}<td>Okänd</td>{% endif %}
+                      <td>{{ sample.reference_genome }}</td>
+
                         {% if sample.total_reads is none %}
-                          0
-                        {% else %} {{'{0:,}'.format(sample.total_reads)|replace(","," ")}} {% endif %}
-                      </td>
-                      <td class="text-right">
-                        {% if sample.mapped_rate is none or sample.mapped_rate == 0 %}
-                          0.0
-                        {% else %} {{ (sample.mapped_rate*100)|round(2) }} {% endif %}
-                      </td>
-                      <td class="text-right">
-                        {% if sample.duplication_rate is none or sample.duplication_rate == -1 %}
-                          N/A
+                          <td class="text-right">0
                         {% else %}
-                          {{ (sample.duplication_rate*100)|round(2) }}
+                          {% set bp_perc = ((sample.total_reads/((sample.application_tag[-1:]|float)*10000))|round(2)) %}
+                          {% if 'Kontroll' in sample.ST_status %}
+                            {% if bp_perc > threshold.NTC_total_reads_fail %}
+                              <td class="text-right" bgcolor="#fa8072">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%)
+                            {% elif bp_perc > threshold.NTC_total_reads_warn %}
+                              <td class="text-right" bgcolor="#fffacd">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%)
+                            {% else %}
+                              <td class="text-right">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%) 
+                            {% endif %} 
+                          {% else %}
+                            {% if bp_perc < threshold.total_reads_fail %}
+                              <td class="text-right" bgcolor="#fa8072">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%)
+                            {% elif bp_perc < threshold.total_reads_warn %}
+                              <td class="text-right" bgcolor="#fffacd">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%)
+                            {% else %}
+                              <td class="text-right">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%) 
+                            {% endif %} 
+                          {% endif %}
                         {% endif %}
                       </td>
-                      <td class="text-right">
+                        {% if sample.mapped_rate is none or sample.mapped_rate == 0 %}
+                           <td class="text-right">0.0
+                        {% elif (sample.mapped_rate*100)|round(2) <= threshold.mapped_rate_warn and not 'Kontroll' in sample.ST_status %}
+                          {% if (sample.mapped_rate*100)|round(2) <= threshold.mapped_rate_fail %}
+                            <td class="text-right" bgcolor="#fa8072">{{ (sample.mapped_rate*100)|round(2) }}</font>
+                          {% else %}
+                            <td class="text-right" bgcolor="#fffacd">{{ (sample.mapped_rate*100)|round(2) }}</font>
+                          {% endif %}
+                        {% else %} <td class="text-right">{{ (sample.mapped_rate*100)|round(2) }} {% endif %}
+                      </td>
+                        {% if sample.duplication_rate is none or sample.duplication_rate == -1 or sample.duplication_rate == 0.0 %}
+                         <td class="text-right"> N/A
+                        {% elif (sample.duplication_rate*100)|round(2) >= threshold.duplication_rate_warn and not 'Kontroll' in sample.ST_status %}
+                          {% if (sample.duplication_rate*100)|round(2) >= threshold.duplication_rate_fail %}
+                            <td class="text-right" bgcolor="#fa8072">{{ (sample.duplication_rate*100)|round(2) }}</font>
+                          {% else %}
+                            <td class="text-right" bgcolor="#fffacd">{{ (sample.duplication_rate*100)|round(2) }}</font>
+                          {% endif %}
+                        {% else %}
+                          <td class="text-right">{{ (sample.duplication_rate*100)|round(2) }}
+                        {% endif %}
+                      </td>
                         {% if sample.insert_size is none or sample.insert_size == 0%}
-                          N/A
-                        {% else %} {{ sample.insert_size }} {% endif %}
+                         <td class="text-right">N/A
+                        {% elif sample.insert_size <= threshold.insert_size_warn and not 'Kontroll' in sample.ST_status %}
+                          {% if sample.insert_size <= threshold.insert_size_fail %}
+                            <td class="text-right" bgcolor="#fa8072">{{ insert_size }}</font>
+                          {% else %}
+                            <td class="text-right" bgcolor="#fffacd">{{ insert_size }}</font>
+                          {% endif %}
+                        {% else %} <td class="text-right">{{ sample.insert_size }} {% endif %}
                       </td>
-                      <td class="text-right">
                         {% if sample.average_coverage is none or sample.average_coverage|round(2) == 0 %}
-                          0.0x
-                        {% else %} {{ (sample.average_coverage)|round(2) }}x {% endif %}
+                          <td class="text-right">0.0x
+                        {% elif (sample.average_coverage)|round(2) <= threshold.average_coverage_warn and not 'Kontroll' in sample.ST_status %}
+                          {% if (sample.average_coverage)|round(2) <= threshold.average_coverage_fail %}
+                            <td class="text-right" bgcolor="#fa8072">{{ (sample.average_coverage)|round(2) }}x</font>
+                          {% else %}
+                            <td class="text-right" bgcolor="#fffacd">{{ (sample.average_coverage)|round(2) }}x</font>
+                          {% endif %}
+                        {% else %} <td class="text-right">{{ (sample.average_coverage)|round(2) }}x{% endif %}
                       </td>
-                      <td class="text-right">
                         {% if sample.coverage_10x is none or (sample.coverage_10x*100)|round(2) == 0 %}
-                          0.0
-                        {% else %} {{ (sample.coverage_10x*100)|round(2) }} {% endif %}
+                          <td class="text-right">0.0
+                        {% elif (sample.coverage_10x*100)|round(2) <= threshold.bp_10x_warn and not 'Kontroll' in sample.ST_status %}
+                          {% if (sample.coverage_10x*100)|round(2) <= threshold.bp_10x_fail %}
+                            <td class="text-right" bgcolor="#fa8072">{{ (sample.coverage_10x*100)|round(2) }}</font>
+                          {% else %}
+                            <td class="text-right" bgcolor="#fffacd">{{ (sample.coverage_10x*100)|round(2) }}</font>
+                          {% endif %}
+                        {% else %} <td class="text-right">{{ (sample.coverage_10x*100)|round(2) }} {% endif %}
                       </td>
-                      <td class="text-right">
                         {% if sample.coverage_30x is none or (sample.coverage_30x*100)|round(2) == 0 %}
-                          0.0
-                        {% else %} {{ (sample.coverage_30x*100)|round(2) }} {% endif %}
+                          <td class="text-right">0.0
+                        {% elif (sample.coverage_30x*100)|round(2) <= threshold.bp_30x_warn and not 'Kontroll' in sample.ST_status %}
+                            <td class="text-right" bgcolor="#fffacd">{{ (sample.coverage_30x*100)|round(2) }}</font>
+                        {% else %} <td class="text-right">{{ (sample.coverage_30x*100)|round(2) }} {% endif %}
                       </td>
-                      <td class="text-right">
                         {% if sample.coverage_50x is none or (sample.coverage_50x*100)|round(2) == 0 %}
-                          0.0
-                        {% else %} {{ (sample.coverage_50x*100)|round(2) }} {% endif %}
+                          <td class="text-right">0.0
+                        {% elif (sample.coverage_50x*100)|round(2) <= threshold.bp_50x_warn and not 'Kontroll' in sample.ST_status %}
+                            <td class="text-right" bgcolor="#fffacd">{{ (sample.coverage_50x*100)|round(2) }}</font>
+                        {% else %} <td class="text-right">{{ (sample.coverage_50x*100)|round(2) }} {% endif %}
                       </td>
-                      <td class="text-right">
                         {% if sample.coverage_100x is none or (sample.coverage_100x*100)|round(2) == 0 %}
-                          0.0
-                        {% else %} {{ (sample.coverage_100x*100)|round(2) }} {% endif %}
+                          <td class="text-right">0.0
+                        {% elif (sample.coverage_100x*100)|round(2) <= threshold.bp_100x_warn and not 'Kontroll' in sample.ST_status %}
+                            <td class="text-right" bgcolor="#fffacd">{{ (sample.coverage_100x*100)|round(2) }}</font>
+                        {% else %} <td class="text-right">{{ (sample.coverage_100x*100)|round(2) }} {% endif %}
                       </td>
                     </tr>
+                  {% if 'Kontroll' in sample.ST_status %}</i>{% endif %}
                   {% endfor %}
                 </table>
               </div>
+              (*) Information om prover som kommer från kund <br/>
+              </div></div>
+
+              <div class="panel"><div class="panel-body">
+              <h3>Teknisk beskrivning av analysen: {{samples[0].application_tag}}<br></h3>
+              <p>
+              {% if samples[0].application_tag == "MWRNXTR003" %}
+              Mikrobiell helgenomssekvensering av rutinprov, med krav på minst 3 miljoner läspar.
+              Nextera library preparation.
+              {% elif samples[0].application_tag in ["MWGNXTR003", "MWMNXTR003", "MWLNXTR003"] %}
+              Mikrobiell helgenomssekvensering, med krav på minst 3 miljoner läspar.
+              Nextera library preparation.
+              {% elif samples[0].application_tag == "MWXNXTR003" %}
+              Storskalig mikrobiell helgenomssekvensering av minst 176 prover, med krav på minst 3 miljoner läspar.
+              Nextera library preparation.
+              {% elif samples[0].application_tag in ["VWGNXTR001", "VWLNXTR001"] %}
+              Virologisk helgenomssekvensering, med krav på minst 1 miljon läspar.
+              Nextera library preparation.
+              {% endif %}
+              </p>
+              <h3>Analysbegränsningar för: {{samples[0].application_tag}}<br></h3>
+              <p>
+              Tillförlitligheten hos resultaten förutsätter dels att informationen som bifogats från kund är korrekt.
+              </p>
+
+              <h3>Avvikelser från metoden<br></h3>
+              <p>
+              All kommunikation gällande ordern såsom tillägg, avvikelser eller
+              ev undantag i metoden från Clinical Genomics finns tillgängligt i
+              SupportSystem för dess ticket id. En stängd ticket kan närsomhelst
+              öppnas upp igen för frågor.
+              </p>
+
+              <h3>Signatur för godkännande av rapport<br></h3>
+              <p>
+                Valtteri Wirta<br>
+                Head of unit, Clinical Genomics
+              </p>
+              </div></div>
               </div>
+              <div class="text-muted text-center">Slut på rapport</div>
             </div>
           </footer>
         </div>
