@@ -180,7 +180,7 @@
           <footer>
             <div class="panel"><div class="panel-body">
               {% if samples[0].application_tag == "MWRNXTR003" %}
-              <h3><strong>Teknisk beskrivning av analysen: {{samples[0].application_tag}}</strong><br></h3>
+              <h3>Teknisk beskrivning av analysen: {{samples[0].application_tag}}<br></h3>
               <p>
               {% if samples[0].application_tag == "MWRNXTR003" %}
               Mikrobiell helgenomssekvensering av rutinprov, med krav på minst 3 miljoner läspar.
@@ -197,7 +197,7 @@
               {% endif %}
               <br></p>
 
-              <h3><strong>Analysbegränsningar för: {{samples[0].application_tag}}</strong><br></h3>
+              <h3>Analysbegränsningar för: {{samples[0].application_tag}}<br></h3>
               <p>
               Analysen kan enbart beställas av gruppen Klinisk Mikrobiologi.
               Laboratoriet har inte haft ansvar för provtagningsstadiet och extraktion, resultaten gäller för provet såsom det har mottagits.
@@ -205,7 +205,7 @@
               Tillförlitligheten hos resultaten förutsätter dels att informationen som bifogats från kund är korrekt. Dels att proverna uppnår de fördefinierade tröskelvärdena; och dels att de organismerna som analyseras har tidigare manuellt verifierats tidigare av personal på Clinical Genomics.
               </p>
 
-              <h3><strong>Avvikelser från metoden</strong><br></h3>
+              <h3>Avvikelser från metoden<br></h3>
               <p>
               All kommunikation gällande order såsom tillägg, avvikelser eller
               ev undantag i metoden från Clinical Genomics finns tillgängligt i
@@ -213,7 +213,7 @@
               öppnas upp igen för frågor.
               </p>
 
-              <h3><strong>Signatur för godkännande av rapport</strong><br></h3>
+              <h3>Signatur för godkännande av rapport<br></h3>
               <p>
                 Valtteri Wirta<br>
                 Head of unit, Clinical Genomics
@@ -230,7 +230,7 @@
             <footer>
               <div class="panel">
         	<div class="panel-body">
-        	  <h2 class="page-header"><div class="row"></div><strong>Detaljresultat</strong>
+        	  <h2 class="page-header"><div class="row"></div>Detaljresultat
                   {% if sample.organism is not none %}
                     {% if sample.priority == 'standard' and sample.organism.replace('_', ' ').capitalize() in verified_organisms %}
                       <img src="https://github.com/Clinical-Genomics/microSALT/blob/accreditation-changes-to-report/artwork/swedac.jpg?raw=true" alt="Swedac Logo" \
