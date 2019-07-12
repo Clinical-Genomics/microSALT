@@ -98,7 +98,7 @@ class Job_Creator():
       bsize = os.stat("{}/{}".format(self.indir,vfile)).st_size
       bsize = bsize >> 20
       if bsize > 1000:
-        self.logger.warning("Input fastq {} exceeds 1000MB")
+        self.logger.warning("Input fastq {} exceeds 1000MB".format(vfile))
     return verified_files
  
   def create_assemblysection(self):
