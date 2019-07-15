@@ -9,19 +9,29 @@
               <a href="https://github.com/Clinical-Genomics/microSALT"><img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" alt="MicroSALT Logo" align="left" style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
               <!--<img src="swedac.jpg" alt="Swedac Logo" align="right" style="display:flex;">-->
               <h2 class="page-header">
-                <small><br><br>Clinical Microbiology</small>
-              <small><p align="right">{{date}}</p></small></h2>
+                <small><br><br><br>Sekvenstypsuppdateringar</small>
+              <small><p align="center">Rapport genererad: {{date}}</p></small></h2>
+              <div class="row">
+                <div class="col">
+                 <h3>Kontakt Clinical Genomics</h3>
+                 <address>
+                   <strong>Clinical Genomics</strong><br>
+                   Science for Life Laboratory<br>
+                   Tomtebodavägen 23<br>
+                   171 65 Solna<br>
+                  <abbr title="Telefonnummer">T:</abbr> (08) 524 81 500
+                 </address>
+              </div>
 
-              <h3><strong>Sequence Type Updates</strong><br></h3>
               <div class="table-responsive">
                 <table  class="table table-bordered" style='table-layout:fixed;'>
                   <tr>
-                    <th>Customer</th>
-                    <th>Sample ID</th>
-                    <th>CG Sample ID</th>
+                    <th>Kund</th>
+                    <th>Prov ID</th>
+                    <th>CG Prov ID</th>
                     <th>Organism</th>
-                    <th>Old (Internal) ST</th>
-                    <th>New (pubMLST) ST</th>
+                    <th>Gammal (Intern) ST</th>
+                    <th>Ny (pubMLST) ST</th>
                   </tr>
                   {% for entry in internal %}
                     <tr>
@@ -47,5 +57,6 @@
             </div>
           </footer>
         </div>
+        <div class="text-muted text-center">Slut på rapport</div>
       </div>
   {% endblock %}

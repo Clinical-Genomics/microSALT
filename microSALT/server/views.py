@@ -87,6 +87,7 @@ def STtracker_page(customer):
                     (sample.CG_ID_sample)) 
 
     return render_template('STtracker_page.html',
+        date = date.today().isoformat(),
         internal = final_samples)
 
 def gen_collectiondata(collect_id=[]):
