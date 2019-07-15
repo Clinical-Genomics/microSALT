@@ -60,8 +60,8 @@ class LIMS_Fetcher():
       if self.lims.get_samples(name=cg_sampleid):
         sample = self.lims.get_samples(name=cg_sampleid)
         if len(sample) != 1:
-          #External priority list, write backwards in order of significance
-          prio = ['MIC2406', 'MIC4357', 'MIC4360', 'MIC4452', 'ACC5476']
+          #External priority list, write in reverse order of significance
+          prio = []
           errnames = list()
           for s in sample:
             errnames.append(s.id)
