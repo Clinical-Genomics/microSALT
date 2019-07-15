@@ -110,7 +110,11 @@
                           {% else %}
                             <td><i>Okänt</i></td>
                           {% endif %}
-                          <td>{{sample.priority.capitalize()}}</td>
+                          {% if sample.priority is not none %}
+                            <td>{{sample.priority.capitalize()}}</td>
+                          {% else %}
+                            <td>-</td>
+                          {% endif %}
                           {% if sample.organism is not none %}
                             {% if sample.priority == 'standard' and sample.organism.replace('_', ' ').capitalize() in verified_organisms %}
                               <td><i>✔︎</i></td>

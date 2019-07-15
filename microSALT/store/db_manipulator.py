@@ -233,12 +233,29 @@ class DB_Manipulator:
     #Generate string
     totalstring = list()
     dt = datetime.now()
+    default_method = 'Not in LIMS'
     samples = self.session.query(Samples).filter(Samples.CG_ID_project==name).order_by(desc(Samples.CG_ID_sample)).all()
     for sample in samples:
-      totalstring.append(str(datetime.timestamp(sample.date_libprep.replace(tzinfo=timezone.utc))))
-      totalstring.append(sample.method_libprep)
-      totalstring.append(str(datetime.timestamp(sample.date_sequencing.replace(tzinfo=timezone.utc))))
-      totalstring.append(sample.method_sequencing)
+      if sample.date_libprep:
+        totalstring.append(str(datetime.timestamp(sample.date_libprep.replace(tzinfo=timezone.utc))))
+      else:
+        totalstring.append(str(datetime.timestamp(datetime.min.replace(tzinfo=timezone.utc))))
+
+      if sample.method_libprep:
+        totalstring.append(sample.method_libprep)
+      else:
+        totalstring.append(default_method)
+
+      if sample.date_sequencing:
+        totalstring.append(str(datetime.timestamp(sample.date_sequencing.replace(tzinfo=timezone.utc))))
+      else:
+        totalstring.append(str(datetime.timestamp(datetime.min.replace(tzinfo=timezone.utc))))
+
+      if sample.method_sequencing:
+        totalstring.append(sample.method_sequencing)
+      else:
+        totalstring.append(default_method)
+
     totalstring.append(__version__)
     totalstring = ''.join(totalstring).encode()
     hashstring = hashlib.md5(totalstring).hexdigest()
