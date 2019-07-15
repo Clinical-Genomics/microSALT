@@ -95,7 +95,11 @@
                         {% if sample.total_reads is none %}
                           <td class="text-right">0
                         {% else %}
-                          {% set bp_perc = ((sample.total_reads/((sample.application_tag[-1:]|float)*10000))|round(2)) %}
+                          {% if sample.application_tag %}
+                            {% set bp_perc = ((sample.total_reads/((sample.application_tag[-1:]|float)*10000))|round(2)) %}
+                          {% else %}
+                            {% set bp_perc = 0.0 %}
+                          {% endif %}
                           {% if 'Kontroll' in sample.ST_status %}
                             {% if bp_perc > threshold.NTC_total_reads_fail %}
                               <td class="text-right" bgcolor="#fa8072">{{'{0:,}'.format(sample.total_reads)|replace(","," ")}} ({{ bp_perc }}%)
