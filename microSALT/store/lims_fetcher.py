@@ -136,6 +136,7 @@ class LIMS_Fetcher():
     else:
       prio = ""
 
+
     try:
       self.data.update({'CG_ID_project': sample.project.id,
                            'CG_ID_sample': sample.id,
@@ -167,13 +168,17 @@ class LIMS_Fetcher():
       for target in orgs:
         hit = 0
         for piece in organism:
-          if piece in target:
-            hit +=1
-          #For when people misspell the strain in the orderform
-          elif piece == "pneumonsiae" and "pneumoniae" in target:
-            hit +=1
+          if len(piece) == 1:
+            if target.startswith(piece):
+              hit += 1
           else:
-            break
+            if piece in target:
+              hit +=1
+            #For when people misspell the strain in the orderform
+            elif piece == "pneumonsiae" and "pneumoniae" in target:
+              hit +=1
+            else:
+              break
         if hit == len(organism):
           return target
     except Exception as e:
