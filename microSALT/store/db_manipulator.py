@@ -105,7 +105,7 @@ class DB_Manipulator:
         self.session.add(newobj)
         self.session.commit()
       else:
-        self.logger.warn("Hindered insertion of existing record ({}) into table {}".format(data_dict, tablename))
+        self.logger.warn("Record [{}]=[{}] in table {} already exists".format(', '.join(pk_list), ', '.join(pk_values), tablename))
 
   def upd_rec(self, req_dict, tablename, upd_dict):
     """Updates a record to the specified table through a dict with columns as keys."""
@@ -128,7 +128,7 @@ class DB_Manipulator:
     """Removes seq_data, resistances, sample(s) and possibly project"""
     entries = list()
     if type == "Projects":
-      entries.append(self.session.query(Projects).filter(Projects.CG_ID_project==name).all())
+      #entries.append(self.session.query(Projects).filter(Projects.CG_ID_project==name).all())
       entries.append(self.session.query(Seq_types).filter(Seq_types.CG_ID_sample.like('{}%'.format(name))).all())
       entries.append(self.session.query(Resistances).filter(Resistances.CG_ID_sample.like('{}%'.format(name))).all())
       entries.append(self.session.query(Samples).filter(Samples.CG_ID_sample.like('{}%'.format(name))).all())
