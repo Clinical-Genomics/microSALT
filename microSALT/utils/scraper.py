@@ -45,7 +45,7 @@ class Scraper():
     if self.config['rerun']:
       self.db_pusher.purge_rec(self.name, 'Projects')
     if not self.db_pusher.exists('Projects', {'CG_ID_project':self.name}):
-      self.logger.warning("Rereplacing project {}".format(self.name))
+      self.logger.warning("Replacing project {}".format(self.name))
       self.job_fallback.create_project(self.name)
 
     #Scrape order matters a lot!
