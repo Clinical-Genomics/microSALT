@@ -337,7 +337,6 @@ class Job_Creator():
       sample_col["method_libprep"] = self.lims_fetcher.data['method_libprep']
       sample_col["method_sequencing"] = self.lims_fetcher.data['method_sequencing']
       #self.db_pusher.purge_rec(sample_col['CG_ID_sample'], 'sample')
-      import pdb; pdb.set_trace()
       self.db_pusher.add_rec(sample_col, 'Samples')
     except Exception as e:
       self.logger.error("Unable to add sample {} to database".format(self.name))

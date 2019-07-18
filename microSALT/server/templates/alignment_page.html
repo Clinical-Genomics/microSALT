@@ -90,7 +90,7 @@
                         <td>{{ sample.application_tag }}</td>
                       {% else %}
                         <td bgcolor="#fa8072">{{ sample.application_tag }}</td>
-                      {% endif %]
+                      {% endif %}
                       {% if sample.organism is not none %}
                         <td>{{sample.organism.replace('_', ' ').capitalize()}}</td>
                       {% else %}<td>Okänd</td>{% endif %}
