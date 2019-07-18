@@ -43,7 +43,10 @@ class Scraper():
   def scrape_project(self):
     """Scrapes a project folder for information"""
     if self.config['rerun']:
-      self.db_pusher.purge_rec(self.name, 'Projects')
+      #Not necessary to purge projects. PK interferes with reports table
+      #which we definitely want to keep
+      #self.db_pusher.purge_rec(self.name, 'Projects')
+      pass
     if not self.db_pusher.exists('Projects', {'CG_ID_project':self.name}):
       self.logger.error("Re-filling project {}".format(self.name))
       self.job_fallback.create_project(self.name)
