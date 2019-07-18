@@ -136,7 +136,6 @@ class LIMS_Fetcher():
     else:
       prio = ""
 
-
     try:
       self.data.update({'CG_ID_project': sample.project.id,
                            'CG_ID_sample': sample.id,
