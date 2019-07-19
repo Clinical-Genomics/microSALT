@@ -29,7 +29,6 @@
     "_comment": "Root folder for input fasta sequencing data",
     "seqdata": "/mnt/hds/proj/bioinfo/MICROBIAL/projects/",
     "_comment": "Cutadapt adapters folder",
-    "adapters": "/mnt/hds/proj/bioinfo/SERVER/miniconda/envs/microSALT/share/trimmomatic-0.38-1/adapters/",
     "_comment": "ST profiles. Each ST profile file under 'profiles' have an identicial folder under references",
     "profiles": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/ST_profiles",
     "_comment": "ST folder. Each references sub-folder contains the .tfa file for each locus of the organism",
