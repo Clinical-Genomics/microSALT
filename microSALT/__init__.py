@@ -16,7 +16,7 @@ wd=os.path.dirname(os.path.realpath(__file__))
 
 # Load configuration
 config = ''
-defaulto = os.path.join(os.environ['HOME'], '.microSALT/config.json')
+default = os.path.join(os.environ['HOME'], '.microSALT/config.json')
 
 if 'MICROSALT_CONFIG' in os.environ:
   try:
@@ -26,9 +26,9 @@ if 'MICROSALT_CONFIG' in os.environ:
   except Exception as e:
     print("Config error: {}".format(str(e)))
     pass
-elif os.path.exists(defaulto):
+elif os.path.exists(default):
   try:
-    with open(defaulto, 'r') as conf:
+    with open(os.path.abspath(default), 'r') as conf:
       config = json.load(conf)
   except Exception as e:
     print("Config error: {}".format(str(e))) 
