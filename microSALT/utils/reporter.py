@@ -287,7 +287,7 @@ class Reporter():
     self.server.start()
     self.logger.info("Started webserver on http://127.0.0.1:5000/")
     #Hinders requests before server goes up
-    time.sleep(0.05)
+    time.sleep(0.15)
 
   def kill_flask(self):
     self.server.terminate()
