@@ -314,7 +314,6 @@ class Job_Creator():
     proj_col=dict()
     proj_col['CG_ID_project'] = name
     proj_col['Customer_ID_project'] = self.lims_fetcher.data['Customer_ID_project']
-    proj_col['date_ordered'] = self.lims_fetcher.data['date_received']
     proj_col['Customer_ID'] = self.lims_fetcher.data['Customer_ID']
     self.db_pusher.add_rec(proj_col, 'Projects')
 
