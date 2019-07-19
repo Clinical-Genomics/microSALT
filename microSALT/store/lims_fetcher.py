@@ -189,11 +189,11 @@ class LIMS_Fetcher():
     """ Returns the most recent sequencing date of a sample """
     date_list = list()
     if type == "arrival":
-      steps = ["CG002 - Reception Control"]
+      steps = ["CG002 - Reception Control", "CG002 - Reception Control (Dev)"]
     elif type == "sequencing":
-      steps = ["CG002 - Illumina Sequencing (Illumina SBS)", "CG002 Illumina SBS (HiSeq X)"]
+      steps = ["CG002 - Illumina Sequencing (Illumina SBS)", "CG002 Illumina SBS (HiSeq X)", "AUTOMATED - NovaSeq Run"]
     elif type == "libprep":
-      steps = ["CG002 - Aggregate QC (Library Validation)"]
+      steps = ["CG002 - Aggregate QC (Library Validation)", "CG002 - Aggregate QC (Library Validation) (Dev)"]
     else:
       raise Exception("Attempted to get date for {} but no step defined".format(sample_id))
     for step in steps:
@@ -202,7 +202,10 @@ class LIMS_Fetcher():
         if type == "arrival":
           date_list = date_list + [a.parent_process.udf['date arrived at clinical genomics'] for a in arts]
         elif type == "sequencing":
-          date_list = date_list + [a.parent_process.udf['Finish Date'] for a in arts]
+          if step == 'AUTOMATED - NovaSeq Run':
+            date_list = date_list + [a.parent_process.date_run for a in arts] 
+          else:
+            date_list = date_list + [a.parent_process.udf['Finish Date'] for a in arts]
         elif type == "libprep":
           date_list = date_list + [a.parent_process.date_run for a in arts]
       except Exception as e:
@@ -218,22 +221,20 @@ class LIMS_Fetcher():
 
   def get_method(self, sample_id, type=""):
     """Retrives method document name and version for a sample"""
+    steps = dict()
+
     key_values = dict()
     if type == "libprep":
-      #MIGHT BE CALLED JUST METHOD AND NOT METHOD DOCUMENT HERE!
-      steps = ['CG002 - Microbial Library Prep (Nextera)']
-      key_values['method'] = "Method"
-      key_values['version'] = "Method Version"
+      steps['CG002 - Microbial Library Prep (Nextera)'] = ("Method","Method Version")
     elif type == "sequencing":
-      steps = ['CG002 - Cluster Generation (Illumina SBS)', 'CG002 - Cluster Generation (HiSeq X)']
-      key_values['method'] = "Method Document 1"
-      key_values['version'] = "Document 1 Version"
+      steps['CG002 - Cluster Generation (Illumina SBS)'] = ('Method Document 1','Document 1 Version')
+      steps['CG002 - Cluster Generation (HiSeq X)'] = ('Method','Version')
     else:
       raise Exception("Attempted to get info for {} but no step defined".format(sample_id))
-    for step in steps:
+    for step in steps.keys():
       try:
         arts = self.lims.get_artifacts(samplelimsid = sample_id, process_type = step)
-        processes = [(a.parent_process.udf[key_values['method']], a.parent_process.udf[key_values['version']]) for a in arts]
+        processes = [(a.parent_process.udf[steps[step][0]], a.parent_process.udf[steps[step][1]]) for a in arts]
         processes = list(set(processes))
         if processes:
           process = sorted(processes)[-1]
