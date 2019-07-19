@@ -256,6 +256,8 @@ class Scraper():
     """Scrapes all BLAST output in a folder"""
     q_list = glob.glob("{}/blast_search/mlst/loci_query_*".format(self.sampledir))
     organism = self.lims_fetcher.get_organism_refname(self.name)
+    if not organism:
+      organism = self.lims_fetcher.data['organism']
     self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
 
     for file in q_list:
@@ -266,7 +268,7 @@ class Scraper():
       self.db_pusher.upd_rec({'CG_ID_sample':self.name}, 'Samples', {'ST':ST})
       self.logger.info("Sample {} received ST {}".format(self.name, ST))
     except Exception as e:
-      self.logger.error("{}".format(str(e)))
+      self.logger.warning("Unable to type sample {} due to data value '{}'".format(self.name, str(e)))
 
   def scrape_single_loci(self, infile):
     """Scrapes a single blast output file for MLST results"""
