@@ -243,7 +243,7 @@ class Reporter():
       msg['Subject'] = '{} ({}) Reports'.format(self.name, file_name[0].split('_')[0])
     else:
       msg['Subject'] = '{} Failed Generating Report'.format(self.name)
-    msg['From'] = 'microSALT@{}'.format(socket.gethostname())
+    msg['From'] = 'microSALT@{}.com'.format(socket.gethostname())
     msg['To'] = self.config['regex']['mail_recipient']
    
     if not self.error: 
