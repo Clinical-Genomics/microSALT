@@ -97,13 +97,14 @@ class Reporter():
   def gen_qc(self,silent=False):
     try:
       self.ticketFinder.load_lims_project_info(self.name)
+      last_version = self.db_pusher.get_report(self.name).version
     except Exception as e:
       self.logger.error("Project {} does not exist".format(self.name))
       self.kill_flask()
       sys.exit(-1)
     try:
       q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(self.name), allow_redirects=True)
-      outfile = "{}_QC_{}.html".format(self.ticketFinder.data['Customer_ID_project'], self.now)
+      outfile = "{}_QC_{}.html".format(self.ticketFinder.data['Customer_ID_project'], last_version)
       output ="{}/{}".format(self.output, outfile)
       storage = "{}/{}".format(self.config['folders']['reports'], outfile)
 
@@ -111,7 +112,6 @@ class Reporter():
       copyfile(output, storage)
 
       self.filelist.append(output)
-      self.filelist.append(storage)
       if not silent:
         self.attachments.append(output)  
     except Exception as e:
@@ -121,13 +121,14 @@ class Reporter():
   def gen_typing(self,silent=False):
     try:
       self.ticketFinder.load_lims_project_info(self.name)
+      last_version = self.db_pusher.get_report(self.name).version
     except Exception as e:
       self.logger.error("Project {} does not exist".format(self.name))
       self.kill_flask()
       sys.exit(-1)
     try:
       r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
-      outfile = "{}_Typing_{}.html".format(self.ticketFinder.data['Customer_ID_project'], self.now)
+      outfile = "{}_Typing_{}.html".format(self.ticketFinder.data['Customer_ID_project'], last_version)
       output ="{}/{}".format(self.output, outfile)
       storage = "{}/{}".format(self.config['folders']['reports'], outfile)
 
@@ -135,7 +136,6 @@ class Reporter():
       copyfile(output, storage)
     
       self.filelist.append(output)
-      self.filelist.append(storage)
       if not silent:
         self.attachments.append(output)
     except Exception as e:
