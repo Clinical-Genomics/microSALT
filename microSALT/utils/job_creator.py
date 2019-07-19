@@ -4,6 +4,7 @@
 #!/usr/bin/env python
 
 import glob
+import json
 import os
 import re
 import shutil
@@ -456,11 +457,15 @@ class Job_Creator():
 
 
     startfile = "{}/run_started.out".format(self.finishdir)
+    configfile = "{}/config.log".format(self.finishdir) 
     mailfile = "{}/mailjob.sh".format(self.finishdir)
-    mb = open(mailfile, "w+")
     sb = open(startfile, "w+")
-    sb.write("#!/usr/bin/env bash\n\n")
+    cb = open(configfile, "w+")
+    mb = open(mailfile, "w+")
+    sb.write("#!/usr/bin/env bash\n")
     sb.close()
+    cb.write(json.dumps(self.config))
+    cb.close()
     mb.write("#!/usr/bin/env bash\n\n")
     mb.write("#Uploading of results to database and production of report\n")
     if 'MICROSALT_CONFIG' in os.environ:
