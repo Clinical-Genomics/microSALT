@@ -11,6 +11,9 @@ app.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:///:memory:')
 app.config.setdefault('SQLALCHEMY_BINDS', None)
 app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
 
+#Keep track of microSALT installation
+wd=os.path.dirname(os.path.realpath(__file__))
+
 # Load configuration
 config = ''
 defaulto = os.path.join(os.environ['HOME'], '.microSALT/config.json')

@@ -13,7 +13,7 @@ import sys
 import yaml
 
 from pkg_resources import iter_entry_points
-from microSALT import __version__, config
+from microSALT import __version__, config, wd
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.reporter import Reporter
@@ -50,6 +50,7 @@ def root(ctx):
   ch.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
   logger.addHandler(ch)
   ctx.obj['log'] = logger
+  ctx.obj['config']['folders']['virulence'] = os.path.abspath(os.path.join(wd, '../unique_references/EXPAC.fsa')) 
 
 @root.group()
 @click.pass_context
