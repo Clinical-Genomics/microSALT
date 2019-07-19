@@ -29,10 +29,7 @@ class LIMS_Fetcher():
       else:
         realname = project.name
 
-      tmp = project.open_date.split('-')
-      newdate = datetime(int(tmp[0]), int(tmp[1]), int(tmp[2]))
-      self.data.update({'date_received': newdate,
-                               'CG_ID_project': cg_projid,
+      self.data.update({'CG_ID_project': cg_projid,
                                'Customer_ID_project' : realname,
                                'Customer_ID': self.data['Customer_ID']})
     except KeyError as e:
@@ -135,7 +132,6 @@ class LIMS_Fetcher():
       prio = sample.udf['priority']
     else:
       prio = ""
-
 
     try:
       self.data.update({'CG_ID_project': sample.project.id,
