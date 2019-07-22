@@ -19,9 +19,7 @@ while true; do
     read input
     if [[ $input = "q" ]] || [[ $input = "Q" ]]; then
         break
-    elif [[ $input != "dev" ]] && [[ $input != "prod" ]] && [[ $input != "stage" ]]; then
-        :
-    else
+    elif [[ $input == "dev" ]] || [[ $input == "prod" ]] || [[ $input == "stage" ]]; then
         type=$input
         break
     fi
@@ -35,15 +33,16 @@ elif [[ $type = "stage" ]]; then
 fi
 echo "Thank you, setting up environment $rname!"
 
-conda create -y -n $rname python=3.6
+conda create -y --force -n $rname python=3.6
 #source deactivate
 source activate $rname
 conda config --add channels bioconda
-conda install -y -c bioconda blast=2.5.0=hc0b0e79_3 spades=3.12.0=py36_0 trimmomatic=0.38=1 samtools=1.6=0 picard=2.18.26=0 bwa==0.7.15=1
+conda install -y -c bioconda blast=2.9.0=pl526hae12ce6_3 bwa=0.7.17=ha441bb4_5 picard=2.20.3=0 \
+quast=5.0.2=py36pl526ha92aebf_0 samtools=1.9=h7c4ea83_11 
 if [[ $type = "prod" ]]; then
-    pip install -r requirements.txt --no-cache-dir && pip install .
+    pip install -r requirements.txt && pip install .
 elif [[ $type = "dev" ]] || [[ $type = "stage" ]]; then
-    pip install -r requirements.txt --no-cache-dir && pip install -e .
+    pip install -r requirements.txt && pip install -e .
 fi
 echo "Installation Complete!"
 while true; do
