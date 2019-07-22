@@ -38,7 +38,7 @@ conda create -y --force -n $rname python=3.6
 source activate $rname
 conda config --add channels bioconda
 conda install -y -c bioconda blast=2.9.0=pl526hae12ce6_3 bwa=0.7.17=ha441bb4_5 picard=2.20.3=0 \
-quast=5.0.2=py36pl526ha92aebf_0 samtools=1.9=h7c4ea83_11 
+quast=5.0.2=py36pl526ha441bb4_1 samtools=1.9=h7c4ea83_11 
 if [[ $type = "prod" ]]; then
     pip install -r requirements.txt && pip install .
 elif [[ $type = "dev" ]] || [[ $type = "stage" ]]; then
