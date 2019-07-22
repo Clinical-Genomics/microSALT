@@ -21,10 +21,13 @@ while true; do
         break
     elif [[ $input == "dev" ]] || [[ $input == "prod" ]] || [[ $input == "stage" ]]; then
         type=$input
-        echo "Name the branch to install (or just 'master'):
-        read input
-        branch=$input
-
+        validbranch=false
+        while ! $validbranch; do
+            echo "Name a branch to install (or just 'master')":
+            read input
+            branch=$input
+            curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/LICENSE | grep -q 'License' && validbranch=true||echo "Invalid branch name"
+        done
         break
     fi
 done
@@ -38,19 +41,20 @@ elif [[ $type = "stage" ]]; then
 fi
 echo "Thank you, setting up environment $rname!"
 
-conda remove -y -n $rname --all ||
+#Accepts that environment doesnt exist
+conda remove -y -n $rname --all || ""
 conda create -y -n $rname python=3.6
 #source deactivate
 source activate $rname
 conda config --add channels bioconda
-conda install -y -c bioconda blast=2.9.0=pl526h979a64d_3 bwa=0.7.17=h84994c4_5 picard=2.20.3=0 \
-quast=5.0.2=py36pl526ha92aebf_0 samtools=1.9=h8571acd_11
+conda install -y -c bioconda blast=2.9.0 bwa=0.7.17 picard=2.20.3 quast=5.0.2 samtools=1.9
 if [[ $type = "prod" ]]; then
   pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/requirements.txt 
   pip install -U git+https://github.com/Clinical-Genomics/microSALT 
 elif [[ $type = "dev" ]] || [[ $type = "stage" ]]; then
-  pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements.txt
-  pip install -U git+https://github.com/Clinical-Genomics/microSALT@$branch 
+  pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements.txt &&
+  pip install -U git+https://github.com/Clinical-Genomics/microSALT@$branch
+fi 
 echo "Installation Complete!"
 while true; do
     echo "Write 'ok' to promise that you'll set-up the configuration as mentioned in README.md"
