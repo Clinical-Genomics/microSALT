@@ -24,6 +24,7 @@ while true; do
         break
     fi
 done
+
 if [[ $type = "prod" ]]; then
     rname=P_$cname
 elif [[ $type = "dev" ]]; then
@@ -39,11 +40,8 @@ source activate $rname
 conda config --add channels bioconda
 conda install -y -c bioconda blast=2.9.0=pl526hae12ce6_3 bwa=0.7.17=ha441bb4_5 picard=2.20.3=0 \
 quast=5.0.2=py36pl526ha441bb4_1 samtools=1.9=h7c4ea83_11 
-if [[ $type = "prod" ]]; then
-    pip install -r requirements.txt && pip install .
-elif [[ $type = "dev" ]] || [[ $type = "stage" ]]; then
-    pip install -r requirements.txt && pip install -e .
-fi
+pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/requirements.txt 
+pip install -U git+https://github.com/Clinical-Genomics/microSALT 
 echo "Installation Complete!"
 while true; do
     echo "Write 'ok' to promise that you'll set-up the configuration as mentioned in README.md"
