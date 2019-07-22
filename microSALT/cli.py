@@ -50,7 +50,7 @@ def root(ctx):
   ch.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
   logger.addHandler(ch)
   ctx.obj['log'] = logger
-  ctx.obj['config']['folders']['virulence'] = os.path.abspath(os.path.join(wd, '../unique_references/EXPAC.fsa')) 
+  ctx.obj['config']['folders']['expac'] = os.path.abspath(os.path.join(wd, '../unique_references/EXPAC.fsa')) 
   ctx.obj['config']['folders']['adapters'] = os.path.abspath(os.path.join(wd, '/share/trimmomatic-0.39-1/adapters/')) 
 
 @root.group()

@@ -58,7 +58,8 @@ class Scraper():
          self.job_fallback.create_sample(self.name)
        self.scrape_all_loci()
        self.scrape_motif(type='resistance')
-       self.scrape_motif(type='virulence')
+       if self.lims_fetcher.get_organism_refname(self.name) == "escherichia_coli":
+         self.scrape_motif(type='expac')
        self.scrape_alignment()
        self.scrape_quast()
 
@@ -80,7 +81,8 @@ class Scraper():
     self.sampledir = self.infolder
     self.scrape_all_loci()
     self.scrape_motif(type='resistance')
-    self.scrape_motif(type='virulence')
+    if self.lims_fetcher.get_organism_refname(self.name) == "escherichia_coli":
+      self.scrape_motif(type='expac')
     self.scrape_alignment()
     self.scrape_quast()
 
@@ -119,7 +121,7 @@ class Scraper():
       target = re.search('(.+)_(\w+)', target).group(1)
       filename="{}/{}/{}.tfa".format(self.config["folders"]["references"], reference, target)
     elif analysis=='Virulences':
-      filename="{}/{}.fsa".format(self.config["folders"]["virulence"], reference)
+      filename="{}/{}.fsa".format(self.config["folders"]["expac"], reference)
     else:
       self.logger.errror("Attempted to use function get_locilength() without a target type")
 
@@ -176,7 +178,7 @@ class Scraper():
                 else:
                   hypo[-1]["{}".format(type)] = hypo[-1]["instance"].capitalize()
                 hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('{}'.format(type2db), hypo[-1]["instance"], partials.group(0))
-              elif type == 'virulence':
+              elif type == 'expac':
                 #Thanks, precompiled list standards
                 if '>' in elem_list[3]:
                   partials = re.search('>*(\w+_\w+\.*\w+).+\((\w+)\).+\((\w+)\)_(\w+)_\[.+\]', elem_list[3])

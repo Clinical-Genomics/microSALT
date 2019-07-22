@@ -136,18 +136,18 @@ class Job_Creator():
     batchfile.write("\n")
     batchfile.close()
 
-  def create_virulencesection(self):
-    """Creates a blast job for virulence finding"""
+  def create_expacsection(self):
+    """Creates a blast job for expac finding"""
 
     #Create run
     batchfile = open(self.batchfile, "a+")
     batchfile.write("# BLAST Virulence section\n")
-    batchfile.write("mkdir {}/blast_search/virulence\n".format(self.finishdir))
+    batchfile.write("mkdir {}/blast_search/expac\n".format(self.finishdir))
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
-    res_list = glob.glob("{}/*.fsa".format(self.config["folders"]["virulence"]))
+    res_list = glob.glob("{}/*.fsa".format(self.config["folders"]["expac"]))
     for entry in res_list:
       batchfile.write("## BLAST Virulence search in {} for {}\n".format(self.organism, os.path.basename(entry[:-4])))
-      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast_search/virulence/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
+      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast_search/expac/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
       entry[:-4], self.finishdir, self.finishdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
     batchfile.close()
@@ -554,7 +554,8 @@ class Job_Creator():
     batchfile.close()
     self.create_mlstsection()
     self.create_resistancesection()
-    self.create_virulencesection()
+    if self.organism == "escherichia_coli":
+      self.create_expacsection()
 
   def snp_job(self):
     """ Writes a SNP calling job for a set of samples """
