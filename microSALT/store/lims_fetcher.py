@@ -185,7 +185,7 @@ class LIMS_Fetcher():
     """ Returns the most recent sequencing date of a sample """
     date_list = list()
     if type == "arrival":
-      steps = ["CG002 - Reception Control", "CG002 - Reception Control (Dev)"]
+      steps = ["CG002 - Reception Control", "CG002 - Reception Control (Dev)", "Reception Control TWIST v1", "Reception Control no placement v1"]
     elif type == "sequencing":
       steps = ["CG002 - Illumina Sequencing (Illumina SBS)", "CG002 Illumina SBS (HiSeq X)", "AUTOMATED - NovaSeq Run"]
     elif type == "libprep":
