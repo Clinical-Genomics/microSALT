@@ -19,7 +19,7 @@ while true; do
     read input
     if [[ $input = "q" ]] || [[ $input = "Q" ]]; then
         break
-    elif [[ $input != "dev" ]] || [[ $input == "prod" ]] || [[ $input == "stage" ]]; then
+    elif [[ $input == "dev" ]] || [[ $input == "prod" ]] || [[ $input == "stage" ]]; then
         type=$input
         break
     fi
