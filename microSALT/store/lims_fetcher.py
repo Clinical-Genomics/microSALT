@@ -49,8 +49,6 @@ class LIMS_Fetcher():
 
   def load_lims_sample_info(self, cg_sampleid, warnings=False):
     """ Loads all utilized LIMS info. Organism assumed to be written as binomial name """
-    libprep_date = ""
-    seq_date = ""
     try:
       #External
       num = 0
@@ -206,6 +204,7 @@ class LIMS_Fetcher():
           date_list = date_list + [a.parent_process.date_run for a in arts]
       except Exception as e:
         pass
+    date_list = [x for x in date_list if x != None]
     if date_list:
       try:
         dp = max(date_list).split('-')

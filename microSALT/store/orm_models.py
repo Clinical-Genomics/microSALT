@@ -92,7 +92,7 @@ class Resistances(db.Model):
 
 class Expacs(db.Model):
   __tablename__ = 'expacs'
-  samples = relationship('Samples', back_populates='virulences')
+  samples = relationship('Samples', back_populates='expacs')
 
   CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
   gene = db.Column(db.String(50), primary_key=True)
