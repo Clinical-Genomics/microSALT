@@ -16,7 +16,7 @@ class Samples(db.Model):
   projects = relationship('Projects', back_populates='samples')
   resistances = relationship("Resistances", back_populates="samples")
   #steps = relationship("Steps", back_populates="samples")
-  virulences = relationship("Virulences", back_populates="samples")
+  expacs = relationship("Virulences", back_populates="samples")
 
   CG_ID_sample = db.Column(db.String(15), primary_key=True, nullable=False)
   CG_ID_project = db.Column(db.String(15), ForeignKey('projects.CG_ID_project'))
@@ -90,8 +90,8 @@ class Resistances(db.Model):
   contig_start = db.Column(db.Integer)
   contig_end = db.Column(db.Integer)
 
-class Virulences(db.Model):
-  __tablename__ = 'virulences'
+class Expacs(db.Model):
+  __tablename__ = 'expacs'
   samples = relationship('Samples', back_populates='virulences')
 
   CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)

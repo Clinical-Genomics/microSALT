@@ -14,7 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import SingletonThreadPool
 
 from microSALT import __version__
-from microSALT.store.orm_models import app, Collections, Projects, Reports, Resistances, Samples, Seq_types, Versions, Virulences
+from microSALT.store.orm_models import app, Collections, Expacs, Projects, Reports, Resistances, Samples, Seq_types, Versions
 from microSALT.store.models import Profiles, Novel
 
 class DB_Manipulator:
@@ -56,9 +56,9 @@ class DB_Manipulator:
     if not self.engine.dialect.has_table(self.engine, 'collections'):
       Collections.__table__.create(self.engine)
       self.logger.info("Created collections table")
-    if not self.engine.dialect.has_table(self.engine, 'virulences'):
+    if not self.engine.dialect.has_table(self.engine, 'expacs'):
       Virulences.__table__.create(self.engine)
-      self.logger.info("Created virulence table")
+      self.logger.info("Created EXPAC table")
     for k,v in self.profiles.items():
       if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
         self.profiles[k].create()
