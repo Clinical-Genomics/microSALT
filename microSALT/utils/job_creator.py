@@ -117,7 +117,8 @@ class Job_Creator():
     
     batchfile.write("spades.py --threads {} {} --memory {} -o {}/assembly -1 {} -2 {} {}\n"\
     .format(self.config["slurm_header"]["threads"], careline, 8*int(self.config["slurm_header"]["threads"]), self.finishdir, self.concat_files['f'], self.concat_files['r'], trimline))
-    batchfile.write("rm {}/trimmed\n".format(self.finishdir))
+    batchfile.write("##Input cleanup")
+    batchfile.write("rm -r {}/trimmed\n".format(self.finishdir))
     batchfile.write("\n\n")
     batchfile.close()
 
@@ -240,7 +241,7 @@ class Job_Creator():
       ru = "{}/{}_trim_rev_unpair.fastq.gz".format(trimdir, outfile)
       batchfile.write("##Trimming section\n")
       batchfile.write("trimmomatic PE -threads {} -phred33 {} {} {} {} {} {}\
-      ILLUMINACLIP:{}NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n"\
+      ILLUMINACLIP:{}/NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n"\
       .format(self.config["slurm_header"]["threads"], self.concat_files['f'], self.concat_files['r'], fp, fu, rp, ru, self.config["folders"]["adapters"]))
 
       batchfile.write("## Interlaced trimmed files\n")
@@ -249,7 +250,6 @@ class Job_Creator():
       self.concat_files['i'] = "{}/{}_trim_unpair.fastq.gz".format(trimdir, outfile)
 
       batchfile.write("cat {} >> {}\n".format(' '.join([fu, ru]), self.concat_files['i']))
-      batchfile.write("rm {}/trimmed/forward_reads.fastq.gz {}/trimmed/reverse_reads.fastq.gz {} {}\n".format(self.finishdir, self.finishdir, fu, ru))
     batchfile.write("\n")
     batchfile.close()
 
