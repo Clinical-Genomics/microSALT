@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import urllib.request
+import zipfile
 
 from Bio import Entrez
 from bs4 import BeautifulSoup
@@ -33,29 +34,30 @@ class Referencer():
    """ Automatically downloads pubMLST & NCBI organisms not already downloaded """
    neworgs = list()
    newrefs = list()
+   newcg = list()
+
    try:
      if project:
        samplenames = self.lims.samples_in_project(cg_id)
-       for cg_sampleid in samplenames:
-         self.lims.load_lims_sample_info(cg_sampleid)
-         refname = self.lims.get_organism_refname(cg_sampleid)
-         if refname not in self.organisms and self.lims.data['organism'] not in neworgs:
-           neworgs.append(self.lims.data['organism'])
-         if not "{}.fasta".format(self.lims.data['reference']) in os.listdir(self.config['folders']['genomes']) and not self.lims.data['reference'] in newrefs:
-           newrefs.append(self.lims.data['reference']) 
-       for org in neworgs:
-         self.add_pubmlst(org)
-         #self.download_external(org)
-       for org in newrefs:
-         self.download_ncbi(org)
-     else:
-       self.lims.load_lims_sample_info(cg_id)
-       refname = self.lims.get_organism_refname(cg_id)
-       if refname not in self.organisms:
-         self.add_pubmlst(self.lims.data['organism'])
-         #self.download_external(self.lims.data['organism'])
-       if not "{}.fasta".format(self.lims.data['reference']) in os.listdir(self.config['folders']['genomes']):
-         self.download_ncbi(self.lims.data['reference'])
+     else: 
+       samplenames = [cg_id]
+
+     for cg_sampleid in samplenames:
+       self.lims.load_lims_sample_info(cg_sampleid)
+       refname = self.lims.get_organism_refname(cg_sampleid)
+       if refname not in self.organisms and self.lims.data['organism'] not in neworgs:
+         neworgs.append(self.lims.data['organism'])
+       if not "{}.fasta".format(self.lims.data['reference']) in os.listdir(self.config['folders']['genomes']) and not self.lims.data['reference'] in newrefs:
+         newrefs.append(self.lims.data['reference'])
+       if not refname in os.listdir(self.config['folders']['cgmlst']) and not refname in newcg:
+         newcg.append(refname)
+
+     for org in neworgs:
+       self.add_pubmlst(org)
+     for org in newrefs:
+       self.download_ncbi(org)
+     for org in newcg:
+       self.download_cgmlst(org)
    except Exception as e:
      self.logger.error("Reference update function failed prematurely. Review immediately")
  
@@ -222,6 +224,39 @@ class Referencer():
     except Exception as e:
       self.logger.warning("Unable to download genome '{}' from NCBI".format(reference))
 
+  def download_cgmlst(self, reference):
+    #Find org on main page
+    query = urllib.request.urlopen("https://www.cgmlst.org/ncs")
+    page = BeautifulSoup(query, 'html.parser')
+    sections = page.find_all("a", href=True)
+    for section in sections:
+      pot_org = section.find_all("em")[0].get_text().replace(' ', '_').lower()
+      if pot_org == reference:
+        currver = self.db_access.get_version('cgmlst_{}'.format(pot_org))
+        break
+
+    #Grab version number on secondary page
+    nquery= urllib.request.urlopen(section['href'])
+    npage = BeautifulSoup(nquery, 'html.parser')
+    nsections = page.find_all("td")
+    found=False
+    for nsection in nsections:
+      if found:
+        version=nsection.get_text()
+        break
+      elif 'Version' == nsection.get_text():
+        found=True      
+
+    if float(version > currver):    
+      url= os.path.join(section['href'], "/alleles/")
+      os.makedirs("{}/{}".format(config['folders']['cgmlst'], pot_org))
+      target= "{}/{}/original.zip".format(config['folders']['cgmlst'], pot_org)
+      with urllib.request.urlopen(url) as response, open(target, 'wb') as out_file:
+        shutil.copyfileobj(response, out_file)
+      with zipfile.ZipFile(target) as zf:
+        zf.extractall() 
+      self.db_access.upd_rec({'name':'cgmlst_{}'.format(pot_org), 'Versions', {'version':version}
+      self.logger.info("cgMLST reference for {} updated to version {}".format(reference, version))
 
   def add_pubmlst(self, organism):
     """ Checks pubmlst for references of given organism and downloads them """
