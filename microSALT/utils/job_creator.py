@@ -464,7 +464,10 @@ class Job_Creator():
     mb = open(mailfile, "w+")
     sb.write("#!/usr/bin/env bash\n")
     sb.close()
-    cb.write(json.dumps(self.config, indent=2,separators=(',',':')))
+    configout = self.config.copy()
+    if 'genologics' in configout:
+      del configout['genologics']
+    cb.write(json.dumps(configout, indent=2,separators=(',',':')))
     cb.close()
     mb.write("#!/usr/bin/env bash\n\n")
     mb.write("#Uploading of results to database and production of report\n")
