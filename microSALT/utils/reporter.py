@@ -172,7 +172,7 @@ class Reporter():
       motifdict[k] = sorted(v)
 
     #Top 2 Header
-    topline = "Identity {}% & Span {}%,,,".format(self.config['threshold']['motif_id'], self.config['threshold']['motif_span']*100)
+    topline = "Identity {}% & Span {}%,,,".format(self.config['threshold']['motif_id'], self.config['threshold']['motif_span'])
     botline = "CG Sample ID,Sample ID,Organism,Sequence Type,Thresholds"
     for k in sorted(motifdict.keys()):
       genes = [''] * len(motifdict[k])
