@@ -64,6 +64,7 @@ class Referencer():
     self.fetch_pubmlst(self.force)
     self.fetch_external(self.force)
     self.fetch_resistances(self.force)
+    self.index_db(self.config['folders']['expac'], '.fsa')
 
   def index_db(self, full_dir, suffix):
     """Check for indexation, makeblastdb job if not enough of them."""
