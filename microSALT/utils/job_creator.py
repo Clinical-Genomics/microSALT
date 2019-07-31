@@ -117,7 +117,7 @@ class Job_Creator():
     
     batchfile.write("spades.py --threads {} {} --memory {} -o {}/assembly -1 {} -2 {} {}\n"\
     .format(self.config["slurm_header"]["threads"], careline, 8*int(self.config["slurm_header"]["threads"]), self.finishdir, self.concat_files['f'], self.concat_files['r'], trimline))
-    batchfile.write("##Input cleanup")
+    batchfile.write("##Input cleanup\n")
     batchfile.write("rm -r {}/trimmed\n".format(self.finishdir))
     batchfile.write("\n\n")
     batchfile.close()
@@ -142,10 +142,10 @@ class Job_Creator():
 
     #Create run
     batchfile = open(self.batchfile, "a+")
-    batchfile.write("# BLAST Virulence section\n")
+    batchfile.write("# BLAST EXPAC section\n")
     batchfile.write("mkdir {}/blast_search/expac\n".format(self.finishdir))
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
-    res_list = glob.glob("{}/*.fsa".format(self.config["folders"]["expac"]))
+    res_list = glob.glob("{}".format(self.config["folders"]["expac"]))
     for entry in res_list:
       batchfile.write("## BLAST Virulence search in {} for {}\n".format(self.organism, os.path.basename(entry[:-4])))
       batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast_search/expac/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
@@ -464,7 +464,10 @@ class Job_Creator():
     mb = open(mailfile, "w+")
     sb.write("#!/usr/bin/env bash\n")
     sb.close()
-    cb.write(json.dumps(self.config))
+    configout = self.config.copy()
+    if 'genologics' in configout:
+      del configout['genologics']
+    cb.write(json.dumps(configout, indent=2,separators=(',',':')))
     cb.close()
     mb.write("#!/usr/bin/env bash\n\n")
     mb.write("#Uploading of results to database and production of report\n")

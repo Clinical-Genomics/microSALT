@@ -163,7 +163,7 @@ class Reporter():
           if r.threshold == 'Passed' and not r.gene in motifdict[r.resistance]:
             motifdict[r.resistance].append(r.gene)
       elif motif=='expac':
-        for r in s.virulences:
+        for r in s.expacs:
           if not (r.virulence in motifdict.keys()) and r.threshold == 'Passed':
             motifdict[r.virulence] =list()
           if r.threshold == 'Passed' and not r.gene in motifdict[r.virulence]:
@@ -172,7 +172,7 @@ class Reporter():
       motifdict[k] = sorted(v)
 
     #Top 2 Header
-    topline = "Identity {}% & Span {}%,,,".format(self.config['threshold']['motif_id'], self.config['threshold']['motif_span']*100)
+    topline = "Identity {}% & Span {}%,,,".format(self.config['threshold']['motif_id'], self.config['threshold']['motif_span'])
     botline = "CG Sample ID,Sample ID,Organism,Sequence Type,Thresholds"
     for k in sorted(motifdict.keys()):
       genes = [''] * len(motifdict[k])
@@ -197,8 +197,8 @@ class Reporter():
             rowdict[r.resistance] =dict()
           if r.threshold == 'Passed' and not r.gene in rowdict[r.resistance]:
             rowdict[r.resistance][r.gene] = r.identity
-      elif motif=="virulence":
-        for r in s.virulences:
+      elif motif=="expac":
+        for r in s.expacs:
           if not (r.virulence in rowdict.keys()) and r.threshold == 'Passed':
             rowdict[r.virulence] =dict()
           if r.threshold == 'Passed' and not r.gene in rowdict[r.virulence]:

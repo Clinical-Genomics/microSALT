@@ -120,10 +120,10 @@ class Scraper():
     elif analysis=="Seq_types":
       target = re.search('(.+)_(\w+)', target).group(1)
       filename="{}/{}/{}.tfa".format(self.config["folders"]["references"], reference, target)
-    elif analysis=='Virulences':
-      filename="{}/{}.fsa".format(self.config["folders"]["expac"], reference)
+    elif analysis=='Expacs':
+      filename="{}".format(self.config["folders"]["expac"])
     else:
-      self.logger.errror("Attempted to use function get_locilength() without a target type")
+      self.logger.error("Attempted to use function get_locilength() without a target type")
 
     #Create dict with full name as key, associated nucleotides as value. 
     f = open(filename,"r")
