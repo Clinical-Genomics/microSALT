@@ -133,11 +133,11 @@ class Job_Creator():
         ref_nosuf = re.search('(\w+)\.\w+', os.path.basename(ref)).group(1)
         batchfile.write("# BLAST {} search for {}, {}\n".format(name, self.organism, ref_nosuf))
         if name == 'mlst':
-          batchfile.write("blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/mlst/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
-          os.path.dirname(ref), ref_nosuf, self.finishdir, self.finishdir, ref_nosuf, self.config["slurm_header"]["threads"], blast_format))
+          batchfile.write("blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
+          os.path.dirname(ref), ref_nosuf, self.finishdir, self.finishdir, name, ref_nosuf, self.config["slurm_header"]["threads"], blast_format))
         else:
-          batchfile.write("blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/mlst/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
-          os.path.dirname(ref), ref_nosuf, self.finishdir, self.finishdir, ref_nosuf, self.config["slurm_header"]["threads"], blast_format))
+          batchfile.write("blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
+          os.path.dirname(ref), ref_nosuf, self.finishdir, self.finishdir, name, ref_nosuf, self.config["slurm_header"]["threads"], blast_format))
     else:
       ref_nosuf = re.search('(\w+)\.\w+', os.path.basename(file_list[0])).group(1)
       batchfile.write("## BLAST {} search in {}\n".format(name, self.organism.replace('_', ' ').capitalize() ))
