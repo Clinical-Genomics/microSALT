@@ -15,11 +15,14 @@ while true; do
     fi
 done
 while true; do
-    echo "Would you like a 'dev', 'stage' or 'prod' environment?"
+    echo "Prod = Latest release. Stage = Any branch. Dev = Source-modifiable installation"
+    echo "Would you like a 'prod', 'stage' or 'dev' environment?"
     read input
     if [[ $input = "q" ]] || [[ $input = "Q" ]]; then
         break
-    elif [[ $input == "dev" ]] || [[ $input == "prod" ]] || [[ $input == "stage" ]]; then
+    elif [[ $input == "prod" ]]; then
+        break
+    elif [[ $input == "dev" ]] || [[ $input == "stage" ]]; then
         type=$input
         validbranch=false
         while ! $validbranch; do
@@ -41,6 +44,8 @@ elif [[ $type = "stage" ]]; then
 fi
 echo "Thank you, setting up environment $rname!"
 
+conda info| grep -q $rname && source deactivate || ""
+
 #Accepts that environment doesnt exist
 conda remove -y -n $rname --all || ""
 conda create -y -n $rname python=3.6
@@ -51,9 +56,11 @@ conda install -y -c bioconda blast=2.9.0 bwa=0.7.17 picard=2.20.3 quast=5.0.2 sa
 if [[ $type = "prod" ]]; then
   pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/requirements.txt 
   pip install -U git+https://github.com/Clinical-Genomics/microSALT 
-elif [[ $type = "dev" ]] || [[ $type = "stage" ]]; then
+elif [[ $type = "stage" ]]; then
   pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements.txt &&
   pip install -U git+https://github.com/Clinical-Genomics/microSALT@$branch
+elif [[ $type = "dev" ]]; then
+  pip install -r requirements.txt && pip install -e .
 fi 
 echo "Installation Complete!"
 while true; do

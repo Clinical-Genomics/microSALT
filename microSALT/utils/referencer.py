@@ -256,7 +256,7 @@ class Referencer():
         shutil.copyfileobj(response, out_file)
       with zipfile.ZipFile(target) as zf:
         zf.extractall() 
-      self.db_access.upd_rec({'name':'cgmlst_{}'.format(pot_org), 'Versions', {'version':version}
+      self.db_access.upd_rec({'name':'cgmlst_{}'.format(pot_org)}, 'Versions', {'version':version})
       self.logger.info("cgMLST reference for {} updated to version {}".format(reference, version))
 
   def add_pubmlst(self, organism):
