@@ -137,22 +137,6 @@ class Job_Creator():
     batchfile.write("\n")
     batchfile.close()
 
-  def create_expacsection(self):
-    """Creates a blast job for expac finding"""
-
-    #Create run
-    batchfile = open(self.batchfile, "a+")
-    batchfile.write("# BLAST EXPAC section\n")
-    batchfile.write("mkdir {}/blast_search/expac\n".format(self.finishdir))
-    blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
-    res_list = glob.glob("{}".format(self.config["folders"]["expac"]))
-    for entry in res_list:
-      batchfile.write("## BLAST Virulence search in {} for {}\n".format(self.organism, os.path.basename(entry[:-4])))
-      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast_search/expac/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
-      entry[:-4], self.finishdir, self.finishdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
-    batchfile.write("\n")
-    batchfile.close()
-
   def create_mlstsection(self):
     """Creates a blast job for instances where many loci definition files make up an organism"""
 
@@ -165,6 +149,19 @@ class Job_Creator():
       batchfile.write("# BLAST MLST alignment for {}, {}\n".format(self.organism, os.path.basename(entry[:-4])))
       batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast_search/mlst/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
       entry[:-4], self.finishdir, self.finishdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
+    batchfile.write("\n")
+    batchfile.close()
+
+  def create_specialsection(self, name, ref):
+
+    #Create run
+    batchfile = open(self.batchfile, "a+")
+    batchfile.write("# BLAST {} section\n".format(name))
+    batchfile.write("mkdir {}/blast_search/{}\n".format(self.finishdir, name))
+    blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
+    batchfile.write("## BLAST {} search in {} for {}\n".format(name, self.organism, os.path.basename(ref[:-4]))) 
+    batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
+                    ref[:-4], self.finishdir, self.finishdir, name, os.path.basename(ref[:-4]), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
     batchfile.close()
 
@@ -557,8 +554,9 @@ class Job_Creator():
     batchfile.close()
     self.create_mlstsection()
     self.create_resistancesection()
+    self.create_specialsection('cgmlst', "{}/{}/main.fasta".format(self.config['folders']['cgmlst'], self.organism))
     if self.organism == "escherichia_coli":
-      self.create_expacsection()
+      self.create_specialsection('expac', self.config["folders"]["expac"])
 
   def snp_job(self):
     """ Writes a SNP calling job for a set of samples """

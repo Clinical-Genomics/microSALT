@@ -250,16 +250,31 @@ class Referencer():
       elif 'Version' == nsection.get_text():
         found=True      
 
-    if float(version > currver):    
+    if float(version > currver):   
+      targ_dir = "{}/{}".format(self.config['folders']['cgmlst'], pot_org)
       url= os.path.join(section['href'], "alleles/")
-      os.makedirs("{}/{}".format(self.config['folders']['cgmlst'], pot_org))
-      target= "{}/{}/original.zip".format(self.config['folders']['cgmlst'], pot_org)
+      os.makedirs(targ_dir)
+      target= "{}/original.zip".format(targ_dir)
       with urllib.request.urlopen(url) as response, open(target, 'wb') as out_file:
         shutil.copyfileobj(response, out_file)
       with zipfile.ZipFile(target) as zf:
-        zf.extractall("{}/{}".format(self.config['folders']['cgmlst'], pot_org)) 
+        zf.extractall(targ_dir) 
+      #Rebake into one big file
+      combo = open("{}/main.fasta".format(targ_dir), "w+") 
+      files = os.listdir(targ_dir)
+      for file in files:
+        if re.match('\w+\d+.fasta',file):
+          currfile = open("{}/{}".format(targ_dir, file), "r+")
+          for line in currfile:
+            if '>' in line:
+              combo.write(">{}_{}".format(file.split('.')[0],line[1:]))
+            else:
+              combo.write(line)
+          currfile.close()
+      combo.close() 
+
       self.db_access.upd_rec({'name':'cgmlst_{}'.format(pot_org)}, 'Versions', {'version':version})
-      self.logger.info("cgMLST reference for {} updated to version {}".format(reference, version))
+      self.logger.info("cgMLST reference for {} updated to version {}".format(reference.replace('_',' ').capitalize(), version))
 
   def add_pubmlst(self, organism):
     """ Checks pubmlst for references of given organism and downloads them """
