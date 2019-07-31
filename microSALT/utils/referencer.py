@@ -242,6 +242,9 @@ class Referencer():
           currver = self.db_access.get_version('cgmlst_{}'.format(pot_org))
           break
 
+    if not currver:
+      return
+
     #Grab version number on secondary page
     nquery= urllib.request.urlopen(section['href'])
     npage = BeautifulSoup(nquery, 'html.parser')
@@ -298,8 +301,12 @@ class Referencer():
         for subtype in item['databases']:
           missingPart = False
           for part in orgparts:
-            if not part in subtype['description'].lower():
-              missingPart = True
+            if len(part) == 1:
+              if not subtype['description'].lower().startswith(part):
+                missingPart = True
+            else:
+              if not part in subtype['description'].lower():
+                missingPart = True
           if not missingPart:
             #Seqdef always appear after isolates, so this is fine
             seqdef_url = subtype['href']
