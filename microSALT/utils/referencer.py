@@ -230,16 +230,18 @@ class Referencer():
     query = urllib.request.urlopen("https://www.cgmlst.org/ncs")
     page = BeautifulSoup(query, 'html.parser')
     sections = page.find_all("a", href=True)
+    version = '0'
     for section in sections:
-      pot_org = section.find_all("em")[0].get_text().replace(' ', '_').lower()
-      if pot_org == reference:
-        currver = self.db_access.get_version('cgmlst_{}'.format(pot_org))
-        break
+      if section.find_all("em"):
+        pot_org = section.find_all("em")[0].get_text().replace(' ', '_').lower()
+        if pot_org == reference:
+          currver = self.db_access.get_version('cgmlst_{}'.format(pot_org))
+          break
 
     #Grab version number on secondary page
     nquery= urllib.request.urlopen(section['href'])
     npage = BeautifulSoup(nquery, 'html.parser')
-    nsections = page.find_all("td")
+    nsections = npage.find_all("td")
     found=False
     for nsection in nsections:
       if found:
@@ -249,13 +251,13 @@ class Referencer():
         found=True      
 
     if float(version > currver):    
-      url= os.path.join(section['href'], "/alleles/")
-      os.makedirs("{}/{}".format(config['folders']['cgmlst'], pot_org))
-      target= "{}/{}/original.zip".format(config['folders']['cgmlst'], pot_org)
+      url= os.path.join(section['href'], "alleles/")
+      os.makedirs("{}/{}".format(self.config['folders']['cgmlst'], pot_org))
+      target= "{}/{}/original.zip".format(self.config['folders']['cgmlst'], pot_org)
       with urllib.request.urlopen(url) as response, open(target, 'wb') as out_file:
         shutil.copyfileobj(response, out_file)
       with zipfile.ZipFile(target) as zf:
-        zf.extractall() 
+        zf.extractall("{}/{}".format(self.config['folders']['cgmlst'], pot_org)) 
       self.db_access.upd_rec({'name':'cgmlst_{}'.format(pot_org)}, 'Versions', {'version':version})
       self.logger.info("cgMLST reference for {} updated to version {}".format(reference, version))
 
