@@ -242,8 +242,12 @@ class Referencer():
         for subtype in item['databases']:
           missingPart = False
           for part in orgparts:
-            if not part in subtype['description'].lower():
-              missingPart = True
+            if len(part) == 1:
+              if not subtype['description'].lower().startswith(part):
+                missingPart = True
+            else:
+              if not part in subtype['description'].lower():
+                missingPart = True
           if not missingPart:
             #Seqdef always appear after isolates, so this is fine
             seqdef_url = subtype['href']
