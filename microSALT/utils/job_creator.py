@@ -156,12 +156,13 @@ class Job_Creator():
 
     #Create run
     batchfile = open(self.batchfile, "a+")
+    ref_nosuf = re.search('(\w+)\.\w+', ref).group(1)
     batchfile.write("# BLAST {} section\n".format(name))
     batchfile.write("mkdir {}/blast_search/{}\n".format(self.finishdir, name))
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
-    batchfile.write("## BLAST {} search in {} for {}\n".format(name, self.organism, os.path.basename(ref[:-4]))) 
+    batchfile.write("## BLAST {} search in {} for {}\n".format(name, self.organism, os.path.basename(ref_nosuf))) 
     batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
-                    ref[:-4], self.finishdir, self.finishdir, name, os.path.basename(ref[:-4]), self.config["slurm_header"]["threads"], blast_format))
+                    ref_nosuf, self.finishdir, self.finishdir, name, os.path.basename(ref_nosuf), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
     batchfile.close()
 
@@ -554,7 +555,7 @@ class Job_Creator():
     batchfile.close()
     self.create_mlstsection()
     self.create_resistancesection()
-    self.create_specialsection('cgmlst', "{}/{}/main.fasta".format(self.config['folders']['cgmlst'], self.organism))
+    self.create_specialsection('cgmlst', "{}/{}/main.fsa".format(self.config['folders']['cgmlst'], self.organism))
     if self.organism == "escherichia_coli":
       self.create_specialsection('expac', self.config["folders"]["expac"])
 

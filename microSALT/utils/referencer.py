@@ -67,6 +67,10 @@ class Referencer():
     self.fetch_external(self.force)
     self.fetch_resistances(self.force)
     self.index_db(os.path.dirname(self.config['folders']['expac']), '.fsa')
+    for thing in os.listdir(self.config['folders']['cgmlst']):
+      if os.path.isdir(thing):
+        self.index_db("{}/{}".format(self.config['folders']['cgmlst'], thing), '.fsa')
+
 
   def index_db(self, full_dir, suffix):
     """Check for indexation, makeblastdb job if not enough of them."""
@@ -260,7 +264,7 @@ class Referencer():
       with zipfile.ZipFile(target) as zf:
         zf.extractall(targ_dir) 
       #Rebake into one big file
-      combo = open("{}/main.fasta".format(targ_dir), "w+") 
+      combo = open("{}/main.fsa".format(targ_dir), "w+") 
       files = os.listdir(targ_dir)
       for file in files:
         if re.match('\w+\d+.fasta',file):
