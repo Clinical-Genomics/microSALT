@@ -4,16 +4,19 @@ import sys
 
 from flask import Flask
 
-__version__ = '2.8.7'
+__version__ = '2.8.8'
 
 app = Flask(__name__, template_folder='server/templates')
 app.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:///:memory:')
 app.config.setdefault('SQLALCHEMY_BINDS', None)
 app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
 
+#Keep track of microSALT installation
+wd=os.path.dirname(os.path.realpath(__file__))
+
 # Load configuration
 config = ''
-defaulto = os.path.join(os.environ['HOME'], '.microSALT/config.json')
+default = os.path.join(os.environ['HOME'], '.microSALT/config.json')
 
 if 'MICROSALT_CONFIG' in os.environ:
   try:
@@ -23,9 +26,9 @@ if 'MICROSALT_CONFIG' in os.environ:
   except Exception as e:
     print("Config error: {}".format(str(e)))
     pass
-elif os.path.exists(defaulto):
+elif os.path.exists(default):
   try:
-    with open(defaulto, 'r') as conf:
+    with open(os.path.abspath(default), 'r') as conf:
       config = json.load(conf)
   except Exception as e:
     print("Config error: {}".format(str(e))) 

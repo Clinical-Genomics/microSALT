@@ -13,7 +13,7 @@ import sys
 import yaml
 
 from pkg_resources import iter_entry_points
-from microSALT import __version__, config
+from microSALT import __version__, config, wd
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.reporter import Reporter
@@ -50,6 +50,8 @@ def root(ctx):
   ch.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
   logger.addHandler(ch)
   ctx.obj['log'] = logger
+  ctx.obj['config']['folders']['expac'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'expac/EXPAC.fsa')) 
+  ctx.obj['config']['folders']['adapters'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'share/trimmomatic-0.39-1/adapters/')) 
 
 @root.group()
 @click.pass_context
@@ -289,7 +291,7 @@ def sample(ctx, sample_id, rerun, email, input, config, report):
       click.echo("Multiple instances of that analysis exists. Specify full path using --input")
       sys.exit(-1)
     elif len(prohits) <1:
-      click.echo("No analysis folder prefixed by {} found.".format(project_id))
+      click.echo("No analysis folder prefixed by {} found.".format(sample_id))
       sys.exit(-1)
     else:
       sample_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
@@ -358,7 +360,7 @@ def project(ctx, project_id, rerun, email, input, config, report):
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--input', help='Full path to result sample folder', default="")
 @click.option('--config', help="microSALT config to override default", default="")
-@click.option('--report', default='default', type=click.Choice(['default', 'qc','resistance_overview']))
+@click.option('--report', default='default', type=click.Choice(['default', 'qc','motif_overview']))
 @click.pass_context
 def collection(ctx, collection_id, rerun, email, input, config, report):
   """Parse results from analysing a set of sample"""
@@ -441,7 +443,7 @@ def list(ctx):
 @utils.command()
 @click.argument('project_name')
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--type', default='default', type=click.Choice(['default', 'typing', 'resistance_overview', 'qc', 'json_dump', 'st_update']))
+@click.option('--type', default='default', type=click.Choice(['default', 'typing', 'motif_overview', 'qc', 'json_dump', 'st_update']))
 @click.option('--output',help='Full path to output folder',default="")
 @click.option('--collection',default=False, is_flag=True)
 @click.pass_context

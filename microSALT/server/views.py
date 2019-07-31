@@ -87,6 +87,7 @@ def STtracker_page(customer):
                     (sample.CG_ID_sample)) 
 
     return render_template('STtracker_page.html',
+        date = date.today().isoformat(),
         internal = final_samples)
 
 def gen_collectiondata(collect_id=[]):
@@ -172,10 +173,17 @@ def gen_add_info(sample_info=dict()):
         r.threshold = 'Passed'
       else:
         r.threshold = 'Failed'
+    for v in s.expacs:
+      if (v.identity >= config["threshold"]["motif_id"] and \
+      v.span >= config["threshold"]["motif_span"]/100.0):
+        v.threshold = 'Passed'
+      else:
+        v.threshold = 'Failed'
 
     #Seq_type and resistance sorting
     s.seq_types=sorted(s.seq_types, key=lambda x: x.loci)
     s.resistances=sorted(s.resistances, key=lambda x: x.instance)
+    s.expacs=sorted(s.expacs, key=lambda x: x.gene)
     output['samples'].append(s)
 
   versions = session.query(Versions).all()

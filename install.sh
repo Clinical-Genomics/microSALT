@@ -47,7 +47,7 @@ conda create -y -n $rname python=3.6
 #source deactivate
 source activate $rname
 conda config --add channels bioconda
-conda install -y -c bioconda blast=2.9.0 bwa=0.7.17 picard=2.20.3 quast=5.0.2 samtools=1.9
+conda install -y -c bioconda blast=2.9.0 bwa=0.7.17 picard=2.20.3 quast=5.0.2 samtools=1.9 spades=3.13.1 trimmomatic=0.39
 if [[ $type = "prod" ]]; then
   pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/requirements.txt 
   pip install -U git+https://github.com/Clinical-Genomics/microSALT 

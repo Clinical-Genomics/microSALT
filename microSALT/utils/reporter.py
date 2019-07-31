@@ -45,7 +45,8 @@ class Reporter():
     self.attachments = list()
     self.filelist = list()
     self.error = False
-    self.dt = datetime.now() 
+    self.dt = datetime.now()
+    self.filelist = list() 
     self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
     format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
@@ -58,11 +59,11 @@ class Reporter():
       self.gen_typing()
       self.gen_qc()
       self.gen_json(silent=True)
-      #self.gen_resistence()
     elif type == 'typing':
       self.gen_typing()
-    elif type == 'resistance_overview':
-      self.gen_resistence()
+    elif type == 'motif_overview':
+      self.gen_motif(motif="resistance")
+      self.gen_motif(motif="expac")
     elif type == 'qc':
       self.gen_qc()
     elif type == 'st_update':
@@ -96,13 +97,14 @@ class Reporter():
   def gen_qc(self,silent=False):
     try:
       self.ticketFinder.load_lims_project_info(self.name)
+      last_version = self.db_pusher.get_report(self.name).version
     except Exception as e:
       self.logger.error("Project {} does not exist".format(self.name))
       self.kill_flask()
       sys.exit(-1)
     try:
       q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(self.name), allow_redirects=True)
-      outfile = "{}_QC_{}.html".format(self.ticketFinder.data['Customer_ID_project'], self.now)
+      outfile = "{}_QC_{}.html".format(self.ticketFinder.data['Customer_ID_project'], last_version)
       output ="{}/{}".format(self.output, outfile)
       storage = "{}/{}".format(self.config['folders']['reports'], outfile)
 
@@ -110,7 +112,6 @@ class Reporter():
       copyfile(output, storage)
 
       self.filelist.append(output)
-      self.filelist.append(storage)
       if not silent:
         self.attachments.append(output)  
     except Exception as e:
@@ -120,13 +121,14 @@ class Reporter():
   def gen_typing(self,silent=False):
     try:
       self.ticketFinder.load_lims_project_info(self.name)
+      last_version = self.db_pusher.get_report(self.name).version
     except Exception as e:
       self.logger.error("Project {} does not exist".format(self.name))
       self.kill_flask()
       sys.exit(-1)
     try:
       r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
-      outfile = "{}_Typing_{}.html".format(self.ticketFinder.data['Customer_ID_project'], self.now)
+      outfile = "{}_Typing_{}.html".format(self.ticketFinder.data['Customer_ID_project'], last_version)
       output ="{}/{}".format(self.output, outfile)
       storage = "{}/{}".format(self.config['folders']['reports'], outfile)
 
@@ -134,66 +136,89 @@ class Reporter():
       copyfile(output, storage)
     
       self.filelist.append(output)
-      self.filelist.append(storage)
       if not silent:
         self.attachments.append(output)
     except Exception as e:
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.error = True
 
-  def gen_resistence(self, silent=False):
+  def gen_motif(self, motif="resistance", silent=False):
+    if motif not in ["resistance", "expac"]:
+      self.logger.error("Invalid motif type specified for gen_motif function")
     if self.collection:
       sample_info = gen_collectiondata(self.name)
     else:
       self.ticketFinder.load_lims_project_info(self.name)
       sample_info = gen_reportdata(self.name)
-    output = "{}/{}_{}.csv".format(self.output,self.name,self.now)
+    output = "{}/{}_{}_{}.csv".format(self.output,self.name,motif,self.now)
     excel = open(output, "w+")
-    resdict = dict()
+    motifdict = dict()
 
-    #Load ALL resistance & genes
+    #Load motif & gene names into dict
     for s in sample_info['samples']:
-      for r in s.resistances:
-        if not (r.resistance in resdict.keys()) and r.threshold == 'Passed':
-          resdict[r.resistance] =list()
-        if r.threshold == 'Passed' and not r.gene in resdict[r.resistance]:
-          resdict[r.resistance].append(r.gene)
-    for k, v in resdict.items():
-      resdict[k] = sorted(v)
+      if motif=='resistance':
+        for r in s.resistances:
+          if not (r.resistance in motifdict.keys()) and r.threshold == 'Passed':
+            motifdict[r.resistance] =list()
+          if r.threshold == 'Passed' and not r.gene in motifdict[r.resistance]:
+            motifdict[r.resistance].append(r.gene)
+      elif motif=='expac':
+        for r in s.expacs:
+          if not (r.virulence in motifdict.keys()) and r.threshold == 'Passed':
+            motifdict[r.virulence] =list()
+          if r.threshold == 'Passed' and not r.gene in motifdict[r.virulence]:
+            motifdict[r.virulence].append(r.gene)
+    for k, v in motifdict.items():
+      motifdict[k] = sorted(v)
 
-    #Header
-    topline = ",,,"
+    #Top 2 Header
+    topline = "Identity {}% & Span {}%,,,".format(self.config['threshold']['motif_id'], self.config['threshold']['motif_span'])
     botline = "CG Sample ID,Sample ID,Organism,Sequence Type,Thresholds"
-    for k in sorted(resdict.keys()):
-      genes = [''] * len(resdict[k])
-      topline += ",,{}{}".format(k.replace(',',';'),','.join(genes))
-      botline += ",,{}".format(','.join(sorted(resdict[k])))
+    for k in sorted(motifdict.keys()):
+      genes = [''] * len(motifdict[k])
+      active_gene = k.replace(',',' &')
+      if active_gene == "":
+        active_gene = "Uncategorized hits"
+      geneholder = ','.join(genes)
+      topline += ",,{}{}".format(active_gene,geneholder)
+      resnames = ','.join(sorted(motifdict[k]))
+      botline += ",,{}".format(resnames)
     excel.write("{}\n".format(topline))
     excel.write("{}\n".format(botline))
 
-    #Individual searches
+    #Create each individual row past the 2nd, per iteration
     for s in sample_info['samples']:
-      tdict = dict()
+      rowdict = dict()
       pref = "{},{},{},{},{}".format(s.CG_ID_sample,s.Customer_ID_sample, s.organism, s.ST_status, s.threshold)
       #Load single sample
-      for r in s.resistances:
-        if not (r.resistance in tdict.keys()) and r.threshold == 'Passed':
-          tdict[r.resistance] =list()
-        if r.threshold == 'Passed' and not r.gene in tdict[r.resistance]:
-          tdict[r.resistance].append(r.gene)
+      if motif=='resistance':
+        for r in s.resistances:
+          if not (r.resistance in rowdict.keys()) and r.threshold == 'Passed':
+            rowdict[r.resistance] =dict()
+          if r.threshold == 'Passed' and not r.gene in rowdict[r.resistance]:
+            rowdict[r.resistance][r.gene] = r.identity
+      elif motif=="expac":
+        for r in s.expacs:
+          if not (r.virulence in rowdict.keys()) and r.threshold == 'Passed':
+            rowdict[r.virulence] =dict()
+          if r.threshold == 'Passed' and not r.gene in rowdict[r.virulence]:
+            rowdict[r.virulence][r.gene] = r.identity
       #Compare single sample to all
       hits = ""
-      for res in sorted(resdict.keys()):
-        if res in tdict.keys():
+      for res in sorted(motifdict.keys()):
+        if res in rowdict.keys():
           hits += ",1"
-          for gen in sorted(resdict[res]):
+          for gen in sorted(motifdict[res]):
             hits += ","
-            if gen in tdict[res]:
-              hits +="1"
+            if gen in rowdict[res].keys():
+              #UPD: Change this to identity of hit
+              hits +="{}".format(rowdict[res][gen])
+            else:
+              hits +="0"
         else:
           #Commas eq to res + gen length
-          hits += ",,"
-          pad = [''] * len(resdict[res])
+          hits += ",0,0"
+          pad = ['0'] * len(motifdict[res])
           hits += ','.join(pad)
 
       excel.write("{}{}\n".format(pref, hits))
@@ -220,7 +245,7 @@ class Reporter():
       report[s.CG_ID_sample]['blast_pubmlst'] = {'sequence_type':s.ST_status, 'thresholds':s.threshold}
       report[s.CG_ID_sample]['quast_assembly'] = {'estimated_genome_length':s.genome_length, 'gc_percentage':float(s.gc_percentage), 'n50':s.n50, 'necessary_contigs':s.contigs}
       report[s.CG_ID_sample]['picard_markduplicate'] = {'insert_size':s.insert_size, 'duplication_rate':s.duplication_rate}
-      report[s.CG_ID_sample]['microsalt_samtools_stats'] = {'total_reads':s.total_reads, 'mapped_rate':s.mapped_rate, \
+      report[s.CG_ID_sample]['microsalt_samtools_stats'] = {'total_reads':s.total_reads, 'mapped_rate':s.mapped_rate,\
                                                             'average_coverage':s.average_coverage, \
                                                             'coverage_10x':s.coverage_10x, 'coverage_30x':s.coverage_30x, \
                                                             'coverage_50x':s.coverage_50x, 'coverage_100x':s.coverage_100x}
@@ -267,7 +292,7 @@ class Reporter():
     self.server.start()
     self.logger.info("Started webserver on http://127.0.0.1:5000/")
     #Hinders requests before server goes up
-    time.sleep(0.05)
+    time.sleep(0.15)
 
   def kill_flask(self):
     self.server.terminate()

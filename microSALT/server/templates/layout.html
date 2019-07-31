@@ -19,6 +19,8 @@
           size: A4;
           margin-left: 0rem;
           margin-right: 0rem;
+          margin-top: 3rem;
+          margin-bottom: 3rem;
 
         @bottom-right {
           padding-right: 20px;
@@ -60,16 +62,13 @@
 </head>
 
 <body>
-
   <div id="wrapper">
-
-        <nav class="navbar navbar-default navbar-static-top" role="navigation" style="margin-bottom: 0">
-            <div class="navbar-header">
-                <a href="{{ url_for('start_page')}}" class="navbar-brand">microSALT </a>
-            </div>
-        </nav>
-        {% block body %}{% endblock %}
-
+   <nav class="navbar navbar-default navbar-static-top" role="navigation" style="margin-bottom: 0">
+     <div class="navbar-header">
+       <a href="{{ url_for('start_page')}}" class="navbar-brand">microSALT </a>
+     </div>
+   </nav>
+   {% block body %}{% endblock %}
   </div>
 
   <!-- Optional JavaScript -->
@@ -78,6 +77,5 @@
     var d = new Date();
     document.getElementById("date").innerHTML = d.toDateString();
   </script>
-
 </body>
 </html>
