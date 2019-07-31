@@ -60,7 +60,7 @@ elif [[ $type = "stage" ]]; then
   pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements.txt &&
   pip install -U git+https://github.com/Clinical-Genomics/microSALT@$branch
 elif [[ $type = "dev" ]]; then
-  pip install -r requirements.txt && pip install . && pip install -e .
+  pip install -r requirements.txt && pip install . && python setup.py develop
 fi 
 echo "Installation Complete!"
 while true; do
