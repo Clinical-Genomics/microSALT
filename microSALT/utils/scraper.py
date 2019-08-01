@@ -56,7 +56,7 @@ class Scraper():
        if not self.db_pusher.exists('Samples', {'CG_ID_sample':self.name}):
          self.logger.warning("Replacing sample {}".format(self.name))
          self.job_fallback.create_sample(self.name)
-       self.scrape_all_loci()
+       self.scrape_blast(type='seq_type')
        self.scrape_blast(type='resistance')
        if self.lims_fetcher.get_organism_refname(self.name) == "escherichia_coli":
          self.scrape_blast(type='expac')
@@ -79,7 +79,7 @@ class Scraper():
 
     #Scrape order matters a lot!
     self.sampledir = self.infolder
-    self.scrape_all_loci()
+    self.scrape_blast(type='seq_type')
     self.scrape_blast(type='resistance')
     if self.lims_fetcher.get_organism_refname(self.name) == "escherichia_coli":
       self.scrape_blast(type='expac')
@@ -145,6 +145,9 @@ class Scraper():
     type2db = type.capitalize() + 's'
     q_list = glob.glob("{}/blast_search/{}/*".format(self.sampledir, type))
     organism = self.lims_fetcher.get_organism_refname(self.name)
+    if not organism:
+      organism = self.lims_fetcher.data['organism']
+    self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
     res_cols = self.db_pusher.get_columns('{}'.format(type2db))
 
     try:
@@ -251,6 +254,14 @@ class Scraper():
     for hit in hypo:
       #self.logger.info("Kept {}:{} with span {} and id {}".format(hit['loci'],hit["allele"], hit['span'],hit['identity']))
       self.db_pusher.add_rec(hit, '{}'.format(type2db))
+  
+  if type == 'seq_type':
+    try:
+      ST = self.db_pusher.alleles2st(self.name)
+      self.db_pusher.upd_rec({'CG_ID_sample':self.name}, 'Samples', {'ST':ST})
+      self.logger.info("Sample {} received ST {}".format(self.name, ST))
+    except Exception as e:
+      self.logger.warning("Unable to type sample {} due to data value '{}'".format(self.name, str(e)))
 
   def load_resistances(self):
     """Legacy function, loads common resistance names for genes from notes file"""
@@ -282,75 +293,6 @@ class Scraper():
       self.logger.info("Sample {} received ST {}".format(self.name, ST))
     except Exception as e:
       self.logger.warning("Unable to type sample {} due to data value '{}'".format(self.name, str(e)))
-
-  def scrape_single_loci(self, infile):
-    """Scrapes a single blast output file for MLST results"""
-    hypo = list()
-    seq_col = self.db_pusher.get_columns('Seq_types') 
-    organism = self.lims_fetcher.get_organism_refname(self.name)
-    if not os.path.exists(self.sampledir):
-      self.logger.error("Invalid file path to infolder, {}".format(self.sampledir))
-      sys.exit()
-    try:
-      with open("{}".format(infile), 'r') as insample:
-        for line in insample:
-          #Ignore commented fields
-          if not line[0] == '#':
-            elem_list = line.rstrip().split("\t")
-            if not elem_list[1] == 'N/A':
-              hypo.append(dict())
-              hypo[-1]["CG_ID_sample"] = self.name
-              hypo[-1]["identity"] = elem_list[4]
-              hypo[-1]["evalue"] = elem_list[5]
-              hypo[-1]["bitscore"] = elem_list[6]
-              if elem_list[7] < elem_list[8]:
-                hypo[-1]["contig_start"] = int(elem_list[7])
-                hypo[-1]["contig_end"] = int(elem_list[8])
-              else:
-                hypo[-1]["contig_start"] = int(elem_list[8])
-                hypo[-1]["contig_end"] = int(elem_list[7])
-
-              hypo[-1]["subject_length"] = int(elem_list[11])
-         
-              # Split elem 3 in loci (name) and allele (number)
-              partials = re.search('(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3]) 
-              hypo[-1]["loci"] = partials.group(1)
-              hypo[-1]["allele"] = int(partials.group(2))
-              hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('Seq_types', organism, partials.group(0))
-
-              # split elem 2 into contig node_NO, length, cov
-              nodeinfo = elem_list[2].split('_')
-              hypo[-1]["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
-              hypo[-1]["contig_length"] = int(nodeinfo[3])
-              hypo[-1]["contig_coverage"] = nodeinfo[5]
-    except Exception as e:
-      self.logger.error("{}".format(str(e)))
-
-    #Reduction to top hit
-    ind = 0
-    while ind < len(hypo)-1:
-      targ = ind+1
-      while targ < len(hypo):
-        ignore = False
-        #Rightmost is worse
-        if float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]["span"])) >= float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]["span"])):
-          #self.logger.warn("Removing {}:{} with span {} and id {}".format(hypo[targ]['loci'],hypo[targ]["allele"], hypo[targ]['span'],hypo[targ]['identity']))
-          del hypo[targ]
-          ignore = True
-        #Leftmost is worse
-        elif float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]['span'])) < float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]['span'])):
-          #self.logger.warn("Removing {}:{} with span {} and id {}".format(hypo[ind]['loci'],hypo[ind]["allele"], hypo[ind]['span'],hypo[ind]['identity']))
-          del hypo[ind]
-          targ = ind +1
-          ignore = True
-        if not ignore:
-          targ += 1
-        else:
-          pass
-      ind += 1
-    for hit in hypo:
-      self.logger.info("Kept {}:{} with span {} and id {}".format(hit['loci'],hit["allele"], hit['span'],hit['identity']))
-      self.db_pusher.add_rec(hit, 'Seq_types')
 
   def scrape_alignment(self):
     """Scrapes a single alignment result"""
