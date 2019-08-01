@@ -14,7 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import SingletonThreadPool
 
 from microSALT import __version__
-from microSALT.store.orm_models import app, Collections, Expacs, Projects, Reports, Resistances, Samples, Seq_types, Versions
+from microSALT.store.orm_models import app, Collections, Core_seq_types, Expacs, Projects, Reports, Resistances, Samples, Seq_types, Versions
 from microSALT.store.models import Profiles, Novel
 
 class DB_Manipulator:
@@ -59,6 +59,9 @@ class DB_Manipulator:
     if not self.engine.dialect.has_table(self.engine, 'expacs'):
       Expacs.__table__.create(self.engine)
       self.logger.info("Created EXPAC table")
+    if not self.engine.dialect.has_table(self.engine, 'core_seq_types'):
+      Core_seq_types.__table__.create(self.engine)
+      self.logger.info("Created core sequencing types table")
     for k,v in self.profiles.items():
       if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
         self.profiles[k].create()

@@ -58,6 +58,7 @@ class Scraper():
          self.job_fallback.create_sample(self.name)
        self.scrape_blast(type='seq_type')
        self.scrape_blast(type='resistance')
+       self.scrape_blast(type='core_seq_type')
        if self.lims_fetcher.get_organism_refname(self.name) == "escherichia_coli":
          self.scrape_blast(type='expac')
        self.scrape_alignment()
@@ -81,6 +82,7 @@ class Scraper():
     self.sampledir = self.infolder
     self.scrape_blast(type='seq_type')
     self.scrape_blast(type='resistance')
+    self.scrape_blast(type='core_seq_type')
     if self.lims_fetcher.get_organism_refname(self.name) == "escherichia_coli":
       self.scrape_blast(type='expac')
     self.scrape_alignment()
@@ -209,7 +211,7 @@ class Scraper():
                     hypo[-1]["virulence"] = ""
                   hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('{}'.format(type2db), "curated_virulence", partials.group(0))
 
-                elif type == 'seq_type':
+                elif type == 'seq_type' or type == 'core_seq_type':
                   hypo[-1]["loci"] = partials.group(1)
                   hypo[-1]["allele"] = int(partials.group(2))
                   hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('{}'.format(type2db), organism, partials.group(0)
@@ -275,24 +277,6 @@ class Scraper():
           #Workaround for case issues
           conversions[line[0].lower()] = cropped
     return conversions
-
-  def scrape_all_loci(self):
-    """Scrapes all BLAST output in a folder"""
-    q_list = glob.glob("{}/blast_search/mlst/loci_query_*".format(self.sampledir))
-    organism = self.lims_fetcher.get_organism_refname(self.name)
-    if not organism:
-      organism = self.lims_fetcher.data['organism']
-    self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
-
-    for file in q_list:
-      self.scrape_single_loci(file)
-    #Requires all loci results to be initialized
-    try:
-      ST = self.db_pusher.alleles2st(self.name)
-      self.db_pusher.upd_rec({'CG_ID_sample':self.name}, 'Samples', {'ST':ST})
-      self.logger.info("Sample {} received ST {}".format(self.name, ST))
-    except Exception as e:
-      self.logger.warning("Unable to type sample {} due to data value '{}'".format(self.name, str(e)))
 
   def scrape_alignment(self):
     """Scrapes a single alignment result"""
