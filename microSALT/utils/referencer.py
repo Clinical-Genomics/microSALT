@@ -238,11 +238,11 @@ class Referencer():
     for section in sections:
       if section.find_all("em"):
         pot_org = section.find_all("em")[0].get_text().replace(' ', '_').lower()
-        if pot_org == reference:
+        if reference in pot_org:
           currver = self.db_access.get_version('cgmlst_{}'.format(pot_org))
           break
 
-    if not currver:
+    if not 'currver' in locals():
       return
 
     #Grab version number on secondary page
