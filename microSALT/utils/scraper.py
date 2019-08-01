@@ -112,22 +112,12 @@ class Scraper():
     except Exception as e:
       self.logger.warning("Cannot generate quast statistics for {}".format(self.name))
 
-  def get_locilength(self, analysis, reference, target):
-    """ Find length of target within reference """
-    alleles=dict()
-    targetPre = ">{}".format(target)
-    lastallele=""
-    if analysis=="Resistances":
-      filename="{}/{}.fsa".format(self.config["folders"]["resistances"], reference)
-    elif analysis=="Seq_types":
-      target = re.search('(.+)_(\w+)', target).group(1)
-      filename="{}/{}/{}.tfa".format(self.config["folders"]["references"], reference, target)
-    elif analysis=='Expacs':
-      filename="{}".format(self.config["folders"]["expac"])
-    else:
-      self.logger.error("Attempted to use function get_locilength() without a target type")
-
+  def get_locilengths(self, filename):
+    """ Generate a dict of length for any given loci """
     #Create dict with full name as key, associated nucleotides as value. 
+    alleles=dict()
+    finalalleles=dict()
+    lastallele=""
     f = open(filename,"r")
     for row in f:
       if ">" in row:
@@ -136,16 +126,20 @@ class Scraper():
       else:
         alleles[lastallele] = alleles[lastallele] + row.strip()
     f.close()
-    try:
-      return len(alleles[targetPre])
-    except KeyError as e:
-      self.logger.error("Target '{}' has been removed from current version of resFinder! Defaulting hit to length 1".format(targetPre))
-      return 1
+
+    for k, v in alleles.items():
+      finalalleles[k] = len(v) 
+
+    return finalalleles
 
   def scrape_blast(self,type=""):
     hypo = list()
     type2db = type.capitalize() + 's'
-    q_list = glob.glob("{}/blast_search/{}/*".format(self.sampledir, type))
+    folder = type
+    folder = folder.replace('seq_type', 'mlst')
+    folder = folder.replace('core_', 'cg')
+ 
+    q_list = glob.glob("{}/blast_search/{}/*".format(self.sampledir, folder))
     organism = self.lims_fetcher.get_organism_refname(self.name)
     if not organism:
       organism = self.lims_fetcher.data['organism']
@@ -154,6 +148,19 @@ class Scraper():
 
     try:
       for file in q_list:
+        filename = os.path.basename(file[:-4])
+        if filename == 'lactam':
+          filename = 'beta-lactam'
+        if type == 'resistance':
+          ref_file = "{}/{}.fsa".format(self.config["folders"]["resistances"], filename)
+        elif type == 'expac':
+          ref_file = self.config["folders"]["expac"]
+        elif type == 'core_seq_type':
+          ref_file = "{}/{}/main.fsa".format(self.config['folders']['cgmlst'], organism)
+        elif type == 'seq_type':
+          ref_file =  "{}/{}/{}.tfa".format(self.config['folders']['references'], organism, filename.split('_')[-1])
+        locilengths = self.get_locilengths(ref_file)
+
         with open("{}".format(file), 'r') as sample:
           for line in sample:
             #Ignore commented fields
@@ -173,11 +180,8 @@ class Scraper():
                   hypo[-1]["contig_end"] = int(elem_list[7])
                 hypo[-1]["subject_length"] =  int(elem_list[11])
 
-                if type == 'resistance' or type == 'seq_type':
-                  partials = re.search('(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3])
-
                 if type == 'resistance':
-                  # Split elem 3 in loci (name) and allele (number)
+                  hypo[-1]["instance"] = filename
                   partials = re.search('(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3])
                   hypo[-1]["reference"] = partials.group(3)
                   hypo[-1]["gene"] = partials.group(1)
@@ -185,9 +189,10 @@ class Scraper():
                     hypo[-1]["resistance"] = self.gene2resistance[hypo[-1]["gene"]]
                   else:
                     hypo[-1]["{}".format(type)] = hypo[-1]["instance"].capitalize()
-                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('{}'.format(type2db), hypo[-1]["instance"], partials.group(0))
+                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(partials.group(0))]
 
                 elif type == 'expac':
+                  hypo[-1]["instance"] = filename
                   #Thanks, precompiled list standards
                   if '>' in elem_list[3]:
                     partials = re.search('>*(\w+_\w+\.*\w+).+\((\w+)\).+\((\w+)\)_(\w+)_\[.+\]', elem_list[3])
@@ -209,24 +214,30 @@ class Scraper():
                     hypo[-1]["virulence"] = partials.group(4).replace('_', ' ').capitalize()
                   else:
                     hypo[-1]["virulence"] = ""
-                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('{}'.format(type2db), "curated_virulence", partials.group(0))
+                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(partials.group(0))]
 
                 elif type == 'seq_type' or type == 'core_seq_type':
+                  partials = re.search('(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3])
                   hypo[-1]["loci"] = partials.group(1)
                   hypo[-1]["allele"] = int(partials.group(2))
-                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('{}'.format(type2db), organism, partials.group(0)
+                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(partials.group(0))]
 
                 # split elem 2 into contig node_NO, length, cov
                 nodeinfo = elem_list[2].split('_')
                 hypo[-1]["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
                 hypo[-1]["contig_length"] = int(nodeinfo[3])
                 hypo[-1]["contig_coverage"] = nodeinfo[5]
+                print("Added hypo {}".format(hypo[-1]))
 
       self.logger.info("{} candidate {} hits found".format(len(hypo), type2db))
     except Exception as e:
       self.logger.error("{}".format(str(e)))
 
     #Cleanup of overlapping hits
+    if type == 'seq_type' or type == 'core_seq_type':
+      identifier = 'loci'
+    elif type == 'resistance' or type == 'expac':
+      identifier = 'gene'
     ind = 0
     while ind < len(hypo)-1:
       targ = ind+1
@@ -236,7 +247,7 @@ class Scraper():
           #Overlapping or shared gene 
           if (hypo[ind]["contig_start"] >= hypo[targ]["contig_start"] and hypo[ind]["contig_start"] <= hypo[targ]["contig_end"]) or\
               (hypo[ind]["contig_end"] >= hypo[targ]["contig_start"] and hypo[ind]["contig_end"] <= hypo[targ]["contig_end"]) or \
-              (hypo[ind]['gene'] == hypo[targ]['gene']):
+              (hypo[ind][identifier] == hypo[targ][identifier]):
             #Rightmost is worse
             if float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]["span"])) >= float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]["span"])):
               del hypo[targ]
