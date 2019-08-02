@@ -205,16 +205,13 @@ class Scraper():
                   #Full gene name
                   hypo[-1]["gene"] = partials.group(2)
                   #More generic group
-                  if partials.group(3)[-1] == '_':
-                    hypo[-1]["instance"] = partials.group(3)[:-1]
-                  else:
-                    hypo[-1]["instance"] = partials.group(3)
+                  hypo[-1]["instance"] = partials.group(3).strip('_')
                   #Description
                   if len(partials.groups()) >= 4:
                     hypo[-1]["virulence"] = partials.group(4).replace('_', ' ').capitalize()
                   else:
                     hypo[-1]["virulence"] = ""
-                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(partials.group(0))]
+                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(elem_list[0])]
 
                 elif type == 'seq_type' or type == 'core_seq_type':
                   partials = re.search('(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3])
@@ -227,11 +224,10 @@ class Scraper():
                 hypo[-1]["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
                 hypo[-1]["contig_length"] = int(nodeinfo[3])
                 hypo[-1]["contig_coverage"] = nodeinfo[5]
-                print("Added hypo {}".format(hypo[-1]))
 
       self.logger.info("{} candidate {} hits found".format(len(hypo), type2db))
     except Exception as e:
-      self.logger.error("{}".format(str(e)))
+      self.logger.error("Unable to process the pattern of {}".format(str(e)))
 
     #Cleanup of overlapping hits
     if type == 'seq_type' or type == 'core_seq_type':
@@ -268,13 +264,13 @@ class Scraper():
       #self.logger.info("Kept {}:{} with span {} and id {}".format(hit['loci'],hit["allele"], hit['span'],hit['identity']))
       self.db_pusher.add_rec(hit, '{}'.format(type2db))
   
-  if type == 'seq_type':
-    try:
-      ST = self.db_pusher.alleles2st(self.name)
-      self.db_pusher.upd_rec({'CG_ID_sample':self.name}, 'Samples', {'ST':ST})
-      self.logger.info("Sample {} received ST {}".format(self.name, ST))
-    except Exception as e:
-      self.logger.warning("Unable to type sample {} due to data value '{}'".format(self.name, str(e)))
+    if type == 'seq_type':
+      try:
+        ST = self.db_pusher.alleles2st(self.name)
+        self.db_pusher.upd_rec({'CG_ID_sample':self.name}, 'Samples', {'ST':ST})
+        self.logger.info("Sample {} received ST {}".format(self.name, ST))
+      except Exception as e:
+        self.logger.warning("Unable to type sample {} due to data value '{}'".format(self.name, str(e)))
 
   def load_resistances(self):
     """Legacy function, loads common resistance names for genes from notes file"""
