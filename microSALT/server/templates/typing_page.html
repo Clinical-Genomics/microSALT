@@ -104,6 +104,28 @@
                 (**) För förbättrad översikt rapporteras resultaten för kontrollprover enbart i detaljrapporten <br/>
             </div></div>
 
+            <div class="panel"><div class="panel-body">
+              <h3>Core Genome distans<br></h3>
+              <p>
+              </p>
+              <div class="table-responsive">
+                <table  class="table table-bordered" style='table-layout:fixed;'>
+                {% for row in cgmatrix %}
+                  <tr>
+                  {% for elem in row %}
+                    {% if elem|int == 0 %}
+                      <td><b>{{elem}}</b></td>
+                    {% elif elem|int < 10 %}
+                      <td color="red">{{elem}}</td>
+                    {% else %}
+                      <td>{{elem}}</td>
+                    {% endif %}
+                  {% endfor %}
+                  </tr>
+                {% endfor%}
+              </table></div>
+            </div></div>
+
               <div class="panel"><div class="panel-body">
                 <h3>Provsammanställning<br></h3>
                   <div class="table-responsive">
