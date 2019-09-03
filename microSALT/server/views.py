@@ -68,6 +68,7 @@ def typing_page(project, organism_group):
         samples = sample_info['samples'],
         date = date.today().isoformat(),
         version = sample_info['versions'],
+        cgmatrix = sample_info['cgmatrix'],
         threshold = config['threshold'],
         verified_organisms = config['regex']['verified_organisms'],
         reports = sample_info['reports'],
@@ -130,7 +131,10 @@ def gen_add_info(sample_info=dict()):
   sample_info = sorted(sample_info, key=lambda sample: \
                 int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
 
+  corecompare = dict()
+
   for s in sample_info:
+    corecompare[s.CG_ID_sample] = list()
     s.ST_status=str(s.ST)
     if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or \
     s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or \
@@ -179,12 +183,23 @@ def gen_add_info(sample_info=dict()):
         v.threshold = 'Passed'
       else:
         v.threshold = 'Failed'
+    for c in s.core_seq_types:
+      corecompare[s.CG_ID_sample].append("{}:{}".format(c.loci, c.allele))
 
     #Seq_type and resistance sorting
     s.seq_types=sorted(s.seq_types, key=lambda x: x.loci)
     s.resistances=sorted(s.resistances, key=lambda x: x.instance)
     s.expacs=sorted(s.expacs, key=lambda x: x.gene)
     output['samples'].append(s)
+
+  keylist = corecompare.keys()
+  cgmatrix = [[''] + list(corecompare.keys())]
+  for i in keylist:
+    tmplist = [i]
+    for j in keylist:
+      tmplist.append( len(list(set(corecompare[i]).symmetric_difference(corecompare[j]))) )
+    cgmatrix.append( tmplist )
+  output['cgmatrix'] = cgmatrix
 
   versions = session.query(Versions).all()
   for version in versions:
