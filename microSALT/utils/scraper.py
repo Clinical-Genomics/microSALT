@@ -253,7 +253,7 @@ class Scraper():
               del hypo[ind]
               targ = ind +1
               ignore = True
-        i not ignore:
+        if not ignore:
           targ += 1
         else:
           pass
