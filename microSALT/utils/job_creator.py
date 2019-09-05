@@ -375,7 +375,7 @@ class Job_Creator():
           try:
             sample_in = "{}/{}".format(dirpath, dir)
             sample_out = "{}/{}".format(self.finishdir, dir)
-            sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now, trim=self.trimmed)
+            sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now, trim=self.trimmed, careful=self.careful)
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()
             outfile = ""
@@ -397,7 +397,7 @@ class Job_Creator():
           try:
             sample_in = "{}/{}".format(dirpath, dir)
             sample_out = "{}/{}".format(self.finishdir, dir)
-            sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now, trim=self.trimmed) 
+            sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now, trim=self.trimmed, careful=self.careful) 
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()
             outfile = ""
