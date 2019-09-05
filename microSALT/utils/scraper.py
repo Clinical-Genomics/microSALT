@@ -60,7 +60,7 @@ class Scraper():
        self.scrape_blast(type='resistance')
        self.scrape_blast(type='core_seq_type')
        if self.lims_fetcher.get_organism_refname(self.name) == "escherichia_coli":
-         self.scrape_blast(type='expac')
+         self.scrape_blast(type='expec')
        self.scrape_alignment()
        self.scrape_quast()
 
@@ -84,7 +84,7 @@ class Scraper():
     self.scrape_blast(type='resistance')
     self.scrape_blast(type='core_seq_type')
     if self.lims_fetcher.get_organism_refname(self.name) == "escherichia_coli":
-      self.scrape_blast(type='expac')
+      self.scrape_blast(type='expec')
     self.scrape_alignment()
     self.scrape_quast()
 
@@ -153,8 +153,8 @@ class Scraper():
           filename = 'beta-lactam'
         if type == 'resistance':
           ref_file = "{}/{}.fsa".format(self.config["folders"]["resistances"], filename)
-        elif type == 'expac':
-          ref_file = self.config["folders"]["expac"]
+        elif type == 'expec':
+          ref_file = self.config["folders"]["expec"]
         elif type == 'core_seq_type':
           ref_file = "{}/{}/main.fsa".format(self.config['folders']['cgmlst'], organism)
         elif type == 'seq_type':
@@ -191,7 +191,7 @@ class Scraper():
                     hypo[-1]["{}".format(type)] = hypo[-1]["instance"].capitalize()
                   hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(partials.group(0))]
 
-                elif type == 'expac':
+                elif type == 'expec':
                   hypo[-1]["instance"] = filename
                   #Thanks, precompiled list standards
                   if '>' in elem_list[3]:
@@ -232,7 +232,7 @@ class Scraper():
     #Cleanup of overlapping hits
     if type == 'seq_type' or type == 'core_seq_type':
       identifier = 'loci'
-    elif type == 'resistance' or type == 'expac':
+    elif type == 'resistance' or type == 'expec':
       identifier = 'gene'
     ind = 0
     while ind < len(hypo)-1:
@@ -253,7 +253,7 @@ class Scraper():
               del hypo[ind]
               targ = ind +1
               ignore = True
-        if not ignore:
+        i not ignore:
           targ += 1
         else:
           pass

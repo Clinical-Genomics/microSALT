@@ -537,7 +537,7 @@ class Job_Creator():
     self.blast_subset('resistance',"{}/*.fsa".format(self.config["folders"]["resistances"]))
     self.blast_subset('cgmlst', "{}/{}/main.fsa".format(self.config['folders']['cgmlst'], self.organism))
     if self.organism == "escherichia_coli":
-      self.blast_subset('expac', self.config["folders"]["expac"])
+      self.blast_subset('expec', self.config["folders"]["expec"])
 
   def snp_job(self):
     """ Writes a SNP calling job for a set of samples """

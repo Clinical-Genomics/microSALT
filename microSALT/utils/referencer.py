@@ -66,7 +66,7 @@ class Referencer():
     self.fetch_pubmlst(self.force)
     self.fetch_external(self.force)
     self.fetch_resistances(self.force)
-    self.index_db(os.path.dirname(self.config['folders']['expac']), '.fsa')
+    self.index_db(os.path.dirname(self.config['folders']['expec']), '.fsa')
     for thing in os.listdir(self.config['folders']['cgmlst']):
       if os.path.isdir(thing):
         self.index_db("{}/{}".format(self.config['folders']['cgmlst'], thing), '.fsa')

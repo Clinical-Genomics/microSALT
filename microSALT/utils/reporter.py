@@ -63,7 +63,7 @@ class Reporter():
       self.gen_typing()
     elif type == 'motif_overview':
       self.gen_motif(motif="resistance")
-      self.gen_motif(motif="expac")
+      self.gen_motif(motif="expec")
     elif type == 'qc':
       self.gen_qc()
     elif type == 'st_update':
@@ -143,7 +143,7 @@ class Reporter():
       self.error = True
 
   def gen_motif(self, motif="resistance", silent=False):
-    if motif not in ["resistance", "expac"]:
+    if motif not in ["resistance", "expec"]:
       self.logger.error("Invalid motif type specified for gen_motif function")
     if self.collection:
       sample_info = gen_collectiondata(self.name)
@@ -162,7 +162,7 @@ class Reporter():
             motifdict[r.resistance] =list()
           if r.threshold == 'Passed' and not r.gene in motifdict[r.resistance]:
             motifdict[r.resistance].append(r.gene)
-      elif motif=='expac':
+      elif motif=='expec':
         for r in s.expacs:
           if not (r.virulence in motifdict.keys()) and r.threshold == 'Passed':
             motifdict[r.virulence] =list()
@@ -197,7 +197,7 @@ class Reporter():
             rowdict[r.resistance] =dict()
           if r.threshold == 'Passed' and not r.gene in rowdict[r.resistance]:
             rowdict[r.resistance][r.gene] = r.identity
-      elif motif=="expac":
+      elif motif=="expec":
         for r in s.expacs:
           if not (r.virulence in rowdict.keys()) and r.threshold == 'Passed':
             rowdict[r.virulence] =dict()

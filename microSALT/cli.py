@@ -51,9 +51,9 @@ def root(ctx):
   logger.addHandler(ch)
   ctx.obj['log'] = logger
   if os.path.basename(os.path.expandvars('$CONDA_PREFIX'))[0] == 'D':
-    ctx.obj['config']['folders']['expac'] = os.path.abspath(os.path.join(wd , '../unique_references/EXPAC.fsa')) 
+    ctx.obj['config']['folders']['expec'] = os.path.abspath(os.path.join(wd , '../unique_references/ExPEC.fsa')) 
   else:
-    ctx.obj['config']['folders']['expac'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'expac/EXPAC.fsa')) 
+    ctx.obj['config']['folders']['expec'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'expec/ExPEC.fsa')) 
   ctx.obj['config']['folders']['adapters'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'share/trimmomatic-0.39-1/adapters/'))
 
 @root.group()
