@@ -130,12 +130,15 @@ class DB_Manipulator:
   def purge_rec(self, name, type):
     """Removes seq_data, resistances, sample(s) and possibly project"""
     entries = list()
+    #import pdb; pdb.set_trace()
     if type == "Projects":
-      #entries.append(self.session.query(Projects).filter(Projects.CG_ID_project==name).all())
+      entries.append(self.session.query(Expacs).filter(Expacs.CG_ID_sample.like('{}%'.format(name))).all())
       entries.append(self.session.query(Seq_types).filter(Seq_types.CG_ID_sample.like('{}%'.format(name))).all())
       entries.append(self.session.query(Resistances).filter(Resistances.CG_ID_sample.like('{}%'.format(name))).all())
       entries.append(self.session.query(Samples).filter(Samples.CG_ID_sample.like('{}%'.format(name))).all())
+      #entries.append(self.session.query(Projects).filter(Projects.CG_ID_project==name).all())
     elif type == "Samples":
+      entries.append(self.session.query(Expacs).filter(Expacs.CG_ID_sample==name).all())
       entries.append(self.session.query(Seq_types).filter(Seq_types.CG_ID_sample==name).all())
       entries.append(self.session.query(Resistances).filter(Resistances.CG_ID_sample==name).all())
       entries.append(self.session.query(Samples).filter(Samples.CG_ID_sample==name).all())
