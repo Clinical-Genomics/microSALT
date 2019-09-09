@@ -430,7 +430,9 @@ class Job_Creator():
     if 'config_path' in self.config:
       custom_conf = '--config {}'.format(self.config['config_path'])
 
-
+    process = subprocess.Popen("id -un".split(), stdout=subprocess.PIPE)
+    user, error = process.communicate()
+    user = user.replace('.',' ').title()
     startfile = "{}/run_started.out".format(self.finishdir)
     configfile = "{}/config.log".format(self.finishdir) 
     mailfile = "{}/mailjob.sh".format(self.finishdir)
@@ -442,6 +444,7 @@ class Job_Creator():
     configout = self.config.copy()
     if 'genologics' in configout:
       del configout['genologics']
+    cb.write("ANALYSIS STARTED BY: {}\n".format(user))
     cb.write(json.dumps(configout, indent=2,separators=(',',':')))
     cb.close()
     mb.write("#!/usr/bin/env bash\n\n")

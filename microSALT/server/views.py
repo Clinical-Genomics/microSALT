@@ -56,6 +56,7 @@ def alignment_page(project):
         samples = sample_info['samples'],
         date = date.today().isoformat(),
         version = sample_info['versions'],
+        user = sample_info['user'],
         threshold = config['threshold'],
         reports = sample_info['reports'],
         build = __version__)
@@ -69,6 +70,7 @@ def typing_page(project, organism_group):
         date = date.today().isoformat(),
         version = sample_info['versions'],
         cgmatrix = sample_info['cgmatrix'],
+        user = sample_info['user'],
         threshold = config['threshold'],
         verified_organisms = config['regex']['verified_organisms'],
         reports = sample_info['reports'],
@@ -205,5 +207,9 @@ def gen_add_info(sample_info=dict()):
   for version in versions:
     name = version.name[8:]
     output['versions'][name] = version.version
+
+  process = subprocess.Popen("id -un".split(), stdout=subprocess.PIPE)
+  user, error = process.communicate()
+  output['user'] = user.replace('.',' ').title()
 
   return output
