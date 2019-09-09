@@ -79,8 +79,8 @@ class Job_Creator():
             raise Exception("Some fastq files are unresolved symlinks in directory {}.".format(self.indir))
 
         #Make sure both mates exist
-        if file_match[1] == '1':
-          pairno = '2'
+        if file_match[1] == '1' or file_match[1] == '2':
+          pairno = 2-1%int(file_match[1]) #1->2, 2->1
           #Construct mate name
           pairname = "{}{}{}".format(file_match.string[:file_match.end(1)-1] , pairno, \
                       file_match.string[file_match.end(1):file_match.end()])
@@ -88,8 +88,6 @@ class Job_Creator():
             files.pop( files.index(pairname) )
             verified_files.append(file_match[0])
             verified_files.append(pairname)
-        elif file_match[1] == '2':
-          pass
         else:
           raise Exception("Some fastq files have no mate in directory {}.".format(self.indir))
     if verified_files == []:
@@ -100,7 +98,7 @@ class Job_Creator():
       bsize = bsize >> 20
       if bsize > 1000:
         self.logger.warning("Input fastq {} exceeds 1000MB".format(vfile))
-    return verified_files
+    return sorted(verified_files)
  
   def create_assemblysection(self):
     batchfile = open(self.batchfile, "a+")
@@ -151,7 +149,6 @@ class Job_Creator():
     ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
     localdir = "{}/alignment".format(self.finishdir)
     outbase = "{}/{}_{}".format(localdir, self.name, self.lims_fetcher.data['reference'])
-    files = self.verify_fastq()
 
     #Create run
     batchfile = open(self.batchfile, "a+")
