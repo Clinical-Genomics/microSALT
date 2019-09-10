@@ -5,7 +5,7 @@ shopt -s nullglob
 
 echo "Welcome to the microSALT installation script. Q to exit"
 while true; do
-    echo "What name would you like to give your microSALT environment (no prefix)?"
+    echo "What name would you like to give your microSALT environment?"
     read input
     if [[ $input = "q" ]] || [[ $input = "Q" ]]; then
         break
@@ -15,11 +15,11 @@ while true; do
     fi
 done
 while true; do
-    echo "Would you like a 'dev', 'stage' or 'prod' environment?"
+    echo "Would you like a 'release' or local 'source' environment?"
     read input
     if [[ $input = "q" ]] || [[ $input = "Q" ]]; then
         break
-    elif [[ $input == "dev" ]] || [[ $input == "prod" ]] || [[ $input == "stage" ]]; then
+    elif [[ $input == "source" ]]  || [[ $input == "release" ]]; then
         type=$input
         validbranch=false
         while ! $validbranch; do
@@ -31,33 +31,31 @@ while true; do
         break
     fi
 done
-
-if [[ $type = "prod" ]]; then
-    rname=P_$cname
-elif [[ $type = "dev" ]]; then
-    rname=D_$cname
-elif [[ $type = "stage" ]]; then
-    rname=S_$cname
-fi
-echo "Thank you, setting up environment $rname!"
+echo "Thank you, setting up environment $cname!"
 
 #Accepts that environment doesnt exist
-conda remove -y -n $rname --all || ""
-conda create -y -n $rname python=3.6
+conda remove -y -n $cname --all || ""
+conda create -y -n $cname python=3.6
 #source deactivate
-source activate $rname
+source activate $cname
 conda config --add channels bioconda
 conda install -y -c bioconda blast=2.9.0 bwa=0.7.17 picard=2.20.3 quast=5.0.2 samtools=1.9 spades=3.13.1 trimmomatic=0.39
-if [[ $type = "prod" ]]; then
-  pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/requirements.txt 
-  pip install -U git+https://github.com/Clinical-Genomics/microSALT 
-elif [[ $type = "dev" ]] || [[ $type = "stage" ]]; then
-  pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements.txt &&
-  pip install -U git+https://github.com/Clinical-Genomics/microSALT@$branch
+if [[ $type = "release" ]]; then
+    pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/requirements.txt 
+    pip install -U git+https://github.com/Clinical-Genomics/microSALT 
+elif [[ $type = "source" ]]; then
+  HERE=$PWD
+  if [ -d ${HERE}/microSALT ]; then
+    rm -rf microSALT
+  fi
+  git clone https://github.com/Clinical-Genomics/microSALT
+  cd microSALT && git checkout $branch
+  pip install -r requirements.txt && pip install -e . && cd ${HERE}
+  echo "Source installed under ${HERE}/microSALT" 
 fi 
 echo "Installation Complete!"
 while true; do
-    echo "Write 'ok' to promise that you'll set-up the configuration as mentioned in README.md"
+    echo "Configuration requires manual set-up as described in README.md ['ok']"
     read input
     if [[ $input = "ok" ]] || [[ $input = "OK" ]]; then
         break
