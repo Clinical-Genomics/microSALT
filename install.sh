@@ -21,16 +21,14 @@ while true; do
         break
     elif [[ $input == "source" ]]  || [[ $input == "release" ]]; then
         type=$input
-        if [[ $input == "source" ]]; then
-            validbranch=false
-            while ! $validbranch; do
-                echo "Name a branch to install (or just 'master')":
-                read input
-                branch=$input
-                curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/LICENSE | grep -q 'License' && validbranch=true||echo "Invalid branch name"
-            done
-            break
-        fi
+        validbranch=false
+        while ! $validbranch; do
+            echo "Name a branch to install (or just 'master')":
+            read input
+            branch=$input
+            curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/LICENSE | grep -q 'License' && validbranch=true||echo "Invalid branch name"
+        done
+        break
     fi
 done
 echo "Thank you, setting up environment $cname!"
