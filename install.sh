@@ -48,7 +48,7 @@ if [[ $type = "release" ]]; then
 elif [[ $type = "source" ]]; then
   HERE=$PWD
   if [ -d ${HERE}/microSALT ]; then
-    rmdir microSALT
+    rm -rf microSALT
   fi
   git clone https://github.com/Clinical-Genomics/microSALT
   cd microSALT && git checkout $branch
