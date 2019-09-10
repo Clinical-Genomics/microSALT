@@ -51,7 +51,11 @@ def root(ctx):
   logger.addHandler(ch)
   ctx.obj['log'] = logger
   ctx.obj['config']['folders']['expac'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'expac/EXPAC.fsa')) 
-  ctx.obj['config']['folders']['adapters'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'share/trimmomatic-0.39-1/adapters/')) 
+  ctx.obj['config']['folders']['adapters'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'share/trimmomatic-0.39-1/adapters/'))
+  ctx.obj['config']['folders']['st_profiles'] = "{}/ST_profiles".format(ctx.obj['config']['folders']['references'])
+  ctx.obj['config']['folders']['st_loci'] = "{}/ST_loci".format(ctx.obj['config']['folders']['references'])
+  ctx.obj['config']['folders']['resistances'] = "{}/resistances".format(ctx.obj['config']['folders']['references'])
+  ctx.obj['config']['folders']['genomes'] = "{}/genomes".format(ctx.obj['config']['folders']['references'])
 
 @root.group()
 @click.pass_context

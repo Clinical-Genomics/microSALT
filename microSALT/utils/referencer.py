@@ -122,7 +122,7 @@ class Referencer():
           # Gather loci from second object
           entry = iterator.__next__()
           # Clear existing directory and download allele files
-          out = "{}/{}".format(self.config['folders']['references'], organ)
+          out = "{}/{}".format(self.config['folders']['st_loci'], organ)
           shutil.rmtree(out)
           os.makedirs(out)
           for loci in entry.find_all("a"):
@@ -302,7 +302,7 @@ class Referencer():
     with urllib.request.urlopen(loci_req) as response:
      loci_query = json.loads(response.read().decode('utf-8'))
 
-    output = "{}/{}".format(self.config['folders']['references'], organism)
+    output = "{}/{}".format(self.config['folders']['st_loci'], organism)
     if(os.path.isdir(output)):
       shutil.rmtree(output)
     os.makedirs(output)

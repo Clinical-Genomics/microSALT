@@ -119,7 +119,7 @@ class Scraper():
       filename="{}/{}.fsa".format(self.config["folders"]["resistances"], reference)
     elif analysis=="Seq_types":
       target = re.search('(.+)_(\w+)', target).group(1)
-      filename="{}/{}/{}.tfa".format(self.config["folders"]["references"], reference, target)
+      filename="{}/{}/{}.tfa".format(self.config["folders"]["st_loci"], reference, target)
     elif analysis=='Expacs':
       filename="{}".format(self.config["folders"]["expac"])
     else:

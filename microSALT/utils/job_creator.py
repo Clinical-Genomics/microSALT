@@ -160,7 +160,7 @@ class Job_Creator():
     batchfile = open(self.batchfile, "a+")
     batchfile.write("mkdir {}/blast_search/mlst\n\n".format(self.finishdir))
     blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
-    tfa_list = glob.glob("{}/{}/*.tfa".format(self.config["folders"]["references"], self.organism))
+    tfa_list = glob.glob("{}/{}/*.tfa".format(self.config["folders"]["st_loci"], self.organism))
     for entry in tfa_list:
       batchfile.write("# BLAST MLST alignment for {}, {}\n".format(self.organism, os.path.basename(entry[:-4])))
       batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast_search/mlst/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\

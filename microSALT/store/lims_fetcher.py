@@ -155,7 +155,7 @@ class LIMS_Fetcher():
        and returns it in a format for database calls."""
     self.load_lims_sample_info(sample_name)
     lims_organ = self.data['organism'].lower()
-    orgs = os.listdir(self.config["folders"]["references"])
+    orgs = os.listdir(self.config["folders"]["st_loci"])
     organism = re.split('\W+', lims_organ)
     try:
       refs = 0
