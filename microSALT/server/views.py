@@ -1,6 +1,8 @@
+import logging
+import subprocess
+
 from datetime import date
 from flask import Flask, render_template
-import logging
 from io import StringIO, BytesIO
 
 from sqlalchemy import *

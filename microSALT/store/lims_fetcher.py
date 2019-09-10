@@ -83,9 +83,6 @@ class LIMS_Fetcher():
       date_arrival = self.get_date(cg_sampleid,type="arrival")
       date_libprep = self.get_date(cg_sampleid,type="libprep")
       date_sequencing = self.get_date(cg_sampleid,type="sequencing")
- 
-      if not hasattr(sample, 'message'):
-        raise Exception("LIMS connection timeout: '{}'".format(str(e)))
     except Exception as e:
       self.logger.error("LIMS connection timeout: '{}'".format(str(e)))
 
