@@ -63,12 +63,15 @@ class Referencer():
  
   def update_refs(self):
     """Updates all references. Order is important, since no object is updated twice"""
+    #Updates
     self.fetch_pubmlst(self.force)
     self.fetch_external(self.force)
     self.fetch_resistances(self.force)
+
+    #Reindexes
     self.index_db(os.path.dirname(self.config['folders']['expec']), '.fsa')
     for thing in os.listdir(self.config['folders']['cgmlst']):
-      if os.path.isdir(thing):
+      if os.path.isdir("{}/{}".format(self.config['folders']['cgmlst'],thing)):
         self.index_db("{}/{}".format(self.config['folders']['cgmlst'], thing), '.fsa')
 
 
@@ -78,7 +81,7 @@ class Referencer():
     sufx_files = glob.glob("{}/*{}".format(full_dir, suffix)) #List of source files
     for file in sufx_files:
       bases = sum([1 for elem in files if file[:-4] in elem]) #Number of files with same base name (7)
-      newer = sum([1 for elem in files if file.st_mtime < elem.st_mtime]) #Number of index files fresher than source (7)
+      newer = sum([1 for elem in files if os.stat(file).st_mtime < os.stat("{}/{}".format(full_dir,elem)).st_mtime]) #Number of index files fresher than source (7)
       if bases != 7 or newer != 7:
         try:
           #Resistence files
