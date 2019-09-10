@@ -46,7 +46,7 @@ if [[ $type = "release" ]]; then
     pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/requirements.txt 
     pip install -U git+https://github.com/Clinical-Genomics/microSALT 
 elif [[ $type = "source" ]]; then
-  HERE=pwd
+  HERE=$PWD
   git clone https://github.com/Clinical-Genomics/microSALT
   cd microSALT && git checkout $branch
   pip install -r requirements.txt && pip install -e . && cd ${HERE}
