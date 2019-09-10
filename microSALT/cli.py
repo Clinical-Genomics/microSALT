@@ -55,6 +55,8 @@ def root(ctx):
   else:
     ctx.obj['config']['folders']['expec'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'expec/ExPEC.fsa')) 
   ctx.obj['config']['folders']['adapters'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'share/trimmomatic-0.39-1/adapters/'))
+  scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
+  scientist.check_connection()
 
 @root.group()
 @click.pass_context
