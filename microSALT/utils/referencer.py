@@ -77,12 +77,14 @@ class Referencer():
 
   def index_db(self, full_dir, suffix):
     """Check for indexation, makeblastdb job if not enough of them."""
+    reindexation = False
     files = os.listdir(full_dir)
     sufx_files = glob.glob("{}/*{}".format(full_dir, suffix)) #List of source files
     for file in sufx_files:
-      bases = sum([1 for elem in files if file[:-4] in elem]) #Number of files with same base name (7)
-      newer = sum([1 for elem in files if os.stat(file).st_mtime < os.stat("{}/{}".format(full_dir,elem)).st_mtime]) #Number of index files fresher than source (7)
-      if bases != 7 or newer != 7:
+      bases = sum([1 for elem in files if os.path.basename(file[:-4]) in elem]) #Number of files with same base name (7)
+      newer = sum([1 for elem in glob.glob("{}*".format(file[:-4])) if os.stat(file).st_mtime < os.stat(elem).st_mtime]) #Number of index files fresher than source (7)
+      if bases != 4 or newer != 3:
+        reindexation = True
         try:
           #Resistence files
           if '.fsa' in suffix:
@@ -96,7 +98,8 @@ class Referencer():
           output, error = proc.communicate()
         except Exception as e:
           self.logger.error("Unable to index requested target {} in {}".format(file, full_dir))
-    self.logger.info("Re-indexed contents of {}".format(full_dir))
+    if reindexation:
+      self.logger.info("Re-indexed contents of {}".format(full_dir))
 
   def fetch_external(self, force=False):
     """ Updates reference for data that IS ONLY LINKED to pubMLST """

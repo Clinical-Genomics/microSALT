@@ -432,7 +432,7 @@ class Job_Creator():
 
     process = subprocess.Popen("id -un".split(), stdout=subprocess.PIPE)
     user, error = process.communicate()
-    user = user.replace('.',' ').title()
+    user = str(user).replace('.',' ').title()
     startfile = "{}/run_started.out".format(self.finishdir)
     configfile = "{}/config.log".format(self.finishdir) 
     mailfile = "{}/mailjob.sh".format(self.finishdir)

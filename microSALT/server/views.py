@@ -4,6 +4,7 @@ import subprocess
 from datetime import date
 from flask import Flask, render_template
 from io import StringIO, BytesIO
+from natsort import natsorted
 
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
@@ -196,12 +197,15 @@ def gen_add_info(sample_info=dict()):
     s.expacs=sorted(s.expacs, key=lambda x: x.gene)
     output['samples'].append(s)
 
-  keylist = corecompare.keys()
+  keylist = list(corecompare.keys())
   cgmatrix = [[''] + list(corecompare.keys())]
   for i in keylist:
     tmplist = [i]
     for j in keylist:
-      tmplist.append( len(list(set(corecompare[i]).symmetric_difference(corecompare[j]))) )
+      if keylist.index(j) >= keylist.index(i):
+        tmplist.append('-')
+      else:
+        tmplist.append( len(list(set(corecompare[i]).symmetric_difference(corecompare[j]))) )
     cgmatrix.append( tmplist )
   output['cgmatrix'] = cgmatrix
 
@@ -212,6 +216,6 @@ def gen_add_info(sample_info=dict()):
 
   process = subprocess.Popen("id -un".split(), stdout=subprocess.PIPE)
   user, error = process.communicate()
-  output['user'] = user.replace('.',' ').title()
+  output['user'] = user.decode("utf-8").replace('.',' ').title()
 
   return output
