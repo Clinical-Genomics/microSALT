@@ -59,6 +59,9 @@ class Scraper():
        self.scrape_blast(type='seq_type')
        self.scrape_blast(type='resistance')
        self.scrape_blast(type='core_seq_type')
+       self.scrape_blast(type='virulence')
+       self.scrape_blast(type='fimh')
+       self.scrape_blast(type='plasmid')
        if self.lims_fetcher.get_organism_refname(self.name) == "escherichia_coli":
          self.scrape_blast(type='expec')
        self.scrape_alignment()
@@ -83,6 +86,9 @@ class Scraper():
     self.scrape_blast(type='seq_type')
     self.scrape_blast(type='resistance')
     self.scrape_blast(type='core_seq_type')
+    self.scrape_blast(type='virulence')
+    self.scrape_blast(type='fimh')
+    self.scrape_blast(type='plasmid')
     if self.lims_fetcher.get_organism_refname(self.name) == "escherichia_coli":
       self.scrape_blast(type='expec')
     self.scrape_alignment()
@@ -153,6 +159,14 @@ class Scraper():
           filename = 'beta-lactam'
         if type == 'resistance':
           ref_file = "{}/{}.fsa".format(self.config["folders"]["resistances"], filename)
+        #TODO: NONTRIVIAL LOOKUP
+        elif type == 'virulence':
+          ref_file = "{}/{}.fsa".format(self.config["folders"]["virulences"], filename)
+        #TODO: NONTRIVIAL LOOKUP
+        elif type == 'plasmid':
+          ref_file = "{}/{}.fsa".format(self.config["folders"]["plasmids"], filename)
+        elif type == 'fimh':
+          ref_file = "{}/fimH.fsa".format(self.config["folders"]["fimhs"])
         elif type == 'expec':
           ref_file = self.config["folders"]["expec"]
         elif type == 'core_seq_type':
@@ -180,9 +194,20 @@ class Scraper():
                   hypo[-1]["contig_end"] = int(elem_list[7])
                 hypo[-1]["subject_length"] =  int(elem_list[11])
 
-                if type == 'resistance':
+                if type == 'resistance' or type == 'plasmid':
                   hypo[-1]["instance"] = filename
                   partials = re.search('(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3])
+                  hypo[-1]["reference"] = partials.group(3)
+                  hypo[-1]["gene"] = partials.group(1)
+                  if hypo[-1]["gene"] in self.gene2resistance.keys():
+                    hypo[-1]["resistance"] = self.gene2resistance[hypo[-1]["gene"]]
+                  else:
+                    hypo[-1]["{}".format(type)] = hypo[-1]["instance"].capitalize()
+                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(partials.group(0))]
+
+                elif type == 'virulence':
+                  hypo[-1]["instance"] = filename
+                  partials = re.search('(.+)\:(\d+){1,3}(?:\:(\w+))*', elem_list[3])
                   hypo[-1]["reference"] = partials.group(3)
                   hypo[-1]["gene"] = partials.group(1)
                   if hypo[-1]["gene"] in self.gene2resistance.keys():
@@ -215,6 +240,11 @@ class Scraper():
 
                 elif type == 'seq_type' or type == 'core_seq_type':
                   partials = re.search('(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3])
+                  hypo[-1]["loci"] = partials.group(1)
+                  hypo[-1]["allele"] = int(partials.group(2))
+                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(partials.group(0))]
+                elif type == 'fimh':
+                  partials = re.search('(\w+)(\d+){1,3}(?:_(\w+))*', elem_list[3])
                   hypo[-1]["loci"] = partials.group(1)
                   hypo[-1]["allele"] = int(partials.group(2))
                   hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(partials.group(0))]

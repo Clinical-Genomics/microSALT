@@ -536,6 +536,9 @@ class Job_Creator():
     self.blast_subset('mlst',"{}/{}/*.tfa".format(self.config["folders"]["references"], self.organism))
     self.blast_subset('resistance',"{}/*.fsa".format(self.config["folders"]["resistances"]))
     self.blast_subset('cgmlst', "{}/{}/*.fasta".format(self.config['folders']['cgmlst'], self.organism))
+    self.blast_subset('fimh',"{}/*.fsa".format(self.config["folders"]["fimhs"]))
+    self.blast_subset('plasmid',"{}/*.fsa".format(self.config["folders"]["plasmids"]))
+    self.blast_subset('virulence',"{}/*.fsa".format(self.config["folders"]["virulences"]))
     if self.organism == "escherichia_coli":
       self.blast_subset('expec', self.config["folders"]["expec"])
 

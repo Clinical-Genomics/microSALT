@@ -59,7 +59,10 @@ def root(ctx):
   ctx.obj['config']['folders']['st_loci'] = "{}/ST_loci".format(ctx.obj['config']['folders']['references'])
   ctx.obj['config']['folders']['resistances'] = "{}/resfinder_db".format(ctx.obj['config']['folders']['references'])
   ctx.obj['config']['folders']['virulences'] = "{}/virulencefinder_db".format(ctx.obj['config']['folders']['references'])
+  ctx.obj['config']['folders']['plasmids'] = "{}/plasmidfinder_db".format(ctx.obj['config']['folders']['references'])
+  ctx.obj['config']['folders']['fimhs'] = "{}/fimtyper_db".format(ctx.obj['config']['folders']['references'])
   ctx.obj['config']['folders']['genomes'] = "{}/genomes".format(ctx.obj['config']['folders']['references'])
+  
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
   scientist.check_connection()
 
