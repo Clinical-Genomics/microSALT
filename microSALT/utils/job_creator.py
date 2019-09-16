@@ -168,6 +168,30 @@ class Job_Creator():
     batchfile.write("\n")
     batchfile.close()
 
+  def create_blastsection(self, category=""):
+    """Creates a BLAST job for identifying variants of Category using data from Reference"""
+
+    #Create run
+    batchfile = open(self.batchfile, "a+")
+    batchfile.write("mkdir {}/blast_search/{}\n\n".format(self.finishdir, category))
+    blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
+
+    output_prefix = ""
+    if category == "mlst":
+      output_prefix = "loci_query_"
+      ref = glob.glob("{}/{}/*.tfa".format(self.config["folders"]["st_loci"], self.organism))
+    elif category == "expac":
+      ref = glob.glob("{}".format(self.config["folders"]["expac"]))
+    elif category == "resistance"
+      ref = glob.glob("{}/*.fsa".format(self.config["folders"]["resistances"]))
+
+    for entry in ref:
+      batchfile.write("# BLAST {} alignment for {}, {}\n".format(category.capitalize(), self.organism, os.path.basename(entry[:-4])))
+      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/{}{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
+      entry[:-4], self.finishdir, self.finishdir, category, output_prefix, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
+    batchfile.write("\n")
+    batchfile.close()
+
   def create_variantsection(self):
     """ Creates a job for variant calling based on local alignment """
     ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
@@ -555,10 +579,10 @@ class Job_Creator():
     batchfile = open(self.batchfile, "a+")
     batchfile.write("mkdir -p {}/blast_search\n".format(self.finishdir))
     batchfile.close()
-    self.create_mlstsection()
-    self.create_resistancesection()
+    self.create_blastsection(category="mlst")
+    self.create_blastsection(category="resistance")
     if self.organism == "escherichia_coli":
-      self.create_expacsection()
+      self.create_blastsection(category="expec")
 
   def snp_job(self):
     """ Writes a SNP calling job for a set of samples """

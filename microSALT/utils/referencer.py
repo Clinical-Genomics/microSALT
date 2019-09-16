@@ -63,7 +63,7 @@ class Referencer():
     """Updates all references. Order is important, since no object is updated twice"""
     self.fetch_pubmlst(self.force)
     self.fetch_external(self.force)
-    self.fetch_resistances(self.force)
+    self.fetch_resfinder(self.force)
     self.index_db(os.path.dirname(self.config['folders']['expac']), '.fsa')
 
   def index_db(self, full_dir, suffix):
@@ -147,57 +147,60 @@ class Referencer():
     else:
       self.db_access.add_external(overwrite=False, sample=sample)
 
-  def fetch_resistances(self, force=False):
-    cwd = os.getcwd()
-    url = "https://bitbucket.org/genomicepidemiology/resfinder_db.git"
-    hiddensrc ="{}/.resfinder_db".format(self.config['folders']['resistances'])
-    wipeIndex = False
+  def fetch_resfinder(self, force=False):
+    databases = ["resfinder_db","virulencefinder_db","fimtyper_db","plasmidfinder_db"]
 
-    if not os.path.isdir(hiddensrc):
-      self.logger.info("resFinder database not found. Caching..")
-      os.makedirs(hiddensrc)
-      cmd = "git clone {} --quiet".format(url)
-      process = subprocess.Popen(cmd.split(),cwd=self.config['folders']['resistances'], stdout=subprocess.PIPE)
-      output, error = process.communicate()
-      os.rename("{}/resfinder_db".format(self.config['folders']['resistances']), hiddensrc)
-      wipeIndex = True
-    else:
-      if not wipeIndex:
-        actual = os.listdir(self.config['folders']['resistances'])
-        for file in os.listdir(hiddensrc):
-          if file not in actual and ('.fsa' in file):
-            self.logger.info("resFinder database files corrupted. Syncing...")
-            wipeIndex = True
-            break
+    for db in databases:
+      trivial = db.split('_')[0].capitalize()
+      cwd = os.getcwd()
+      url = "https://bitbucket.org/genomicepidemiology/{}.git".format(db)
+      hiddensrc ="{}/{}/.{}".format(self.config['folders']['references'], db, db)
+      wipeIndex = False
 
-        cmd = "git pull origin master"
-        process = subprocess.Popen(cmd.split(),cwd=hiddensrc, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+      if not os.path.isdir(hiddensrc):
+        self.logger.info("{} database not found. Caching..".format(trivial))
+        os.makedirs(hiddensrc)
+        cmd = "git clone {} --quiet".format(url)
+        process = subprocess.Popen(cmd.split(),cwd="{}/{}".format(self.config['folders']['references'],db) , stdout=subprocess.PIPE)
         output, error = process.communicate()
-        if not 'Already up-to-date.' in str(output):
-          self.logger.info("Remote resFinder database updated. Syncing...")
-          wipeIndex = True
-        else:
-          self.logger.info("Cached resFinder database identical to remote.")
+        os.rename("{}/{}".format(self.config['folders']['references'], db), hiddensrc)
+        wipeIndex = True
+      else:
+        if not wipeIndex:
+          actual = os.listdir("{}/{}".format(self.config['folders']['references'],db))
+          for file in os.listdir(hiddensrc):
+            if file not in actual and ('.fsa' in file):
+              self.logger.info("{} database files corrupted. Syncing...".format(trivial))
+              wipeIndex = True
+              break
 
-    #Actual update of resistance folder
-    if wipeIndex:
-      for file in os.listdir(hiddensrc):
-        if(os.path.isfile("{}/{}".format(hiddensrc, file))):
-          #Copy fresh
-          shutil.copy("{}/{}".format(hiddensrc, file), self.config['folders']['resistances'])
+          cmd = "git pull origin master"
+          process = subprocess.Popen(cmd.split(),cwd=hiddensrc, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+          output, error = process.communicate()
+          if not 'Already up-to-date.' in str(output):
+            self.logger.info("Remote {} database updated. Syncing...".format(db))
+            wipeIndex = True
+          else:
+            self.logger.info("Cached {} database identical to remote.".format(db))
 
-    #Double checks indexation is current.
-    reIndex = False
-    for file in os.listdir(self.config['folders']['resistances']):
-      parts = file.split('.')
-      if len(parts) > 1 and parts[1] == 'fsa':
-        # Missing index or source modified after index
-        if not "{}.nhr".format(parts[0]) in os.listdir(self.config['folders']['resistances']) \
-           or os.stat("{}/{}".format(self.config['folders']['resistances'], file)).st_mtime > os.stat("{}/{}.nhr".format(self.config['folders']['resistances'],parts[0])).st_mtime\
-           or force:
-             reIndex = True
-    if reIndex:
-      self.index_db(self.config['folders']['resistances'], '.fsa')
+      #Actual update of resistance folder
+      if wipeIndex:
+        for file in os.listdir(hiddensrc):
+          if(os.path.isfile("{}/{}".format(hiddensrc, file))):
+            #Copy fresh
+            shutil.copy("{}/{}".format(hiddensrc, file), "{}/{}".format(self.config['folders']['references'],db))
+
+      #Double checks indexation is current.
+      reIndex = False
+      for file in os.listdir("{}/{}".format(self.config['folders']['references'],db)):
+        parts = file.split('.')
+        if len(parts) > 1 and parts[1] == 'fsa':
+          # Missing index or source modified after index
+          if not "{}.nhr".format(parts[0]) in os.listdir("{}/{}".format(self.config['folders']['references'])) \
+             or os.stat("{}/{}/{}".format(self.config['folders']['references'],db, file)).st_mtime > os.stat("{}/{}/{}.nhr".format(self.config['folders']['references'],db,parts[0])).st_mtime\            or force:
+               reIndex = True
+      if reIndex:
+        self.index_db("{}/{}".format(self.config['folders']['references'],db), '.fsa')
 
   def existing_organisms(self):
     """ Returns list of all organisms currently added """
