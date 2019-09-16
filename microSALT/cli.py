@@ -50,14 +50,18 @@ def root(ctx):
   ch.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
   logger.addHandler(ch)
   ctx.obj['log'] = logger
-  ctx.obj['config']['folders']['expac'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'expac/EXPAC.fsa')) 
+  if os.path.basename(os.path.expandvars('$CONDA_PREFIX'))[0] == 'D':
+    ctx.obj['config']['folders']['expec'] = os.path.abspath(os.path.join(wd , '../unique_references/ExPEC.fsa'))
+  else:
+    ctx.obj['config']['folders']['expec'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'expec/ExPEC.fsa'))
   ctx.obj['config']['folders']['adapters'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'share/trimmomatic-0.39-1/adapters/'))
   ctx.obj['config']['folders']['st_profiles'] = "{}/ST_profiles".format(ctx.obj['config']['folders']['references'])
   ctx.obj['config']['folders']['st_loci'] = "{}/ST_loci".format(ctx.obj['config']['folders']['references'])
   ctx.obj['config']['folders']['resistances'] = "{}/resfinder_db".format(ctx.obj['config']['folders']['references'])
   ctx.obj['config']['folders']['virulences'] = "{}/virulencefinder_db".format(ctx.obj['config']['folders']['references'])
   ctx.obj['config']['folders']['genomes'] = "{}/genomes".format(ctx.obj['config']['folders']['references'])
-
+  scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
+  scientist.check_connection()
 
 @root.group()
 @click.pass_context

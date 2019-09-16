@@ -14,7 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import SingletonThreadPool
 
 from microSALT import __version__
-from microSALT.store.orm_models import app, Collections, Expacs, Fimhs, Plasmids, Projects, Reports, Resistances, Samples, Seq_types, Versions, Virulences
+from microSALT.store.orm_models import app, Collections, Core_seq_types, Expacs, Fimhs, Plasmids, Projects, Reports, Resistances, Samples, Seq_types, Versions, Virulences
 from microSALT.store.models import Profiles, Novel
 
 class DB_Manipulator:
@@ -56,9 +56,6 @@ class DB_Manipulator:
     if not self.engine.dialect.has_table(self.engine, 'collections'):
       Collections.__table__.create(self.engine)
       self.logger.info("Created collections table")
-    if not self.engine.dialect.has_table(self.engine, 'expacs'):
-      Expacs.__table__.create(self.engine)
-      self.logger.info("Created EXPAC table")
     if not self.engine.dialect.has_table(self.engine, 'virulences'):
       Virulences.__table__.create(self.engine)
       self.logger.info("Created Virulences table")
@@ -68,6 +65,12 @@ class DB_Manipulator:
     if not self.engine.dialect.has_table(self.engine, 'fimhs'):
       Fimhs.__table__.create(self.engine)
       self.logger.info("Created FimH table")
+    if not self.engine.dialect.has_table(self.engine, 'expacs'):
+      Expacs.__table__.create(self.engine)
+      self.logger.info("Created ExPEC table")
+    if not self.engine.dialect.has_table(self.engine, 'core_seq_types'):
+      Core_seq_types.__table__.create(self.engine)
+      self.logger.info("Created core sequencing types table")
     for k,v in self.profiles.items():
       if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
         self.profiles[k].create()
@@ -144,12 +147,16 @@ class DB_Manipulator:
       entries.append(self.session.query(Expacs).filter(Expacs.CG_ID_sample.like('{}%'.format(name))).all())
       entries.append(self.session.query(Seq_types).filter(Seq_types.CG_ID_sample.like('{}%'.format(name))).all())
       entries.append(self.session.query(Resistances).filter(Resistances.CG_ID_sample.like('{}%'.format(name))).all())
+      entries.append(self.session.query(Expacs).filter(Expacs.CG_ID_sample.like('{}%'.format(name))).all())
+      entries.append(self.session.query(Core_seq_types).filter(Core_seq_types.CG_ID_sample.like('{}%'.format(name))).all())
       entries.append(self.session.query(Samples).filter(Samples.CG_ID_sample.like('{}%'.format(name))).all())
       #entries.append(self.session.query(Projects).filter(Projects.CG_ID_project==name).all())
     elif type == "Samples":
       entries.append(self.session.query(Expacs).filter(Expacs.CG_ID_sample==name).all())
       entries.append(self.session.query(Seq_types).filter(Seq_types.CG_ID_sample==name).all())
       entries.append(self.session.query(Resistances).filter(Resistances.CG_ID_sample==name).all())
+      entries.append(self.session.query(Expacs).filter(Expacs.CG_ID_sample==name).all())
+      entries.append(self.session.query(Core_seq_types).filter(Core_seq_types.CG_ID_sample==name).all())
       entries.append(self.session.query(Samples).filter(Samples.CG_ID_sample==name).all())
     elif type == "Collections":
       entries.append(self.session.query(Collections).filter(Collections.ID_collection==name).all())
