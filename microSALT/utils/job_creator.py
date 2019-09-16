@@ -535,7 +535,7 @@ class Job_Creator():
     batchfile.close()
     self.blast_subset('mlst',"{}/{}/*.tfa".format(self.config["folders"]["references"], self.organism))
     self.blast_subset('resistance',"{}/*.fsa".format(self.config["folders"]["resistances"]))
-    self.blast_subset('cgmlst', "{}/{}/main.fsa".format(self.config['folders']['cgmlst'], self.organism))
+    self.blast_subset('cgmlst', "{}/{}/*.fasta".format(self.config['folders']['cgmlst'], self.organism))
     if self.organism == "escherichia_coli":
       self.blast_subset('expec', self.config["folders"]["expec"])
 

@@ -72,7 +72,7 @@ class Referencer():
     self.index_db(os.path.dirname(self.config['folders']['expec']), '.fsa')
     for thing in os.listdir(self.config['folders']['cgmlst']):
       if os.path.isdir("{}/{}".format(self.config['folders']['cgmlst'],thing)):
-        self.index_db("{}/{}".format(self.config['folders']['cgmlst'], thing), '.fsa')
+        self.index_db("{}/{}".format(self.config['folders']['cgmlst'], thing), '.fasta')
 
 
   def index_db(self, full_dir, suffix):
@@ -262,8 +262,8 @@ class Referencer():
       with urllib.request.urlopen(url) as response, open(target, 'wb') as out_file:
         shutil.copyfileobj(response, out_file)
       with zipfile.ZipFile(target) as zf:
-        zf.extractall(targ_dir) 
-      #Rebake into one big file
+        zf.extractall(targ_dir)
+      #Create big file for span checking purposes
       combo = open("{}/main.fsa".format(targ_dir), "w+") 
       files = os.listdir(targ_dir)
       for file in files:
@@ -275,7 +275,7 @@ class Referencer():
             else:
               combo.write(line)
           currfile.close()
-      combo.close() 
+      combo.close()  
 
       self.db_access.upd_rec({'name':'cgmlst_{}'.format(pot_org)}, 'Versions', {'version':version})
       self.logger.info("cgMLST reference for {} updated to version {}".format(reference.replace('_',' ').capitalize(), version))
