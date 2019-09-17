@@ -124,7 +124,7 @@ class Referencer():
            (int(profile_no.replace('-','')) > int(currver.replace('-','')) or force):
           # Download definition files
           st_link = prefix + entry.find_all("a")[1]['href']
-          output = "{}/{}".format(self.config['folders']['profiles'], organ)
+          output = "{}/{}".format(self.config['folders']['st_profiles'], organ)
           urllib.request.urlretrieve(st_link, output)
           # Update database
           self.db_access.upd_rec({'name':"profile_{}".format(organ)}, 'Versions', {'version':profile_no})
@@ -350,7 +350,7 @@ class Referencer():
       return currver
 
     #Pull ST file
-    st_target = "{}/{}".format(self.config['folders']['profiles'], organism)
+    st_target = "{}/{}".format(self.config['folders']['st_profiles'], organism)
     input = "{}/schemes/1/profiles_csv".format(subtype_href)
     urllib.request.urlretrieve(input, st_target)
     #Pull locus files
