@@ -148,7 +148,7 @@ class Scraper():
 
     try:
       for file in q_list:
-        filename = os.path.basename(file[:-4])
+        filename = file.rsplit('.',1)[0] #Removes suffix
         if filename == 'lactam':
           filename = 'beta-lactam'
         if type == 'resistance':
