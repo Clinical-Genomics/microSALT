@@ -533,9 +533,10 @@ class Job_Creator():
     batchfile = open(self.batchfile, "a+")
     batchfile.write("mkdir -p {}/blast_search\n".format(self.finishdir))
     batchfile.close()
-    self.blast_subset('mlst',"{}/{}/*.tfa".format(self.config["folders"]["references"], self.organism))
+    self.blast_subset('mlst',"{}/{}/*.tfa".format(self.config["folders"]["st_loci"], self.organism))
     self.blast_subset('resistance',"{}/*.fsa".format(self.config["folders"]["resistances"]))
-    self.blast_subset('cgmlst', "{}/{}/*.fasta".format(self.config['folders']['cgmlst'], self.organism))
+    if os.path.exists("{}/{}".format(self.config['folders']['cgmlst'], self.organism)):
+      self.blast_subset('cgmlst', "{}/{}/*.fasta".format(self.config['folders']['cgmlst'], self.organism))
     self.blast_subset('fimh',"{}/*.fsa".format(self.config["folders"]["fimhs"]))
     self.blast_subset('plasmid',"{}/*.fsa".format(self.config["folders"]["plasmids"]))
     self.blast_subset('virulence',"{}/*.fsa".format(self.config["folders"]["virulences"]))
