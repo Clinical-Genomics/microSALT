@@ -35,7 +35,6 @@ class Referencer():
    neworgs = list()
    newrefs = list()
    newcg = list()
-
    try:
      if project:
        samplenames = self.lims.samples_in_project(cg_id)
@@ -67,7 +66,7 @@ class Referencer():
     self.fetch_pubmlst(self.force)
     self.fetch_external(self.force)
     self.fetch_resfinder(self.force)
-    self.index_db(os.path.dirname(self.config['folders']['expac']), '.fsa')
+    self.index_db(os.path.dirname(self.config['folders']['expec']), '.fsa')
     for thing in os.listdir(self.config['folders']['cgmlst']):
       if os.path.isdir("{}/{}".format(self.config['folders']['cgmlst'],thing)):
         self.index_db("{}/{}".format(self.config['folders']['cgmlst'], thing), '.fasta')
@@ -169,11 +168,10 @@ class Referencer():
 
       if not os.path.isdir(hiddensrc):
         self.logger.info("{} database not found. Caching..".format(trivial))
-        os.makedirs(hiddensrc)
         cmd = "git clone {} --quiet".format(url)
-        process = subprocess.Popen(cmd.split(),cwd="{}/{}".format(self.config['folders']['references'],db) , stdout=subprocess.PIPE)
+        process = subprocess.Popen(cmd.split(),cwd="/tmp/" , stdout=subprocess.PIPE)
         output, error = process.communicate()
-        os.rename("{}/{}".format(self.config['folders']['references'], db), hiddensrc)
+        shutil.move("/tmp/{}".format(db), hiddensrc)
         wipeIndex = True
       else:
         if not wipeIndex:
