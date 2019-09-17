@@ -19,9 +19,7 @@ _This is a description of the tests necessary to verify the stability of the PR.
 
 _Basic test routine:_
 - _`bash /home/proj/production/servers/resources/hasta.scilifelab.se/update-microsalt-stage.sh BRANCHNAME`_
-- _`us`_
-- _`us`_
-- _`us`_
+- _Select installer options "release", "S_microSALT" and "BRANCHNAME"_
 - _`us`_
 - _`source activate S_microSALT`_
 - _`export MICROSALT_CONFIG=/home/proj/dropbox/microSALT.json`_
