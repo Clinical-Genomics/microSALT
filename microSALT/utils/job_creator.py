@@ -125,7 +125,14 @@ class Job_Creator():
     file_list = glob.glob(search_string)
     batchfile = open(self.batchfile, "a+")
     batchfile.write("mkdir {}/blast_search/{}\n".format(self.finishdir, name))
-    blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
+    header_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
+    id_format = "\"7 sallseqid sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
+
+    if type == 'cgmlst':
+      blast_format = id_format
+    else:
+      blast_format = header_format
+
     if len(file_list) > 1:
       for ref in file_list:
         ref_nosuf = re.search('(\w+)\.\w+', os.path.basename(ref)).group(1)
