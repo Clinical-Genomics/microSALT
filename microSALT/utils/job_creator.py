@@ -128,7 +128,7 @@ class Job_Creator():
     header_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
     id_format = "\"7 sallseqid sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
 
-    if type == 'cgmlst':
+    if name == 'cgmlst':
       blast_format = id_format
     else:
       blast_format = header_format
