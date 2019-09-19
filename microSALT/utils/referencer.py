@@ -77,19 +77,21 @@ class Referencer():
     files = os.listdir(full_dir)
     sufx_files = glob.glob("{}/*{}".format(full_dir, suffix)) #List of source files
     for file in sufx_files:
-      bases = sum([1 for elem in files if os.path.basename(file[:-4]) in elem]) #Number of files with same base name (7)
-      newer = sum([1 for elem in glob.glob("{}*".format(file[:-4])) if os.stat(file).st_mtime < os.stat(elem).st_mtime]) #Number of index files fresher than source (7)
+      base = re.sub('\{}$'.format(suffix), '', file)
+
+      bases = sum([1 for elem in files if os.path.basename(base) in elem]) #Number of files with same base name (7)
+      newer = sum([1 for elem in glob.glob("{}*".format(base)) if os.stat(file).st_mtime < os.stat(elem).st_mtime]) #Number of index files fresher than source (7)
       if bases != 4 or newer != 3:
         reindexation = True
         try:
           #Resistence files
           if '.fsa' in suffix:
             bash_cmd = "makeblastdb -in {}/{} -dbtype nucl -out {}".format(\
-            full_dir, os.path.basename(file),  os.path.basename(file[:-4]))
+            full_dir, os.path.basename(file),  os.path.basename(base))
           #MLST locis
           else:
             bash_cmd = "makeblastdb -in {}/{} -dbtype nucl -parse_seqids -out {}".format(\
-            full_dir, os.path.basename(file),  os.path.basename(file[:-4]))
+            full_dir, os.path.basename(file),  os.path.basename(base))
           proc = subprocess.Popen(bash_cmd.split(), cwd=full_dir, stdout=subprocess.PIPE)
           output, error = proc.communicate()
         except Exception as e:

@@ -90,7 +90,7 @@ class LIMS_Fetcher():
     organism = "Unset"
     reference = "None"
     if 'Reference Genome Microbial' in sample.udf:
-      reference = sample.udf['Reference Genome Microbial']
+      reference = sample.udf['Reference Genome Microbial'].strip()
 
     if 'Strain' in sample.udf and organism == "Unset":
       #Predefined genus usage. All hail buggy excel files
@@ -126,7 +126,7 @@ class LIMS_Fetcher():
       elif reference == 'NC_002516.2':
         organism = 'Pseudomonas aeruginosa'
     elif 'Comment' in sample.udf and not re.match('\w{4}\d{2,3}', sample.udf['Comment']) and organism == "Unset":
-      organism = sample.udf['Comment']
+      organism = sample.udf['Comment'].strip()
     # Consistent safe-guard
     elif organism == "Unset":
       organism = "Other"
@@ -144,8 +144,8 @@ class LIMS_Fetcher():
                            'organism' : organism,
                            'priority' : prio,
                            'reference' : reference,
-                           'Customer_ID': sample.udf['customer'],
-                           'application_tag': sample.udf['Sequencing Analysis'],
+                           'Customer_ID': sample.udf['customer'].strip(),
+                           'application_tag': sample.udf['Sequencing Analysis'].strip(),
                            'date_arrival': date_arrival,
                            'date_sequencing': date_sequencing,
                            'date_libprep': date_libprep,

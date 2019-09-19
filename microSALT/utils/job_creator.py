@@ -125,7 +125,14 @@ class Job_Creator():
     file_list = glob.glob(search_string)
     batchfile = open(self.batchfile, "a+")
     batchfile.write("mkdir {}/blast_search/{}\n".format(self.finishdir, name))
-    blast_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
+    header_format = "\"7 stitle sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
+    id_format = "\"7 sallseqid sstrand qaccver saccver pident evalue bitscore qstart qend sstart send length\""
+
+    if name == 'cgmlst':
+      blast_format = id_format
+    else:
+      blast_format = header_format
+
     if len(file_list) > 1:
       for ref in file_list:
         ref_nosuf = re.search('(\w+)\.\w+', os.path.basename(ref)).group(1)
@@ -484,7 +491,7 @@ class Job_Creator():
           final = entry
           break
 
-    head = "-A {} -p core -n 1 -t 06:00:00 -J {}_{}_MAILJOB --qos {} --open-mode append --dependency=afterany:{} --output {}"\
+    head = "-A {} -p core -n 1 -t 18:00:00 -J {}_{}_MAILJOB --qos {} --open-mode append --dependency=afterany:{} --output {}"\
             .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"],\
                     self.name,self.config["slurm_header"]["qos"],\
            final, self.config['folders']['log_file'],  self.config['regex']['mail_recipient'])

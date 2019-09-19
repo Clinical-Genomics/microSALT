@@ -238,7 +238,7 @@ class Scraper():
                     hypo[-1]["virulence"] = ""
                   hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(elem_list[0])]
 
-                elif type == 'seq_type' or type == 'core_seq_type':
+                elif type == 'seq_type':
                   partials = re.search('(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3])
                   hypo[-1]["loci"] = partials.group(1)
                   hypo[-1]["allele"] = int(partials.group(2))
@@ -248,6 +248,12 @@ class Scraper():
                   hypo[-1]["loci"] = partials.group(1)
                   hypo[-1]["allele"] = int(partials.group(2))
                   hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(partials.group(0))]
+
+                elif type == 'core_seq_type':
+                  partials = re.search('(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[2])
+                  hypo[-1]["allele"] = int(elem_list[0])
+                  hypo[-1]["loci"] = filename
+                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}_{}'.format(hypo[-1]["loci"], hypo[-1]["allele"])] 
 
                 # split elem 2 into contig node_NO, length, cov
                 nodeinfo = elem_list[2].split('_')
