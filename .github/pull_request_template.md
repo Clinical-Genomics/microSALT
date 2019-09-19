@@ -19,6 +19,7 @@ _This is a description of the tests necessary to verify the stability of the PR.
 
 _Basic test routine:_
 - _`bash /home/proj/production/servers/resources/hasta.scilifelab.se/update-microsalt-stage.sh BRANCHNAME`_
+- _Select installer options "release", "S_microSALT" and "BRANCHNAME"_
 - _`us`_
 - _`source activate S_microSALT`_
 - _`export MICROSALT_CONFIG=/home/proj/dropbox/microSALT.json`_
@@ -27,6 +28,8 @@ _Basic test routine:_
 - _`microSALT analyse project MIC3557`_
 - _`microSALT analyse project MIC4107`_
 - _`microSALT analyse project MIC4109`_
+
+_Verify that the results for projects MIC3109, MIC3552, MIC3557, MIC4107 & MIC4109 are consistent with the results attached to AMSystem doc 1490, Microbial_WGS.xlsx_
 
 ## Test results
 _These are the results of the tests, and necessary conclusions, that prove the stability of the PR._
