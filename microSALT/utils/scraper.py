@@ -154,7 +154,7 @@ class Scraper():
 
     try:
       for file in q_list:
-        filename = os.path.basename(file[:-4])
+        filename = os.path.basename(file).rsplit('.',1)[0] #Removes suffix
         if filename == 'lactam':
           filename = 'beta-lactam'
         if type == 'resistance':
@@ -172,7 +172,7 @@ class Scraper():
         elif type == 'core_seq_type':
           ref_file = "{}/{}/main.fsa".format(self.config['folders']['cgmlst'], organism)
         elif type == 'seq_type':
-          ref_file =  "{}/{}/{}.tfa".format(self.config['folders']['references'], organism, filename.split('_')[-1])
+          ref_file =  "{}/{}/{}.tfa".format(self.config['folders']['st_loci'], organism, filename.split('_')[-1])
         locilengths = self.get_locilengths(ref_file)
 
         with open("{}".format(file), 'r') as sample:
