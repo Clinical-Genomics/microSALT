@@ -13,6 +13,8 @@ import sys
 import yaml
 
 from pkg_resources import iter_entry_points
+from distutils.sysconfig import get_python_lib
+from pathlib import Path
 from microSALT import __version__, config, wd
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
@@ -50,7 +52,11 @@ def root(ctx):
   ch.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
   logger.addHandler(ch)
   ctx.obj['log'] = logger
-  ctx.obj['config']['folders']['expac'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'expac/EXPAC.fsa')) 
+  #If dev install
+  if 'microSALT' in os.listdir(get_python_lib()):
+    ctx.obj['config']['folders']['expac'] = os.path.abspath(os.path.join(Path(__file__).parent, 'expac/EXPAC.fsa'))
+  else:
+    ctx.obj['config']['folders']['expac'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'expac/EXPAC.fsa')) 
   ctx.obj['config']['folders']['adapters'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'share/trimmomatic-0.39-1/adapters/')) 
 
 @root.group()
