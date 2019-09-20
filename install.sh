@@ -50,7 +50,7 @@ elif [[ $type == "source" ]]; then
   fi
   git clone https://github.com/Clinical-Genomics/microSALT
   cd microSALT && git checkout $branch
-  pip install -r requirements.txt && pip install -e . && cd ${HERE}
+  pip install -r requirements.txt && pip install . && pip install -e . && cd ${HERE}
   echo "Source installed under ${HERE}/microSALT" 
 fi 
 echo "Installation Complete!"
