@@ -53,8 +53,8 @@ def root(ctx):
   logger.addHandler(ch)
   ctx.obj['log'] = logger
   #If dev install
-  if 'microSALT' in os.listdir(get_python_lib()):
-    ctx.obj['config']['folders']['expac'] = os.path.abspath(os.path.join(Path(__file__).parent, 'expac/EXPAC.fsa'))
+  if not 'microSALT-' in os.listdir(get_python_lib()):
+    ctx.obj['config']['folders']['expac'] = os.path.abspath(os.path.join(Path(__file__).parent.parent, 'unique_references/EXPAC.fsa'))
   else:
     ctx.obj['config']['folders']['expac'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'expac/EXPAC.fsa')) 
   ctx.obj['config']['folders']['adapters'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'share/trimmomatic-0.39-1/adapters/')) 
