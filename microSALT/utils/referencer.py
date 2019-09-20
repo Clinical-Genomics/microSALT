@@ -201,7 +201,7 @@ class Referencer():
             shutil.copy("{}/{}".format(hiddensrc, file), "{}/{}".format(self.config['folders']['references'],db))
 
       #Double checks indexation is current.
-      self.index_db("{}/{}".format(self.config['folders']['references'],db) '.fsa')
+      self.index_db("{}/{}".format(self.config['folders']['references'],db), '.fsa')
 
   def existing_organisms(self):
     """ Returns list of all organisms currently added """
