@@ -79,8 +79,13 @@ class Job_Creator():
             raise Exception("Some fastq files are unresolved symlinks in directory {}.".format(self.indir))
 
         #Make sure both mates exist
-        if file_match[1] == '1' or file_match[1] == '2':
-          pairno = 2-1%int(file_match[1]) #1->2, 2->1
+        if file_match[1] == '1' or file_match[1] == '2' or file_match[1] == 'forward' or file_match[1] == 'reverse':
+          if file_match[1] == 'forward' or file_match[1] == 'reverse': 
+            pairno = 'forward'
+            if 'forward' in file_match[1]:
+              pairno = 'reverse'
+          else:
+            pairno = 2-1%int(file_match[1]) #1->2, 2->1
           #Construct mate name
           pairname = "{}{}{}".format(file_match.string[:file_match.end(1)-1] , pairno, \
                       file_match.string[file_match.end(1):file_match.end()])
