@@ -147,6 +147,7 @@ class Scraper():
     res_cols = self.db_pusher.get_columns('{}'.format(type2db))
 
     try:
+      old_ref = ""
       for file in q_list:
         filename = os.path.basename(file).rsplit('.',1)[0] #Removes suffix
         if filename == 'lactam':
@@ -159,7 +160,12 @@ class Scraper():
           ref_file = "{}/{}/main.fsa".format(self.config['folders']['cgmlst'], organism)
         elif type == 'seq_type':
           ref_file =  "{}/{}/{}.tfa".format(self.config['folders']['references'], organism, filename.split('_')[-1])
-        locilengths = self.get_locilengths(ref_file)
+
+        #Removes a lot of cgmlst inits
+        if old_ref != ref_file:
+          old_ref = ref_file
+          locilengths = self.get_locilengths(ref_file)
+          
 
         with open("{}".format(file), 'r') as sample:
           for line in sample:
