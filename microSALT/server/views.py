@@ -1,3 +1,4 @@
+import math
 import logging
 import subprocess
 
@@ -197,16 +198,21 @@ def gen_add_info(sample_info=dict()):
     s.expacs=sorted(s.expacs, key=lambda x: x.gene)
     output['samples'].append(s)
 
+  #CG matrix creation
   keylist = list(corecompare.keys())
-  cgmatrix = [[''] + list(corecompare.keys())]
-  for i in keylist:
-    tmplist = [i]
-    for j in keylist:
-      if keylist.index(j) >= keylist.index(i):
-        tmplist.append('-')
-      else:
-        tmplist.append( len(list(set(corecompare[i]).symmetric_difference(corecompare[j]))) )
-    cgmatrix.append( tmplist )
+  cgmatrix = list()
+  sections = math.ceil(len(keylist)/10)
+ 
+  for s in range(0, sections):
+    cgmatrix.append([''] + keylist[s*10:s*10+10])
+    for i in keylist[s*10+1:]:
+      tmplist = [i]
+      for j in keylist[s*10:s*10+10]:
+        if keylist.index(j) >= keylist.index(i):
+          tmplist.append('-')
+        else:
+          tmplist.append( len(list(set(corecompare[i]).symmetric_difference(corecompare[j]))) )
+      cgmatrix.append( tmplist )
   output['cgmatrix'] = cgmatrix
 
   versions = session.query(Versions).all()
