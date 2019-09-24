@@ -198,22 +198,31 @@ def gen_add_info(sample_info=dict()):
     s.expacs=sorted(s.expacs, key=lambda x: x.gene)
     output['samples'].append(s)
 
-  #CG matrix creation
+
+  #CG display
   keylist = list(corecompare.keys())
-  cgmatrix = list()
-  sections = math.ceil(len(keylist)/10)
- 
-  for s in range(0, sections):
-    cgmatrix.append([''] + keylist[s*10:s*10+10])
-    for i in keylist[s*10+1:]:
-      tmplist = [i]
-      for j in keylist[s*10:s*10+10]:
-        if keylist.index(j) >= keylist.index(i):
-          tmplist.append('-')
-        else:
-          tmplist.append( len(list(set(corecompare[i]).symmetric_difference(corecompare[j]))) )
-      cgmatrix.append( tmplist )
-  output['cgmatrix'] = cgmatrix
+  cgtop = dict()
+  for i in keylist:
+    for j in keylist[keylist.index(i)+1:]:
+      distance = len(list(set(corecompare[i]).symmetric_difference(corecompare[j])))
+      if distance <= 200:
+        cgtop['{} - {}'.format(i,j)] = len(list(set(corecompare[i]).symmetric_difference(corecompare[j])))
+  output['cgmatrix'] = sorted(cgtop.items(), key = lambda t: t[1])
+
+  #FIXED LIMIT LOWER TRIANGLE CG-MATRIX
+  #cgmatrix = list()
+  #sections = math.ceil(len(keylist)/10)
+  #for s in range(0, sections):
+  #  cgmatrix.append([''] + keylist[s*10:s*10+10])
+  #  for i in keylist[s*10+1:]:
+  #    tmplist = [i]
+  #    for j in keylist[s*10:s*10+10]:
+  #      if keylist.index(j) >= keylist.index(i):
+  #        tmplist.append('-')
+  #      else:
+  #        tmplist.append( len(list(set(corecompare[i]).symmetric_difference(corecompare[j]))) )
+  #    cgmatrix.append( tmplist )
+  #output['cgmatrix'] = cgmatrix
 
   versions = session.query(Versions).all()
   for version in versions:

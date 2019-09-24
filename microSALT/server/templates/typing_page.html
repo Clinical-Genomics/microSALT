@@ -109,19 +109,22 @@
             </div></div>
 
             <div class="panel"><div class="panel-body">
-              <h3>Core Genome distans<br></h3>
+              <h3>Core Genome distans (topplista)<br></h3>
               <p>
               </p>
               <div class="table-responsive">
                 <table  class="table table-bordered" style='table-layout:fixed;'>
+                <tr><td><b>CG Prov ID</b></td><td><b>Avstånd</b></td></tr>
                 {% for row in cgmatrix %}
                   <tr>
                   {% for elem in row %}
-                    {% if elem|int == 0 %}
-                      <td><b>{{elem}}</b></td>
-                    {% elif elem|int < 10 %}
-                      <td bgcolor="#ebffcd">{{elem}}</td>
+                    {% if elem is string %}
+                      <td>{{elem}}</td>
+                    {% elif elem|int == 0 %}
+                      <td bgcolor="#fa8072">{{elem}} (Identiska)</td>
                     {% elif elem|int < 30 %}
+                      <td bgcolor="#ebffcd">{{elem}}</td>
+                    {% elif elem|int < 50 %}
                       <td bgcolor="#fffacd">{{elem}}</td>
                     {% else %}
                       <td>{{elem}}</td>
