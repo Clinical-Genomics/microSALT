@@ -85,7 +85,7 @@ class Referencer():
 
       bases = sum([1 for elem in files if os.path.basename(base) in elem]) #Number of files with same base name (7)
       newer = sum([1 for elem in glob.glob("{}*".format(base)) if os.stat(file).st_mtime < os.stat(elem).st_mtime]) #Number of index files fresher than source (7)
-      if bases != 4 or newer != 3:
+      if not (bases == 7 or newer == 6) and not (bases==4 and newer==3):
         reindexation = True
         try:
           #Resistence files
