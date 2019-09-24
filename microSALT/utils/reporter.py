@@ -194,7 +194,7 @@ class Reporter():
     #Create each individual row past the 2nd, per iteration
     for s in sample_info['samples']:
       rowdict = dict()
-      pref = "{},{},{},{},{}".format(s.CG_ID_sample,s.Customer_ID_sample, s.organism, s.ST_status, s.threshold)
+      pref = "{},{},{},{},{}".format(s.CG_ID_sample,s.Customer_ID_sample, s.organism, s.ST_status.replace(',',';'), s.threshold)
       #Load single sample
       if motif=='resistance':
         for r in s.resistances:

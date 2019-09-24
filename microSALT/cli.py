@@ -13,6 +13,8 @@ import sys
 import yaml
 
 from pkg_resources import iter_entry_points
+from distutils.sysconfig import get_python_lib
+from pathlib import Path
 from microSALT import __version__, config, wd
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
@@ -50,13 +52,14 @@ def root(ctx):
   ch.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
   logger.addHandler(ch)
   ctx.obj['log'] = logger
-  if os.path.basename(os.path.expandvars('$CONDA_PREFIX'))[0] == 'D':
-    ctx.obj['config']['folders']['expec'] = os.path.abspath(os.path.join(wd , '../unique_references/ExPEC.fsa')) 
+  #If dev install
+  if not 'microSALT-' in os.listdir(get_python_lib()):
+    ctx.obj['config']['folders']['expec'] = os.path.abspath(os.path.join(Path(__file__).parent.parent, 'unique_references/EXPAC.fsa'))
   else:
     ctx.obj['config']['folders']['expec'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'expec/ExPEC.fsa')) 
   ctx.obj['config']['folders']['adapters'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'share/trimmomatic-0.39-1/adapters/'))
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
-  scientist.check_connection()
+  scientist.check_connection() 
 
 @root.group()
 @click.pass_context
