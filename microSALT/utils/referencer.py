@@ -70,6 +70,7 @@ class Referencer():
 
     #Reindexes
     self.index_db(os.path.dirname(self.config['folders']['expec']), '.fsa')
+    self.logger.info("Checking cgMLST references (time consuming)")
     for thing in os.listdir(self.config['folders']['cgmlst']):
       if os.path.isdir("{}/{}".format(self.config['folders']['cgmlst'],thing)):
         self.index_db("{}/{}".format(self.config['folders']['cgmlst'], thing), '.fasta')
@@ -83,8 +84,16 @@ class Referencer():
     for file in sufx_files:
       base = re.sub('\{}$'.format(suffix), '', file)
 
-      bases = sum([1 for elem in files if os.path.basename(base) in elem]) #Number of files with same base name (7)
-      newer = sum([1 for elem in glob.glob("{}*".format(base)) if os.stat(file).st_mtime < os.stat(elem).st_mtime]) #Number of index files fresher than source (7)
+      bases = 0
+      newer = 0
+      for elem in files:
+        #Number of files with same base name (7)
+        if os.path.basename(base) == elem[:elem.rfind(".")]:
+         bases = bases + 1
+         #Number of index files fresher than source (6)
+         if os.stat(file).st_mtime < os.stat("{}/{}".format(full_dir,elem)).st_mtime:
+           newer = newer + 1
+
       if not (bases == 7 or newer == 6) and not (bases==4 and newer==3):
         reindexation = True
         try:

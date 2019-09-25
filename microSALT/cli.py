@@ -24,7 +24,7 @@ from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 
 if config == '':
-  click.echo("ERROR: No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
+  click.echo("ERROR - No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
   sys.exit(-1)
 else:
   #Makes sure DB inherits correct permissions if freshly created
@@ -33,7 +33,7 @@ else:
   output, error = proc.communicate()
 
 def done():
-  click.echo("Execution finished!")
+  click.echo("INFO - Execution finished!")
 
 @click.group()
 @click.version_option(__version__)
@@ -114,12 +114,12 @@ def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip
   if input != "":
     project_dir = os.path.abspath(input)
     if not project_id in project_dir:
-      click.echo("Path does not contain project id. Exiting.")
+      click.echo("ERROR - Path does not contain project id. Exiting.")
       sys.exit(-1)
   else:
     project_dir = "{}/{}".format(ctx.obj['config']['folders']['seqdata'], project_id)
     if not os.path.isdir(project_dir):
-      click.echo("Sequence data folder for {} does not exist.".format(project_id))
+      click.echo("ERROR - Sequence data folder for {} does not exist.".format(project_id))
       sys.exit(-1)
 
   click.echo("INFO - Checking versions of references..")
@@ -168,20 +168,20 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
   try:
     scientist.load_lims_sample_info(sample_id)
   except Exception as e:
-    click.echo("Unable to load LIMS sample info.")
+    click.echo("ERROR - Unable to load LIMS sample info.")
 
   if input != "":
     sample_dir = os.path.abspath(input)
     if not sample_id in sample_dir:
-      click.echo("Path does not contain sample id. Exiting.")
+      click.echo("ERROR - Path does not contain sample id. Exiting.")
       sys.exit(-1)
   else:
     sample_dir = "{}/{}/{}".format(ctx.obj['config']['folders']['seqdata'], scientist.data['CG_ID_project'] ,sample_id)
     if not os.path.isdir(sample_dir):
-      click.echo("Sequence data folder for {} does not exist.".format(sample_id))
+      click.echo("ERROR - Sequence data folder for {} does not exist.".format(sample_id))
       sys.exit(-1)
 
-  click.echo("Checking versions of references..")
+  click.echo("INFO - Checking versions of references..")
   try:
     if not skip_update:
       fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
@@ -193,7 +193,7 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'], trim=trimmed,qc_only=qc_only, careful=careful)
     worker.project_job(single_sample=True)
   except Exception as e:
-    click.echo("Unable to process sample {} due to '{}'".format(sample_id,e))
+    click.echo("ERROR - Unable to process sample {} due to '{}'".format(sample_id,e))
   done()
 
 
@@ -234,7 +234,7 @@ def collection(ctx, collection_id, input, dry, qc_only, config, email, untrimmed
     if os.path.isdir("{}/{}".format(collection_dir,sample)):
       pool.append(sample)
   if pool == []:
-    click.echo("Input collection lacks any valid of samples")
+    click.echo("ERROR - Input collection lacks any valid of samples")
     sys.exit(-1)
 
   pool_cg = []
@@ -243,16 +243,16 @@ def collection(ctx, collection_id, input, dry, qc_only, config, email, untrimmed
       scientist.load_lims_sample_info(sample,warnings=True)
       pool_cg.append(scientist.data['CG_ID_sample'])
     except Exception as e:
-      click.echo("Unable to load LIMS sample info for sample {}.".format(sample))
+      click.echo("ERROR - Unable to load LIMS sample info for sample {}.".format(sample))
 
-  click.echo("Checking versions of references..")
+  click.echo("INFO - Checking versions of references..")
   for sample in pool_cg:
     try:
       if not skip_update:
         fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
         fixer.identify_new(sample,project=False)
     except Exception as e:
-      click.echo("Unable to update references for sample {} due to '{}'".format(sample,str(e)))
+      click.echo("ERROR - Unable to update references for sample {} due to '{}'".format(sample,str(e)))
   if not skip_update:
     fixer.update_refs()
     click.echo("INFO - Version check done. Creating sbatch job")
@@ -263,7 +263,7 @@ def collection(ctx, collection_id, input, dry, qc_only, config, email, untrimmed
     worker = Job_Creator(collection_dir, ctx.obj['config'], ctx.obj['log'], trim=trimmed,qc_only=qc_only, careful=careful, pool=pool_cg)
     worker.project_job()
   except Exception as e:
-    click.echo("Unable to process collection due to '{}'".format(str(e)))
+    click.echo("ERROR - Unable to process collection due to '{}'".format(str(e)))
   done()
 
 @finish.command()
@@ -291,15 +291,15 @@ def sample(ctx, sample_id, rerun, email, input, config, report):
   if input != "":
     sample_dir = os.path.abspath(input)
     if not sample_id in sample_dir:
-      click.echo("Path does not contain sample id. Exiting.")
+      click.echo("ERROR - Path does not contain sample id. Exiting.")
       sys.exit(-1)
   else:
     prohits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(sample_id))]
     if len(prohits) > 1:
-      click.echo("Multiple instances of that analysis exists. Specify full path using --input")
+      click.echo("ERROR - Multiple instances of that analysis exists. Specify full path using --input")
       sys.exit(-1)
     elif len(prohits) <1:
-      click.echo("No analysis folder prefixed by {} found.".format(sample_id))
+      click.echo("ERROR - No analysis folder prefixed by {} found.".format(sample_id))
       sys.exit(-1)
     else:
       sample_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
@@ -308,7 +308,7 @@ def sample(ctx, sample_id, rerun, email, input, config, report):
   try:
     scientist.load_lims_sample_info(sample_id)
   except Exception as e:
-    click.echo("Unable to load LIMS sample info.")
+    click.echo("ERROR - Unable to load LIMS sample info.")
     sys.exit(-1)
 
   garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
@@ -343,15 +343,15 @@ def project(ctx, project_id, rerun, email, input, config, report):
   if input != "":
     project_dir = os.path.abspath(input)
     if not project_id in project_dir:
-      click.echo("Path does not contain project id. Exiting.")
+      click.echo("ERROR - Path does not contain project id. Exiting.")
       sys.exit(-1)
   else:
     prohits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(project_id))]
     if len(prohits) > 1:
-      click.echo("Multiple instances of that analysis exists. Specify full path using --input")
+      click.echo("ERROR - Multiple instances of that analysis exists. Specify full path using --input")
       sys.exit(-1)
     elif len(prohits) <1:
-      click.echo("No analysis folder prefixed by {} found.".format(project_id))
+      click.echo("ERROR - No analysis folder prefixed by {} found.".format(project_id))
       sys.exit(-1)
     else:
       project_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
@@ -390,10 +390,10 @@ def collection(ctx, collection_id, rerun, email, input, config, report):
   else:
     prohits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(collection_id))]
     if len(prohits) > 1:
-      click.echo("Multiple instances of that analysis exists. Specify full path using --input")
+      click.echo("ERROR - Multiple instances of that analysis exists. Specify full path using --input")
       sys.exit(-1)
     elif len(prohits) <1:
-      click.echo("No analysis folder prefixed by {} found.".format(project_id))
+      click.echo("ERROR - No analysis folder prefixed by {} found.".format(project_id))
       sys.exit(-1)
     else:
       collection_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
@@ -402,7 +402,7 @@ def collection(ctx, collection_id, rerun, email, input, config, report):
     if os.path.isdir("{}/{}".format(collection_dir,sample)):
       pool.append(sample)
   if pool == []:
-    click.echo("Input collection lacks any valid of samples")
+    click.echo("ERROR - Input collection lacks any valid of samples")
     sys.exit(-1)
 
   pool_cg = []
@@ -412,7 +412,7 @@ def collection(ctx, collection_id, rerun, email, input, config, report):
       scientist.load_lims_sample_info(sample,warnings=True)
       pool_cg.append(scientist.data['CG_ID_sample'])
     except Exception as e:
-      click.echo("Unable to load LIMS sample info for sample {}.".format(sample))
+      click.echo("ERROR - Unable to load LIMS sample info for sample {}.".format(sample))
       sys.exit(-1)
 
   for sample in pool:
@@ -435,7 +435,7 @@ def add(ctx, organism, force):
   except Exception as e:
     click.echo(e.args[0])
     sys.exit(-1)
-  click.echo("Checking versions of all references..")
+  click.echo("INFO - Checking versions of all references..")
   referee = Referencer(ctx.obj['config'], ctx.obj['log'],force=force)
   referee.update_refs()
 
@@ -444,7 +444,7 @@ def add(ctx, organism, force):
 def list(ctx):
   """ Lists all stored organisms """
   refe = Referencer(ctx.obj['config'], ctx.obj['log'])
-  click.echo("Currently stored organisms:")
+  click.echo("INFO - Currently stored organisms:")
   for org in sorted(refe.existing_organisms()):
     click.echo(org.replace("_"," ").capitalize())
 
