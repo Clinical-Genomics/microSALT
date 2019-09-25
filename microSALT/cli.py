@@ -122,17 +122,17 @@ def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip
       click.echo("Sequence data folder for {} does not exist.".format(project_id))
       sys.exit(-1)
 
-  click.echo("Checking versions of references..")
+  click.echo("INFO - Checking versions of references..")
   try:
     if not skip_update:
       fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
       fixer.identify_new(project_id,project=True)
       fixer.update_refs()
-      print("Version check done. Creating sbatch jobs")
+      click.echo("INFO - Version check done. Creating sbatch jobs")
     else:
-      print("Skipping version check.")
+      click.echo("INFO - Skipping version check.")
   except Exception as e:
-    print("{}".format(e))
+    click.echo("{}".format(e))
 
   manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'],trim=trimmed,qc_only=qc_only, careful=careful)
   manager.project_job()
@@ -187,9 +187,9 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
       fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
       fixer.identify_new(sample_id,project=False) 
       fixer.update_refs()
-      print("Version check done. Creating sbatch job")
+      click.echo("INFO - Version check done. Creating sbatch job")
     else:
-      print("Skipping version check.")
+      click.echo("INFO - Skipping version check.")
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'], trim=trimmed,qc_only=qc_only, careful=careful)
     worker.project_job(single_sample=True)
   except Exception as e:
@@ -255,9 +255,9 @@ def collection(ctx, collection_id, input, dry, qc_only, config, email, untrimmed
       click.echo("Unable to update references for sample {} due to '{}'".format(sample,str(e)))
   if not skip_update:
     fixer.update_refs()
-    print("Version check done. Creating sbatch job")
+    click.echo("INFO - Version check done. Creating sbatch job")
   else:
-    print("Skipping version check.")
+    click.echo("INFO - Skipping version check")
 
   try: 
     worker = Job_Creator(collection_dir, ctx.obj['config'], ctx.obj['log'], trim=trimmed,qc_only=qc_only, careful=careful, pool=pool_cg)
@@ -488,7 +488,7 @@ def review(ctx, type, customer, skip_update, email):
   if not skip_update:
     fixer.update_refs()
     fixer.resync()
-  print("Version check done. Generating output")
+  click.echo("INFO - Version check done. Generating output")
   if type=='report':
     codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
     codemonkey.report(type='st_update', customer=customer)
