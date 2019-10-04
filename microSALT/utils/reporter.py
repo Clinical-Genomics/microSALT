@@ -189,7 +189,7 @@ class Reporter():
       topline += ",,{}{}".format(active_gene,geneholder)
       resnames = ','.join(sorted(motifdict[k]))
       botline += ",,{}".format(resnames)
-    excel.write"{}\n".format(sepfix))
+    excel.write("{}\n".format(sepfix))
     excel.write("{}\n".format(topline))
     excel.write("{}\n".format(botline))
 
