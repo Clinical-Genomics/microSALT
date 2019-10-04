@@ -260,7 +260,7 @@ class Scraper():
               (hypo[ind]["contig_end"] >= hypo[targ]["contig_start"] and hypo[ind]["contig_end"] <= hypo[targ]["contig_end"]) or \
               (hypo[ind][identifier] == hypo[targ][identifier]):
             #Rightmost is worse
-            if float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]["span"])) >= float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]["span"])):
+            if float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]["span"])) > float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]["span"])):
               del hypo[targ]
               ignore = True
             #Leftmost is worse
@@ -268,6 +268,17 @@ class Scraper():
               del hypo[ind]
               targ = ind +1
               ignore = True
+            #Identical identity and span, seperating based on contig coverage
+            else:
+              #Rightmost is worse
+              if float(hypo[ind]["contig_coverage"]) >= float(hypo[targ]["contig_coverage"]):
+                del hypo[targ]
+                ignore = True
+              #Leftmost is worse
+              elif float(hypo[ind]["contig_coverage"]) < float(hypo[targ]["contig_coverage"]):
+                del hypo[ind]
+                targ = ind +1
+                ignore = True
         if not ignore:
           targ += 1
         else:
