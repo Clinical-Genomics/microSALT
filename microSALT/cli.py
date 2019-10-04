@@ -54,7 +54,7 @@ def root(ctx):
   ctx.obj['log'] = logger
   #If dev install
   if not 'microSALT-' in os.listdir(get_python_lib()):
-    ctx.obj['config']['folders']['expec'] = os.path.abspath(os.path.join(Path(__file__).parent.parent, 'unique_references/EXPAC.fsa'))
+    ctx.obj['config']['folders']['expec'] = os.path.abspath(os.path.join(Path(__file__).parent.parent, 'unique_references/ExPEC.fsa'))
   else:
     ctx.obj['config']['folders']['expec'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'expec/ExPEC.fsa')) 
   ctx.obj['config']['folders']['adapters'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'share/trimmomatic-0.39-1/adapters/'))

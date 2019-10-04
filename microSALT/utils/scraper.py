@@ -135,6 +135,8 @@ class Scraper():
   def scrape_blast(self,type=""):
     hypo = list()
     type2db = type.capitalize() + 's'
+    if type == 'expec':
+      type2db = 'Expacs'
     folder = type
     folder = folder.replace('seq_type', 'mlst')
     folder = folder.replace('core_', 'cg')
@@ -171,6 +173,7 @@ class Scraper():
           for line in sample:
             #Ignore commented fields
             if not line[0] == '#':
+
               elem_list = line.rstrip().split("\t")
               if not elem_list[1] == 'N/A':
                 hypo.append(dict())
