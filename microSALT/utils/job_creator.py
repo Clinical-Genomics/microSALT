@@ -4,6 +4,7 @@
 #!/usr/bin/env python
 
 import glob
+import gzip
 import json
 import os
 import re
@@ -108,10 +109,10 @@ class Job_Creator():
 
     #Warn about invalid fastq files
     for vfile in verified_files:
-      with open("{}/{}".format(self.indir,vfile), 'r') as f:
-        lines = f.read().splitlines()
-        if not '+' in lines[-2]:
-          self.logger.warning("Input fastq {} does not seem to end properly".format(vfile))
+      f = gzip.open(("{}/{}".format(self.indir,vfile), 'r')
+      lines = f.read().splitlines()
+      if not '+' in str(lines[-2]):
+        self.logger.warning("Input fastq {} does not seem to end properly".format(vfile))
 
     return sorted(verified_files)
  
