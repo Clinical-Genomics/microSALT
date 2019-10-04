@@ -206,7 +206,16 @@ def gen_add_info(sample_info=dict()):
     for j in keylist[keylist.index(i)+1:]:
       distance = len(list(set(corecompare[i]).symmetric_difference(corecompare[j])))
       if distance <= 200:
-        cgtop['{} - {}'.format(i,j)] = len(list(set(corecompare[i]).symmetric_difference(corecompare[j])))
+        controls = False
+        if i.startswith('NTC') or i.startswith('0-') or i.startswith('NK-') or i.startswith('NEG') or \
+        i.startswith('CTRL') or i.startswith('Neg') or i.startswith('blank') or i.startswith('dual-NTC'):
+          if j.startswith('NTC') or j.startswith('0-') or j.startswith('NK-') or j.startswith('NEG') or \
+          j.startswith('CTRL') or j.startswith('Neg') or j.startswith('blank') or j.startswith('dual-NTC'):
+            controls = True
+        if controls:
+          cgtop['{} - {}'.format(i,j)] = "{} (Kontrollprover)".format(len(list(set(corecompare[i]).symmetric_difference(corecompare[j]))))
+        else:
+          cgtop['{} - {}'.format(i,j)] = len(list(set(corecompare[i]).symmetric_difference(corecompare[j])))
   output['cgmatrix'] = sorted(cgtop.items(), key = lambda t: t[1])
 
   #FIXED LIMIT LOWER TRIANGLE CG-MATRIX
