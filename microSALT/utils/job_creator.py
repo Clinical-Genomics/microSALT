@@ -98,12 +98,21 @@ class Job_Creator():
           raise Exception("Some fastq files have no mate in directory {}.".format(self.indir))
     if verified_files == []:
       raise Exception("No files in directory {} match file_pattern '{}'.".format(self.indir, self.config['regex']['file_pattern']))
+
     #Warn about file sizes
     for vfile in verified_files:
       bsize = os.stat("{}/{}".format(self.indir,vfile)).st_size
       bsize = bsize >> 20
       if bsize > 1000:
         self.logger.warning("Input fastq {} exceeds 1000MB".format(vfile))
+
+    #Warn about invalid fastq files
+    for vfile in verified_files:
+      with open("{}/{}".format(self.indir,vfile), 'r') as f:
+        lines = f.read().splitlines()
+        if not '+' in lines[-2]:
+          self.logger.warning("Input fastq {} does not seem to end properly".format(vfile))
+
     return sorted(verified_files)
  
   def create_assemblysection(self):
