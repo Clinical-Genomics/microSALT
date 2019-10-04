@@ -93,7 +93,7 @@ class Referencer():
          #Number of index files fresher than source (6)
          if os.stat(file).st_mtime < os.stat("{}/{}".format(full_dir,elem)).st_mtime:
            newer = newer + 1
-
+      #7 for parse_seqids, 4 for not.
       if not (bases == 7 or newer == 6) and not (bases==4 and newer==3):
         reindexation = True
         try:
