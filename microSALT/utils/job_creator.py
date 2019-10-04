@@ -109,7 +109,7 @@ class Job_Creator():
 
     #Warn about invalid fastq files
     for vfile in verified_files:
-      f = gzip.open(("{}/{}".format(self.indir,vfile), 'r')
+      f = gzip.open("{}/{}".format(self.indir,vfile), 'r')
       lines = f.read().splitlines()
       if not '+' in str(lines[-2]):
         self.logger.warning("Input fastq {} does not seem to end properly".format(vfile))
