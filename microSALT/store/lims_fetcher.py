@@ -207,8 +207,12 @@ class LIMS_Fetcher():
     date_list = [x for x in date_list if x != None]
     if date_list:
       try:
-        dp = max(date_list).split('-')
-        return datetime(int(dp[0]), int(dp[1]), int(dp[2]))
+        dp = max(date_list)
+        if isinstance(dp, str): 
+          dp = dp.split('-')
+          return datetime(int(dp[0]), int(dp[1]), int(dp[2]))
+        else:
+          return dp
       except Exception as e:
         return max(date_list)
     else:
