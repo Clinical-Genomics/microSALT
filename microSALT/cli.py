@@ -496,10 +496,10 @@ def review(ctx, type, customer, skip_update, email):
 
 @resync.command()
 @click.argument('sample_name')
-@click.option('--ignore', default=False, is_flag=True)
+@click.option('--force', default=False, is_flag=True, help="Resolves sample without checking for pubMLST match")
 @click.pass_context
-def overwrite(ctx,sample_name, ignore):
+def overwrite(ctx,sample_name, force):
   """Flags sample as resolved"""
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-  fixer.resync(type='overwrite', sample=sample_name, ignore=ignore)
+  fixer.resync(type='overwrite', sample=sample_name, ignore=force)
   done()

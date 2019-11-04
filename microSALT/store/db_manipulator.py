@@ -299,20 +299,20 @@ class DB_Manipulator:
             onelap = prequery.filter(and_(Samples.ST==novel.ST,Samples.organism==org, Samples.ST<=-10, Samples.CG_ID_sample==sample)).all()
           for entry in onelap:
             #review
-            if entry.pubmlst_ST == -1 and not overwrite and not ignore:
+            if entry.pubmlst_ST == -1 and not overwrite:
               self.logger.info("Update: Sample {} of organism {}; Internal ST {} is now linked to {} '{}'".\
                         format(entry.CG_ID_sample, org, novel.ST, exist.ST, exist))
               self.upd_rec({'CG_ID_sample':entry.CG_ID_sample}, 'Samples', {'pubmlst_ST':exist.ST})
-            #overwrite by ignoring
-            elif overwrite and ignore:
-              self.logger.info("Ignore: Sample {} of organism {}; Internal ST {} will now be ignored (pubMLST ST = 0)".\
-                        format(entry.CG_ID_sample, org, novel.ST))
-              self.upd_rec({'CG_ID_sample':entry.CG_ID_sample}, 'Samples', {'pubmlst_ST':0})
             #overwrite
-            elif overwrite and not ignore:
-              self.logger.info("Replacement: Sample {} of organism {}; Internal ST {} is now {} '{}'".\
-                        format(entry.CG_ID_sample, org, novel.ST, exist.ST, exist))
-              self.upd_rec({'CG_ID_sample':entry.CG_ID_sample}, 'Samples', {'ST':exist.ST, 'pubmlst_ST':exist.ST})
+            elif overwrite:
+              if exist:
+                self.logger.info("Replacement: Sample {} of organism {}; Internal ST {} is now {} '{}'".\
+                          format(entry.CG_ID_sample, org, novel.ST, exist.ST, exist))
+                self.upd_rec({'CG_ID_sample':entry.CG_ID_sample}, 'Samples', {'ST':exist.ST, 'pubmlst_ST':exist.ST})
+              elif ignore:
+                self.logger.info("Ignore: Sample {} of organism {}; Internal ST {} is now flagged as resolved".\
+                          format(entry.CG_ID_sample, org, novel.ST, exist.ST, exist))
+                self.upd_rec({'CG_ID_sample':entry.CG_ID_sample}, 'Samples', {'pubmlst_ST':0})
 
   def list_unresolved(self):
     """Lists all novel samples that current havent been flagged as resolved"""
