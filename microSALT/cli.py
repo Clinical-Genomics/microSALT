@@ -473,7 +473,7 @@ def resync(ctx):
   """Updates internal ST with pubMLST equivalent"""
 
 @resync.command()
-@click.option('--type', default='html', type=click.Choice(['report', 'list']), help="Output format")
+@click.option('--type', default='list', type=click.Choice(['report', 'list']), help="Output format")
 @click.option('--customer', default='all', help="Customer id filter")
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
