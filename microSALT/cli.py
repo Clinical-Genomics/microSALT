@@ -496,9 +496,10 @@ def review(ctx, type, customer, skip_update, email):
 
 @resync.command()
 @click.argument('sample_name')
+@click.option('--ignore', default=False, is_flag=True)
 @click.pass_context
-def overwrite(ctx,sample_name):
+def overwrite(ctx,sample_name, ignore):
   """Flags sample as resolved"""
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-  fixer.resync(type='overwrite', sample=sample_name)
+  fixer.resync(type='overwrite', sample=sample_name, ignore=ignore)
   done()
