@@ -132,7 +132,7 @@
                           {% if sample.date_arrival is not none and sample.date_arrival.date().strftime('%Y-%m-%d') != '1-01-01' %}
                             <td>{{sample.date_arrival.date()}}</td>
                           {% else %}<td><i>Okänt</i></td>{% endif %}
-                          {% if sample.libprep is not none and sample.date_libprep.date().strftime('%Y-%m-%d') != '1-01-01' %}
+                          {% if sample.date_libprep is not none and sample.date_libprep.date().strftime('%Y-%m-%d') != '1-01-01' %}
                             <td>{{sample.date_libprep.date()}}</td>
                           {% else %}<td><i>Okänt</i></td>{% endif %}
                           {% if sample.method_libprep is not none and 'Not in LIMS' not in sample.method_libprep %}
@@ -140,7 +140,7 @@
                           {% else %}
                             <td><i>Okänt</i></td>
                           {% endif %}
-                          {% if sample.sequencing is not none and sample.date_sequencing.date().strftime('%Y-%m-%d') != '1-01-01' %}
+                          {% if sample.date_sequencing is not none and sample.date_sequencing.date().strftime('%Y-%m-%d') != '1-01-01' %}
                             <td>{{sample.date_sequencing.date()}}</td>
                           {% else %}<td><i>Okänt</i></td>{% endif %}
                           {% if sample.method_sequencing is not none and 'Not in LIMS' not in sample.method_sequencing %}
