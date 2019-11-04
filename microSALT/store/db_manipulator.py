@@ -291,12 +291,13 @@ class DB_Manipulator:
         args = 'and_(' + ','.join(args) + ')'
         exist = self.session.query(self.profiles[org]).filter(eval(args)).all()
 
-        if exist:
-          exist = exist[0]
+        if exist or ignore:
           if sample == "":
             onelap = prequery.filter(and_(Samples.ST==novel.ST,Samples.organism==org, Samples.ST<=-10)).all()
           else:
             onelap = prequery.filter(and_(Samples.ST==novel.ST,Samples.organism==org, Samples.ST<=-10, Samples.CG_ID_sample==sample)).all()
+          if exist:
+            exist = exist[0]
           for entry in onelap:
             #review
             if entry.pubmlst_ST == -1 and not overwrite:
@@ -311,7 +312,7 @@ class DB_Manipulator:
                 self.upd_rec({'CG_ID_sample':entry.CG_ID_sample}, 'Samples', {'ST':exist.ST, 'pubmlst_ST':exist.ST})
               elif ignore:
                 self.logger.info("Ignore: Sample {} of organism {}; Internal ST {} is now flagged as resolved".\
-                          format(entry.CG_ID_sample, org, novel.ST, exist.ST, exist))
+                          format(entry.CG_ID_sample, org, novel.ST))
                 self.upd_rec({'CG_ID_sample':entry.CG_ID_sample}, 'Samples', {'pubmlst_ST':0})
 
   def list_unresolved(self):
