@@ -66,8 +66,8 @@
     "insert_size_fail": 100,
     "average_coverage_warn": 100,
     "average_coverage_fail": 10,
-    "bp_10x_warn": 90,
-    "bp_10x_fail": 80,
+    "bp_10x_warn": 85,
+    "bp_10x_fail": 75,
     "bp_30x_warn": 70,
     "bp_50x_warn": 50,
     "bp_100x_warn": 20
