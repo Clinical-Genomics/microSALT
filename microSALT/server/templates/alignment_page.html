@@ -17,7 +17,7 @@
               <small><p align="center">Rapport genererad: {{date}}</p></small></h2>
               <div class="row">
                 <div class="col">
-                 <h3>Kontakt Clinical Genomics</h3>
+                 <h3>Kontakt</h3>
                  <address>
                    <strong>Clinical Genomics</strong><br>
                    Science for Life Laboratory<br>
@@ -27,9 +27,15 @@
                  </address>
               </div>
                <div class="col">
-                 <h3>Kund:</h3>
+                 <h3>Kund</h3>
                  <address>
-                 <h2>{{samples[0].projects.Customer_ID}}</h2><br>
+                 <h4>{{samples[0].projects.Customer_ID}}</h4><br>
+                </address>
+                <address>
+                  <strong>microSALT-teamet</strong><br>
+                  <abbr title="Förslagslåda">E:</abbr><a href="mailto:microsalt-suggestions@scilifelab.se?subject=Förbättringsförslag">
+                  microsalt-suggestions@scilifelab.se
+                  </a>
                 </address>
               </div>
               <br />
@@ -145,13 +151,13 @@
                           <td class="text-right">{{ (sample.duplication_rate*100)|round(2) }}
                         {% endif %}
                       </td>
-                        {% if sample.insert_size is none or sample.insert_size == 0%}
+                        {% if sample.insert_size is none or sample.insert_size == 0 %}
                          <td class="text-right">N/A
                         {% elif sample.insert_size <= threshold.insert_size_warn and not 'Kontroll' in sample.ST_status %}
                           {% if sample.insert_size <= threshold.insert_size_fail %}
-                            <td class="text-right" bgcolor="#fa8072">{{ insert_size }}</font>
+                            <td class="text-right" bgcolor="#fa8072">{{ sample.insert_size }}</font>
                           {% else %}
-                            <td class="text-right" bgcolor="#fffacd">{{ insert_size }}</font>
+                            <td class="text-right" bgcolor="#fffacd">{{ sample.insert_size }}</font>
                           {% endif %}
                         {% else %} <td class="text-right">{{ sample.insert_size }} {% endif %}
                       </td>

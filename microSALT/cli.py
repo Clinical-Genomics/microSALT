@@ -473,7 +473,7 @@ def resync(ctx):
   """Updates internal ST with pubMLST equivalent"""
 
 @resync.command()
-@click.option('--type', default='html', type=click.Choice(['report', 'list']), help="Output format")
+@click.option('--type', default='list', type=click.Choice(['report', 'list']), help="Output format")
 @click.option('--customer', default='all', help="Customer id filter")
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
@@ -496,9 +496,10 @@ def review(ctx, type, customer, skip_update, email):
 
 @resync.command()
 @click.argument('sample_name')
+@click.option('--force', default=False, is_flag=True, help="Resolves sample without checking for pubMLST match")
 @click.pass_context
-def overwrite(ctx,sample_name):
+def overwrite(ctx,sample_name, force):
   """Flags sample as resolved"""
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-  fixer.resync(type='overwrite', sample=sample_name)
+  fixer.resync(type='overwrite', sample=sample_name, ignore=force)
   done()
