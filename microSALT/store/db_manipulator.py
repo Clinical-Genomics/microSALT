@@ -274,10 +274,11 @@ class DB_Manipulator:
     else:
       self.add_rec({'CG_ID_project':name, 'steps_aggregate':hashstring, 'date':dt, 'version':1} ,'Reports')
 
-  def add_external(self,overwrite=False, sample="",ignore=False):
+  def sync_novel(self,overwrite=False, sample=""):
     """Looks at each novel table. See if any record has a profile match in the profile table.
        Updates these based on parameters"""
     prequery = self.session.query(Samples)
+
     for org, novel_table in self.novel.items():
       novel_list = self.session.query(novel_table).all()
       org_keys = novel_table.c.keys()
@@ -291,13 +292,12 @@ class DB_Manipulator:
         args = 'and_(' + ','.join(args) + ')'
         exist = self.session.query(self.profiles[org]).filter(eval(args)).all()
 
-        if exist or ignore:
+        if exist:
+          exist = exist[0]
           if sample == "":
             onelap = prequery.filter(and_(Samples.ST==novel.ST,Samples.organism==org, Samples.ST<=-10)).all()
           else:
             onelap = prequery.filter(and_(Samples.ST==novel.ST,Samples.organism==org, Samples.ST<=-10, Samples.CG_ID_sample==sample)).all()
-          if exist:
-            exist = exist[0]
           for entry in onelap:
             #review
             if entry.pubmlst_ST == -1 and not overwrite:
@@ -306,14 +306,18 @@ class DB_Manipulator:
               self.upd_rec({'CG_ID_sample':entry.CG_ID_sample}, 'Samples', {'pubmlst_ST':exist.ST})
             #overwrite
             elif overwrite:
-              if exist:
-                self.logger.info("Replacement: Sample {} of organism {}; Internal ST {} is now {} '{}'".\
-                          format(entry.CG_ID_sample, org, novel.ST, exist.ST, exist))
-                self.upd_rec({'CG_ID_sample':entry.CG_ID_sample}, 'Samples', {'ST':exist.ST, 'pubmlst_ST':exist.ST})
-              elif ignore:
-                self.logger.info("Ignore: Sample {} of organism {}; Internal ST {} is now flagged as resolved".\
-                          format(entry.CG_ID_sample, org, novel.ST))
-                self.upd_rec({'CG_ID_sample':entry.CG_ID_sample}, 'Samples', {'pubmlst_ST':0})
+              self.logger.info("Replacement: Sample {} of organism {}; Internal ST {} is now {} '{}'".\
+                        format(entry.CG_ID_sample, org, novel.ST, exist.ST, exist))
+              self.upd_rec({'CG_ID_sample':entry.CG_ID_sample}, 'Samples', {'ST':exist.ST, 'pubmlst_ST':exist.ST})
+
+  def rm_novel(self, sample=""):
+    """Flags a sample as pubMLST resolved by merit of ignoring it"""
+    query = self.session.query(Samples).filter(Samples.CG_ID_sample==sample).all()
+
+    self.logger.info("Ignore: Sample {} from organism {} with ST {}; is now flagged as resolved.".\
+                     format(query[0].CG_ID_sample, query[0].organism, query[0].ST))
+    self.upd_rec({'CG_ID_sample':query[0].CG_ID_sample}, 'Samples', {'pubmlst_ST':0})
+
 
   def list_unresolved(self):
     """Lists all novel samples that current havent been flagged as resolved"""

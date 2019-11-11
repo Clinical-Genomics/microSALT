@@ -143,9 +143,12 @@ class Referencer():
       #Add single sample support later
       self.db_access.list_unresolved()
     elif type=='overwrite':
-      self.db_access.add_external(overwrite=True, sample=sample, ignore=ignore)
+      if ignore:
+        self.db_access.rm_novel(sample=sample)
+      else:
+        self.db_access.sync_novel(overwrite=True, sample=sample)
     else:
-      self.db_access.add_external(overwrite=False, sample=sample)
+      self.db_access.sync_novel(overwrite=False, sample=sample)
 
   def fetch_resistances(self, force=False):
     cwd = os.getcwd()
