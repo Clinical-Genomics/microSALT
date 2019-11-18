@@ -331,13 +331,28 @@ class DB_Manipulator:
       novelbkt[entry.organism][entry.ST].append(entry.CG_ID_sample)
 
     novelbkt2= dict()
-    postquery = self.session.query(Samples).filter(and_(Samples.ST<=-10, Samples.pubmlst_ST != -1)).all()
+    postquery = self.session.query(Samples).filter(and_(Samples.ST<=-10, Samples.pubmlst_ST != -1, Samples.pubmlst_ST != 0)).all()
     for entry in postquery:
       if not entry.organism in novelbkt2:
         novelbkt2[entry.organism] = dict()
       if not entry.ST in novelbkt2[entry.organism]:
         novelbkt2[entry.organism][entry.ST] = list()
       novelbkt2[entry.organism][entry.ST].append(entry.CG_ID_sample)
+
+    novelbkt3= dict()
+    naquery = self.session.query(Samples).filter(and_( Samples.ST<0, Samples.ST>-10, Samples.pubmlst_ST != 0)).all()
+    for entry in naquery:
+      if not entry.organism in novelbkt3:
+        novelbkt3[entry.organism] = dict()
+      if not entry.ST in novelbkt3[entry.organism]:
+        novelbkt3[entry.organism][entry.ST] = list()
+      novelbkt3[entry.organism][entry.ST].append(entry.CG_ID_sample) 
+
+    print("\n####Unresolved samples and their respective error flags:####")
+    for k,v in novelbkt3.items():
+      print("Organism {} ({}):".format(k, len(v)))
+      for x,y in v.items():
+        print("{}:{} ({})".format(x,y,len(y)))
 
     print("\n####ST updated on pubMLST but not marked as resolved:####")
     for k,v in novelbkt2.items():
