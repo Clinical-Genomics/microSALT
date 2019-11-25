@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-import pytest
 import collections
+import os
+import pytest
 
 from microSALT.cli import config
 
@@ -41,10 +42,6 @@ def test_existence(exp_config):
       for thing in exp_config[entry]:
         assert thing in config_level_two
 
-def test_type(exp_config):
-  """Verify that each variable uses the correct format""" 
-  pass
-
 def test_reverse_existence(exp_config):
   """Check that the configuration doesnt contain outdated variables"""
 
@@ -60,3 +57,24 @@ def test_reverse_existence(exp_config):
         for thing in config[entry].keys():
           if thing != '_comment':
             assert thing in config_level_two
+
+#def test_type(exp_config):
+#  """Verify that each variable uses the correct format"""
+#  pass
+
+def test_paths(exp_config):
+  """Tests existence for all paths mentioned in variables"""
+  #level one
+  for entry in config.keys():
+    if entry != '_comment':
+      if isinstance(config[entry], str) and '/' in config[entry] and entry not in ['database', 'genologics']:
+        unmade_fldr = os.path.dirname(config[entry][thing])
+        assert (os.path.isdir(unmade_fldr))
+    
+      #level two
+      elif isinstance(config[entry], collections.Mapping):
+        for thing in config[entry].keys():
+          if isinstance(config[entry][thing], str) and '/' in config[entry][thing] and entry not in ['database', 'genologics']:
+            unmade_fldr = os.path.dirname(config[entry][thing])
+            assert (os.path.isdir(unmade_fldr))
+    
