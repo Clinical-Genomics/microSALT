@@ -1,4 +1,4 @@
-![Build status](https://travis-ci.com/Clinical-Genomics/microSALT.svg?branch=master) [![Coverage Status](https://coveralls.io/repos/github/Clinical-Genomics/microSALT/badge.svg?branch=master)](https://coveralls.io/github/Clinical-Genomics/microSALT?branch=master)
+![Build status](https://travis-ci.com/Clinical-Genomics/microSALT.svg?branch=master) [![Coverage Status](https://coveralls.io/repos/github/Clinical-Genomics/microSALT/badge.svg?branch=pytest)](https://coveralls.io/github/Clinical-Genomics/microSALT?branch=pytest)
 
 <p align="center">
   <a href="https://github.com/sylvinite/microSALT">
