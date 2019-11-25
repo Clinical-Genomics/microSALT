@@ -32,7 +32,7 @@
     "profiles": "/tmp//MLST/references/ST_profiles",
     "_comment": "ST folder. Each references sub-folder contains the .tfa file for each locus of the organism",
     "references": "/tmp/MLST/references/ST_loci",
-    "_commment": "Resistances. Commonly from resFinder",
+    "_comment": "Resistances. Commonly from resFinder",
     "resistances": "/tmp/MLST/references/resistances",
     "_comment": "Download path for NCBI genomes, for alignment usage",
     "genomes": "/tmp/MLST/references/genomes"
