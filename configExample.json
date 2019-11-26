@@ -29,7 +29,7 @@
     "_comment": "Root folder for input fasta sequencing data",
     "seqdata": "/tmp/projects/",
     "_comment": "ST profiles. Each ST profile file under 'profiles' have an identicial folder under references",
-    "profiles": "/tmp//MLST/references/ST_profiles",
+    "profiles": "/tmp/MLST/references/ST_profiles",
     "_comment": "ST folder. Each references sub-folder contains the .tfa file for each locus of the organism",
     "references": "/tmp/MLST/references/ST_loci",
     "_comment": "Resistances. Commonly from resFinder",

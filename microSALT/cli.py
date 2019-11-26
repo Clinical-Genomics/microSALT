@@ -4,7 +4,6 @@
 #!/usr/bin/env python
 
 import click
-import logging
 import json
 import os
 import re
@@ -15,7 +14,7 @@ import yaml
 from pkg_resources import iter_entry_points
 from distutils.sysconfig import get_python_lib
 from pathlib import Path
-from microSALT import __version__, config, wd
+from microSALT import __version__, config, logger, wd
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.reporter import Reporter
@@ -42,15 +41,6 @@ def root(ctx):
   """microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline """
   ctx.obj = {}
   ctx.obj['config'] = config
-  logger = logging.getLogger('main_logger')
-  logger.setLevel(logging.DEBUG)
-  fh = logging.FileHandler(os.path.expanduser(config['folders']['log_file']))
-  fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-  logger.addHandler(fh)
-  ch = logging.StreamHandler()
-  ch.setLevel(logging.INFO)
-  ch.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
-  logger.addHandler(ch)
   ctx.obj['log'] = logger
 
   ctx.obj['config']['folders']['expec'] = os.path.abspath(os.path.join(Path(__file__).parent.parent, 'unique_references/ExPEC.fsa'))
