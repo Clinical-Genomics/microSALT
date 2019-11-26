@@ -2,6 +2,7 @@
 
 import collections
 import os
+import pathlib
 import pytest
 
 from microSALT.cli import config
@@ -68,13 +69,13 @@ def test_paths(exp_config):
   for entry in config.keys():
     if entry != '_comment':
       if isinstance(config[entry], str) and '/' in config[entry] and entry not in ['database', 'genologics']:
-        unmade_fldr = os.path.dirname(config[entry][thing])
-        assert (os.path.isdir(unmade_fldr))
+        unmade_fldr = config[entry][thing]
+        assert (pathlib.Path(unmade_fldr).exists())
     
       #level two
       elif isinstance(config[entry], collections.Mapping):
         for thing in config[entry].keys():
           if isinstance(config[entry][thing], str) and '/' in config[entry][thing] and entry not in ['database', 'genologics']:
-            unmade_fldr = os.path.dirname(config[entry][thing])
-            assert (os.path.isdir(unmade_fldr))
+            unmade_fldr = config[entry][thing]
+            assert (pathlib.Path(unmade_fldr).exists())
     

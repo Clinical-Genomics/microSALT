@@ -2,6 +2,7 @@ import collections
 import logging
 import json
 import os
+import pathlib
 import sys
 
 from flask import Flask
@@ -58,8 +59,8 @@ logger.addHandler(ch)
 for entry in config.keys():
   if entry != '_comment':
     if isinstance(config[entry], str) and '/' in config[entry] and entry not in ['database', 'genologics']:
-      unmade_fldr = os.path.dirname(config[entry])
-      if not os.path.isdir(unmade_fldr):
+      unmade_fldr = config[entry]
+      if not pathlib.Path(unmade_fldr).exists():
         os.makedirs(unmade_fldr)
         logger.info("Created path {}".format(unmade_fldr))
 
@@ -67,7 +68,7 @@ for entry in config.keys():
     elif isinstance(config[entry], collections.Mapping):
       for thing in config[entry].keys():
         if isinstance(config[entry][thing], str) and '/' in config[entry][thing] and entry not in ['database', 'genologics']:
-          unmade_fldr = os.path.dirname(config[entry][thing])
-          if not os.path.isdir(unmade_fldr):
+          unmade_fldr = config[entry][thing]
+          if not pathlib.Path(unmade_fldr).exists():
             os.makedirs(unmade_fldr)
             logger.info("Created path {}".format(unmade_fldr))
