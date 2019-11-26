@@ -35,7 +35,7 @@ install:
 script:
 ## Actual checks
     - pip check
-    - git log -n 10|gitlint
+    #- git log -n 10|gitlint
     - pytest --cov=microSALT tests/
 
 after_success: coveralls
