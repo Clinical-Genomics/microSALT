@@ -36,7 +36,6 @@ script:
 ## Actual checks
     - pip check
     - git log -n 10|gitlint
-    - microSALT
-    - pytest --cov=microSALT tests/ 
+    - pytest --cov=microSALT tests/
 
 after_success: coveralls
