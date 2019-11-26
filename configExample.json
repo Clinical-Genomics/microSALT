@@ -1,41 +1,41 @@
 {
   "_comment": "SBATCH configuration",
   "slurm_header": {
-    "time": "06:00:00",
+    "time": "12:00:00",
     "threads": "8",
     "qos": "normal",
     "job_prefix": "MLST",
-    "project": "prod001",
+    "project": "production",
     "type": "core"
   },
 
-  "_comment": "File finding patterns. Only single capture group accepted (for reverse/forward identifier)",
   "regex":  {
-    "mail_recipient": "user@examplegroup.com",
+    "mail_recipient": "username@suffix.com",
+    "_comment": "File finding patterns. Only single capture group accepted (for reverse/forward identifier)",
     "file_pattern": "\\w{8,12}_\\w{8,10}(?:-\\d+)*_L\\d_(?:R)*(\\d{1}).fastq.gz",
     "_comment": "Organisms recognized enough to be considered stable",
-    "verified_organisms": ["Enterococcus faecalis","Enterococcus faecium","Escherichia coli","Klebsiella pneumoniae","Staphylococcus aureus"]
+    "verified_organisms": []
   },
 
   "_comment": "Folders",
   "folders":  {
     "_comment": "Root folder for ALL output",
-    "results": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/results/",
+    "results": "/tmp/MLST/results/",
     "_comment": "Report collection folder",
-    "reports": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/reports/",
+    "reports": "/tmp/MLST/reports/",
     "_comment": "Log file position and name",
-    "log_file": "~/microsalt.log",
+    "log_file": "/tmp/microsalt.log",
     
     "_comment": "Root folder for input fasta sequencing data",
-    "seqdata": "/mnt/hds/proj/bioinfo/MICROBIAL/projects/",
+    "seqdata": "/tmp/projects/",
     "_comment": "ST profiles. Each ST profile file under 'profiles' have an identicial folder under references",
-    "profiles": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/ST_profiles",
+    "profiles": "/tmp//MLST/references/ST_profiles",
     "_comment": "ST folder. Each references sub-folder contains the .tfa file for each locus of the organism",
-    "references": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/ST_loci",
-    "_commment": "Resistances. Commonly from resFinder",
-    "resistances": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/resistances",
+    "references": "/tmp/MLST/references/ST_loci",
+    "_comment": "Resistances. Commonly from resFinder",
+    "resistances": "/tmp/MLST/references/resistances",
     "_comment": "Download path for NCBI genomes, for alignment usage",
-    "genomes": "/mnt/hds/proj/bioinfo/MICROBIAL/MLST/references/genomes"
+    "genomes": "/tmp/MLST/references/genomes"
   },
 
   "_comment": "Database/Flask configuration",
@@ -66,8 +66,8 @@
     "insert_size_fail": 100,
     "average_coverage_warn": 100,
     "average_coverage_fail": 10,
-    "bp_10x_warn": 90,
-    "bp_10x_fail": 80,
+    "bp_10x_warn": 85,
+    "bp_10x_fail": 75,
     "bp_30x_warn": 70,
     "bp_50x_warn": 50,
     "bp_100x_warn": 20
@@ -76,7 +76,7 @@
   "_comment": "Genologics temporary configuration file",
   "genologics": {
     "baseuri": "https://lims.facility.se/",
-    "username": "genologicsuser",
-    "password": "mypassword123"
+    "username": "limsuser",
+    "password": "mypassword"
   }
 }

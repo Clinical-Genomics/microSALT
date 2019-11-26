@@ -161,15 +161,18 @@ class Referencer():
     except StopIteration:
       pass
 
-  def resync(self, type="", sample=""):
+  def resync(self, type="", sample="", ignore=False):
     """Manipulates samples that have an internal ST that differs from pubMLST ST"""
     if type=='list':
       #Add single sample support later
       self.db_access.list_unresolved()
     elif type=='overwrite':
-      self.db_access.add_external(overwrite=True, sample=sample)
+      if ignore:
+        self.db_access.rm_novel(sample=sample)
+      else:
+        self.db_access.sync_novel(overwrite=True, sample=sample)
     else:
-      self.db_access.add_external(overwrite=False, sample=sample)
+      self.db_access.sync_novel(overwrite=False, sample=sample)
 
   def fetch_resistances(self, force=False):
     cwd = os.getcwd()

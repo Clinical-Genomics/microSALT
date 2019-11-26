@@ -7,3 +7,4 @@ instance/paths.yml
 *.egg-info
 *pyc
 *.swp
+.coverage
