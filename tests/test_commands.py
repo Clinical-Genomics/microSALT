@@ -4,10 +4,10 @@ import click
 import pytest
 
 from microSALT import __version__
-from microSALT.cli import root
 
 from click.testing import CliRunner
-from microSALT.cli import config, root, logger
+from microSALT import config, logger
+from microSALT.cli import root
 
 #DEBUG: This code is only a base. Meaningful assertions need to be implemented
 

@@ -6,6 +6,7 @@ import pathlib
 import sys
 
 from flask import Flask
+from distutils.sysconfig import get_python_lib
 
 __version__ = '2.8.23'
 
@@ -43,6 +44,15 @@ if config != '':
   except Exception as e:
     print("Config error: {}".format(str(e)))
     pass
+
+#Add extrapaths to config
+config['folders']['expec'] = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'unique_references/ExPEC.fsa'))
+#Check if release install exists
+for entry in os.listdir(get_python_lib()): 
+  if 'microSALT-' in entry:
+    config['folders']['expec'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'expec/ExPEC.fsa'))
+    break
+config['folders']['adapters'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'share/trimmomatic-0.39-1/adapters/'))
 
 #Initialize logger
 logger = logging.getLogger('main_logger')

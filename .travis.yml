@@ -23,20 +23,19 @@ install:
   - conda info
   
 ## Install microSALT
+  - mkdir ~/.microSALT && cp configExample.json ~/.microSALT/config.json
   - conda create -y -n microSALT python=3.6
   - source activate microSALT
   - conda install -y -c bioconda blast=2.5.0=hc0b0e79_3 spades=3.12.0=py36_0 trimmomatic=0.38=1
   - pip install git-lint yamllint pylint
   - pip install -r requirements.txt -r requirements-dev.txt --no-cache-dir
   - pip install .
-  - mkdir ~/.microSALT && cp configExample.json ~/.microSALT/config.json
   - echo $LANG
 
 script:
 ## Actual checks
     - pip check
-    - git log -n 10|gitlint
-    - microSALT
-    - pytest --cov=microSALT tests/ 
+    #- git log -n 10|gitlint
+    - pytest --cov=microSALT tests/
 
 after_success: coveralls

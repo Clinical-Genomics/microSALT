@@ -35,7 +35,8 @@
     "_comment": "Resistances. Commonly from resFinder",
     "resistances": "/tmp/MLST/references/resistances",
     "_comment": "Download path for NCBI genomes, for alignment usage",
-    "genomes": "/tmp/MLST/references/genomes"
+    "genomes": "/tmp/MLST/references/genomes",
+    "cgmlst": "/tmp/MLST/references/cgmlst"
   },
 
   "_comment": "Database/Flask configuration",

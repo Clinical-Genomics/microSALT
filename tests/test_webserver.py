@@ -3,7 +3,8 @@
 import pytest
 
 from microSALT.utils.reporter import Reporter
-from microSALT.cli import config, root, logger
+from microSALT import config, logger
+from microSALT.cli import root
 
 @pytest.fixture
 def report_obj():

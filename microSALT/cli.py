@@ -12,8 +12,6 @@ import sys
 import yaml
 
 from pkg_resources import iter_entry_points
-from distutils.sysconfig import get_python_lib
-from pathlib import Path
 from microSALT import __version__, config, logger, wd
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
@@ -27,7 +25,7 @@ if config == '':
   sys.exit(-1)
 else:
   #Makes sure DB inherits correct permissions if freshly created
-  bash_cmd="touch {}".format(re.search('sqlite\:\/\/\/(.+)', config['database']['SQLALCHEMY_DATABASE_URI']).group(1))
+  bash_cmd="touch {}".format(re.search('sqlite:///(.+)', config['database']['SQLALCHEMY_DATABASE_URI']).group(1))
   proc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
   output, error = proc.communicate()
 
@@ -42,14 +40,6 @@ def root(ctx):
   ctx.obj = {}
   ctx.obj['config'] = config
   ctx.obj['log'] = logger
-
-  ctx.obj['config']['folders']['expec'] = os.path.abspath(os.path.join(Path(__file__).parent.parent, 'unique_references/ExPEC.fsa'))
-  #Check if release install exists
-  for entry in os.listdir(get_python_lib()):
-    if 'microSALT-' in entry:
-      ctx.obj['config']['folders']['expac'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'expac/ExPEC.fsa'))
-      break
-  ctx.obj['config']['folders']['adapters'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'share/trimmomatic-0.39-1/adapters/'))
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
   scientist.check_connection() 
 
