@@ -5,7 +5,7 @@ import os
 import pathlib
 import pytest
 
-from microSALT.cli import config
+from microSALT import config
 
 @pytest.fixture
 def exp_config():
