@@ -1,10 +1,14 @@
+import collections
+import logging
 import json
 import os
+import pathlib
 import sys
 
 from flask import Flask
+from distutils.sysconfig import get_python_lib
 
-__version__ = '2.8.22'
+__version__ = '2.8.23'
 
 app = Flask(__name__, template_folder='server/templates')
 app.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:///:memory:')
@@ -41,3 +45,40 @@ if config != '':
     print("Config error: {}".format(str(e)))
     pass
 
+#Add extrapaths to config
+config['folders']['expac'] = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'unique_references/EXPAC.fsa'))
+#Check if release install exists
+for entry in os.listdir(get_python_lib()): 
+  if 'microSALT-' in entry:
+    config['folders']['expac'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'expac/EXPAC.fsa'))
+    break
+config['folders']['adapters'] = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'share/trimmomatic-0.39-1/adapters/'))
+
+#Initialize logger
+logger = logging.getLogger('main_logger')
+logger.setLevel(logging.DEBUG)
+fh = logging.FileHandler(os.path.expanduser(config['folders']['log_file']))
+fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+logger.addHandler(fh)
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+ch.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
+logger.addHandler(ch)
+
+#Create paths mentioned in config
+for entry in config.keys():
+  if entry != '_comment':
+    if isinstance(config[entry], str) and '/' in config[entry] and entry not in ['database', 'genologics']:
+      unmade_fldr = config[entry]
+      if not pathlib.Path(unmade_fldr).exists():
+        os.makedirs(unmade_fldr)
+        logger.info("Created path {}".format(unmade_fldr))
+
+    #level two
+    elif isinstance(config[entry], collections.Mapping):
+      for thing in config[entry].keys():
+        if isinstance(config[entry][thing], str) and '/' in config[entry][thing] and entry not in ['database', 'genologics']:
+          unmade_fldr = config[entry][thing]
+          if not pathlib.Path(unmade_fldr).exists():
+            os.makedirs(unmade_fldr)
+            logger.info("Created path {}".format(unmade_fldr))
