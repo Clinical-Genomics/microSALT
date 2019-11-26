@@ -190,7 +190,8 @@ def gen_add_info(sample_info=dict()):
       else:
         v.threshold = 'Failed'
     for c in s.core_seq_types:
-      corecompare[s.Customer_ID_sample].append("{}:{}".format(c.loci, c.allele))
+      if c.identity >= config["threshold"]["cgmlst_id"] and c.contig_coverage >= config["threshold"]["cgmlst_coverage"]:
+        corecompare[s.Customer_ID_sample].append("{}:{}".format(c.loci, c.allele))
 
     #Seq_type and resistance sorting
     s.seq_types=sorted(s.seq_types, key=lambda x: x.loci)
