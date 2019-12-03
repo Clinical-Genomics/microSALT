@@ -2,6 +2,11 @@
 
 set -e
 shopt -s nullglob
+if [[ $0 == "https://raw.githubusercontent.com"* ]]; then
+    default_branch=$(basename $(dirname $0))
+else
+    default_branch="master"
+fi
 
 echo "Welcome to the microSALT installation script. Q to exit"
 while true; do
@@ -32,12 +37,13 @@ while true; do
 done
 
 validbranch=false
+echo $default_branch
 while true; do
-    echo "Name the branch to install ['master']:"
+    echo "Name the branch to install ['$default_branch']:"
     while ! $validbranch; do
         read input
         if [[ $input = "y" ]] || [[ $input = "yes" ]]; then
-            branch="master"
+            branch=$default_branch
         else
             branch=$input
         fi
@@ -55,7 +61,7 @@ source activate $cname
 conda config --add channels bioconda
 conda install -y -c bioconda blast=2.9.0 bwa=0.7.17 picard=2.20.3 pigz=2.4 quast=5.0.2 samtools=1.9 spades=3.13.1 trimmomatic=0.39
 if [[ $type == "release" ]]; then
-    pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/requirements.txt -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/requirements-dev.txt 
+    pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements.txt -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements-dev.txt 
     pip install -U git+https://github.com/Clinical-Genomics/microSALT@$branch
 elif [[ $type == "source" ]]; then
   HERE=$PWD
