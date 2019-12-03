@@ -25,7 +25,7 @@ install:
   
 ## Install microSALT
   - mkdir ~/.microSALT && cp configExample.json ~/.microSALT/config.json
-  - yes | bash <(curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/install.sh) 
+  - yes | bash <(curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$TRAVIS_BRANCH/install.sh) 
   - source activate S_microSALT
 
 script:
