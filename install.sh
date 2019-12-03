@@ -2,9 +2,8 @@
 
 set -e
 shopt -s nullglob
-if [[ $0 == "https://raw.githubusercontent.com"* ]]; then
-    default_branch=$(basename $(dirname $0))
-else
+default_branch=$(basename $(dirname $0))
+if [[ $default_branch=="microSALT" ]]; then
     default_branch="master"
 fi
 
