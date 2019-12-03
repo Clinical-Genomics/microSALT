@@ -36,7 +36,6 @@ while true; do
 done
 
 validbranch=false
-echo $default_branch
 while true; do
     echo "Name the branch to install ['$default_branch']:"
     while ! $validbranch; do
