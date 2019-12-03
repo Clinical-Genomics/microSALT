@@ -2,8 +2,11 @@
 
 set -e
 shopt -s nullglob
-default_branch=$(basename $(dirname $0))
-if [[ $default_branch=="microSALT" ]]; then
+
+#Suggests provided branch. Else suggests master
+if [ -z ${$1+x} ]; then
+    default_branch=$1
+else
     default_branch="master"
 fi
 
