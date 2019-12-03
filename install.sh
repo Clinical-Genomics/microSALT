@@ -55,7 +55,7 @@ source activate $cname
 conda config --add channels bioconda
 conda install -y -c bioconda blast=2.9.0 bwa=0.7.17 picard=2.20.3 pigz=2.4 quast=5.0.2 samtools=1.9 spades=3.13.1 trimmomatic=0.39
 if [[ $type == "release" ]]; then
-    pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/requirements.txt 
+    pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/requirements.txt -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/requirements-dev.txt 
     pip install -U git+https://github.com/Clinical-Genomics/microSALT@$branch
 elif [[ $type == "source" ]]; then
   HERE=$PWD
@@ -64,14 +64,14 @@ elif [[ $type == "source" ]]; then
   fi
   git clone https://github.com/Clinical-Genomics/microSALT
   cd microSALT && git checkout $branch
-  pip install -r requirements.txt && pip install -e . && cd ${HERE}
+  pip install -r requirements.txt -r requirements-dev.txt && pip install -e . && cd ${HERE}
   echo "Source installed under ${HERE}/microSALT" 
 fi 
 echo "Installation Complete!"
 while true; do
-    echo "Configuration requires manual set-up as described in README.md ['ok']:"
+    echo "Configuration requires manual set-up as described in README.md ['yes']:"
     read input
-    if [[ $input = "ok" ]] || [[ $input = "OK" ]]; then
+    if [[ $input = "y" ]] || [[ $input = "yes" ]]; then
         break
     fi
 done
