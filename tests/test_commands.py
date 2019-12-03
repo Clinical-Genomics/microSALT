@@ -6,6 +6,8 @@ import pytest
 from microSALT import __version__
 
 from click.testing import CliRunner
+from unittest.mock import patch
+
 from microSALT import config, logger
 from microSALT.cli import root
 
@@ -21,9 +23,9 @@ def test_version(runner):
   assert res.exit_code == 0
   assert __version__ in res.stdout
 
-def test_groups(runner):
+@patch('microSALT.store.lims_fetcher.Lims.check_version')
+def test_groups(check_version, runner):
   """These groups should only return the help text"""
-
   base = runner.invoke(root, ['analyse'])
   assert base.exit_code == 0
   base = runner.invoke(root, ['utils'])
@@ -33,7 +35,8 @@ def test_groups(runner):
   base_invoke = runner.invoke(root, ['utils', 'refer'])
   assert base_invoke.exit_code == 0
 
-def test_analyse(runner):
+@patch('microSALT.store.lims_fetcher.Lims.check_version')
+def test_analyse(check_version, runner):
   #All subcommands
   for analysis_type in ['sample', 'project', 'collection']:
     base_invoke = runner.invoke(root, ['analyse', analysis_type])
@@ -49,7 +52,8 @@ def test_analyse(runner):
 #  view = runner.invoke(root, ['utils', 'view'])
 #  assert view.exit_code == 0
 
-def test_finish(runner):
+@patch('microSALT.store.lims_fetcher.Lims.check_version')
+def test_finish(check_version, runner):
   #All subcommands
   for analysis_type in ['sample', 'project', 'collection']:
     base_invoke = runner.invoke(root, ['utils', 'finish', analysis_type])
@@ -61,7 +65,8 @@ def test_finish(runner):
     if analysis_type == 'collection':
       unique_report = runner.invoke(root, ['utils', 'finish', analysis_type, '--report', 'motif_overview'])
 
-def test_report(runner):
+@patch('microSALT.store.lims_fetcher.Lims.check_version')
+def test_report(check_version, runner):
   base_invoke = runner.invoke(root, ['utils', 'report'])
   assert base_invoke.exit_code == 2
 
@@ -71,7 +76,8 @@ def test_report(runner):
     normal_report = runner.invoke(root, ['utils', 'report', 'AAA1234', report, '--email', '2@2.com', '--output', '/tmp/'])
     collection_report = runner.invoke(root, ['utils', 'report', 'AAA1234', report, '--collection'])
 
-def test_resync(runner):
+@patch('microSALT.store.lims_fetcher.Lims.check_version')
+def test_resync(check_version, runner):
   runner.invoke(root, ['utils', 'resync', 'overwrite', 'AAA1234A1'])
   runner.invoke(root, ['utils', 'resync', 'overwrite', 'AAA1234A1', '--force'])
 
@@ -81,7 +87,8 @@ def test_resync(runner):
     typical_work = runner.invoke(root, ['utils', 'resync', 'review', '--email 2@2.com', report])
     delimited_work = runner.invoke(root, ['utils', 'resync', 'review', '--skip_update', '--customer', 'custX', report])
 
-def test_refer(runner):
+@patch('microSALT.store.lims_fetcher.Lims.check_version')
+def test_refer(check_version, runner):
   list_invoke = runner.invoke(root, ['utils', 'refer', 'list'])
   assert list_invoke.exit_code == 0
 
