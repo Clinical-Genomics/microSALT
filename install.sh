@@ -4,11 +4,7 @@ set -e
 shopt -s nullglob
 
 #Suggests provided branch. Else suggests master
-if [ -z ${$1+x} ]; then
-    default_branch=$1
-else
-    default_branch="master"
-fi
+default_branch=${1-master}
 
 echo "Welcome to the microSALT installation script. Q to exit"
 while true; do
