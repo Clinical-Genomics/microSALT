@@ -16,7 +16,7 @@ _microSALT uses a combination of python, sqLite and flask. Python is used for th
 Then continue with __Configuration__
 
 ## Quick installation
-* `branch="master"; bash <(curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/install.sh) $branch`
+* `branch="master"; yes | bash <(curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/install.sh) $branch`
 * Perform all steps under section  __Configuration__
 
 ## Configuration
