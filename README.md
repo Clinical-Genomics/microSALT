@@ -63,5 +63,5 @@ For more information, see https://guides.github.com/introduction/flow/
 ## Credits
 * Isak Sylvin - Lead developer
 * Emma Sernstad - Accreditation ready reports
-* Tanja Normark - Contamination analysis, various issues
+* Tanja Normark - Various issues
 * Maya Brandi - Various issues
