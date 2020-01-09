@@ -109,7 +109,7 @@ class Referencer():
         if "escherichia_coli" in organ and "#1" in organ:
           organ = organ[:-2]
         currver = self.db_access.get_version("profile_{}".format(organ))
-        profile_no = re.search('\d+', sample[2]).group(0)
+        profile_no = re.search(r'\d+', sample[2]).group(0)
         if organ in self.organisms and organ.replace("_", " ") not in self.updated and\
            (int(profile_no.replace('-','')) > int(currver.replace('-','')) or force):
           # Download definition files

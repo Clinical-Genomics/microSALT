@@ -2,6 +2,8 @@
 
 import click
 import pytest
+import mock
+import os
 
 from microSALT import __version__
 
@@ -11,12 +13,15 @@ from unittest.mock import patch
 from microSALT import config, logger
 from microSALT.cli import root
 
-#DEBUG: This code is only a base. Meaningful assertions need to be implemented
-
 @pytest.fixture
 def runner():
   runnah = CliRunner()
   return runnah
+
+@pytest.fixture
+def config():
+  config = "{}/configExample.json".format(os.path.dirname(os.getcwd()))
+  return config
 
 def test_version(runner):
   res = runner.invoke(root, '--version')
@@ -35,35 +40,47 @@ def test_groups(check_version, runner):
   base_invoke = runner.invoke(root, ['utils', 'refer'])
   assert base_invoke.exit_code == 0
 
+@patch('subprocess.Popen')
+@patch('os.listdir')
+@patch('os.path.isdir')
+@patch('microSALT.store.lims_fetcher.Lims.get_samples')
 @patch('microSALT.store.lims_fetcher.Lims.check_version')
-def test_analyse(check_version, runner):
+def test_analyse(check_version, get_samples, isdir, listdir, subproc, runner, config):
+  #Sets up subprocess mocking
+  process_mock = mock.Mock()
+  attrs = {'communicate.return_value': ('output', 'error')}
+  process_mock.configure_mock(**attrs)
+  subproc.return_value = process_mock 
+
   #All subcommands
   for analysis_type in ['sample', 'project', 'collection']:
     base_invoke = runner.invoke(root, ['analyse', analysis_type])
     assert base_invoke.exit_code == 2
 
     #Exhaustive parameter test
-    typical_run = runner.invoke(root, ['analyse', analysis_type, 'AAA1234', '--input', '/tmp/', '--config', '/tmp/', '--email', '2@2.com'])
+    typical_run = runner.invoke(root, ['analyse', analysis_type, 'AAA1234', '--input', '/tmp/AAA1234', '--config', config, '--email', '2@2.com'])
+    assert typical_run.exit_code == 0
     dry_run = runner.invoke(root, ['analyse', analysis_type, 'AAA1234', '--dry'])
+    assert dry_run.exit_code == 0
     special_run = runner.invoke(root, ['analyse', analysis_type, 'AAA1234', '--qc_only', '--skip_update', '--untrimmed', '--uncareful'])
-
-#TODO: Figure out how to force quit this function
-#def test_view(runner):
-#  view = runner.invoke(root, ['utils', 'view'])
-#  assert view.exit_code == 0
+    assert special_run.exit_code == 0
 
 @patch('microSALT.store.lims_fetcher.Lims.check_version')
-def test_finish(check_version, runner):
+def test_finish(check_version, runner, config):
+
   #All subcommands
   for analysis_type in ['sample', 'project', 'collection']:
     base_invoke = runner.invoke(root, ['utils', 'finish', analysis_type])
     assert base_invoke.exit_code == 2
 
     #Exhaustive parameter test
-    typical_run = runner.invoke(root, ['utils', 'finish', analysis_type, '--email', '2@2.com', '--input', '/tmp/', '--config', '/tmp/', '--report', 'default'])
-    special_run = runner.invoke(root, ['utils', 'finish', analysis_type, '--rerun', '--report', 'qc'])
+    typical_run = runner.invoke(root, ['utils', 'finish', analysis_type, 'AAA1234', '--email', '2@2.com', '--input', '/tmp/', '--config', config, '--report', 'default'])
+    #assert typical_run.exit_code == 0
+    special_run = runner.invoke(root, ['utils', 'finish', analysis_type, 'AAA1234', '--rerun', '--report', 'qc'])
+    #assert dry_run.exit_code == 0
     if analysis_type == 'collection':
-      unique_report = runner.invoke(root, ['utils', 'finish', analysis_type, '--report', 'motif_overview'])
+      unique_report = runner.invoke(root, ['utils', 'finish', analysis_type, 'AAA1234', '--report', 'motif_overview'])
+      #assert unique_report.exit_code == 0
 
 @patch('microSALT.store.lims_fetcher.Lims.check_version')
 def test_report(check_version, runner):
@@ -94,3 +111,8 @@ def test_refer(check_version, runner):
 
   runner.invoke(root, ['utils', 'refer', 'add', 'Homosapiens_Trams'])
   runner.invoke(root, ['utils', 'refer', 'add', 'Homosapiens_Trams', '--force'])
+
+#TODO: Figure out how to force quit this function
+#def test_view(runner):
+#  view = runner.invoke(root, ['utils', 'view'])
+#  assert view.exit_code == 0
