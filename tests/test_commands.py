@@ -87,9 +87,11 @@ def test_finish(check_version, webstart, runner, config):
 @patch('microSALT.utils.reporter.Reporter.start_web')
 @patch('multiprocessing.Process.terminate')
 @patch('multiprocessing.Process.join')
+@patch('microSALT.utils.reporter.requests.get')
+@patch('microSALT.utils.reporter.smtplib')
 @patch('microSALT.utils.reporter.LIMS_Fetcher')
 @patch('microSALT.store.lims_fetcher.Lims.check_version')
-def test_report(check_version, LF,join, mp, webstart, runner):
+def test_report(check_version, LF, smtplib, reqget, join, term, webstart, runner):
   base_invoke = runner.invoke(root, ['utils', 'report'])
   assert base_invoke.exit_code == 2
 
