@@ -8,7 +8,7 @@ import sys
 from flask import Flask
 from distutils.sysconfig import get_python_lib
 
-__version__ = '2.8.25'
+__version__ = '2.8.26'
 
 app = Flask(__name__, template_folder='server/templates')
 app.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:///:memory:')
@@ -37,6 +37,9 @@ elif os.path.exists(default):
   except Exception as e:
     print("Config error: {}".format(str(e))) 
     pass
+else:
+  print("ERROR: No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
+  sys.exit(-1)
 # Load flask instance
 if config != '':
   try:

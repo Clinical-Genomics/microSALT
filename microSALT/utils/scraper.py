@@ -36,7 +36,7 @@ class Scraper():
     #TODO: Replace date from dir with entry from analysis files/database
     if not '_' in last_folder:
       last_folder = self.infolder.split('/')[-2]
-    self.date = "{} {}".format(re.sub('\.','-', last_folder.split('_')[1]), re.sub('\.',':', last_folder.split('_')[2]))
+    self.date = "{} {}".format(re.sub(r'\.','-', last_folder.split('_')[1]), re.sub(r'\.',':', last_folder.split('_')[2]))
     self.lims_sample_info = {}
     self.gene2resistance = self.load_resistances()
 
@@ -118,7 +118,7 @@ class Scraper():
     if analysis=="Resistances":
       filename="{}/{}.fsa".format(self.config["folders"]["resistances"], reference)
     elif analysis=="Seq_types":
-      target = re.search('(.+)_(\w+)', target).group(1)
+      target = re.search(r'(.+)_(\w+)', target).group(1)
       filename="{}/{}/{}.tfa".format(self.config["folders"]["references"], reference, target)
     elif analysis=='Expacs':
       filename="{}".format(self.config["folders"]["expac"])
@@ -170,7 +170,7 @@ class Scraper():
               if type == 'resistance':
                 hypo[-1]["instance"] = os.path.basename(file[:-4])
                 # Split elem 3 in loci (name) and allele (number)
-                partials = re.search('(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3])
+                partials = re.search(r'(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3])
                 hypo[-1]["reference"] = partials.group(3)
                 hypo[-1]["gene"] = partials.group(1)
                 if hypo[-1]["gene"] in self.gene2resistance.keys():
@@ -181,11 +181,11 @@ class Scraper():
               elif type == 'expac':
                 #Thanks, precompiled list standards
                 if '>' in elem_list[3]:
-                  partials = re.search('>*(\w+_\w+\.*\w+).+\((\w+)\).+\((\w+)\)_(\w+)_\[.+\]', elem_list[3])
+                  partials = re.search(r'>*(\w+_\w+\.*\w+).+\((\w+)\).+\((\w+)\)_(\w+)_\[.+\]', elem_list[3])
                 else:
-                  partials = re.search('(\w+)\(gb\|\w+\)_\((\S+)\)_(.+)_\[(\S+)_.+\]_\[\S+\]', elem_list[3])
+                  partials = re.search(r'(\w+)\(gb\|\w+\)_\((\S+)\)_(.+)_\[(\S+)_.+\]_\[\S+\]', elem_list[3])
                 if not partials:
-                  partials = re.search('(\w+\.*\w+)\:*\w*_*(?:\(\w+\-\w+\))*_\((\w+)\)_([^[]+)\[\S+\]', elem_list[3])
+                  partials = re.search(r'(\w+\.*\w+)\:*\w*_*(?:\(\w+\-\w+\))*_\((\w+)\)_([^[]+)\[\S+\]', elem_list[3])
                    
                 #NC/Protein reference
                 hypo[-1]["reference"] = partials.group(1)
@@ -302,7 +302,7 @@ class Scraper():
               hypo[-1]["subject_length"] = int(elem_list[11])
          
               # Split elem 3 in loci (name) and allele (number)
-              partials = re.search('(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3]) 
+              partials = re.search(r'(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3]) 
               hypo[-1]["loci"] = partials.group(1)
               hypo[-1]["allele"] = int(partials.group(2))
               hypo[-1]["span"] = float(hypo[-1]["subject_length"])/self.get_locilength('Seq_types', organism, partials.group(0))

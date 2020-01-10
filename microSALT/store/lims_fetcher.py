@@ -98,7 +98,7 @@ class LIMS_Fetcher():
           organism = 'Enterococcus faecium'
         elif reference == 'NC_004668.1':
           organism = 'Enterococcus faecalis'
-        elif 'Comment' in sample.udf and not re.match('\w{4}\d{2,3}', sample.udf['Comment']):
+        elif 'Comment' in sample.udf and not re.match(r'\w{4}\d{2,3}', sample.udf['Comment']):
           organism = sample.udf['Comment']
       elif sample.udf['Strain'] != 'Other' and sample.udf['Strain'] != 'other':
         organism = sample.udf['Strain']
@@ -119,12 +119,12 @@ class LIMS_Fetcher():
         organism = 'Citrobacter freundii'
       elif reference == 'NC_002516.2':
         organism = 'Pseudomonas aeruginosa'
-    elif 'Comment' in sample.udf and not re.match('\w{4}\d{2,3}', sample.udf['Comment']) and organism == "Unset":
+    elif 'Comment' in sample.udf and not re.match(r'\w{4}\d{2,3}', sample.udf['Comment']) and organism == "Unset":
       organism = sample.udf['Comment'].strip()
     # Consistent safe-guard
     elif organism == "Unset":
       organism = "Other"
-      self.logger.warn("Unable to resolve ambigious organism found in sample {}."\
+      self.logger.warning("Unable to resolve ambigious organism found in sample {}."\
       .format(cg_sampleid))
     if 'priority' in sample.udf:
       prio = sample.udf['priority']
@@ -156,7 +156,7 @@ class LIMS_Fetcher():
     self.load_lims_sample_info(sample_name)
     lims_organ = self.data['organism'].lower()
     orgs = os.listdir(self.config["folders"]["references"])
-    organism = re.split('\W+', lims_organ)
+    organism = re.split(r'\W+', lims_organ)
     try:
       refs = 0
       for target in orgs:

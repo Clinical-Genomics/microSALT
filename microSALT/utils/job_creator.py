@@ -320,7 +320,7 @@ class Job_Creator():
 
     addedprojs = list()
     for sample in self.pool:
-      proj = re.search('(\w+)A(?:\w+)', sample).group(1)
+      proj = re.search(r'(\w+)A(?:\w+)', sample).group(1)
       if proj not in addedprojs:
         self.create_project(proj)
         addedprojs.append(proj)
@@ -388,7 +388,7 @@ class Job_Creator():
         if not dry and outfile != "":
           samproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
           output, error = samproc.communicate()
-          jobno = re.search('(\d+)', str(output)).group(0)
+          jobno = re.search(r'(\d+)', str(output)).group(0)
           jobarray.append(jobno)
         else:
           self.logger.info("Suppressed command: {}".format(bash_cmd))
@@ -410,7 +410,7 @@ class Job_Creator():
             if not dry and outfile != "":
               projproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
               output, error = projproc.communicate()
-              jobno = re.search('(\d+)', str(output)).group(0)
+              jobno = re.search(r'(\d+)', str(output)).group(0)
               jobarray.append(jobno)
             else:
               self.logger.info("Suppressed command: {}".format(bash_cmd))
@@ -432,7 +432,7 @@ class Job_Creator():
             if not dry and outfile != "":
               projproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
               output, error = projproc.communicate()
-              jobno = re.search('(\d+)', str(output)).group(0)
+              jobno = re.search(r'(\d+)', str(output)).group(0)
               jobarray.append(jobno)
             else:
               self.logger.info("Suppressed command: {}".format(bash_cmd))
@@ -503,7 +503,7 @@ class Job_Creator():
           bash_cmd="sbatch {} {}".format(head, startfile)
           mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
           output, error = mailproc.communicate()
-          jobno = re.search('(\d+)', str(output)).group(0)
+          jobno = re.search(r'(\d+)', str(output)).group(0)
           massagedJobs[massagedJobs.index(entry)+1] += ":{}".format(jobno)
         else:
           final = entry
