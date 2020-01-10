@@ -1,7 +1,7 @@
+gitlint
 pytest
 pytest-cov
 python-coveralls
 pylint
 mock
-gitlint
 yamllint
