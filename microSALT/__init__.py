@@ -37,6 +37,9 @@ elif os.path.exists(default):
   except Exception as e:
     print("Config error: {}".format(str(e))) 
     pass
+else:
+  print("ERROR: No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
+  sys.exit(-1)
 # Load flask instance
 if config != '':
   try:

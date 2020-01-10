@@ -65,8 +65,9 @@ def test_analyse(check_version, get_samples, isdir, listdir, subproc, runner, co
     special_run = runner.invoke(root, ['analyse', analysis_type, 'AAA1234', '--qc_only', '--skip_update', '--untrimmed', '--uncareful'])
     assert special_run.exit_code == 0
 
+@patch('microSALT.utils.reporter.Reporter.start_web')
 @patch('microSALT.store.lims_fetcher.Lims.check_version')
-def test_finish(check_version, runner, config):
+def test_finish(check_version, webstart, runner, config):
 
   #All subcommands
   for analysis_type in ['sample', 'project', 'collection']:
@@ -75,23 +76,29 @@ def test_finish(check_version, runner, config):
 
     #Exhaustive parameter test
     typical_run = runner.invoke(root, ['utils', 'finish', analysis_type, 'AAA1234', '--email', '2@2.com', '--input', '/tmp/', '--config', config, '--report', 'default'])
-    #assert typical_run.exit_code == 0
+    assert typical_run.exit_code == -1
     special_run = runner.invoke(root, ['utils', 'finish', analysis_type, 'AAA1234', '--rerun', '--report', 'qc'])
-    #assert dry_run.exit_code == 0
+    assert special_run.exit_code == -1
     if analysis_type == 'collection':
       unique_report = runner.invoke(root, ['utils', 'finish', analysis_type, 'AAA1234', '--report', 'motif_overview'])
-      #assert unique_report.exit_code == 0
+      assert unique_report.exit_code == -1
 
+
+@patch('microSALT.utils.reporter.Reporter.start_web')
+@patch('multiprocessing.Process.terminate')
+@patch('multiprocessing.Process.join')
+@patch('microSALT.utils.reporter.LIMS_Fetcher')
 @patch('microSALT.store.lims_fetcher.Lims.check_version')
-def test_report(check_version, runner):
+def test_report(check_version, LF,join, mp, webstart, runner):
   base_invoke = runner.invoke(root, ['utils', 'report'])
   assert base_invoke.exit_code == 2
 
   #Exhaustive parameter test
   for rep_type in ['default','typing','motif_overview','qc','json_dump','st_update']:
-    report = '--type {}'.format(rep_type)
-    normal_report = runner.invoke(root, ['utils', 'report', 'AAA1234', report, '--email', '2@2.com', '--output', '/tmp/'])
-    collection_report = runner.invoke(root, ['utils', 'report', 'AAA1234', report, '--collection'])
+    normal_report = runner.invoke(root, ['utils', 'report', 'AAA1234', '--type', rep_type, '--email', '2@2.com', '--output', '/tmp/'])
+    assert normal_report.exit_code == 0
+    collection_report = runner.invoke(root, ['utils', 'report', 'AAA1234', '--type', rep_type, '--collection'])
+    assert collection_report.exit_code == 0
 
 @patch('microSALT.store.lims_fetcher.Lims.check_version')
 def test_resync(check_version, runner):
@@ -113,6 +120,8 @@ def test_refer(check_version, runner):
   runner.invoke(root, ['utils', 'refer', 'add', 'Homosapiens_Trams', '--force'])
 
 #TODO: Figure out how to force quit this function
-#def test_view(runner):
-#  view = runner.invoke(root, ['utils', 'view'])
-#  assert view.exit_code == 0
+@patch('microSALT.utils.reporter.Reporter.start_web')
+@patch('microSALT.store.lims_fetcher.Lims.check_version')
+def test_view(check_version, webstart, runner):
+  view = runner.invoke(root, ['utils', 'view'])
+  assert view.exit_code == 0
