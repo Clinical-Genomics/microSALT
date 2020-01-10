@@ -124,7 +124,7 @@ class LIMS_Fetcher():
     # Consistent safe-guard
     elif organism == "Unset":
       organism = "Other"
-      self.logger.warn("Unable to resolve ambigious organism found in sample {}."\
+      self.logger.warning("Unable to resolve ambigious organism found in sample {}."\
       .format(cg_sampleid))
     if 'priority' in sample.udf:
       prio = sample.udf['priority']
