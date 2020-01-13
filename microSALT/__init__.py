@@ -37,9 +37,6 @@ elif os.path.exists(default):
   except Exception as e:
     print("Config error: {}".format(str(e))) 
     pass
-else:
-  print("ERROR: No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
-  sys.exit(-1)
 # Load flask instance
 if config != '':
   try:
@@ -47,6 +44,9 @@ if config != '':
   except Exception as e:
     print("Config error: {}".format(str(e)))
     pass
+else:
+  print("ERROR: No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
+  sys.exit(-1)
 
 #Add extrapaths to config
 config['folders']['expac'] = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'unique_references/EXPAC.fsa'))
