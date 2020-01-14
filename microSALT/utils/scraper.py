@@ -36,7 +36,7 @@ class Scraper():
     #TODO: Replace date from dir with entry from analysis files/database
     if not '_' in last_folder:
       last_folder = self.infolder.split('/')[-2]
-    self.date = "{} {}".format(re.sub('\.','-', last_folder.split('_')[1]), re.sub('\.',':', last_folder.split('_')[2]))
+    self.date = "{} {}".format(re.sub(r'\.','-', last_folder.split('_')[1]), re.sub(r'\.',':', last_folder.split('_')[2]))
     self.lims_sample_info = {}
     self.gene2resistance = self.load_resistances()
 

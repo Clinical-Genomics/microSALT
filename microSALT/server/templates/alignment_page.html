@@ -110,7 +110,7 @@
                           <td class="text-right">0
                         {% else %}
                           {% if sample.application_tag %}
-                            {% set bp_perc = ((sample.total_reads/((sample.application_tag[-1:]|float)*10000))|round(2)) %}
+                            {% set bp_perc = ((sample.total_reads*100/((sample.application_tag[-1:]|float)*2000000))|round(2)) %}
                           {% else %}
                             {% set bp_perc = 0.0 %}
                           {% endif %}

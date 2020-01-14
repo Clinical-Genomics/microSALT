@@ -1,4 +1,4 @@
-![Build status](https://travis-ci.com/Clinical-Genomics/microSALT.svg?branch=master) [![Coverage Status](https://coveralls.io/repos/github/Clinical-Genomics/microSALT/badge.svg?branch=pytest)](https://coveralls.io/github/Clinical-Genomics/microSALT?branch=pytest)
+![Build status](https://travis-ci.com/Clinical-Genomics/microSALT.svg?branch=master) [![Coverage Status](https://coveralls.io/repos/github/Clinical-Genomics/microSALT/badge.svg?branch=pytest)](https://coveralls.io/github/Clinical-Genomics/microSALT?branch=master)
 
 <p align="center">
   <a href="https://github.com/sylvinite/microSALT">
@@ -16,7 +16,7 @@ _microSALT uses a combination of python, sqLite and flask. Python is used for th
 Then continue with __Configuration__
 
 ## Quick installation
-* `bash <(curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/install.sh)`
+* `yes | bash <(curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/install.sh)`
 * Perform all steps under section  __Configuration__
 
 ## Configuration
@@ -63,5 +63,5 @@ For more information, see https://guides.github.com/introduction/flow/
 ## Credits
 * Isak Sylvin - Lead developer
 * Emma Sernstad - Accreditation ready reports
-* Tanja Normark - Contamination analysis, various issues
+* Tanja Normark - Various issues
 * Maya Brandi - Various issues

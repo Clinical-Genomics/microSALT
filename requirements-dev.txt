@@ -1,6 +1,8 @@
+coverage==4.5.4
+gitlint
 pytest
 pytest-cov
 python-coveralls
 pylint
-gitlint
+mock
 yamllint

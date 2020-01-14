@@ -35,13 +35,14 @@ def test_existence(exp_config):
   #level one
   config_level_one = config.keys()
   for entry in exp_config.keys():
-    assert entry in config_level_one
+    if entry != 'dry':
+      assert entry in config_level_one
 
-    #level two
-    if isinstance(config[entry], collections.Mapping):
-      config_level_two = config[entry].keys()
-      for thing in exp_config[entry]:
-        assert thing in config_level_two
+      #level two
+      if isinstance(config[entry], collections.Mapping):
+        config_level_two = config[entry].keys()
+        for thing in exp_config[entry]:
+          assert thing in config_level_two
 
 def test_reverse_existence(exp_config):
   """Check that the configuration doesnt contain outdated variables"""
@@ -49,7 +50,7 @@ def test_reverse_existence(exp_config):
   #level one
   config_level_one = exp_config.keys()
   for entry in config.keys():
-    if entry != '_comment':
+    if entry not in ['_comment', 'rerun']:
       assert entry in config_level_one
 
       #level two

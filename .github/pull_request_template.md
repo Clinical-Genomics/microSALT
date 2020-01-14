@@ -19,10 +19,10 @@ _This is a description of the tests necessary to verify the stability of the PR.
 
 _Basic test routine:_
 - _`bash /home/proj/production/servers/resources/hasta.scilifelab.se/update-microsalt-stage.sh BRANCHNAME`_
-- _Select installer options "release", "S_microSALT" and "BRANCHNAME"_
 - _`us`_
 - _`source activate S_microSALT`_
-- _`export MICROSALT_CONFIG=/home/proj/dropbox/microSALT.json`_
+- _(SITUATIONAL) `export MICROSALT_CONFIG=/home/proj/dropbox/microSALT.json`_
+- _Select a relevant subset of the following:_
 - _`microSALT analyse project MIC3109`_
 - _`microSALT analyse project MIC3552`_
 - _`microSALT analyse project MIC3557`_
@@ -37,4 +37,4 @@ _These are the results of the tests, and necessary conclusions, that prove the s
 # Sign-offs
 - [ ] Code reviewed by @sylvinite
 - [ ] Code tested by @octocat
-- [ ] Approved to run at Clinical-Genomics by @ingkebil
+- [ ] Approved to run at Clinical-Genomics by @octocat

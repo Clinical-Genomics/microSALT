@@ -19,7 +19,6 @@ from microSALT.utils.reporter import Reporter
 from microSALT.utils.referencer import Referencer
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 
-
 if config == '':
   click.echo("ERROR - No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
   sys.exit(-1)
@@ -28,6 +27,19 @@ else:
   bash_cmd="touch {}".format(re.search('sqlite:///(.+)', config['database']['SQLALCHEMY_DATABASE_URI']).group(1))
   proc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
   output, error = proc.communicate()
+
+def set_cli_config(config):
+  if config != '':
+    if os.path.exists(config):
+      try:
+        t = ctx.obj['config']
+        with open(os.path.abspath(config), 'r') as conf:
+          ctx.obj['config'] = json.load(conf)
+        ctx.obj['config']['folders']['expac'] = t['folders']['expac']
+        ctx.obj['config']['folders']['adapters'] = t['folders']['adapters']
+        ctx.obj['config']['config_path'] = os.path.abspath(config)
+      except Exception as e:
+        pass
 
 def done():
   click.echo("INFO - Execution finished!")
@@ -80,19 +92,12 @@ def refer(ctx):
 @click.pass_context
 def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip_update, uncareful):
   """Analyse a whole project"""
-  ctx.obj['config']['regex']['mail_recipient'] = email
   trimmed = not untrimmed
   careful = not uncareful
-  if config != '':
-    if os.path.exists(config):
-      try:
-        with open(os.path.abspath(config), 'r') as conf:
-          ctx.obj['config'] = json.load(conf)
-        ctx.obj['config']['config_path'] = os.path.abspath(config)
-      except Exception as e:
-        pass
-
+  set_cli_config(config)
+  ctx.obj['config']['regex']['mail_recipient'] = email
   ctx.obj['config']['dry'] = dry
+
   if input != "":
     project_dir = os.path.abspath(input)
     if not project_id in project_dir:
@@ -104,10 +109,10 @@ def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip
       click.echo("ERROR - Sequence data folder for {} does not exist.".format(project_id))
       sys.exit(-1)
 
+  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
   click.echo("INFO - Checking versions of references..")
   try:
     if not skip_update:
-      fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
       fixer.identify_new(project_id,project=True)
       fixer.update_refs()
       click.echo("INFO - Version check done. Creating sbatch jobs")
@@ -133,19 +138,12 @@ def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip
 @click.pass_context
 def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_update, uncareful):
   """Analyse a single sample"""
-  ctx.obj['config']['regex']['mail_recipient'] = email
   trimmed = not untrimmed
   careful = not uncareful
-  if config != '':
-    if os.path.exists(config):
-      try:
-        with open(os.path.abspath(config), 'r') as conf:
-          ctx.obj['config'] = json.load(conf)
-        ctx.obj['config']['config_path'] = os.path.abspath(config)
-      except Exception as e:
-        pass
-
+  set_cli_config(config)
+  ctx.obj['config']['regex']['mail_recipient'] = email
   ctx.obj['config']['dry'] = dry
+
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
   try:
     scientist.load_lims_sample_info(sample_id)
@@ -163,10 +161,10 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
       click.echo("ERROR - Sequence data folder for {} does not exist.".format(sample_id))
       sys.exit(-1)
 
+  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
   click.echo("INFO - Checking versions of references..")
   try:
     if not skip_update:
-      fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
       fixer.identify_new(sample_id,project=False) 
       fixer.update_refs()
       click.echo("INFO - Version check done. Creating sbatch job")
@@ -192,19 +190,12 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
 @click.pass_context
 def collection(ctx, collection_id, input, dry, qc_only, config, email, untrimmed, skip_update, uncareful):
   """Analyse a collection of samples"""
-  ctx.obj['config']['regex']['mail_recipient'] = email
   trimmed = not untrimmed
   careful = not uncareful
-  if config != '':
-    if os.path.exists(config):
-      try:
-        with open(os.path.abspath(config), 'r') as conf:
-          ctx.obj['config'] = json.load(conf)
-        ctx.obj['config']['config_path'] = os.path.abspath(config)
-      except Exception as e:
-        pass
-
+  set_cli_config(config)
+  ctx.obj['config']['regex']['mail_recipient'] = email
   ctx.obj['config']['dry'] = dry
+
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
 
   pool = []
@@ -212,12 +203,16 @@ def collection(ctx, collection_id, input, dry, qc_only, config, email, untrimmed
     collection_dir = os.path.abspath(input)
   else:
     collection_dir = "{}/{}".format(ctx.obj['config']['folders']['seqdata'], collection_id)
+  if not os.path.isdir(collection_dir):
+    click.echo("Collection data folder does not exist. Exiting.")
+    sys.exit(-1)
+
   for sample in os.listdir(collection_dir):
     if os.path.isdir("{}/{}".format(collection_dir,sample)):
       pool.append(sample)
-  if pool == []:
-    click.echo("ERROR - Input collection lacks any valid of samples")
-    sys.exit(-1)
+  #if pool == []:
+  #  click.echo("Input collection lacks any valid of samples")
+  #  sys.exit(-1)
 
   pool_cg = []
   for sample in pool:
@@ -227,11 +222,11 @@ def collection(ctx, collection_id, input, dry, qc_only, config, email, untrimmed
     except Exception as e:
       click.echo("ERROR - Unable to load LIMS sample info for sample {}.".format(sample))
 
+  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
   click.echo("INFO - Checking versions of references..")
   for sample in pool_cg:
     try:
       if not skip_update:
-        fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
         fixer.identify_new(sample,project=False)
     except Exception as e:
       click.echo("ERROR - Unable to update references for sample {} due to '{}'".format(sample,str(e)))
@@ -258,17 +253,9 @@ def collection(ctx, collection_id, input, dry, qc_only, config, email, untrimmed
 @click.pass_context
 def sample(ctx, sample_id, rerun, email, input, config, report):
   """Parse results from analysing a single sample"""
-  if config != '':
-    if os.path.exists(config):
-      try:
-        with open(os.path.abspath(config), 'r') as conf:
-          ctx.obj['config'] = json.load(conf)
-        ctx.obj['config']['config_path'] = os.path.abspath(config)
-      except Exception as e:
-        pass
-
-  ctx.obj['config']['rerun'] = rerun
+  set_cli_config(config)
   ctx.obj['config']['regex']['mail_recipient'] = email
+  ctx.obj['config']['rerun'] = rerun
 
   if input != "":
     sample_dir = os.path.abspath(input)
@@ -310,17 +297,9 @@ def sample(ctx, sample_id, rerun, email, input, config, report):
 @click.pass_context
 def project(ctx, project_id, rerun, email, input, config, report):
   """Parse results from analysing a single project"""
-  if config != '':
-    if os.path.exists(config):
-      try:
-        with open(os.path.abspath(config), 'r') as conf:
-          ctx.obj['config'] = json.load(conf)
-        ctx.obj['config']['config_path'] = os.path.abspath(config)
-      except Exception as e:
-        pass
-
-  ctx.obj['config']['rerun'] = rerun
+  set_cli_config(config)
   ctx.obj['config']['regex']['mail_recipient'] = email
+  ctx.obj['config']['rerun'] = rerun
 
   if input != "":
     project_dir = os.path.abspath(input)
@@ -354,17 +333,9 @@ def project(ctx, project_id, rerun, email, input, config, report):
 @click.pass_context
 def collection(ctx, collection_id, rerun, email, input, config, report):
   """Parse results from analysing a set of sample"""
-  if config != '':
-    if os.path.exists(config):
-      try:
-        with open(os.path.abspath(config), 'r') as conf:
-          ctx.obj['config'] = json.load(conf)
-        ctx.obj['config']['config_path'] = os.path.abspath(config)
-      except Exception as e:
-        pass
-
-  ctx.obj['config']['rerun'] = False
+  set_cli_config(config)
   ctx.obj['config']['regex']['mail_recipient'] = email
+  ctx.obj['config']['rerun'] = rerun
 
   pool = []
   if input != "":

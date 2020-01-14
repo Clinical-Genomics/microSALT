@@ -84,16 +84,14 @@ class Reporter():
     self.name ="Sequence Type Update"
     try:
       r = requests.get("http://127.0.0.1:5000/microSALT/STtracker/{}".format(customer), allow_redirects=True)
+      outname = "{}/ST_updates_{}.html".format(self.output, self.now)
+      open(outname, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
+      self.filelist.append(outname)
+      if not silent:
+        self.attachments.append(outname)
     except Exception as e:
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
-      self.kill_flask()
-      sys.exit(-1)
-    outname = "{}/ST_updates_{}.html".format(self.output, self.now)
-    if not os.path.isfile(outname):
-      self.filelist.append(outname)
-    open(outname, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
-    if not silent:
-      self.attachments.append(outname)
+      self.error = True
 
   def gen_qc(self,silent=False):
     try:

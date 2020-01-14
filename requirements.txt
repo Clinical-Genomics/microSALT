@@ -7,5 +7,4 @@ natsort
 pymysql
 pyyaml
 sqlalchemy
-
 genologics

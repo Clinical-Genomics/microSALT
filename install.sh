@@ -3,11 +3,17 @@
 set -e
 shopt -s nullglob
 
+#Suggests provided branch. Else suggests master
+default_branch=${1-master}
+
 echo "Welcome to the microSALT installation script. Q to exit"
 while true; do
-    echo "What name would you like to give your microSALT environment?"
+    echo "Name your microSALT environment ['S_microSALT']:"
     read input
     if [[ $input = "q" ]] || [[ $input = "Q" ]]; then
+        break
+    elif [[ $input = "y" ]] || [[ $input = "yes" ]]; then
+        cname="S_microSALT"
         break
     else
         cname=$input
@@ -15,21 +21,32 @@ while true; do
     fi
 done
 while true; do
-    echo "Would you like a 'release' or local 'source' environment?"
+    echo "Would you like a 'release' or 'source' (development) environment ['release']?"
     read input
     if [[ $input = "q" ]] || [[ $input = "Q" ]]; then
         break
+    elif [[ $input = "y" ]] || [[ $input = "yes" ]]; then
+        type="release"
+        break
     elif [[ $input == "source" ]]  || [[ $input == "release" ]]; then
         type=$input
-        validbranch=false
-        while ! $validbranch; do
-            echo "Name a branch to install (or just 'master')":
-            read input
-            branch=$input
-            curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/LICENSE | grep -q 'License' && validbranch=true||echo "Invalid branch name"
-        done
         break
     fi
+done
+
+validbranch=false
+while true; do
+    echo "Name the branch to install ['$default_branch']:"
+    while ! $validbranch; do
+        read input
+        if [[ $input = "y" ]] || [[ $input = "yes" ]]; then
+            branch=$default_branch
+        else
+            branch=$input
+        fi
+        curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/LICENSE | grep -q 'License' && validbranch=true||echo "Invalid branch name"
+    done
+    break
 done
 echo "Thank you, setting up environment $cname!"
 
@@ -43,8 +60,8 @@ source activate $cname
 conda config --add channels bioconda
 conda install -y -c bioconda blast=2.9.0 bwa=0.7.17 picard=2.20.3 pigz=2.4 quast=5.0.2 samtools=1.9 spades=3.13.1 trimmomatic=0.39
 if [[ $type == "release" ]]; then
-    pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/requirements.txt 
-    pip install -U git+https://github.com/Clinical-Genomics/microSALT 
+    pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements.txt -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements-dev.txt 
+    pip install -U git+https://github.com/Clinical-Genomics/microSALT@$branch
 elif [[ $type == "source" ]]; then
   HERE=$PWD
   if [ -d ${HERE}/microSALT ]; then
@@ -52,14 +69,14 @@ elif [[ $type == "source" ]]; then
   fi
   git clone https://github.com/Clinical-Genomics/microSALT
   cd microSALT && git checkout $branch
-  pip install -r requirements.txt && pip install -e . && cd ${HERE}
+  pip install -r requirements.txt -r requirements-dev.txt && pip install -e . && cd ${HERE}
   echo "Source installed under ${HERE}/microSALT" 
 fi 
 echo "Installation Complete!"
 while true; do
-    echo "Configuration requires manual set-up as described in README.md ['ok']"
+    echo "Configuration requires manual set-up as described in README.md ['yes']:"
     read input
-    if [[ $input = "ok" ]] || [[ $input = "OK" ]]; then
+    if [[ $input = "y" ]] || [[ $input = "yes" ]]; then
         break
     fi
 done
