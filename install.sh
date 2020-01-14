@@ -50,7 +50,7 @@ while true; do
 done
 echo "Thank you, setting up environment $cname!"
 
-conda info| grep -q $rname && source deactivate || ""
+conda info| grep -q $cname && source deactivate || ""
 
 #Accepts that environment doesnt exist
 conda remove -y -n $cname --all || ""
