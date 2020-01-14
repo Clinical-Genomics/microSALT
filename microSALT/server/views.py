@@ -5,7 +5,6 @@ import subprocess
 from datetime import date
 from flask import Flask, render_template
 from io import StringIO, BytesIO
-from natsort import natsorted
 
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker

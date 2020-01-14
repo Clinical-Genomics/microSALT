@@ -3,7 +3,6 @@ bs4
 click
 flask
 flask_sqlalchemy
-natsort
 pymysql
 pyyaml
 sqlalchemy
