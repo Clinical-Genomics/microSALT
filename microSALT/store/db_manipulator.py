@@ -130,7 +130,6 @@ class DB_Manipulator:
   def purge_rec(self, name, type):
     """Removes seq_data, resistances, sample(s) and possibly project"""
     entries = list()
-    #import pdb; pdb.set_trace()
     if type == "Projects":
       entries.append(self.session.query(Expacs).filter(Expacs.CG_ID_sample.like('{}%'.format(name))).all())
       entries.append(self.session.query(Seq_types).filter(Seq_types.CG_ID_sample.like('{}%'.format(name))).all())
@@ -313,10 +312,12 @@ class DB_Manipulator:
   def rm_novel(self, sample=""):
     """Flags a sample as pubMLST resolved by merit of ignoring it"""
     query = self.session.query(Samples).filter(Samples.CG_ID_sample==sample).all()
-
-    self.logger.info("Ignore: Sample {} from organism {} with ST {}; is now flagged as resolved.".\
+    if len(query) > 0:
+      self.logger.info("Ignore: Sample {} from organism {} with ST {}; is now flagged as resolved.".\
                      format(query[0].CG_ID_sample, query[0].organism, query[0].ST))
-    self.upd_rec({'CG_ID_sample':query[0].CG_ID_sample}, 'Samples', {'pubmlst_ST':0})
+      self.upd_rec({'CG_ID_sample':query[0].CG_ID_sample}, 'Samples', {'pubmlst_ST':0})
+    else:
+      self.logger.error("Sample {} not found in database. Verify name".format(sample))
 
 
   def list_unresolved(self):

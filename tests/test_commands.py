@@ -102,26 +102,35 @@ def test_report(check_version, LF, smtplib, reqget, join, term, webstart, runner
     collection_report = runner.invoke(root, ['utils', 'report', 'AAA1234', '--type', rep_type, '--collection'])
     assert collection_report.exit_code == 0
 
+@patch('microSALT.utils.reporter.Reporter.start_web')
+@patch('multiprocessing.Process.terminate')
+@patch('multiprocessing.Process.join')
+@patch('microSALT.utils.reporter.requests.get')
+@patch('microSALT.utils.reporter.smtplib')
 @patch('microSALT.store.lims_fetcher.Lims.check_version')
-def test_resync(check_version, runner):
-  runner.invoke(root, ['utils', 'resync', 'overwrite', 'AAA1234A1'])
-  runner.invoke(root, ['utils', 'resync', 'overwrite', 'AAA1234A1', '--force'])
+def test_resync(check_version, smtplib, reqget, join, term, webstart, runner):
+  a = runner.invoke(root, ['utils', 'resync', 'overwrite', 'AAA1234A1'])
+  assert a.exit_code == 0
+  b = runner.invoke(root, ['utils', 'resync', 'overwrite', 'AAA1234A1', '--force'])
+  assert b.exit_code == 0
 
   #Exhaustive parameter test
   for rep_type in ['list', 'report']:
-    report = '--type {}'.format(rep_type)
-    typical_work = runner.invoke(root, ['utils', 'resync', 'review', '--email 2@2.com', report])
-    delimited_work = runner.invoke(root, ['utils', 'resync', 'review', '--skip_update', '--customer', 'custX', report])
+    typical_work = runner.invoke(root, ['utils', 'resync', 'review', '--email', '2@2.com', '--type', rep_type])
+    assert typical_work.exit_code == 0
+    delimited_work = runner.invoke(root, ['utils', 'resync', 'review', '--skip_update', '--customer', 'custX', '--type', rep_type])
+    assert delimited_work.exit_code == 0
 
 @patch('microSALT.store.lims_fetcher.Lims.check_version')
 def test_refer(check_version, runner):
   list_invoke = runner.invoke(root, ['utils', 'refer', 'list'])
   assert list_invoke.exit_code == 0
 
-  runner.invoke(root, ['utils', 'refer', 'add', 'Homosapiens_Trams'])
-  runner.invoke(root, ['utils', 'refer', 'add', 'Homosapiens_Trams', '--force'])
+  a = runner.invoke(root, ['utils', 'refer', 'add', 'Homosapiens_Trams'])
+  assert a.exit_code == 0
+  b = runner.invoke(root, ['utils', 'refer', 'add', 'Homosapiens_Trams', '--force'])
+  assert b.exit_code == 0
 
-#TODO: Figure out how to force quit this function
 @patch('microSALT.utils.reporter.Reporter.start_web')
 @patch('microSALT.store.lims_fetcher.Lims.check_version')
 def test_view(check_version, webstart, runner):
