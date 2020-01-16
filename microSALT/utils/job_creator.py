@@ -151,7 +151,7 @@ class Job_Creator():
 
     if len(file_list) > 1:
       for ref in file_list:
-        ref_nosuf = re.search('(\w+)\.\w+', os.path.basename(ref)).group(1)
+        ref_nosuf = re.search(r'(\w+(?:\-\w+)*)\.\w+', os.path.basename(ref)).group(1)
         batchfile.write("# BLAST {} search for {}, {}\n".format(name, self.organism, ref_nosuf))
         if name == 'mlst':
           batchfile.write("blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
@@ -160,7 +160,7 @@ class Job_Creator():
           batchfile.write("blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
           os.path.dirname(ref), ref_nosuf, self.finishdir, self.finishdir, name, ref_nosuf, self.config["slurm_header"]["threads"], blast_format))
     else:
-      ref_nosuf = re.search('(\w+)\.\w+', os.path.basename(file_list[0])).group(1)
+      ref_nosuf = re.search(r'(\w+(?:\-\w+)*)\.\w+', os.path.basename(file_list[0])).group(1)
       batchfile.write("## BLAST {} search in {}\n".format(name, self.organism.replace('_', ' ').capitalize() ))
       batchfile.write("blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
                     os.path.dirname(search_string), ref_nosuf, self.finishdir, self.finishdir, name, ref_nosuf, self.config["slurm_header"]["threads"], blast_format))
