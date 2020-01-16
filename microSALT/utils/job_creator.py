@@ -113,7 +113,6 @@ class Job_Creator():
       lines = f.read().splitlines()
       if not '+' in str(lines[-2]):
         self.logger.warning("Input fastq {} does not seem to end properly".format(vfile))
-
     return sorted(verified_files)
  
   def create_assemblysection(self):
@@ -159,7 +158,7 @@ class Job_Creator():
         else:
           batchfile.write("blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
           os.path.dirname(ref), ref_nosuf, self.finishdir, self.finishdir, name, ref_nosuf, self.config["slurm_header"]["threads"], blast_format))
-    else:
+    elif len(file_list) == 1:
       ref_nosuf = re.search(r'(\w+(?:\-\w+)*)\.\w+', os.path.basename(file_list[0])).group(1)
       batchfile.write("## BLAST {} search in {}\n".format(name, self.organism.replace('_', ' ').capitalize() ))
       batchfile.write("blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
@@ -205,7 +204,6 @@ class Job_Creator():
     """Concatinates data, possibly trims it, then makes the unstranded reads usable"""
     forward = list()
     reverse = list()
-
     for root, dirs, files in os.walk(self.config["folders"]["adapters"]):
       if not "NexteraPE-PE.fa" in files:
         self.logger.error("Adapters folder at {} does not contain NexteraPE-PE.fa. Review paths.yml")
