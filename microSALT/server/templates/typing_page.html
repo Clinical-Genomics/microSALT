@@ -126,11 +126,13 @@
                   {% for elem in row %}
                     {% if elem is string %}
                       <td>{{elem}}</td>
+                    {% elif elem|int == -1 %}
+                      <td>Kontrollprov</td>
                     {% elif elem|int == 0 %}
                       <td bgcolor="#fa8072">{{elem}} (Identiska)</td>
-                    {% elif elem|int < 30 %}
+                    {% elif elem|int < 30 and elem|int > 0 %}
                       <td bgcolor="#ebffcd">{{elem}}</td>
-                    {% elif elem|int < 50 %}
+                    {% elif elem|int < 50 and elem|int > 0 %}
                       <td bgcolor="#fffacd">{{elem}}</td>
                     {% else %}
                       <td>{{elem}}</td>

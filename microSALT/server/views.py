@@ -139,7 +139,7 @@ def gen_add_info(sample_info=dict()):
   corecompare = dict()
 
   for s in sample_info:
-    corecompare[s.CG_ID_sample] = list()
+    corecompare[s.Customer_ID_sample] = list()
     s.ST_status=str(s.ST)
     if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or \
     s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or \
@@ -210,12 +210,10 @@ def gen_add_info(sample_info=dict()):
       i.startswith('CTRL') or i.startswith('Neg') or i.startswith('blank') or i.startswith('dual-NTC'):
         if j.startswith('NTC') or j.startswith('0-') or j.startswith('NK-') or j.startswith('NEG') or \
         j.startswith('CTRL') or j.startswith('Neg') or j.startswith('blank') or j.startswith('dual-NTC'):
+          cgtop['{} - {}'.format(i,j)] = -1
           controls = True
-      if distance <= 200 and (controls or distance >= 1):
-        if controls:
-          cgtop['{} - {}'.format(i,j)] = "{} (Kontrollprover)".format(len(list(set(corecompare[i]).symmetric_difference(corecompare[j]))))
-        else:
-          cgtop['{} - {}'.format(i,j)] = len(list(set(corecompare[i]).symmetric_difference(corecompare[j])))
+      if distance <= 200 and not controls:
+        cgtop['{} - {}'.format(i,j)] = distance
   output['cgmatrix'] = sorted(cgtop.items(), key = lambda t: t[1])
 
   #FIXED LIMIT LOWER TRIANGLE CG-MATRIX
