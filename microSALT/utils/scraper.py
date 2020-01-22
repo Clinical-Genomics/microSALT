@@ -239,7 +239,6 @@ class Scraper():
                 hypo[-1]["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
                 hypo[-1]["contig_length"] = int(nodeinfo[3])
                 hypo[-1]["contig_coverage"] = nodeinfo[5]
-
       self.logger.info("{} candidate {} hits found".format(len(hypo), type2db))
     except Exception as e:
       self.logger.error("Unable to process the pattern of {}".format(str(e)))
