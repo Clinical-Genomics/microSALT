@@ -165,6 +165,8 @@ class Reporter():
 
     for c in sample_info['cgmatrix']:
       excel.write("{}\n".format(','.join(c)))
+      excel.write("Prover med maximalt 30 geners skillnad är troligtvis epidemilogiskt besläktade.\n")
+      excel.write("Prover med maximalt 50 geners skillnad uppvisar en osäker släktskap.\n")
     excel.close()
     if not silent:
       self.attachments.append(output)
