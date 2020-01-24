@@ -404,7 +404,7 @@ def list(ctx):
 @utils.command()
 @click.argument('project_name')
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--type', default='default', type=click.Choice(['default', 'typing', 'motif_overview', 'qc', 'json_dump', 'st_update']))
+@click.option('--type', default='default', type=click.Choice(['default', 'typing', 'motif_overview', 'qc', 'json_dump', 'st_update', 'cgmlst']))
 @click.option('--output',help='Full path to output folder',default="")
 @click.option('--collection',default=False, is_flag=True)
 @click.pass_context

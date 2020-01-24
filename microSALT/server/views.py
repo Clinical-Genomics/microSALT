@@ -199,37 +199,39 @@ def gen_add_info(sample_info=dict()):
     output['samples'].append(s)
 
 
-  #CG display
-  keylist = list(corecompare.keys())
-  cgtop = dict()
-  for i in keylist:
-    for j in keylist[keylist.index(i)+1:]:
-      distance = len(list(set(corecompare[i]).symmetric_difference(corecompare[j])))
-      controls = False
-      if i.startswith('NTC') or i.startswith('0-') or i.startswith('NK-') or i.startswith('NEG') or \
-      i.startswith('CTRL') or i.startswith('Neg') or i.startswith('blank') or i.startswith('dual-NTC'):
-        if j.startswith('NTC') or j.startswith('0-') or j.startswith('NK-') or j.startswith('NEG') or \
-        j.startswith('CTRL') or j.startswith('Neg') or j.startswith('blank') or j.startswith('dual-NTC'):
-          cgtop['{} - {}'.format(i,j)] = -1
-          controls = True
-      if distance <= 200 and not controls:
-        cgtop['{} - {}'.format(i,j)] = distance
-  output['cgmatrix'] = sorted(cgtop.items(), key = lambda t: t[1])
+#  #Pairwise CG-matrix
+#  keylist = list(corecompare.keys())
+#  cgtop = dict()
+#  for i in keylist:
+#    for j in keylist[keylist.index(i)+1:]:
+#      distance = len(list(set(corecompare[i]).symmetric_difference(corecompare[j])))
+#      controls = False
+#      if i.startswith('NTC') or i.startswith('0-') or i.startswith('NK-') or i.startswith('NEG') or \
+#      i.startswith('CTRL') or i.startswith('Neg') or i.startswith('blank') or i.startswith('dual-NTC'):
+#        if j.startswith('NTC') or j.startswith('0-') or j.startswith('NK-') or j.startswith('NEG') or \
+#        j.startswith('CTRL') or j.startswith('Neg') or j.startswith('blank') or j.startswith('dual-NTC'):
+#          cgtop['{} - {}'.format(i,j)] = -1
+#          controls = True
+#      if distance <= 200 and not controls:
+#        cgtop['{} - {}'.format(i,j)] = distance
+#  output['cgmatrix'] = sorted(cgtop.items(), key = lambda t: t[1])
 
-  #FIXED LIMIT LOWER TRIANGLE CG-MATRIX
-  #cgmatrix = list()
+# #FIXED LIMIT LOWER TRIANGLE CG-MATRIX
+  keylist = list(corecompare.keys())
+  cgmatrix = list()
   #sections = math.ceil(len(keylist)/10)
-  #for s in range(0, sections):
-  #  cgmatrix.append([''] + keylist[s*10:s*10+10])
-  #  for i in keylist[s*10+1:]:
-  #    tmplist = [i]
-  #    for j in keylist[s*10:s*10+10]:
-  #      if keylist.index(j) >= keylist.index(i):
-  #        tmplist.append('-')
-  #      else:
-  #        tmplist.append( len(list(set(corecompare[i]).symmetric_difference(corecompare[j]))) )
-  #    cgmatrix.append( tmplist )
-  #output['cgmatrix'] = cgmatrix
+  sections = 1 
+  for s in range(0, sections):
+    cgmatrix.append([''] + keylist[s*10:s*10+10000])
+    for i in keylist[s*10+1:]:
+      tmplist = [i]
+      for j in keylist[s*10:s*10+10000]:
+        if keylist.index(j) >= keylist.index(i):
+          tmplist.append('-')
+        else:
+          tmplist.append( str(len(list(set(corecompare[i]).symmetric_difference(corecompare[j]))) ))
+      cgmatrix.append( tmplist )
+  output['cgmatrix'] = cgmatrix
 
   versions = session.query(Versions).all()
   for version in versions:

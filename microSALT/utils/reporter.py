@@ -52,25 +52,29 @@ class Reporter():
 
   def report(self, type='default', customer='all'):
     self.gen_version(self.name)
-    self.start_web()
-    if type == 'json_dump':
-      self.gen_json()
-    elif type == 'default':
-      self.gen_typing()
-      self.gen_qc()
-      self.gen_json(silent=True)
-    elif type == 'typing':
-      self.gen_typing()
-    elif type == 'motif_overview':
-      self.gen_motif(motif="resistance")
-      self.gen_motif(motif="expec")
-    elif type == 'qc':
-      self.gen_qc()
-    elif type == 'st_update':
-      self.gen_STtracker(customer)
+    if type in ['default','typing','qc']:
+      self.start_web()
+      if type == 'default':
+        self.gen_typing()
+        self.gen_qc()
+        self.gen_json(silent=True)
+      elif type == 'typing':
+        self.gen_typing()
+      elif type == 'qc':
+        self.gen_qc()
+      elif type == 'st_update':
+        self.gen_STtracker(customer)
+      self.kill_flask()
+    elif type in ['json_dump','motif_overview','cgmlst']:
+      if type == 'json_dump':
+        self.gen_json()
+      elif type == 'motif_overview':
+        self.gen_motif(motif="resistance")
+        self.gen_motif(motif="expec")
+      elif type == 'cgmlst':
+        self.gen_cgmlst()
     else:
       raise Exception("Report function recieved invalid format")
-    self.kill_flask()
     self.mail()
     if self.output == "" or self.output == os.getcwd():
       for file in self.filelist:
@@ -142,6 +146,28 @@ class Reporter():
     except Exception as e:
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.error = True
+
+  def gen_cgmlst(self, silent=False):
+    if self.collection:
+      sample_info = gen_collectiondata(self.name)
+    else:
+      self.ticketFinder.load_lims_project_info(self.name)
+      sample_info = gen_reportdata(self.name)
+    output = "{}/{}_cgmlst_{}.csv".format(self.output,self.name,self.now)
+    if not os.path.isfile(output):
+      self.filelist.append(output)
+    excel = open(output, "w+")
+    motifdict = dict()
+
+    #Top 2 Header
+    sepfix = "sep=,"
+    excel.write("{}\n".format(sepfix))
+
+    for c in sample_info['cgmatrix']:
+      excel.write("{}\n".format(','.join(c)))
+    excel.close()
+    if not silent:
+      self.attachments.append(output)
 
   def gen_motif(self, motif="resistance", silent=False):
     if motif not in ["resistance", "expec"]:

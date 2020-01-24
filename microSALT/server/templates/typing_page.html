@@ -114,38 +114,6 @@
                 (**) För förbättrad översikt rapporteras resultaten för kontrollprover enbart i detaljrapporten <br/>
             </div></div>
 
-            <div class="panel"><div class="panel-body">
-              <h3>Core Genome distans<br></h3>
-              <p>
-              </p>
-              <div class="table-responsive">
-                <table  class="table table-bordered" style='table-layout:fixed;'>
-                <tr><td><b>CG Prov ID</b></td><td><b>Avstånd</b></td></tr>
-                {% for row in cgmatrix %}
-                  <tr>
-                  {% for elem in row %}
-                    {% if elem is string %}
-                      <td>{{elem}}</td>
-                    {% elif elem|int == -1 %}
-                      <td>Kontrollprov</td>
-                    {% elif elem|int == 0 %}
-                      <td bgcolor="#fa8072">{{elem}} (Identiska)</td>
-                    {% elif elem|int < 30 and elem|int > 0 %}
-                      <td bgcolor="#ebffcd">{{elem}}</td>
-                    {% elif elem|int < 50 and elem|int > 0 %}
-                      <td bgcolor="#fffacd">{{elem}}</td>
-                    {% else %}
-                      <td>{{elem}}</td>
-                    {% endif %}
-                  {% endfor %}
-                  </tr>
-                {% endfor%}
-              </table>
-            </div>
-            Grönmarkerade prover är troligtvis epidemilogiskt besläktade. Gulmarkerade prover uppvisar en osäker släktskap. <br/>
-            Tabellen visar förhållanden upp till ett maximalt avstånd av 200 geners skillnad. <br/>
-            </div></div>
-
               <div class="panel"><div class="panel-body">
                 <h3>Provsammanställning<br></h3>
                   <div class="table-responsive">
