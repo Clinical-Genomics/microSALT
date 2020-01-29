@@ -234,6 +234,22 @@ class Reporter():
     sample_info = gen_reportdata(self.name)
     analyses = ['blast_pubmlst', 'quast_assembly', 'blast_resfinder_resistence', 'picard_markduplicate', 'microsalt_samtools_stats']
     for s in sample_info['samples']:
+      #Since some apps are too basic to filter irrelevant non-standard values..
+      s.ST_status = '' if s.ST_status != str(s.ST)
+      s.threshold = '' if s.threshold not in ['Passed', 'Failed']
+      s.genome_length = '' if s.genome_length < 1
+      s.gc_percentage = '' if s.gc_percentage < 0.1
+      s.n50 = '' if s.n50 < 1
+      s.contigs = '' if s.contigs < 1
+      s.insert_size = '' if s.insert_size < 1
+      s.duplication_rate = '' if s.duplication_rate < 0.1
+      s.total_reads = '' if s.total_reads < 1
+      s.mapped_rate = '' if s.mapped_rate < 0.1
+      s.coverage_10x = '' if s.coverage_10x < 0.1
+      s.coverage_30x = '' if s.coverage_30x < 0.1
+      s.coverage_50x = '' if s.coverage_50x < 0.1
+      s.coverage_100x = '' if s.coverage_100x < 0.1
+
       report[s.CG_ID_sample] = dict()
       for a in analyses:
         if a == 'blast_resfinder_resistence':
