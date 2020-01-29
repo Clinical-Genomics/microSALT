@@ -34,7 +34,6 @@ class Referencer():
    """ Automatically downloads pubMLST & NCBI organisms not already downloaded """
    neworgs = list()
    newrefs = list()
-   newcg = list()
 
    try:
      if project:
@@ -49,15 +48,11 @@ class Referencer():
          neworgs.append(self.lims.data['organism'])
        if not "{}.fasta".format(self.lims.data['reference']) in os.listdir(self.config['folders']['genomes']) and not self.lims.data['reference'] in newrefs:
          newrefs.append(self.lims.data['reference'])
-       if not refname in os.listdir(self.config['folders']['cgmlst']) and not refname in newcg:
-         newcg.append(refname)
 
      for org in neworgs:
        self.add_pubmlst(org)
      for org in newrefs:
        self.download_ncbi(org)
-     for org in newcg:
-       self.download_cgmlst(org)
    except Exception as e:
      self.logger.error("Reference update function failed prematurely. Review immediately")
  
@@ -70,11 +65,6 @@ class Referencer():
 
     #Reindexes
     self.index_db(os.path.dirname(self.config['folders']['expec']), '.fsa')
-    self.logger.info("Checking cgMLST references (time consuming)")
-    for thing in os.listdir(self.config['folders']['cgmlst']):
-      if os.path.isdir("{}/{}".format(self.config['folders']['cgmlst'],thing)):
-        self.index_db("{}/{}".format(self.config['folders']['cgmlst'], thing), '.fasta')
-
 
   def index_db(self, full_dir, suffix):
     """Check for indexation, makeblastdb job if not enough of them."""
@@ -239,60 +229,6 @@ class Referencer():
       self.logger.info('Downloaded reference {}'.format(reference))
     except Exception as e:
       self.logger.warning("Unable to download genome '{}' from NCBI".format(reference))
-
-  def download_cgmlst(self, reference):
-    #Find org on main page
-    query = urllib.request.urlopen("https://www.cgmlst.org/ncs")
-    page = BeautifulSoup(query, 'html.parser')
-    sections = page.find_all("a", href=True)
-    version = '0'
-    for section in sections:
-      if section.find_all("em"):
-        pot_org = section.find_all("em")[0].get_text().replace(' ', '_').lower()
-        if reference in pot_org:
-          currver = self.db_access.get_version('cgmlst_{}'.format(pot_org))
-          break
-
-    if not 'currver' in locals():
-      return
-
-    #Grab version number on secondary page
-    nquery= urllib.request.urlopen(section['href'])
-    npage = BeautifulSoup(nquery, 'html.parser')
-    nsections = npage.find_all("td")
-    found=False
-    for nsection in nsections:
-      if found:
-        version=nsection.get_text()
-        break
-      elif 'Version' == nsection.get_text():
-        found=True      
-
-    if float(version > currver):   
-      targ_dir = "{}/{}".format(self.config['folders']['cgmlst'], pot_org)
-      url= os.path.join(section['href'], "alleles/")
-      os.makedirs(targ_dir)
-      target= "{}/original.zip".format(targ_dir)
-      with urllib.request.urlopen(url) as response, open(target, 'wb') as out_file:
-        shutil.copyfileobj(response, out_file)
-      with zipfile.ZipFile(target) as zf:
-        zf.extractall(targ_dir)
-      #Create big file for span checking purposes
-      combo = open("{}/main.fsa".format(targ_dir), "w+") 
-      files = os.listdir(targ_dir)
-      for file in files:
-        if re.match('\w+\d+.fasta',file):
-          currfile = open("{}/{}".format(targ_dir, file), "r+")
-          for line in currfile:
-            if '>' in line:
-              combo.write(">{}_{}".format(file.split('.')[0],line[1:]))
-            else:
-              combo.write(line)
-          currfile.close()
-      combo.close()  
-
-      self.db_access.upd_rec({'name':'cgmlst_{}'.format(pot_org)}, 'Versions', {'version':version})
-      self.logger.info("cgMLST reference for {} updated to version {}".format(reference.replace('_',' ').capitalize(), version))
 
   def add_pubmlst(self, organism):
     """ Checks pubmlst for references of given organism and downloads them """

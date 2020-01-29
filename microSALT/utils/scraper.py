@@ -58,7 +58,6 @@ class Scraper():
          self.job_fallback.create_sample(self.name)
        self.scrape_blast(type='seq_type')
        self.scrape_blast(type='resistance')
-       self.scrape_blast(type='core_seq_type')
        if self.lims_fetcher.get_organism_refname(self.name) == "escherichia_coli":
          self.scrape_blast(type='expec')
        self.scrape_alignment()
@@ -82,7 +81,6 @@ class Scraper():
     self.sampledir = self.infolder
     self.scrape_blast(type='seq_type')
     self.scrape_blast(type='resistance')
-    self.scrape_blast(type='core_seq_type')
     if self.lims_fetcher.get_organism_refname(self.name) == "escherichia_coli":
       self.scrape_blast(type='expec')
     self.scrape_alignment()
@@ -139,7 +137,6 @@ class Scraper():
       type2db = 'Expacs'
     folder = type
     folder = folder.replace('seq_type', 'mlst')
-    folder = folder.replace('core_', 'cg')
  
     q_list = glob.glob("{}/blast_search/{}/*".format(self.sampledir, folder))
     organism = self.lims_fetcher.get_organism_refname(self.name)
@@ -158,12 +155,10 @@ class Scraper():
           ref_file = "{}/{}.fsa".format(self.config["folders"]["resistances"], filename)
         elif type == 'expec':
           ref_file = self.config["folders"]["expec"]
-        elif type == 'core_seq_type':
-          ref_file = "{}/{}/main.fsa".format(self.config['folders']['cgmlst'], organism)
         elif type == 'seq_type':
           ref_file =  "{}/{}/{}.tfa".format(self.config['folders']['references'], organism, filename.split('_')[-1])
 
-        #Removes a lot of cgmlst inits
+        #Only re-initializes locilengths if the ref_file changed between iterations
         if old_ref != ref_file:
           old_ref = ref_file
           locilengths = self.get_locilengths(ref_file)
@@ -228,12 +223,6 @@ class Scraper():
                   hypo[-1]["allele"] = int(partials.group(2))
                   hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(partials.group(0))]
 
-                elif type == 'core_seq_type':
-                  partials = re.search(r'(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[2])
-                  hypo[-1]["allele"] = int(elem_list[0])
-                  hypo[-1]["loci"] = filename
-                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}_{}'.format(hypo[-1]["loci"], hypo[-1]["allele"])] 
-
                 # split elem 2 into contig node_NO, length, cov
                 nodeinfo = elem_list[2].split('_')
                 hypo[-1]["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
@@ -244,7 +233,7 @@ class Scraper():
       self.logger.error("Unable to process the pattern of {}".format(str(e)))
 
     #Cleanup of overlapping hits
-    if type == 'seq_type' or type == 'core_seq_type':
+    if type == 'seq_type':
       identifier = 'loci'
     elif type == 'resistance' or type == 'expec':
       identifier = 'gene'

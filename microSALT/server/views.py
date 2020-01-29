@@ -72,7 +72,6 @@ def typing_page(project, organism_group):
         samples = sample_info['samples'],
         date = date.today().isoformat(),
         version = sample_info['versions'],
-        cgmatrix = sample_info['cgmatrix'],
         user = sample_info['user'],
         threshold = config['threshold'],
         verified_organisms = config['regex']['verified_organisms'],
@@ -136,10 +135,8 @@ def gen_add_info(sample_info=dict()):
   sample_info = sorted(sample_info, key=lambda sample: \
                 int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
 
-  corecompare = dict()
 
   for s in sample_info:
-    corecompare[s.Customer_ID_sample] = list()
     s.ST_status=str(s.ST)
     if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or \
     s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or \
@@ -188,50 +185,12 @@ def gen_add_info(sample_info=dict()):
         v.threshold = 'Passed'
       else:
         v.threshold = 'Failed'
-    for c in s.core_seq_types:
-      if c.identity >= config["threshold"]["cgmlst_id"] and c.contig_coverage >= config["threshold"]["cgmlst_coverage"]:
-        corecompare[s.Customer_ID_sample].append("{}:{}".format(c.loci, c.allele))
 
     #Seq_type and resistance sorting
     s.seq_types=sorted(s.seq_types, key=lambda x: x.loci)
     s.resistances=sorted(s.resistances, key=lambda x: x.instance)
     s.expacs=sorted(s.expacs, key=lambda x: x.gene)
     output['samples'].append(s)
-
-
-#  #Pairwise CG-matrix
-#  keylist = list(corecompare.keys())
-#  cgtop = dict()
-#  for i in keylist:
-#    for j in keylist[keylist.index(i)+1:]:
-#      distance = len(list(set(corecompare[i]).symmetric_difference(corecompare[j])))
-#      controls = False
-#      if i.startswith('NTC') or i.startswith('0-') or i.startswith('NK-') or i.startswith('NEG') or \
-#      i.startswith('CTRL') or i.startswith('Neg') or i.startswith('blank') or i.startswith('dual-NTC'):
-#        if j.startswith('NTC') or j.startswith('0-') or j.startswith('NK-') or j.startswith('NEG') or \
-#        j.startswith('CTRL') or j.startswith('Neg') or j.startswith('blank') or j.startswith('dual-NTC'):
-#          cgtop['{} - {}'.format(i,j)] = -1
-#          controls = True
-#      if distance <= 200 and not controls:
-#        cgtop['{} - {}'.format(i,j)] = distance
-#  output['cgmatrix'] = sorted(cgtop.items(), key = lambda t: t[1])
-
-# #FIXED LIMIT LOWER TRIANGLE CG-MATRIX
-  keylist = list(corecompare.keys())
-  cgmatrix = list()
-  #sections = math.ceil(len(keylist)/10)
-  sections = 1 
-  for s in range(0, sections):
-    cgmatrix.append([''] + keylist[s*10:s*10+10000])
-    for i in keylist[s*10+1:]:
-      tmplist = [i]
-      for j in keylist[s*10:s*10+10000]:
-        if keylist.index(j) >= keylist.index(i):
-          tmplist.append('-')
-        else:
-          tmplist.append( str(len(list(set(corecompare[i]).symmetric_difference(corecompare[j]))) ))
-      cgmatrix.append( tmplist )
-  output['cgmatrix'] = cgmatrix
 
   versions = session.query(Versions).all()
   for version in versions:

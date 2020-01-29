@@ -18,7 +18,6 @@ class Samples(db.Model):
   resistances = relationship("Resistances", back_populates="samples")
   #steps = relationship("Steps", back_populates="samples")
   expacs = relationship("Expacs", back_populates="samples")
-  core_seq_types = relationship("Core_seq_types", back_populates="samples")
 
   CG_ID_sample = db.Column(db.String(15), primary_key=True, nullable=False)
   CG_ID_project = db.Column(db.String(15), ForeignKey('projects.CG_ID_project'))
@@ -26,7 +25,6 @@ class Samples(db.Model):
   organism = db.Column(db.String(30))
   ST = db.Column(db.SmallInteger, default=-1)
   pubmlst_ST = db.Column(db.SmallInteger, default=-1)
-  cgST = db.Column(db.SmallInteger, default=-1)
   date_analysis = db.Column(db.DateTime)
   genome_length = db.Column(db.Integer, default=-1)
   gc_percentage = db.Column(db.Float(3,2), default = 0.0)
@@ -69,24 +67,6 @@ class Seq_types(db.Model):
   bitscore = db.Column(db.SmallInteger)
   subject_length = db.Column(db.Integer)
   st_predictor = db.Column(db.Boolean, default = 0)
-  contig_start = db.Column(db.Integer)
-  contig_end = db.Column(db.Integer)
-
-class Core_seq_types(db.Model):
-  __tablename__ = 'core_seq_types'
-  samples = relationship('Samples', back_populates='core_seq_types')
-
-  CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
-  loci = db.Column(db.String(10), primary_key=True)
-  allele = db.Column(db.SmallInteger)
-  contig_name = db.Column(db.String(20), primary_key=True)
-  contig_length = db.Column(db.Integer)
-  contig_coverage = db.Column(db.Float(6,2))
-  identity = db.Column(db.Float(3,2), default= 0.0)
-  span = db.Column(db.Float(3,2), default= 0.0)
-  evalue = db.Column(db.String(10))
-  bitscore = db.Column(db.SmallInteger)
-  subject_length = db.Column(db.Integer)
   contig_start = db.Column(db.Integer)
   contig_end = db.Column(db.Integer)
 

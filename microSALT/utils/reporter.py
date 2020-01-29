@@ -52,7 +52,7 @@ class Reporter():
 
   def report(self, type='default', customer='all'):
     self.gen_version(self.name)
-    if type in ['default','typing','qc']:
+    if type in ['default','typing','qc', 'st_update']:
       self.start_web()
       if type == 'default':
         self.gen_typing()
@@ -65,14 +65,12 @@ class Reporter():
       elif type == 'st_update':
         self.gen_STtracker(customer)
       self.kill_flask()
-    elif type in ['json_dump','motif_overview','cgmlst']:
+    elif type in ['json_dump','motif_overview']:
       if type == 'json_dump':
         self.gen_json()
       elif type == 'motif_overview':
         self.gen_motif(motif="resistance")
         self.gen_motif(motif="expec")
-      elif type == 'cgmlst':
-        self.gen_cgmlst()
     else:
       raise Exception("Report function recieved invalid format")
     self.mail()
@@ -146,30 +144,6 @@ class Reporter():
     except Exception as e:
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.error = True
-
-  def gen_cgmlst(self, silent=False):
-    if self.collection:
-      sample_info = gen_collectiondata(self.name)
-    else:
-      self.ticketFinder.load_lims_project_info(self.name)
-      sample_info = gen_reportdata(self.name)
-    output = "{}/{}_cgmlst_{}.csv".format(self.output,self.name,self.now)
-    if not os.path.isfile(output):
-      self.filelist.append(output)
-    excel = open(output, "w+")
-    motifdict = dict()
-
-    #Top 2 Header
-    sepfix = "sep=,"
-    excel.write("{}\n".format(sepfix))
-
-    for c in sample_info['cgmatrix']:
-      excel.write("{}\n".format(','.join(c)))
-      excel.write("Prover med maximalt 30 geners skillnad är troligtvis epidemilogiskt besläktade.\n")
-      excel.write("Prover med maximalt 50 geners skillnad uppvisar en osäker släktskap.\n")
-    excel.close()
-    if not silent:
-      self.attachments.append(output)
 
   def gen_motif(self, motif="resistance", silent=False):
     if motif not in ["resistance", "expec"]:
@@ -268,20 +242,20 @@ class Reporter():
     analyses = ['blast_pubmlst', 'quast_assembly', 'blast_resfinder_resistence', 'picard_markduplicate', 'microsalt_samtools_stats']
     for s in sample_info['samples']:
       #Since some apps are too basic to filter irrelevant non-standard values..
-      s.ST_status = '' if s.ST_status != str(s.ST)
-      s.threshold = '' if s.threshold not in ['Passed', 'Failed']
-      s.genome_length = '' if s.genome_length < 1
-      s.gc_percentage = '' if s.gc_percentage < 0.1
-      s.n50 = '' if s.n50 < 1
-      s.contigs = '' if s.contigs < 1
-      s.insert_size = '' if s.insert_size < 1
-      s.duplication_rate = '' if s.duplication_rate < 0.1
-      s.total_reads = '' if s.total_reads < 1
-      s.mapped_rate = '' if s.mapped_rate < 0.1
-      s.coverage_10x = '' if s.coverage_10x < 0.1
-      s.coverage_30x = '' if s.coverage_30x < 0.1
-      s.coverage_50x = '' if s.coverage_50x < 0.1
-      s.coverage_100x = '' if s.coverage_100x < 0.1
+      s.ST_status = '' if s.ST_status != str(s.ST) else s.ST_status
+      s.threshold = '' if s.threshold not in ['Passed', 'Failed'] else s.threshold
+      s.genome_length = '' if s.genome_length < 1 else s.genome_length
+      s.gc_percentage = '' if s.gc_percentage < 0.1 else s.gc_percentage
+      s.n50 = '' if s.n50 < 1 else s.n50
+      s.contigs = '' if s.contigs < 1 else s.contigs 
+      s.insert_size = '' if s.insert_size < 1 else s.insert_size
+      s.duplication_rate = '' if s.duplication_rate < 0.1 else s.duplication_rate
+      s.total_reads = '' if s.total_reads < 1 else s.total_reads
+      s.mapped_rate = '' if s.mapped_rate < 0.1 else s.mapped_rate
+      s.coverage_10x = '' if s.coverage_10x < 0.1 else s.coverage_10x
+      s.coverage_30x = '' if s.coverage_30x < 0.1 else s.coverage_30x
+      s.coverage_50x = '' if s.coverage_50x < 0.1 else s.coverage_50x
+      s.coverage_100x = '' if s.coverage_100x < 0.1 else s.coverage_100x
 
       report[s.CG_ID_sample] = dict()
       for a in analyses:
