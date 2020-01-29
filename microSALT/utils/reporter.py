@@ -52,7 +52,7 @@ class Reporter():
 
   def report(self, type='default', customer='all'):
     self.gen_version(self.name)
-    if type in ['default','typing','qc']:
+    if type in ['default','typing','qc', 'st_update']:
       self.start_web()
       if type == 'default':
         self.gen_typing()
