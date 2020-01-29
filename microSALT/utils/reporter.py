@@ -52,25 +52,29 @@ class Reporter():
 
   def report(self, type='default', customer='all'):
     self.gen_version(self.name)
-    self.start_web()
-    if type == 'json_dump':
-      self.gen_json()
-    elif type == 'default':
-      self.gen_typing()
-      self.gen_qc()
-      self.gen_json(silent=True)
-    elif type == 'typing':
-      self.gen_typing()
-    elif type == 'motif_overview':
-      self.gen_motif(motif="resistance")
-      self.gen_motif(motif="expac")
-    elif type == 'qc':
-      self.gen_qc()
-    elif type == 'st_update':
-      self.gen_STtracker(customer)
+    if type in ['default','typing','qc']:
+      self.start_web()
+      if type == 'default':
+        self.gen_typing()
+        self.gen_qc()
+        self.gen_json(silent=True)
+      elif type == 'typing':
+        self.gen_typing()
+      elif type == 'qc':
+        self.gen_qc()
+      elif type == 'st_update':
+        self.gen_STtracker(customer)
+      self.kill_flask()
+    elif type in ['json_dump','motif_overview','cgmlst']:
+      if type == 'json_dump':
+        self.gen_json()
+      elif type == 'motif_overview':
+        self.gen_motif(motif="resistance")
+        self.gen_motif(motif="expec")
+      elif type == 'cgmlst':
+        self.gen_cgmlst()
     else:
       raise Exception("Report function recieved invalid format")
-    self.kill_flask()
     self.mail()
     if self.output == "" or self.output == os.getcwd():
       for file in self.filelist:
@@ -107,10 +111,11 @@ class Reporter():
       output ="{}/{}".format(self.output, outfile)
       storage = "{}/{}".format(self.config['folders']['reports'], outfile)
 
+      if not os.path.isfile(output):
+        self.filelist.append(output)
       open(output, 'wb').write(q.content.decode("iso-8859-1").encode("utf8"))
       copyfile(output, storage)
 
-      self.filelist.append(output)
       if not silent:
         self.attachments.append(output)  
     except Exception as e:
@@ -131,18 +136,43 @@ class Reporter():
       output ="{}/{}".format(self.output, outfile)
       storage = "{}/{}".format(self.config['folders']['reports'], outfile)
 
+      if not os.path.isfile(output):
+        self.filelist.append(output)
       open(output, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
       copyfile(output, storage)
     
-      self.filelist.append(output)
       if not silent:
         self.attachments.append(output)
     except Exception as e:
       self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
       self.error = True
 
+  def gen_cgmlst(self, silent=False):
+    if self.collection:
+      sample_info = gen_collectiondata(self.name)
+    else:
+      self.ticketFinder.load_lims_project_info(self.name)
+      sample_info = gen_reportdata(self.name)
+    output = "{}/{}_cgmlst_{}.csv".format(self.output,self.name,self.now)
+    if not os.path.isfile(output):
+      self.filelist.append(output)
+    excel = open(output, "w+")
+    motifdict = dict()
+
+    #Top 2 Header
+    sepfix = "sep=,"
+    excel.write("{}\n".format(sepfix))
+
+    for c in sample_info['cgmatrix']:
+      excel.write("{}\n".format(','.join(c)))
+      excel.write("Prover med maximalt 30 geners skillnad är troligtvis epidemilogiskt besläktade.\n")
+      excel.write("Prover med maximalt 50 geners skillnad uppvisar en osäker släktskap.\n")
+    excel.close()
+    if not silent:
+      self.attachments.append(output)
+
   def gen_motif(self, motif="resistance", silent=False):
-    if motif not in ["resistance", "expac"]:
+    if motif not in ["resistance", "expec"]:
       self.logger.error("Invalid motif type specified for gen_motif function")
     if self.collection:
       sample_info = gen_collectiondata(self.name)
@@ -150,6 +180,8 @@ class Reporter():
       self.ticketFinder.load_lims_project_info(self.name)
       sample_info = gen_reportdata(self.name)
     output = "{}/{}_{}_{}.csv".format(self.output,self.name,motif,self.now)
+    if not os.path.isfile(output):
+      self.filelist.append(output)
     excel = open(output, "w+")
     motifdict = dict()
 
@@ -161,7 +193,7 @@ class Reporter():
             motifdict[r.resistance] =list()
           if r.threshold == 'Passed' and not r.gene in motifdict[r.resistance]:
             motifdict[r.resistance].append(r.gene)
-      elif motif=='expac':
+      elif motif=='expec':
         for r in s.expacs:
           if not (r.virulence in motifdict.keys()) and r.threshold == 'Passed':
             motifdict[r.virulence] =list()
@@ -171,6 +203,7 @@ class Reporter():
       motifdict[k] = sorted(v)
 
     #Top 2 Header
+    sepfix = "sep=,"
     topline = "Identity {}% & Span {}%,,,".format(self.config['threshold']['motif_id'], self.config['threshold']['motif_span'])
     botline = "CG Sample ID,Sample ID,Organism,Sequence Type,Thresholds"
     for k in sorted(motifdict.keys()):
@@ -182,6 +215,7 @@ class Reporter():
       topline += ",,{}{}".format(active_gene,geneholder)
       resnames = ','.join(sorted(motifdict[k]))
       botline += ",,{}".format(resnames)
+    excel.write("{}\n".format(sepfix))
     excel.write("{}\n".format(topline))
     excel.write("{}\n".format(botline))
 
@@ -196,7 +230,7 @@ class Reporter():
             rowdict[r.resistance] =dict()
           if r.threshold == 'Passed' and not r.gene in rowdict[r.resistance]:
             rowdict[r.resistance][r.gene] = r.identity
-      elif motif=="expac":
+      elif motif=="expec":
         for r in s.expacs:
           if not (r.virulence in rowdict.keys()) and r.threshold == 'Passed':
             rowdict[r.virulence] =dict()
@@ -223,7 +257,6 @@ class Reporter():
       excel.write("{}{}\n".format(pref, hits))
 
     excel.close()
-    self.filelist.append(output)
     if not silent:
       self.attachments.append(output)
 
@@ -270,9 +303,10 @@ class Reporter():
           report[s.CG_ID_sample]['blast_resfinder_resistence'].append(r.gene)
 
     #json.dumps(report) #Dumps the json directly
+    if not os.path.isfile(output):
+      self.filelist.append(output)
     with open(output, 'w') as outfile:
       json.dump(report, outfile)
-    self.filelist.append(output)
     if not silent:
       self.attachments.append(output)
 
