@@ -172,8 +172,8 @@ def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_u
     worker.project_job(single_sample=True)
   except Exception as e:
     click.echo("Unable to process sample {} due to '{}'".format(sample_id,e))
-  done()
-
+  done() 
+ 
 
 @analyse.command()
 @click.argument('collection_id')

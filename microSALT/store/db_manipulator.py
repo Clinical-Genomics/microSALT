@@ -26,8 +26,8 @@ class DB_Manipulator:
     Session = sessionmaker(bind=self.engine)
     self.session = Session()
     self.metadata = MetaData(self.engine)
-    self.profiles = Profiles(self.metadata, self.config).tables
-    self.novel = Novel(self.metadata, self.config).tables
+    self.profiles = Profiles(self.metadata, self.config, self.logger).tables
+    self.novel = Novel(self.metadata, self.config, self.logger).tables
     #Turns off pymysql deprecation warnings until they can update their code
     with warnings.catch_warnings():
       warnings.simplefilter("ignore")

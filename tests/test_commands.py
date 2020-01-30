@@ -50,7 +50,9 @@ def test_analyse(check_version, get_samples, isdir, listdir, subproc, runner, co
   process_mock = mock.Mock()
   attrs = {'communicate.return_value': ('output', 'error')}
   process_mock.configure_mock(**attrs)
-  subproc.return_value = process_mock 
+  subproc.return_value = process_mock
+
+  listdir.return_value = ["ACC6438A3_HVMHWDSXX_L1_1.fastq.gz", "ACC6438A3_HVMHWDSXX_L1_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz"]
 
   #All subcommands
   for analysis_type in ['sample', 'project', 'collection']:
