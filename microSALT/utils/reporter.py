@@ -265,7 +265,7 @@ class Reporter():
           report[s.CG_ID_sample][a] = dict()
 
       report[s.CG_ID_sample]['blast_pubmlst'] = {'sequence_type':s.ST_status, 'thresholds':s.threshold}
-      report[s.CG_ID_sample]['quast_assembly'] = {'estimated_genome_length':s.genome_length, 'gc_percentage':float(s.gc_percentage), 'n50':s.n50, 'necessary_contigs':s.contigs}
+      report[s.CG_ID_sample]['quast_assembly'] = {'estimated_genome_length':s.genome_length, 'gc_percentage':str(s.gc_percentage), 'n50':s.n50, 'necessary_contigs':s.contigs}
       report[s.CG_ID_sample]['picard_markduplicate'] = {'insert_size':s.insert_size, 'duplication_rate':s.duplication_rate}
       report[s.CG_ID_sample]['microsalt_samtools_stats'] = {'total_reads':s.total_reads, 'mapped_rate':s.mapped_rate,\
                                                             'average_coverage':s.average_coverage, \

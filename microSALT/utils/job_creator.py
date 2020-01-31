@@ -498,7 +498,7 @@ class Job_Creator():
           final = entry
           break
 
-    head = "-A {} -p core -n 1 -t 06:00:00 -J {}_{}_MAILJOB --qos {} --open-mode append --dependency=afterany:{} --output {}"\
+    head = "-A {} -p core -n 1 -t 6:00:00 -J {}_{}_MAILJOB --qos {} --open-mode append --dependency=afterany:{} --output {}"\
             .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"],\
                     self.name,self.config["slurm_header"]["qos"],\
            final, self.config['folders']['log_file'],  self.config['regex']['mail_recipient'])
