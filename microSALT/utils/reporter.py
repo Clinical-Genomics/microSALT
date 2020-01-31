@@ -254,11 +254,14 @@ class Reporter():
           report[s.CG_ID_sample]['blast_resfinder_resistence'].append(r.gene)
 
     #json.dumps(report) #Dumps the json directly
-    with open(output, 'w') as outfile:
-      json.dump(report, outfile)
-    self.filelist.append(output)
-    if not silent:
-      self.attachments.append(output)
+    try:
+      with open(output, 'w') as outfile:
+        json.dump(report, outfile)
+      self.filelist.append(output)
+      if not silent:
+        self.attachments.append(output)
+    except FileNotFoundError as e:
+      self.logger.error("Unable to produce json file. Path {} does not exist".format(os.path.basename(output)))
 
   def mail(self):
     file_name = self.attachments

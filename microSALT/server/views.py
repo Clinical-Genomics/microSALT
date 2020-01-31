@@ -127,8 +127,11 @@ def gen_add_info(sample_info=dict()):
   output['versions'] = dict()
 
   #Sorts sample names
-  sample_info = sorted(sample_info, key=lambda sample: \
-                int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
+  try:
+    sample_info = sorted(sample_info, key=lambda sample: \
+                  int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
+  except ValueError as e:
+    pass
 
   for s in sample_info:
     s.ST_status=str(s.ST)

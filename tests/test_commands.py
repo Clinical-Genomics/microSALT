@@ -45,7 +45,10 @@ def test_groups(check_version, runner):
 @patch('os.path.isdir')
 @patch('microSALT.store.lims_fetcher.Lims.get_samples')
 @patch('microSALT.store.lims_fetcher.Lims.check_version')
-def test_analyse(check_version, get_samples, isdir, listdir, subproc, runner, config):
+@patch('microSALT.utils.reporter.LIMS_Fetcher')
+def test_analyse(LF, check_version, get_samples, isdir, listdir, subproc, runner, config):
+  LF.data.return_value = {'CG_ID_project':"AAA1234",'CG_ID_sample':'AAA1234A3'}
+
   #Sets up subprocess mocking
   process_mock = mock.Mock()
   attrs = {'communicate.return_value': ('output', 'error')}
@@ -67,9 +70,20 @@ def test_analyse(check_version, get_samples, isdir, listdir, subproc, runner, co
     special_run = runner.invoke(root, ['analyse', analysis_type, 'AAA1234', '--qc_only', '--skip_update', '--untrimmed', '--uncareful'])
     assert special_run.exit_code == 0
 
+
 @patch('microSALT.utils.reporter.Reporter.start_web')
+@patch('microSALT.utils.reporter.LIMS_Fetcher')
+@patch('microSALT.store.lims_fetcher.Lims.get_samples')
 @patch('microSALT.store.lims_fetcher.Lims.check_version')
-def test_finish(check_version, webstart, runner, config):
+@patch('microSALT.utils.job_creator.Job_Creator.create_project')
+def test_finish(jcp, check_version, get_samples, LF, webstart, runner, config):
+  LF.data.return_value = {'CG_ID_project':"AAA1234",'CG_ID_sample':'AAA1234A1'}
+  sample_mock = mock.MagicMock()
+  sample_mock.project.id = "AAA1234"
+  sample_mock.id = "AAA1234A3"
+  sample_mock.name = "Trams"
+  sample_mock.udf = {'Reference Genome Microbial':"NAN", 'customer':"NAN", 'Sequencing Analysis':"NAN"}
+  get_samples.return_value = [sample_mock]
 
   #All subcommands
   for analysis_type in ['sample', 'project', 'collection']:
@@ -77,8 +91,8 @@ def test_finish(check_version, webstart, runner, config):
     assert base_invoke.exit_code == 2
 
     #Exhaustive parameter test
-    typical_run = runner.invoke(root, ['utils', 'finish', analysis_type, 'AAA1234', '--email', '2@2.com', '--input', '/tmp/', '--config', config, '--report', 'default'])
-    assert typical_run.exit_code == -1
+    typical_run = runner.invoke(root, ['utils', 'finish', analysis_type, 'AAA1234', '--email', '2@2.com', '--input', '/tmp/AAA1234_2019.8.12_11.25.2', '--config', config, '--report', 'default'])
+    assert typical_run.exit_code == 1
     special_run = runner.invoke(root, ['utils', 'finish', analysis_type, 'AAA1234', '--rerun', '--report', 'qc'])
     assert special_run.exit_code == -1
     if analysis_type == 'collection':

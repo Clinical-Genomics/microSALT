@@ -3,6 +3,8 @@ import logging
 import json
 import os
 import pathlib
+import re
+import subprocess
 import sys
 
 from flask import Flask
@@ -57,9 +59,6 @@ if config != '':
     #Initialize logger
     logger = logging.getLogger('main_logger')
     logger.setLevel(logging.DEBUG)
-    fh = logging.FileHandler(os.path.expanduser(config['folders']['log_file']))
-    fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-    logger.addHandler(fh)
     ch = logging.StreamHandler()
     ch.setLevel(logging.INFO)
     ch.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
@@ -68,8 +67,10 @@ if config != '':
     #Create paths mentioned in config
     for entry in config.keys():
       if entry != '_comment':
-        if isinstance(config[entry], str) and '/' in config[entry] and entry not in ['database', 'genologics']:
-          unmade_fldr = config[entry]
+        if isinstance(config[entry], str) and '/' in config[entry] and entry not in ['genologics']:
+          if not config[entry].startswith('/'):
+            sys.exit(-1)
+          unmade_fldr = os.path.abspath(config[entry])
           if not pathlib.Path(unmade_fldr).exists():
             os.makedirs(unmade_fldr)
             logger.info("Created path {}".format(unmade_fldr))
@@ -77,11 +78,28 @@ if config != '':
         #level two
         elif isinstance(config[entry], collections.Mapping):
           for thing in config[entry].keys():
-            if isinstance(config[entry][thing], str) and '/' in config[entry][thing] and entry not in ['database', 'genologics']:
-              unmade_fldr = config[entry][thing]
+            if isinstance(config[entry][thing], str) and '/' in config[entry][thing] and entry not in ['genologics']:
+              #Special string, mangling
+              if thing == 'log_file':
+                unmade_fldr = os.path.dirname(config[entry][thing])
+                bash_cmd="touch {}".format(config[entry][thing])
+                proc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+                output, error = proc.communicate()
+              elif thing == 'SQLALCHEMY_DATABASE_URI':
+                db_file = re.search('sqlite:///(.+)', config['database']['SQLALCHEMY_DATABASE_URI']).group(1)
+                unmade_fldr = os.path.dirname(db_file)
+                bash_cmd="touch {}".format(db_file) 
+                proc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
+                output, error = proc.communicate()
+              else:
+                unmade_fldr = config[entry][thing]
               if not pathlib.Path(unmade_fldr).exists():
                 os.makedirs(unmade_fldr)
                 logger.info("Created path {}".format(unmade_fldr))
+
+    fh = logging.FileHandler(os.path.expanduser(config['folders']['log_file']))
+    fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    logger.addHandler(fh)
 
   except Exception as e:
     print("Config error: {}".format(str(e)))

@@ -71,7 +71,6 @@ class Job_Creator():
       raise Exception("Directory {} lacks fastq files.".format(self.indir))
     for file in files:
       file_match = re.match( self.config['regex']['file_pattern'], file)
-      #import pdb; pdb.set_trace()
       if file_match:
         #Check that symlinks resolve
         path = '{}/{}'.format(self.indir, file)

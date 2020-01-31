@@ -13,9 +13,12 @@ class Profiles:
     self.metadata = metadata
     self.config = config
     self.logger = log
-    indata = os.listdir(self.config["folders"]["profiles"])
-    for file in indata:
-      self.add_table(file)
+    try:
+      indata = os.listdir(self.config["folders"]["profiles"])
+      for file in indata:
+        self.add_table(file)
+    except Exception as e:
+      self.logger.error("Unable to open profile folder {}".format(self.config["folders"]["profiles"]))
 
   def add_table(self, file):
     try:
@@ -49,9 +52,12 @@ class Novel:
     self.metadata = metadata
     self.config = config
     self.logger = log
-    indata = os.listdir(self.config["folders"]["profiles"])
-    for file in indata:
-      self.add_table(file)
+    try:
+      indata = os.listdir(self.config["folders"]["profiles"])
+      for file in indata:
+        self.add_table(file)
+    except Exception as e:
+      self.logger.error("Unable to open profile folder {}".format(self.config["folders"]["profiles"]))
 
   def add_table(self, file):
     try:
