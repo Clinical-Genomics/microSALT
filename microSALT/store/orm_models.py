@@ -10,6 +10,7 @@ from sqlalchemy.orm import relationship
 from microSALT import app
 
 db = SQLAlchemy(app)
+
 class Samples(db.Model):
   __tablename__ = 'samples'
   seq_types = relationship("Seq_types", back_populates="samples")
@@ -69,7 +70,6 @@ class Seq_types(db.Model):
   contig_start = db.Column(db.Integer)
   contig_end = db.Column(db.Integer)
 
-
 class Resistances(db.Model):
   __tablename__ = 'resistances'
   samples = relationship('Samples', back_populates='resistances')
@@ -110,16 +110,6 @@ class Expacs(db.Model):
   contig_start = db.Column(db.Integer)
   contig_end = db.Column(db.Integer)
 
-#Multi-date support for libprep/sequencing/analysis
-#class Steps(db.Model):
-#  __tablename__ = 'steps'
-#  samples = relationship("Samples", back_populates="steps")
-#
-#  CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
-#  step = db.Column(db.String(40), primary_key=True)
-#  method = db.Column(db.String(40), primary_key=True)
-#  date = db.Column(db.DateTime)
-
 class Projects(db.Model):
   __tablename__ = 'projects'
   samples = relationship('Samples', back_populates='projects')
@@ -151,3 +141,13 @@ class Collections(db.Model):
 
   ID_collection = db.Column(db.String(15), primary_key=True)
   CG_ID_sample = db.Column(db.String(15), primary_key=True)
+
+#Multi-date support for libprep/sequencing/analysis
+#class Steps(db.Model):
+#  __tablename__ = 'steps'
+#  samples = relationship("Samples", back_populates="steps")
+#
+#  CG_ID_sample = db.Column(db.String(15), ForeignKey('samples.CG_ID_sample'), primary_key=True)
+#  step = db.Column(db.String(40), primary_key=True)
+#  method = db.Column(db.String(40), primary_key=True)
+#  date = db.Column(db.DateTime)

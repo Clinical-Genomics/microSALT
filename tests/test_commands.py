@@ -40,14 +40,16 @@ def test_groups(check_version, runner):
   base_invoke = runner.invoke(root, ['utils', 'refer'])
   assert base_invoke.exit_code == 0
 
+
+
 @patch('subprocess.Popen')
 @patch('os.listdir')
 @patch('os.path.isdir')
+@patch('microSALT.store.lims_fetcher.LIMS_Fetcher')
+@patch('microSALT.utils.job_creator.Job_Creator.verify_fastq')
 @patch('microSALT.store.lims_fetcher.Lims.get_samples')
 @patch('microSALT.store.lims_fetcher.Lims.check_version')
-@patch('microSALT.utils.reporter.LIMS_Fetcher')
-@patch('microSALT.utils.job_creator.Job_Creator.verify_fastq')
-def test_analyse(vf, LF, check_version, get_samples, isdir, listdir, subproc, runner, config):
+def test_analyse(check_version, get_samples, vf, LF, isdir, listdir, subproc, runner, config):
   LF.data.return_value = {'CG_ID_project':"AAA1234",'CG_ID_sample':'AAA1234A3'}
 
   #Sets up subprocess mocking

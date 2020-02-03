@@ -52,25 +52,27 @@ class Reporter():
 
   def report(self, type='default', customer='all'):
     self.gen_version(self.name)
-    self.start_web()
-    if type == 'json_dump':
-      self.gen_json()
-    elif type == 'default':
-      self.gen_typing()
-      self.gen_qc()
-      self.gen_json(silent=True)
-    elif type == 'typing':
-      self.gen_typing()
-    elif type == 'motif_overview':
-      self.gen_motif(motif="resistance")
-      self.gen_motif(motif="expac")
-    elif type == 'qc':
-      self.gen_qc()
-    elif type == 'st_update':
-      self.gen_STtracker(customer)
+    if type in ['default','typing','qc', 'st_update']:
+      self.start_web()
+      if type == 'default':
+        self.gen_typing()
+        self.gen_qc()
+        self.gen_json(silent=True)
+      elif type == 'typing':
+        self.gen_typing()
+      elif type == 'qc':
+        self.gen_qc()
+      elif type == 'st_update':
+        self.gen_STtracker(customer)
+      self.kill_flask()
+    elif type in ['json_dump','motif_overview']:
+      if type == 'json_dump':
+        self.gen_json()
+      elif type == 'motif_overview':
+        self.gen_motif(motif="resistance")
+        self.gen_motif(motif="expec")
     else:
       raise Exception("Report function recieved invalid format")
-    self.kill_flask()
     self.mail()
     if self.output == "" or self.output == os.getcwd():
       for file in self.filelist:
@@ -107,10 +109,11 @@ class Reporter():
       output ="{}/{}".format(self.output, outfile)
       storage = "{}/{}".format(self.config['folders']['reports'], outfile)
 
+      if not os.path.isfile(output):
+        self.filelist.append(output)
       open(output, 'wb').write(q.content.decode("iso-8859-1").encode("utf8"))
       copyfile(output, storage)
 
-      self.filelist.append(output)
       if not silent:
         self.attachments.append(output)  
     except Exception as e:
@@ -131,10 +134,11 @@ class Reporter():
       output ="{}/{}".format(self.output, outfile)
       storage = "{}/{}".format(self.config['folders']['reports'], outfile)
 
+      if not os.path.isfile(output):
+        self.filelist.append(output)
       open(output, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
       copyfile(output, storage)
     
-      self.filelist.append(output)
       if not silent:
         self.attachments.append(output)
     except Exception as e:
@@ -142,7 +146,7 @@ class Reporter():
       self.error = True
 
   def gen_motif(self, motif="resistance", silent=False):
-    if motif not in ["resistance", "expac"]:
+    if motif not in ["resistance", "expec"]:
       self.logger.error("Invalid motif type specified for gen_motif function")
     if self.collection:
       sample_info = gen_collectiondata(self.name)
@@ -160,7 +164,7 @@ class Reporter():
             motifdict[r.resistance] =list()
           if r.threshold == 'Passed' and not r.gene in motifdict[r.resistance]:
             motifdict[r.resistance].append(r.gene)
-      elif motif=='expac':
+      elif motif=='expec':
         for r in s.expacs:
           if not (r.virulence in motifdict.keys()) and r.threshold == 'Passed':
             motifdict[r.virulence] =list()
@@ -170,6 +174,7 @@ class Reporter():
       motifdict[k] = sorted(v)
 
     #Top 2 Header
+    sepfix = "sep=,"
     topline = "Identity {}% & Span {}%,,,".format(self.config['threshold']['motif_id'], self.config['threshold']['motif_span'])
     botline = "CG Sample ID,Sample ID,Organism,Sequence Type,Thresholds"
     for k in sorted(motifdict.keys()):
@@ -181,7 +186,6 @@ class Reporter():
       topline += ",,{}{}".format(active_gene,geneholder)
       resnames = ','.join(sorted(motifdict[k]))
       botline += ",,{}".format(resnames)
-
 
     try:
       excel = open(output, "w+")
@@ -232,7 +236,6 @@ class Reporter():
     except FileNotFoundError as e:
       self.logger.error("Unable to produce excel file. Path {} does not exist".format(os.path.basename(output)))
 
-
   def gen_json(self, silent=False):
     report = dict()
     output = "{}/{}_{}.json".format(self.output, self.name, self.now)
@@ -240,6 +243,25 @@ class Reporter():
     sample_info = gen_reportdata(self.name)
     analyses = ['blast_pubmlst', 'quast_assembly', 'blast_resfinder_resistence', 'picard_markduplicate', 'microsalt_samtools_stats']
     for s in sample_info['samples']:
+      t = dict()
+
+      #Since some apps are too basic to filter irrelevant non-standard values..
+      t['ST_status'] = '' if s.ST_status != str(s.ST) else s.ST_status
+      t['threshold'] = '' if s.threshold not in ['Passed', 'Failed'] else s.threshold
+      t['genome_length'] = '' if s.genome_length < 1 else s.genome_length
+      t['gc_percentage'] = '' if s.gc_percentage < 0.1 else str(s.gc_percentage)
+      t['n50'] = '' if s.n50 < 1 else s.n50
+      t['contigs'] = '' if s.contigs < 1 else s.contigs 
+      t['insert_size'] = '' if s.insert_size < 1 else s.insert_size
+      t['duplication_rate'] = '' if s.duplication_rate < 0.1 else s.duplication_rate
+      t['total_reads'] = '' if s.total_reads < 1 else s.total_reads
+      t['mapped_rate'] = '' if s.mapped_rate < 0.1 else s.mapped_rate
+      t['average_coverage'] = '' if s.average_coverage < 0.1 else s.average_coverage
+      t['coverage_10x'] = '' if s.coverage_10x < 0.1 else s.coverage_10x
+      t['coverage_30x'] = '' if s.coverage_30x < 0.1 else s.coverage_30x
+      t['coverage_50x'] = '' if s.coverage_50x < 0.1 else s.coverage_50x
+      t['coverage_100x'] = '' if s.coverage_100x < 0.1 else s.coverage_100x
+
       report[s.CG_ID_sample] = dict()
       for a in analyses:
         if a == 'blast_resfinder_resistence':
@@ -247,13 +269,13 @@ class Reporter():
         else:
           report[s.CG_ID_sample][a] = dict()
 
-      report[s.CG_ID_sample]['blast_pubmlst'] = {'sequence_type':s.ST_status, 'thresholds':s.threshold}
-      report[s.CG_ID_sample]['quast_assembly'] = {'estimated_genome_length':s.genome_length, 'gc_percentage':float(s.gc_percentage), 'n50':s.n50, 'necessary_contigs':s.contigs}
-      report[s.CG_ID_sample]['picard_markduplicate'] = {'insert_size':s.insert_size, 'duplication_rate':s.duplication_rate}
-      report[s.CG_ID_sample]['microsalt_samtools_stats'] = {'total_reads':s.total_reads, 'mapped_rate':s.mapped_rate,\
-                                                            'average_coverage':s.average_coverage, \
-                                                            'coverage_10x':s.coverage_10x, 'coverage_30x':s.coverage_30x, \
-                                                            'coverage_50x':s.coverage_50x, 'coverage_100x':s.coverage_100x}
+      report[s.CG_ID_sample]['blast_pubmlst'] = {'sequence_type':t['ST_status'], 'thresholds':t['threshold']}
+      report[s.CG_ID_sample]['quast_assembly'] = {'estimated_genome_length':t['genome_length'], 'gc_percentage':t['gc_percentage'], 'n50':t['n50'], 'necessary_contigs': t['contigs']}
+      report[s.CG_ID_sample]['picard_markduplicate'] = {'insert_size':t['insert_size'], 'duplication_rate':t['duplication_rate']}
+      report[s.CG_ID_sample]['microsalt_samtools_stats'] = {'total_reads':t['total_reads'], 'mapped_rate':t['mapped_rate'],\
+                                                            'average_coverage':t['average_coverage'], \
+                                                            'coverage_10x':t['coverage_10x'], 'coverage_30x':t['coverage_30x'], \
+                                                            'coverage_50x':t['coverage_50x'], 'coverage_100x':t['coverage_100x']}
 
       for r in s.resistances:
         if not (r.gene in report[s.CG_ID_sample]['blast_resfinder_resistence']) and r.threshold == 'Passed':
