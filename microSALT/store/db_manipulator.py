@@ -108,7 +108,7 @@ class DB_Manipulator:
         self.session.add(newobj)
         self.session.commit()
       else:
-        self.logger.warn("Record [{}]=[{}] in table {} already exists".format(', '.join(pk_list), ', '.join(pk_values), tablename))
+        self.logger.warning("Record [{}]=[{}] in table {} already exists".format(', '.join(pk_list), ', '.join(pk_values), tablename))
 
   def upd_rec(self, req_dict, tablename, upd_dict):
     """Updates a record to the specified table through a dict with columns as keys."""

@@ -273,6 +273,7 @@ def sample(ctx, sample_id, rerun, email, input, config, report):
     click.echo("Unable to load LIMS sample info.")
     sys.exit(-1)
 
+
   garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_sample()
 
@@ -339,7 +340,7 @@ def collection(ctx, collection_id, rerun, email, input, config, report):
       click.echo("Multiple instances of that analysis exists. Specify full path using --input")
       sys.exit(-1)
     elif len(prohits) <1:
-      click.echo("No analysis folder prefixed by {} found.".format(project_id))
+      click.echo("No analysis folder prefixed by {} found.".format(collection_id))
       sys.exit(-1)
     else:
       collection_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
