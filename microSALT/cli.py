@@ -131,6 +131,7 @@ def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip
 @click.pass_context
 def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_update, uncareful):
   """Analyse a single sample"""
+
   trimmed = not untrimmed
   careful = not uncareful
   set_cli_config(config)
