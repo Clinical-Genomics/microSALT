@@ -22,11 +22,6 @@ from microSALT.store.lims_fetcher import LIMS_Fetcher
 if config == '':
   click.echo("ERROR - No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
   sys.exit(-1)
-else:
-  #Makes sure DB inherits correct permissions if freshly created
-  bash_cmd="touch {}".format(re.search('sqlite:///(.+)', config['database']['SQLALCHEMY_DATABASE_URI']).group(1))
-  proc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
-  output, error = proc.communicate()
 
 def set_cli_config(config):
   if config != '':
@@ -138,6 +133,7 @@ def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip
 @click.pass_context
 def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_update, uncareful):
   """Analyse a single sample"""
+
   trimmed = not untrimmed
   careful = not uncareful
   set_cli_config(config)
@@ -280,6 +276,7 @@ def sample(ctx, sample_id, rerun, email, input, config, report):
     click.echo("ERROR - Unable to load LIMS sample info.")
     sys.exit(-1)
 
+
   garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_sample()
 
@@ -317,6 +314,7 @@ def project(ctx, project_id, rerun, email, input, config, report):
     else:
       project_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
 
+  #import pdb; pdb.set_trace()
   garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_project()
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_id, output=project_dir)

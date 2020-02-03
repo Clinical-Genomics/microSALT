@@ -154,12 +154,9 @@ class Reporter():
       self.ticketFinder.load_lims_project_info(self.name)
       sample_info = gen_reportdata(self.name)
     output = "{}/{}_{}_{}.csv".format(self.output,self.name,motif,self.now)
-    if not os.path.isfile(output):
-      self.filelist.append(output)
-    excel = open(output, "w+")
-    motifdict = dict()
 
     #Load motif & gene names into dict
+    motifdict = dict()
     for s in sample_info['samples']:
       if motif=='resistance':
         for r in s.resistances:
@@ -189,50 +186,55 @@ class Reporter():
       topline += ",,{}{}".format(active_gene,geneholder)
       resnames = ','.join(sorted(motifdict[k]))
       botline += ",,{}".format(resnames)
-    excel.write("{}\n".format(sepfix))
-    excel.write("{}\n".format(topline))
-    excel.write("{}\n".format(botline))
 
-    #Create each individual row past the 2nd, per iteration
-    for s in sample_info['samples']:
-      rowdict = dict()
-      pref = "{},{},{},{},{}".format(s.CG_ID_sample,s.Customer_ID_sample, s.organism, s.ST_status.replace(',',';'), s.threshold)
-      #Load single sample
-      if motif=='resistance':
-        for r in s.resistances:
-          if not (r.resistance in rowdict.keys()) and r.threshold == 'Passed':
-            rowdict[r.resistance] =dict()
-          if r.threshold == 'Passed' and not r.gene in rowdict[r.resistance]:
-            rowdict[r.resistance][r.gene] = r.identity
-      elif motif=="expec":
-        for r in s.expacs:
-          if not (r.virulence in rowdict.keys()) and r.threshold == 'Passed':
-            rowdict[r.virulence] =dict()
-          if r.threshold == 'Passed' and not r.gene in rowdict[r.virulence]:
-            rowdict[r.virulence][r.gene] = r.identity
-      #Compare single sample to all
-      hits = ""
-      for res in sorted(motifdict.keys()):
-        if res in rowdict.keys():
-          hits += ",1"
-          for gen in sorted(motifdict[res]):
-            hits += ","
-            if gen in rowdict[res].keys():
-              #UPD: Change this to identity of hit
-              hits +="{}".format(rowdict[res][gen])
-            else:
-              hits +="0"
-        else:
-          #Commas eq to res + gen length
-          hits += ",0,0"
-          pad = ['0'] * len(motifdict[res])
-          hits += ','.join(pad)
+    try:
+      excel = open(output, "w+")
+      excel.write("{}\n".format(topline))
+      excel.write("{}\n".format(botline))
 
-      excel.write("{}{}\n".format(pref, hits))
+      #Create each individual row past the 2nd, per iteration
+      for s in sample_info['samples']:
+        rowdict = dict()
+        pref = "{},{},{},{},{}".format(s.CG_ID_sample,s.Customer_ID_sample, s.organism, s.ST_status.replace(',',';'), s.threshold)
+        #Load single sample
+        if motif=='resistance':
+          for r in s.resistances:
+            if not (r.resistance in rowdict.keys()) and r.threshold == 'Passed':
+              rowdict[r.resistance] =dict()
+            if r.threshold == 'Passed' and not r.gene in rowdict[r.resistance]:
+              rowdict[r.resistance][r.gene] = r.identity
+        elif motif=="expac":
+          for r in s.expacs:
+            if not (r.virulence in rowdict.keys()) and r.threshold == 'Passed':
+              rowdict[r.virulence] =dict()
+            if r.threshold == 'Passed' and not r.gene in rowdict[r.virulence]:
+              rowdict[r.virulence][r.gene] = r.identity
+        #Compare single sample to all
+        hits = ""
+        for res in sorted(motifdict.keys()):
+          if res in rowdict.keys():
+            hits += ",1"
+            for gen in sorted(motifdict[res]):
+              hits += ","
+              if gen in rowdict[res].keys():
+                #UPD: Change this to identity of hit
+                hits +="{}".format(rowdict[res][gen])
+              else:
+                hits +="0"
+          else:
+            #Commas eq to res + gen length
+            hits += ",0,0"
+            pad = ['0'] * len(motifdict[res])
+            hits += ','.join(pad)
 
-    excel.close()
-    if not silent:
-      self.attachments.append(output)
+        excel.write("{}{}\n".format(pref, hits))
+
+      excel.close()
+      self.filelist.append(output)
+      if not silent:
+        self.attachments.append(output)
+    except FileNotFoundError as e:
+      self.logger.error("Unable to produce excel file. Path {} does not exist".format(os.path.basename(output)))
 
   def gen_json(self, silent=False):
     report = dict()
@@ -241,21 +243,24 @@ class Reporter():
     sample_info = gen_reportdata(self.name)
     analyses = ['blast_pubmlst', 'quast_assembly', 'blast_resfinder_resistence', 'picard_markduplicate', 'microsalt_samtools_stats']
     for s in sample_info['samples']:
+      t = dict()
+
       #Since some apps are too basic to filter irrelevant non-standard values..
-      s.ST_status = '' if s.ST_status != str(s.ST) else s.ST_status
-      s.threshold = '' if s.threshold not in ['Passed', 'Failed'] else s.threshold
-      s.genome_length = '' if s.genome_length < 1 else s.genome_length
-      s.gc_percentage = '' if s.gc_percentage < 0.1 else s.gc_percentage
-      s.n50 = '' if s.n50 < 1 else s.n50
-      s.contigs = '' if s.contigs < 1 else s.contigs 
-      s.insert_size = '' if s.insert_size < 1 else s.insert_size
-      s.duplication_rate = '' if s.duplication_rate < 0.1 else s.duplication_rate
-      s.total_reads = '' if s.total_reads < 1 else s.total_reads
-      s.mapped_rate = '' if s.mapped_rate < 0.1 else s.mapped_rate
-      s.coverage_10x = '' if s.coverage_10x < 0.1 else s.coverage_10x
-      s.coverage_30x = '' if s.coverage_30x < 0.1 else s.coverage_30x
-      s.coverage_50x = '' if s.coverage_50x < 0.1 else s.coverage_50x
-      s.coverage_100x = '' if s.coverage_100x < 0.1 else s.coverage_100x
+      t['ST_status'] = '' if s.ST_status != str(s.ST) else s.ST_status
+      t['threshold'] = '' if s.threshold not in ['Passed', 'Failed'] else s.threshold
+      t['genome_length'] = '' if s.genome_length < 1 else s.genome_length
+      t['gc_percentage'] = '' if s.gc_percentage < 0.1 else str(s.gc_percentage)
+      t['n50'] = '' if s.n50 < 1 else s.n50
+      t['contigs'] = '' if s.contigs < 1 else s.contigs 
+      t['insert_size'] = '' if s.insert_size < 1 else s.insert_size
+      t['duplication_rate'] = '' if s.duplication_rate < 0.1 else s.duplication_rate
+      t['total_reads'] = '' if s.total_reads < 1 else s.total_reads
+      t['mapped_rate'] = '' if s.mapped_rate < 0.1 else s.mapped_rate
+      t['average_coverage'] = '' if s.average_coverage < 0.1 else s.average_coverage
+      t['coverage_10x'] = '' if s.coverage_10x < 0.1 else s.coverage_10x
+      t['coverage_30x'] = '' if s.coverage_30x < 0.1 else s.coverage_30x
+      t['coverage_50x'] = '' if s.coverage_50x < 0.1 else s.coverage_50x
+      t['coverage_100x'] = '' if s.coverage_100x < 0.1 else s.coverage_100x
 
       report[s.CG_ID_sample] = dict()
       for a in analyses:
@@ -264,31 +269,32 @@ class Reporter():
         else:
           report[s.CG_ID_sample][a] = dict()
 
-      report[s.CG_ID_sample]['blast_pubmlst'] = {'sequence_type':s.ST_status, 'thresholds':s.threshold}
-      report[s.CG_ID_sample]['quast_assembly'] = {'estimated_genome_length':s.genome_length, 'gc_percentage':str(s.gc_percentage), 'n50':s.n50, 'necessary_contigs':s.contigs}
-      report[s.CG_ID_sample]['picard_markduplicate'] = {'insert_size':s.insert_size, 'duplication_rate':s.duplication_rate}
-      report[s.CG_ID_sample]['microsalt_samtools_stats'] = {'total_reads':s.total_reads, 'mapped_rate':s.mapped_rate,\
-                                                            'average_coverage':s.average_coverage, \
-                                                            'coverage_10x':s.coverage_10x, 'coverage_30x':s.coverage_30x, \
-                                                            'coverage_50x':s.coverage_50x, 'coverage_100x':s.coverage_100x}
+      report[s.CG_ID_sample]['blast_pubmlst'] = {'sequence_type':t['ST_status'], 'thresholds':t['threshold']}
+      report[s.CG_ID_sample]['quast_assembly'] = {'estimated_genome_length':t['genome_length'], 'gc_percentage':t['gc_percentage'], 'n50':t['n50'], 'necessary_contigs': t['contigs']}
+      report[s.CG_ID_sample]['picard_markduplicate'] = {'insert_size':t['insert_size'], 'duplication_rate':t['duplication_rate']}
+      report[s.CG_ID_sample]['microsalt_samtools_stats'] = {'total_reads':t['total_reads'], 'mapped_rate':t['mapped_rate'],\
+                                                            'average_coverage':t['average_coverage'], \
+                                                            'coverage_10x':t['coverage_10x'], 'coverage_30x':t['coverage_30x'], \
+                                                            'coverage_50x':t['coverage_50x'], 'coverage_100x':t['coverage_100x']}
 
       for r in s.resistances:
         if not (r.gene in report[s.CG_ID_sample]['blast_resfinder_resistence']) and r.threshold == 'Passed':
           report[s.CG_ID_sample]['blast_resfinder_resistence'].append(r.gene)
 
     #json.dumps(report) #Dumps the json directly
-    if not os.path.isfile(output):
+    try:
+      with open(output, 'w') as outfile:
+        json.dump(report, outfile)
       self.filelist.append(output)
-    with open(output, 'w') as outfile:
-      json.dump(report, outfile)
-    if not silent:
-      self.attachments.append(output)
+      if not silent:
+        self.attachments.append(output)
+    except FileNotFoundError as e:
+      self.logger.error("Unable to produce json file. Path {} does not exist".format(os.path.basename(output)))
 
   def mail(self):
-    file_name = self.attachments
     msg = MIMEMultipart()
-    if not self.error:
-      msg['Subject'] = '{} ({}) Reports'.format(self.name, file_name[0].split('_')[0])
+    if not self.error and self.attachments:
+      msg['Subject'] = '{} ({}) Reports'.format(self.name, self.attachments[0].split('_')[0])
     else:
       msg['Subject'] = '{} Failed Generating Report'.format(self.name)
 
