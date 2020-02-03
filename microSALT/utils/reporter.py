@@ -150,10 +150,9 @@ class Reporter():
       self.ticketFinder.load_lims_project_info(self.name)
       sample_info = gen_reportdata(self.name)
     output = "{}/{}_{}_{}.csv".format(self.output,self.name,motif,self.now)
-    excel = open(output, "w+")
-    motifdict = dict()
 
     #Load motif & gene names into dict
+    motifdict = dict()
     for s in sample_info['samples']:
       if motif=='resistance':
         for r in s.resistances:
@@ -182,50 +181,57 @@ class Reporter():
       topline += ",,{}{}".format(active_gene,geneholder)
       resnames = ','.join(sorted(motifdict[k]))
       botline += ",,{}".format(resnames)
-    excel.write("{}\n".format(topline))
-    excel.write("{}\n".format(botline))
 
-    #Create each individual row past the 2nd, per iteration
-    for s in sample_info['samples']:
-      rowdict = dict()
-      pref = "{},{},{},{},{}".format(s.CG_ID_sample,s.Customer_ID_sample, s.organism, s.ST_status.replace(',',';'), s.threshold)
-      #Load single sample
-      if motif=='resistance':
-        for r in s.resistances:
-          if not (r.resistance in rowdict.keys()) and r.threshold == 'Passed':
-            rowdict[r.resistance] =dict()
-          if r.threshold == 'Passed' and not r.gene in rowdict[r.resistance]:
-            rowdict[r.resistance][r.gene] = r.identity
-      elif motif=="expac":
-        for r in s.expacs:
-          if not (r.virulence in rowdict.keys()) and r.threshold == 'Passed':
-            rowdict[r.virulence] =dict()
-          if r.threshold == 'Passed' and not r.gene in rowdict[r.virulence]:
-            rowdict[r.virulence][r.gene] = r.identity
-      #Compare single sample to all
-      hits = ""
-      for res in sorted(motifdict.keys()):
-        if res in rowdict.keys():
-          hits += ",1"
-          for gen in sorted(motifdict[res]):
-            hits += ","
-            if gen in rowdict[res].keys():
-              #UPD: Change this to identity of hit
-              hits +="{}".format(rowdict[res][gen])
-            else:
-              hits +="0"
-        else:
-          #Commas eq to res + gen length
-          hits += ",0,0"
-          pad = ['0'] * len(motifdict[res])
-          hits += ','.join(pad)
 
-      excel.write("{}{}\n".format(pref, hits))
+    try:
+      excel = open(output, "w+")
+      excel.write("{}\n".format(topline))
+      excel.write("{}\n".format(botline))
 
-    excel.close()
-    self.filelist.append(output)
-    if not silent:
-      self.attachments.append(output)
+      #Create each individual row past the 2nd, per iteration
+      for s in sample_info['samples']:
+        rowdict = dict()
+        pref = "{},{},{},{},{}".format(s.CG_ID_sample,s.Customer_ID_sample, s.organism, s.ST_status.replace(',',';'), s.threshold)
+        #Load single sample
+        if motif=='resistance':
+          for r in s.resistances:
+            if not (r.resistance in rowdict.keys()) and r.threshold == 'Passed':
+              rowdict[r.resistance] =dict()
+            if r.threshold == 'Passed' and not r.gene in rowdict[r.resistance]:
+              rowdict[r.resistance][r.gene] = r.identity
+        elif motif=="expac":
+          for r in s.expacs:
+            if not (r.virulence in rowdict.keys()) and r.threshold == 'Passed':
+              rowdict[r.virulence] =dict()
+            if r.threshold == 'Passed' and not r.gene in rowdict[r.virulence]:
+              rowdict[r.virulence][r.gene] = r.identity
+        #Compare single sample to all
+        hits = ""
+        for res in sorted(motifdict.keys()):
+          if res in rowdict.keys():
+            hits += ",1"
+            for gen in sorted(motifdict[res]):
+              hits += ","
+              if gen in rowdict[res].keys():
+                #UPD: Change this to identity of hit
+                hits +="{}".format(rowdict[res][gen])
+              else:
+                hits +="0"
+          else:
+            #Commas eq to res + gen length
+            hits += ",0,0"
+            pad = ['0'] * len(motifdict[res])
+            hits += ','.join(pad)
+
+        excel.write("{}{}\n".format(pref, hits))
+
+      excel.close()
+      self.filelist.append(output)
+      if not silent:
+        self.attachments.append(output)
+    except FileNotFoundError as e:
+      self.logger.error("Unable to produce excel file. Path {} does not exist".format(os.path.basename(output)))
+
 
   def gen_json(self, silent=False):
     report = dict()
@@ -264,10 +270,9 @@ class Reporter():
       self.logger.error("Unable to produce json file. Path {} does not exist".format(os.path.basename(output)))
 
   def mail(self):
-    file_name = self.attachments
     msg = MIMEMultipart()
-    if not self.error:
-      msg['Subject'] = '{} ({}) Reports'.format(self.name, file_name[0].split('_')[0])
+    if not self.error and self.attachments:
+      msg['Subject'] = '{} ({}) Reports'.format(self.name, self.attachments[0].split('_')[0])
     else:
       msg['Subject'] = '{} Failed Generating Report'.format(self.name)
 

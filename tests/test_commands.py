@@ -94,7 +94,7 @@ def test_finish(isdir, listdir, smtp, rgqt, pjoin, pterm, jcp, check_version, ge
   get_samples.return_value = [sample_mock]
 
 
-  listdir.return_value = ['AAA1234A1', 'AAA1234A2' , 'AAA1234A3']
+  listdir.return_value = ['AAA1234_2019.8.12_11.25.2', 'AAA1234A2' , 'AAA1234A3']
   isdir.return_value = True
 
   #All subcommands
@@ -106,10 +106,10 @@ def test_finish(isdir, listdir, smtp, rgqt, pjoin, pterm, jcp, check_version, ge
     typical_run = runner.invoke(root, ['utils', 'finish', analysis_type, 'AAA1234', '--email', '2@2.com', '--input', '/tmp/AAA1234_2019.8.12_11.25.2', '--config', config, '--report', 'default'])
     assert typical_run.exit_code == 0
     special_run = runner.invoke(root, ['utils', 'finish', analysis_type, 'AAA1234', '--rerun', '--report', 'qc'])
-    assert special_run.exit_code == -1
+    assert special_run.exit_code == 0
     if analysis_type == 'collection':
       unique_report = runner.invoke(root, ['utils', 'finish', analysis_type, 'AAA1234', '--report', 'motif_overview'])
-      assert unique_report.exit_code == -1
+      assert unique_report.exit_code == 0
 
 
 @patch('microSALT.utils.reporter.Reporter.start_web')
