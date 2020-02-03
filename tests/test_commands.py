@@ -46,7 +46,8 @@ def test_groups(check_version, runner):
 @patch('microSALT.store.lims_fetcher.Lims.get_samples')
 @patch('microSALT.store.lims_fetcher.Lims.check_version')
 @patch('microSALT.utils.reporter.LIMS_Fetcher')
-def test_analyse(LF, check_version, get_samples, isdir, listdir, subproc, runner, config):
+@patch('microSALT.utils.job_creator.Job_Creator.verify_fastq')
+def test_analyse(vf, LF, check_version, get_samples, isdir, listdir, subproc, runner, config):
   LF.data.return_value = {'CG_ID_project':"AAA1234",'CG_ID_sample':'AAA1234A3'}
 
   #Sets up subprocess mocking
