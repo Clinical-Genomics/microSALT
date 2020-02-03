@@ -40,7 +40,7 @@ class LIMS_Fetcher():
     try:
       self.lims.check_version()
     except Exception as e:
-      self.logger.error("Unable to connect to LIMS at {}. Halting program.".format(baseuri))
+      self.logger.error("Unable to connect to LIMS. Halting program.")
 
   def samples_in_project(self, cg_projid):
     """ Returns a list of sample names for a project"""

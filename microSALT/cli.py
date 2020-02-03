@@ -425,6 +425,41 @@ def view(ctx):
 def resync(ctx):
   """Updates internal ST with pubMLST equivalent"""
 
+@utils.command()
+@click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
+@click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.pass_context
+def autobatch(ctx, dry, skip_update, email):
+  """Analyses all currently unanalysed projects in the seqdata folder"""
+  #Trace exists by some samples having pubMLST_ST filled in. Make trace function later
+  ctx.obj['config']['regex']['mail_recipient'] = email
+  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+  if not skip_update:
+    fixer.update_refs()
+    fixer.resync()
+
+  process = subprocess.Popen('squeue --format="%50j" -h -r'.split(), stdout=subprocess.PIPE)
+  run_jobs, error = process.communicate()
+  run_jobs = run_jobs.splitlines()
+  run_jobs = [ re.search("\"(.+)\"", str(x)).group(1).replace(' ', '') for x in run_jobs];
+  old_jobs = os.listdir(ctx.obj['config']['folders']['results'])
+
+  for f in os.listdir(ctx.obj['config']['folders']['seqdata']):
+    if dry:
+      #Project name not found in slurm list 
+      if len([s for s in run_jobs if f in s]) == 0:
+        #Project name not found in results directories
+        if len([s for s in old_jobs if f in s]) == 0:
+          click.echo("DRY - microSALT analyse {} --skip_update".format(f))
+        else:
+          click.echo("INFO - Skipping {} due to existing analysis in results folder".format(f))
+      else:
+        click.echo("INFO - Skipping {} due to concurrent SLURM run".format(f))
+    else:
+      process = subprocess.Popen("microSALT analyse {} --skip_update".format(f).split(), stdout=subprocess.PIPE)
+      output, error = process.communicate()
+
 @resync.command()
 @click.option('--type', default='list', type=click.Choice(['report', 'list']), help="Output format")
 @click.option('--customer', default='all', help="Customer id filter")
