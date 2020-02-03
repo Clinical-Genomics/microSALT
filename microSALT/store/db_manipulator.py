@@ -58,7 +58,7 @@ class DB_Manipulator:
       self.logger.info("Created collections table")
     if not self.engine.dialect.has_table(self.engine, 'expacs'):
       Expacs.__table__.create(self.engine)
-      self.logger.info("Created EXPAC table")
+      self.logger.info("Created ExPEC table")
     for k,v in self.profiles.items():
       if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
         self.profiles[k].create()
