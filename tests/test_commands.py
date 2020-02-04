@@ -166,3 +166,7 @@ def test_refer(check_version, runner):
 def test_view(check_version, webstart, runner):
   view = runner.invoke(root, ['utils', 'view'])
   assert view.exit_code == 0
+
+def test_autobatch(runner):
+  ab = runner.invoke(root, ['utils', 'autobatch', '--dry'])
+  assert ab.exit_code == 0
