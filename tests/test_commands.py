@@ -167,6 +167,13 @@ def test_view(check_version, webstart, runner):
   view = runner.invoke(root, ['utils', 'view'])
   assert view.exit_code == 0
 
-def test_autobatch(runner):
+@patch('subprocess.Popen')
+def test_autobatch(subproc, runner):
+  #Sets up subprocess mocking
+  process_mock = mock.Mock()
+  attrs = {'communicate.return_value': ('"AAA1000_job"', 'error')}
+  process_mock.configure_mock(**attrs)
+  subproc.return_value = process_mock
+
   ab = runner.invoke(root, ['utils', 'autobatch', '--dry'])
   assert ab.exit_code == 0
