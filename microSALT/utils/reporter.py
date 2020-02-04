@@ -203,7 +203,7 @@ class Reporter():
               rowdict[r.resistance] =dict()
             if r.threshold == 'Passed' and not r.gene in rowdict[r.resistance]:
               rowdict[r.resistance][r.gene] = r.identity
-        elif motif=="expac":
+        elif motif=="expec":
           for r in s.expacs:
             if not (r.virulence in rowdict.keys()) and r.threshold == 'Passed':
               rowdict[r.virulence] =dict()
