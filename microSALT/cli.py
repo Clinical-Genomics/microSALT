@@ -197,11 +197,14 @@ def collection(ctx, collection_id, input, dry, qc_only, config, email, untrimmed
   pool = []
   if input != "":
     collection_dir = os.path.abspath(input)
+    if not collection_id in collection_dir:
+      click.echo("ERROR - Path does not contain collection id. Exiting.")
+      sys.exit(-1)
   else:
     collection_dir = "{}/{}".format(ctx.obj['config']['folders']['seqdata'], collection_id)
-  if not os.path.isdir(collection_dir):
-    click.echo("Collection data folder does not exist. Exiting.")
-    sys.exit(-1)
+    if not os.path.isdir(collection_dir):
+      click.echo("Collection data folder does not exist. Exiting.")
+      sys.exit(-1)
 
   for sample in os.listdir(collection_dir):
     if os.path.isdir("{}/{}".format(collection_dir,sample)):
@@ -253,6 +256,7 @@ def sample(ctx, sample_id, rerun, email, input, config, report):
   ctx.obj['config']['regex']['mail_recipient'] = email
   ctx.obj['config']['rerun'] = rerun
 
+  #import pdb; pdb.set_trace()
   if input != "":
     sample_dir = os.path.abspath(input)
     if not sample_id in sample_dir:
@@ -314,7 +318,6 @@ def project(ctx, project_id, rerun, email, input, config, report):
     else:
       project_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
 
-  #import pdb; pdb.set_trace()
   garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_project()
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_id, output=project_dir)

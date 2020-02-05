@@ -32,7 +32,7 @@ class LIMS_Fetcher():
       self.data.update({'CG_ID_project': cg_projid,
                                'Customer_ID_project' : realname,
                                'Customer_ID': self.data['Customer_ID']})
-    except (IndexError, KeyError) as e:
+    except (requests.exceptions.ConnectionError, IndexError, KeyError) as e:
       self.logger.warning("Unable to fetch LIMS info for project {}\nSource: {}".format(cg_projid, str(e)))
 
   def check_connection(self):

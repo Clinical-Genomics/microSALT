@@ -21,9 +21,9 @@ class Job_Creator():
   def __init__(self, input, config, log, finishdir="", timestamp="", trim=True, qc_only=False,careful=False,pool=list()):
     self.config = config
     self.logger = log
-    self.batchfile = ""
+    self.batchfile = "/tmp/batchfile.sbatch"
     self.filelist = list()
-    self.indir = ""
+    self.indir = "/tmp/"
     self.trimmed=trim
     self.qc_only = qc_only
     self.careful = careful
@@ -102,10 +102,13 @@ class Job_Creator():
 
     #Warn about file sizes
     for vfile in verified_files:
-      bsize = os.stat("{}/{}".format(self.indir,vfile)).st_size
-      bsize = bsize >> 20
-      if bsize > 1000:
-        self.logger.warning("Input fastq {} exceeds 1000MB".format(vfile))
+      try:
+        bsize = os.stat("{}/{}".format(self.indir,vfile)).st_size
+        bsize = bsize >> 20
+        if bsize > 1000:
+          self.logger.warning("Input fastq {} exceeds 1000MB".format(vfile))
+      except Exception as e:
+        self.logger.warning("Unable to verify size of input file {}/{}".format(self.indir,vfile))
 
     #Warn about invalid fastq files
     for vfile in verified_files:
@@ -447,6 +450,8 @@ class Job_Creator():
     process = subprocess.Popen("id -un".split(), stdout=subprocess.PIPE)
     user, error = process.communicate()
     user = str(user).replace('.',' ').title()
+    #if not os.path.exists(self.finishdir):
+    #  os.makedirs(self.finishdir)
     startfile = "{}/run_started.out".format(self.finishdir)
     configfile = "{}/config.log".format(self.finishdir) 
     mailfile = "{}/mailjob.sh".format(self.finishdir)
