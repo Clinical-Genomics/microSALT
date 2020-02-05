@@ -279,7 +279,6 @@ def sample(ctx, sample_id, rerun, email, input, config, report):
     click.echo("ERROR - Unable to load LIMS sample info.")
     sys.exit(-1)
 
-
   garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_sample()
 
