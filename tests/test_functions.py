@@ -15,11 +15,6 @@ from microSALT.cli import root
 def fake_search(int):
   return "fake"
 
-@pytest.fixture
-def db_mani():
-  db = DB_Manipulator(config, logger)
-  return db
-
 @patch('os.listdir')
 @patch('os.stat')
 @patch('gzip.open')
@@ -79,9 +74,17 @@ def test_create_snpsection(get_samples, LF, subproc):
       count = count + 1
   assert count > 0
 
-def test_create_project():
-  pass
+@patch('subprocess.Popen')
+def test_project_job(subproc):
+  #Sets up subprocess mocking
+  process_mock = mock.Mock()
+  attrs = {'communicate.return_value': ('output', 'error')}
+  process_mock.configure_mock(**attrs)
+  subproc.return_value = process_mock
 
-def test_snp_job():
+  jc = Job_Creator('/tmp/', config, logger, pool=["AAA1234A1","AAA1234A2"])
+  jc.project_job()
+
+def test_create_collection():
   pass
 
