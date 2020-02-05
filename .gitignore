@@ -5,6 +5,7 @@ microSALT.log
 instance/sqlalchemy_config.py
 instance/paths.yml
 unique_references/*.n*
+.pytest_cache/
 *.egg-info
 *pyc
 *.swp

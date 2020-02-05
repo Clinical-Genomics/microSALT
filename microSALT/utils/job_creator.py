@@ -256,6 +256,7 @@ class Job_Creator():
   def create_snpsection(self):
     snplist = self.filelist.copy()
     batchfile = open(self.batchfile, "a+")
+    name = ""
 
     #VCFTools filters:
     vcffilter="--minQ 30 --thin 50 --minDP 3 --min-meanDP 20"
@@ -263,7 +264,8 @@ class Job_Creator():
     bcffilter = "GL[0]<-500 & GL[1]=0 & QR/RO>30 & QA/AO>30 & QUAL>5000 & ODDS>1100 & GQ>140 & DP>100 & MQM>59 & SAP<15 & PAIRED>0.9 & EPP>3"
 
     for item in snplist:
-      name = item.split('/')[-2]
+      if item.count('/') >= 2:
+        name = item.split('/')[-2]
       if '_' in name:
         name = name.split('_')[0]
       self.lims_fetcher.load_lims_sample_info(name)
@@ -283,12 +285,16 @@ class Job_Creator():
     batchfile.write('# SNP pair-wise distance\n')
     batchfile.write('touch {}/stats.out\n'.format(self.finishdir))
     while len(snplist) > 1:
+      nameOne = ""
+      nameTwo = ""
       top = snplist.pop(0)
-      nameOne = top.split('/')[-2]
+      if top.count('/') >= 2:
+        nameOne = top.split('/')[-2]
       if '_' in nameOne:
         nameOne = nameOne.split('_')[0]
       for entry in snplist:
-        nameTwo = entry.split('/')[-2]
+        if entry.count('/') >= 2:
+          nameTwo = entry.split('/')[-2]
         if '_' in nameTwo:
           nameTwo = nameTwo.split('_')[0]
 
