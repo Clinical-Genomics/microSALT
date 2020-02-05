@@ -35,7 +35,7 @@ class Reporter():
     if output == "":
       self.output = os.getcwd()
     else:
-      self.output = output
+      self.output = output + "/"
     self.config = config
     self.logger = log
     for k, v in config.items():
