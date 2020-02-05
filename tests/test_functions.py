@@ -17,12 +17,6 @@ def db_mani():
   db = DB_Manipulator(config, logger)
   return db
 
-#@pytest.fixture
-#def job_creator():
-#  jc = Job_Creator(config, logger)
-#  return jc
-
-
 @patch('os.listdir')
 @patch('os.stat')
 @patch('gzip.open')
@@ -42,7 +36,6 @@ def test_blast_subset(research):
   researcha = mock.MagicMock()
   #researcha.group(1) = 'test'
   #reserch.return_value = researcha
-  #pdb.set_trace()
 #
   #jc.blast_subset('mlst', '/tmp/*')
   #jc.blast_subset('other', '/tmp/*')

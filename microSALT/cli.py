@@ -256,7 +256,6 @@ def sample(ctx, sample_id, rerun, email, input, config, report):
   ctx.obj['config']['regex']['mail_recipient'] = email
   ctx.obj['config']['rerun'] = rerun
 
-  #import pdb; pdb.set_trace()
   if input != "":
     sample_dir = os.path.abspath(input)
     if not sample_id in sample_dir:
@@ -460,7 +459,7 @@ def autobatch(ctx, dry, skip_update, email):
       else:
         click.echo("INFO - Skipping {} due to concurrent SLURM run".format(f))
     else:
-      process = subprocess.Popen("microSALT analyse {} --skip_update".format(f).split(), stdout=subprocess.PIPE)
+      process = subprocess.Popen("microSALT analyse project {} --skip_update".format(f).split(), stdout=subprocess.PIPE)
       output, error = process.communicate()
 
 @resync.command()
