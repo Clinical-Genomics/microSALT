@@ -3,6 +3,7 @@
 import mock
 import pdb
 import pytest
+import re
 
 from unittest.mock import patch
 
@@ -11,6 +12,8 @@ from microSALT.utils.job_creator import Job_Creator
 from microSALT import config, logger
 from microSALT.cli import root
 
+def fake_search(int):
+  return "fake"
 
 @pytest.fixture
 def db_mani():
@@ -34,11 +37,17 @@ def test_verify_fastq(gopen, stat, listdir):
 def test_blast_subset(research):
   jc = Job_Creator('/tmp/', config, logger)
   researcha = mock.MagicMock()
-  #researcha.group(1) = 'test'
-  #reserch.return_value = researcha
-#
-  #jc.blast_subset('mlst', '/tmp/*')
-  #jc.blast_subset('other', '/tmp/*')
+  researcha.group = fake_search
+  research.return_value = researcha
+
+  jc.blast_subset('mlst', '/tmp/*')
+  jc.blast_subset('other', '/tmp/*')
+  outfile = open(jc.get_sbatch(), 'r')
+  count = 0
+  for x in outfile.readlines():
+    if "blastn -db" in x:
+      count = count + 1
+  assert count > 0
 
 def test_create_snpsection():
   pass
