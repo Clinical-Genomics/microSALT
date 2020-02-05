@@ -87,53 +87,58 @@ class LIMS_Fetcher():
       #Figuring out the organism
       organism = "Unset"
       reference = "None"
-      if 'Reference Genome Microbial' in sample.udf:
-        reference = sample.udf['Reference Genome Microbial'].strip()
 
-      if 'Strain' in sample.udf and organism == "Unset":
-        #Predefined genus usage. All hail buggy excel files
-        if 'gonorrhoeae' in sample.udf['Strain']:
-          organism = "Neisseria spp."
-        elif 'Cutibacterium acnes' in sample.udf['Strain']:
-          organism = "Propionibacterium acnes" 
-        #Backwards compat, MUST hit first
-        elif sample.udf['Strain'] == 'VRE':
-          if reference == 'NC_017960.1':
-            organism = 'Enterococcus faecium'
-          elif reference == 'NC_004668.1':
-            organism = 'Enterococcus faecalis'
-          elif 'Comment' in sample.udf and not re.match(r'\w{4}\d{2,3}', sample.udf['Comment']):
-            organism = sample.udf['Comment']
-        elif sample.udf['Strain'] != 'Other' and sample.udf['Strain'] != 'other':
-          organism = sample.udf['Strain']
-        elif (sample.udf['Strain'] == 'Other' or sample.udf['Strain'] == 'other') and 'Other species' in sample.udf:
-          #Other species predefined genus usage
-          if 'gonorrhoeae' in sample.udf['Other species']:
+      try:
+        if 'Reference Genome Microbial' in sample.udf:
+          reference = sample.udf['Reference Genome Microbial'].strip()
+
+        if 'Strain' in sample.udf and organism == "Unset":
+          #Predefined genus usage. All hail buggy excel files
+          if 'gonorrhoeae' in sample.udf['Strain']:
             organism = "Neisseria spp."
-          elif 'Cutibacterium acnes' in sample.udf['Other species']:
-            organism = "Propionibacterium acnes"
-          else:
-            organism = sample.udf['Other species']
-      if reference != 'None' and organism == "Unset":
-        if reference == 'NC_002163':
-          organism = "Campylobacter jejuni"
-        elif reference == 'NZ_CP007557.1':
-          organism = 'Klebsiella oxytoca'
-        elif reference == 'NC_000913.3':
-          organism = 'Citrobacter freundii'
-        elif reference == 'NC_002516.2':
-          organism = 'Pseudomonas aeruginosa'
-      elif 'Comment' in sample.udf and not re.match(r'\w{4}\d{2,3}', sample.udf['Comment']) and organism == "Unset":
-        organism = sample.udf['Comment'].strip()
-      # Consistent safe-guard
-      elif organism == "Unset":
-        organism = "Other"
-        self.logger.warning("Unable to resolve ambigious organism found in sample {}."\
-        .format(cg_sampleid))
-      if 'priority' in sample.udf:
-        prio = sample.udf['priority']
-      else:
-        prio = ""
+          elif 'Cutibacterium acnes' in sample.udf['Strain']:
+            organism = "Propionibacterium acnes" 
+          #Backwards compat, MUST hit first
+          elif sample.udf['Strain'] == 'VRE':
+            if reference == 'NC_017960.1':
+              organism = 'Enterococcus faecium'
+            elif reference == 'NC_004668.1':
+              organism = 'Enterococcus faecalis'
+            elif 'Comment' in sample.udf and not re.match(r'\w{4}\d{2,3}', sample.udf['Comment']):
+              organism = sample.udf['Comment']
+          elif sample.udf['Strain'] != 'Other' and sample.udf['Strain'] != 'other':
+            organism = sample.udf['Strain']
+          elif (sample.udf['Strain'] == 'Other' or sample.udf['Strain'] == 'other') and 'Other species' in sample.udf:
+            #Other species predefined genus usage
+            if 'gonorrhoeae' in sample.udf['Other species']:
+              organism = "Neisseria spp."
+            elif 'Cutibacterium acnes' in sample.udf['Other species']:
+              organism = "Propionibacterium acnes"
+            else:
+              organism = sample.udf['Other species']
+        if reference != 'None' and organism == "Unset":
+          if reference == 'NC_002163':
+            organism = "Campylobacter jejuni"
+          elif reference == 'NZ_CP007557.1':
+            organism = 'Klebsiella oxytoca'
+          elif reference == 'NC_000913.3':
+            organism = 'Citrobacter freundii'
+          elif reference == 'NC_002516.2':
+            organism = 'Pseudomonas aeruginosa'
+        elif 'Comment' in sample.udf and not re.match(r'\w{4}\d{2,3}', sample.udf['Comment']) and organism == "Unset":
+          organism = sample.udf['Comment'].strip()
+        # Consistent safe-guard
+        elif organism == "Unset":
+          organism = "Other"
+          self.logger.warning("Unable to resolve ambigious organism found in sample {}."\
+          .format(cg_sampleid))
+        if 'priority' in sample.udf:
+          prio = sample.udf['priority']
+        else:
+          prio = ""
+
+      except requests.exceptions.HTTPError as e:
+        self.logger.error("Invalid sample name {} provided for LIMS lookup".format(cg_sampleid))
 
       try:
         self.data.update({'CG_ID_project': sample.project.id,
@@ -151,7 +156,7 @@ class LIMS_Fetcher():
                              'method_sequencing': method_sequencing
         })
       except KeyError as e:
-        self.logger.warn("Unable to fetch LIMS info for sample {}. Review LIMS data.\nSource: {}"\
+        self.logger.warn("Unable to set LIMS info for sample {}. Review LIMS data.\nSource: {}"\
         .format(cg_sampleid, str(e)))
 
     except Exception as e:
