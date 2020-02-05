@@ -448,19 +448,19 @@ def autobatch(ctx, dry, skip_update, email):
   old_jobs = os.listdir(ctx.obj['config']['folders']['results'])
 
   for f in os.listdir(ctx.obj['config']['folders']['seqdata']):
-    if dry:
       #Project name not found in slurm list 
       if len([s for s in run_jobs if f in s]) == 0:
         #Project name not found in results directories
         if len([s for s in old_jobs if f in s]) == 0:
-          click.echo("DRY - microSALT analyse {} --skip_update".format(f))
-        else:
+          if dry:
+            click.echo("DRY - microSALT analyse {} --skip_update".format(f))
+          else:
+            process = subprocess.Popen("microSALT analyse project {} --skip_update".format(f).split(), stdout=subprocess.PIPE)
+            output, error = process.communicate()
+        elif dry:
           click.echo("INFO - Skipping {} due to existing analysis in results folder".format(f))
-      else:
+      elif dry:
         click.echo("INFO - Skipping {} due to concurrent SLURM run".format(f))
-    else:
-      process = subprocess.Popen("microSALT analyse project {} --skip_update".format(f).split(), stdout=subprocess.PIPE)
-      output, error = process.communicate()
 
 @resync.command()
 @click.option('--type', default='list', type=click.Choice(['report', 'list']), help="Output format")

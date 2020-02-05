@@ -209,8 +209,9 @@ class LIMS_Fetcher():
             date_list = date_list + [a.parent_process.udf['Finish Date'] for a in arts]
         elif type == "libprep":
           date_list = date_list + [a.parent_process.date_run for a in arts]
-      except (requests.exceptions.SSLError, requests.exceptions.ConnectionError) as e:
-        pass
+      except (requests.exceptions.SSLError, requests.exceptions.ConnectionError, KeyError) as e:
+        #self.logger.warning("Method get_date failed with: {}".format(e))
+        return datetime.min
     date_list = [x for x in date_list if x != None]
     if date_list:
       try:
@@ -245,8 +246,9 @@ class LIMS_Fetcher():
         if processes:
           process = sorted(processes)[-1]
           out = "{}:{}".format(process[0], process[1])
-      except (requests.exceptions.SSLError, requests.exceptions.ConnectionError) as e:
-        pass
+      except (requests.exceptions.SSLError, requests.exceptions.ConnectionError, KeyError) as e:
+        #self.logger.warning("Method get_method failed with: {}".format(e))
+        return "Not in LIMS"
     if not 'out' in locals():
       out = "Not in LIMS"
     return out
