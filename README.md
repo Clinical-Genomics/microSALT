@@ -20,7 +20,7 @@ Then continue with __Configuration__
 * Perform all steps under section  __Configuration__
 
 ## Configuration
-Copy the configuration file to microSALTs hidden home directory, _or_ copy the configuration file anywhere and direct the envvar MICROSALT_CONFIG to it. See examples: 
+Copy the configuration file to microSALTs hidden home directory, _or_ copy the configuration file anywhere and direct the envvar MICROSALT_CONFIG to it. See example: 
 
 `cp configExample.json $HOME/.microSALT/config.json`
 
