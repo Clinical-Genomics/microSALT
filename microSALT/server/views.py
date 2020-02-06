@@ -48,11 +48,21 @@ def project_page(project):
         organisms = organism_groups,
         project = project)
 
-@app.route('/microSALT/<project>/<organism_group>')
-def report_page(project, organism_group):
+@app.route('/microSALT/<project>/qc')
+def alignment_page(project):
+    sample_info = gen_reportdata(project)
+
+    return render_template('alignment_page.html',
+        samples = sample_info['samples'],
+        date = date.today().isoformat(),
+        version = sample_info['versions'],
+    )
+
+@app.route('/microSALT/<project>/typing/<organism_group>')
+def typing_page(project, organism_group):
     sample_info = gen_reportdata(project, organism_group)
 
-    return render_template('report_page.html',
+    return render_template('typing_page.html',
         samples = sample_info['samples'],
         date = date.today().isoformat(),
         version = sample_info['versions'],
@@ -73,7 +83,22 @@ def STtracker_page(customer):
     return render_template('STtracker_page.html',
         internal = final_samples)
 
-def gen_reportdata(pid='all', organism_group='all'):
+def gen_tuples(pid, value):
+  """ Generates name:data tuples for highcharts plots """
+  tuples = list()
+  sample_info = session.query(Samples).filter(Samples.CG_ID_project==pid)
+
+  for s in sample_info:
+    tuples.append(dict())
+    tuples[-1]['name'] = s.projects.Customer_ID_project
+    if isinstance(value, str):
+      tuples[-1]['y'] = getattr(s, value)
+    elif isinstance(value, (list,)):
+      tuples[-1]['x'] = getattr(s, value[0])
+      tuples[-1]['y'] = getattr(s, value[1])
+  return tuples
+
+def gen_reportdata(pid, organism_group='all'):
   """ Queries database for all necessary information for the reports """
   belowCount=0
   output = dict()
@@ -118,8 +143,9 @@ def gen_reportdata(pid='all', organism_group='all'):
       s.threshold = 'Passed'
       for seq_type in s.seq_types:
         #Identify single deviating allele
-        if seq_type.st_predictor and seq_type.identity >= config["threshold"]["mlst_novel_id"] and \
-        config["threshold"]["mlst_id"] > seq_type.identity and 1-abs(1-seq_type.span) >= config["threshold"]["mlst_span"]:
+        if seq_type.st_predictor and seq_type.identity >= config["threshold"]["mlst_novel_id"] \
+        and config["threshold"]["mlst_id"] > seq_type.identity \
+        and 1-abs(1-seq_type.span) >= config["threshold"]["mlst_span"]:
           near_hits = near_hits + 1
         elif (seq_type.identity < config["threshold"]["mlst_novel_id"] or \
               seq_type.span < config["threshold"]["mlst_span"]) and seq_type.st_predictor:
@@ -132,7 +158,8 @@ def gen_reportdata(pid='all', organism_group='all'):
 
     #Resistence filter
     for r in s.resistances:
-      if (r.identity >= config["threshold"]["res_id"] and r.span >= config["threshold"]["res_span"]):
+      if (s.ST > 0 or s.ST_status == 'Novel') and (r.identity >= config["threshold"]["res_id"] \
+      and r.span >= config["threshold"]["res_span"]) or (s.ST < 0 and s.ST_status != 'Novel'):
         r.threshold = 'Passed'
       elif (50 < r.identity and r.identity < config["threshold"]["res_id"] and 0.45 < r.span and r.span < config["threshold"]["res_span"]):
         belowCount = belowCount + 1

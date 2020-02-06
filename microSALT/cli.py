@@ -16,17 +16,21 @@ from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.reporter import Reporter
 from microSALT.utils.referencer import Referencer
+from microSALT.utils.meta_analyzer import Meta_Analyzer
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 if config == '':
-  print("ERROR: No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
+  click.echo("ERROR: No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
   sys.exit(-1)
+
+def done():
+  click.echo("Execution finished!")
 
 @click.group()
 @click.version_option(__version__)
 @click.pass_context
 def root(ctx):
-  """ microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline """
+  """microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline """
   ctx.obj = {}
   ctx.obj['config'] = config
   logger = logging.getLogger('main_logger')
@@ -40,24 +44,202 @@ def root(ctx):
   logger.addHandler(ch)
   ctx.obj['log'] = logger
 
-def done():
-  print("Execution finished!")
+@root.group()
+@click.pass_context
+def cluster(ctx):
+  """Extensive clustering analysis"""
+  pass
 
 @root.group()
 @click.pass_context
-def start(ctx):
-  """Starts analysis of project/sample"""
+def type(ctx):
+  """Basic sequence and resistance typing"""
   pass
 
-@start.command()
+@root.group()
+@click.pass_context
+def util(ctx):
+  """ Utilities for specific purposes """
+  pass
+
+@util.group()
+@click.pass_context
+def finish(ctx):
+  """Reupload typing analysis and generate results"""
+  pass
+
+@util.group()
+@click.pass_context
+def refer(ctx):
+  """ Manipulates MLST organisms """
+  pass
+
+@cluster.group()
+@click.pass_context
+def cgmlst(ctx):
+  """In-depth sample relationship analysis"""
+  pass
+
+@cluster.command()
+@click.option('--ref_type', type=click.Choice(['ids', 'paths']), help="Use either CG IDs or sample folder paths", required=True)
+@click.option('--input_type', type=click.Choice(['list', 'file']), help="Use either list or static file for input", required=True)
+@click.option('--file', help="File containing list of samples to analyse, one per row")
+@click.option('--sample', '-s', help="List of samples, one per variable invocation", multiple=True)
+@click.option('--config', help="microSALT config to override default", default="")
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.pass_context
+def snp(ctx, ref_type, input_type, file, sample, config, email):
+  """Pair-wise SNP distance"""
+  allpresent = True
+  ctx.obj['config']['snp'] = []
+  ctx.obj['config']['regex']['mail_recipient'] = email
+  if config != '':
+    try:
+      with open(os.path.abspath(config), 'r') as conf:
+        ctx.obj['config'] = json.load(conf)
+    except Exception as e:
+      pass
+
+  snplist = []
+  if input_type=='file':
+    sh = open(os.path.abspath(sample), 'r')
+    sf = sh.readlines()
+    for line in sf:
+      snplist.append(line.rstrip())
+  elif input_type=='list':
+    snplist = sample
+
+  if ref_type == 'paths':
+    for line in snplist:
+      if not os.path.isdir("{}/alignment".format(line)):
+        click.echo("ERROR: {} does not contain an alignment folder + file".format(line))
+        sys.exit(-1)
+  else:
+    scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
+    tlist = []
+    for line in snplist:
+      try:
+        scientist.load_lims_sample_info(line)
+      except Exception as e:
+        click.echo("Unable to load LIMS sample info for {}".format(line))
+        sys.exit(-1) 
+      project = scientist.data['CG_ID_project']
+      samhits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(line))]
+      prohits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(project))]
+      if len(samhits) + len(prohits) > 1:
+        click.echo("WARNING: Multiple hits for {}. Selecting latest".format(line))
+      elif len(samhits) + len(prohits) == 0:
+        allpresent = False
+        click.echo("{} does not contain an alignment folder + file. Run analysis for sample".format(line))
+
+      if len(samhits) >= 1:
+        tlist.append("{}/{}/alignment".format(ctx.obj['config']['folders']['results'], samhits[-1]))
+      elif len(prohits) >= 1:
+        tlist.append("{}/{}/{}/alignment".format(ctx.obj['config']['folders']['results'], prohits[-1], line))
+    snplist = tlist
+
+  if allpresent:
+    overlord = Job_Creator(snplist, ctx.obj['config'], ctx.obj['log'])
+    overlord.snp_job() 
+
+@cgmlst.group()
+@click.argument('reference_path')
+@click.pass_context
+def geneset(ctx, reference_path):
+  """ Filter a fastq file of genes to fit cgMLST usage """
+  reference_path = os.path.abspath(reference_path)
+
+  referee = Referencer(ctx.obj['config'], ctx.obj['log'])
+  referee.generate_cgmlst(reference_path)
+  #Needs to output file somewhere
+  done()
+
+@cgmlst.group()
+@click.pass_context
+def fingerprint(ctx):
+  """Generate cgMLST profile for a project/sample"""
+  pass
+
+@fingerprint.command()
+@click.argument('project_id')
+@click.pass_context
+def project(ctx, project_id):
+  """Generate cgMLST profile for a project"""
+
+  hits = 0
+  for i in os.listdir(ctx.obj['config']['folders']['results']):
+    if '{}_'.format(project_id) in i:
+      hits = hits+1
+      fname = i
+  if hits > 1: #Doublechecks only 1 analysis exists
+    print("Multiple instances of that analysis exists. Specify full path using --input")
+    sys.exit(-1)
+  elif hits < 1:
+    print("No analysis folder prefixed by {} found.".format(project_id))
+    sys.exit(-1)
+  else:
+    project_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], fname)
+
+  garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
+  garbageman.form_fingerprint('project')
+  done()
+
+@fingerprint.command()
+@click.argument('sample_id')
+@click.pass_context
+def sample(ctx, sample_id):
+  """Generate cgMLST profile for a sample"""
+  scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
+  try:
+    scientist.load_lims_sample_info(sample_id)
+  except Exception as e:
+    print("Unable to load LIMS sample info in file cli.py -> lims_fetcher.py")
+    sys.exit(-1)
+
+  hits=0
+  for i in os.listdir(ctx.obj['config']['folders']['results']):
+    if '{}_'.format(sample_id) in i:
+      hits = hits+1
+      fname = i
+  if hits > 1: #Doublechecks only 1 analysis exists
+    print("Multiple instances of that analysis exists. Specify full path using --input")
+    sys.exit(-1)
+  elif hits < 1:
+    print("No analysis folder prefixed by {} found.".format(sample_id))
+    sys.exit(-1)
+  else:
+    sample_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], fname)
+
+  garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
+  garbageman.form_fingerprint('sample')
+  done()
+
+
+@cgmlst.command()
+@click.argument('fingerprint_filelist')
+@click.pass_context
+def distance(ctx, fingerprint_filelist):
+  """Distance matrix between list of samples"""
+  predictor = Meta_Analyzer(os.path.abspath(fingerprint_filelist), ctx.obj['config'], ctx.obj['log'])
+  predictor.calc_dist()
+  done()
+
+@type.group()
+@click.pass_context
+def start(ctx):
+  """Standard QC and typing of project/sample"""
+  pass
+
+@type.command()
 @click.argument('project_id')
 @click.option('--input', help='Full path to project folder',default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
+@click.option('--qc_only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.pass_context
-def project(ctx, project_id, input, dry, config, email, skip_update):
+def project(ctx, project_id, input, dry, config, email, qc_only, skip_update):
   """Analyze a whole project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
@@ -71,15 +253,15 @@ def project(ctx, project_id, input, dry, config, email, skip_update):
   if input != "":
     project_dir = os.path.abspath(input)
     if not project_id in project_dir:
-      print("Path does not contain project id. Exiting.")
+      click.echo("Path does not contain project id. Exiting.")
       sys.exit(-1)
   else:
     project_dir = "{}/{}".format(ctx.obj['config']['folders']['seqdata'], project_id)
     if not os.path.isdir(project_dir):
-      print("Sequence data folder for {} does not exist.".format(project_id))
+      click.echo("Sequence data folder for {} does not exist.".format(project_id))
       sys.exit(-1)
 
-  print("Checking versions of references..")
+  click.echo("Checking versions of references..")
   try:
     if not skip_update:
       fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
@@ -89,22 +271,22 @@ def project(ctx, project_id, input, dry, config, email, skip_update):
     else:
       print("Skipping version check.")
   except Exception as e:
-    print("{}".format(e))
-
-  print("Version check done. Creating sbatch jobs")
+    click.echo("{}".format(e))
+  click.echo("Version check done. Creating sbatch jobs")
   manager = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'])
-  manager.project_job()
+  manager.project_job(qc_only=qc_only)
   done() 
 
-@start.command()
+@type.command()
 @click.argument('sample_id')
 @click.option('--input', help='Full path to sample folder', default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
+@click.option('--qc_only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.pass_context
-def sample(ctx, sample_id, input, dry, config, email, skip_update):
+def sample(ctx, sample_id, input, dry, config, email, qc_only, skip_update):
   """Analyze a single sample"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   if config != '':
@@ -119,40 +301,31 @@ def sample(ctx, sample_id, input, dry, config, email, skip_update):
   try:
     scientist.load_lims_sample_info(sample_id)
   except Exception as e:
-    print("Unable to load LIMS sample info.")
+    click.echo("Unable to load LIMS sample info.")
     sys.exit(-1)
 
   if input != "":
     sample_dir = os.path.abspath(input)
     if not sample_id in sample_dir:
-      print("Path does not contain sample id. Exiting.")
+      click.echo("Path does not contain sample id. Exiting.")
       sys.exit(-1)
   else:
     sample_dir = "{}/{}/{}".format(ctx.obj['config']['folders']['seqdata'], scientist.data['CG_ID_project'] ,sample_id)
     if not os.path.isdir(sample_dir):
-      print("Sequence data folder for {} does not exist.".format(sample_id))
+      click.echo("Sequence data folder for {} does not exist.".format(sample_id))
       sys.exit(-1)
 
-  print("Checking versions of references..")
+  click.echo("Checking versions of references..")
   try:
-    if not skip_update:
-      fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
-      fixer.identify_new(sample_id,project=False) 
-      fixer.update_refs()
-      print("Version check done. Creating sbatch job")
-    else:
-      print("Skipping version check.")
+    fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+    fixer.identify_new(sample_id,project=False) 
+    fixer.update_refs()
+    click.echo("Version check done. Creating sbatch job")
     worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'])
-    worker.project_job(single_sample=True)
+    worker.project_job(single_sample=True, qc_only=qc_only)
   except Exception as e:
-    print("Unable to process single sample {} due to '{}'".format(sample_id,e))
+    click.echo("Unable to process sample {} due to '{}'".format(sample_id,e))
   done()
-
-@root.group()
-@click.pass_context
-def finish(ctx):
-  """Uploads analysis and generates results"""
-  pass
 
 @finish.command()
 @click.argument('sample_id')
@@ -172,32 +345,28 @@ def sample(ctx, sample_id, rerun, email, input, config):
 
   ctx.obj['config']['rerun'] = rerun
   ctx.obj['config']['regex']['mail_recipient'] = email
-  
+
   if input != "":
     sample_dir = os.path.abspath(input)
     if not sample_id in sample_dir:
-      print("Path does not contain sample id. Exiting.")
+      click.echo("Path does not contain sample id. Exiting.")
       sys.exit(-1)
   else:
-    hits = 0
-    for i in os.listdir(ctx.obj['config']['folders']['results']):
-      if '{}_'.format(sample_id) in i:
-        hits = hits+1
-        fname = i
-    if hits > 1: #Doublechecks only 1 analysis exists
-      print("Multiple instances of that analysis exists. Specify full path using --input")
+    prohits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(sample_id))]
+    if len(prohits) > 1:
+      click.echo("Multiple instances of that analysis exists. Specify full path using --input")
       sys.exit(-1)
-    elif hits < 1:
-      print("No analysis folder prefixed by {} found.".format(sample_id))
+    elif len(prohits) <1:
+      click.echo("No analysis folder prefixed by {} found.".format(project_id))
       sys.exit(-1)
     else:
-      sample_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], fname)
+      sample_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
 
   scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
   try:
     scientist.load_lims_sample_info(sample_id)
   except Exception as e:
-    print("Unable to load LIMS sample info.")
+    click.echo("Unable to load LIMS sample info.")
     sys.exit(-1)
 
   garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
@@ -225,44 +394,28 @@ def project(ctx, project_id, rerun, email, input, config):
 
   ctx.obj['config']['rerun'] = rerun
   ctx.obj['config']['regex']['mail_recipient'] = email
- 
+
   if input != "":
     project_dir = os.path.abspath(input)
     if not project_id in project_dir:
-      print("Path does not contain project id. Exiting.")
+      click.echo("Path does not contain project id. Exiting.")
       sys.exit(-1)
   else:
-    hits = 0
-    for i in os.listdir(ctx.obj['config']['folders']['results']):
-      if '{}_'.format(project_id) in i:
-        hits = hits+1
-        fname = i
-    if hits > 1: #Doublechecks only 1 analysis exists
-      print("Multiple instances of that analysis exists. Specify full path using --input")
+    prohits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(project_id))]
+    if len(prohits) > 1:
+      click.echo("Multiple instances of that analysis exists. Specify full path using --input")
       sys.exit(-1)
-    elif hits < 1:
-      print("No analysis folder prefixed by {} found.".format(project_id))
+    elif len(prohits) <1:
+      click.echo("No analysis folder prefixed by {} found.".format(project_id))
       sys.exit(-1)
     else:
-      project_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], fname)
-  
+      project_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
+
   garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_project()
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_id)
   codemonkey.report()
   done()
-
-@root.group()
-@click.pass_context
-def util(ctx):
-  """ Utilities for specific purposes """
-  pass
-
-@util.group()
-@click.pass_context
-def refer(ctx):
-  """ Manipulates MLST organisms """
-  pass
 
 @refer.command()
 @click.argument('organism')
@@ -271,8 +424,12 @@ def refer(ctx):
 def add(ctx, organism, force):
   """ Adds a new internal organism from pubMLST """
   referee = Referencer(ctx.obj['config'], ctx.obj['log'],force=force)
-  referee.add_pubmlst(organism)
-  print("Checking versions of all references..")
+  try:
+    referee.add_pubmlst(organism)
+  except Exception as e:
+    click.echo(e.args[0])
+    sys.exit(-1)
+  click.echo("Checking versions of all references..")
   referee = Referencer(ctx.obj['config'], ctx.obj['log'],force=force)
   referee.update_refs()
 
@@ -281,20 +438,20 @@ def add(ctx, organism, force):
 def list(ctx):
   """ Lists all stored organisms """
   refe = Referencer(ctx.obj['config'], ctx.obj['log'])
-  print("Currently stored organisms:")
+  click.echo("Currently stored organisms:")
   for org in sorted(refe.existing_organisms()):
-    print(org.replace("_"," ").capitalize())
+    click.echo(org.replace("_"," ").capitalize())
 
 @util.command()
 @click.argument('project_name')
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--format', default='html', type=click.Choice(['html', 'csv', 'json', 'st']))
+@click.option('--type', default='all', type=click.Choice(['all', 'html', 'csv', 'qc']))
 @click.pass_context
-def report(ctx, project_name, email, format):
+def report(ctx, project_name, email, type):
   """Re-generates report for a project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_name)
-  codemonkey.report(format)
+  codemonkey.report(type)
   done()
 
 @util.command()

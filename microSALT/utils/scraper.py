@@ -52,6 +52,7 @@ class Scraper():
          self.job_fallback.create_sample(self.name)
        self.scrape_all_loci()
        self.scrape_resistances()
+       self.scrape_alignment()
        self.scrape_quast()
 
   def scrape_sample(self):
@@ -72,6 +73,7 @@ class Scraper():
     self.sampledir = self.infolder
     self.scrape_all_loci()
     self.scrape_resistances()
+    self.scrape_alignment()
     self.scrape_quast()
 
   def scrape_quast(self):
@@ -99,6 +101,7 @@ class Scraper():
       self.logger.warning("Cannot generate quast statistics for {}".format(self.name))
 
   def get_locilength(self, analysis, reference, target):
+    """ Find length of target within reference """
     alleles=dict()
     targetPre = ">{}".format(target)
     lastallele=""
@@ -108,6 +111,7 @@ class Scraper():
       target = re.search('(.+)_(\w+)', target).group(1)
       filename="{}/{}/{}.tfa".format(self.config["folders"]["references"], reference, target)
 
+    #Create dict with full name as key, associated nucleotides as value. 
     f = open(filename,"r")
     for row in f:
       if ">" in row:
@@ -116,7 +120,11 @@ class Scraper():
       else:
         alleles[lastallele] = alleles[lastallele] + row.strip()
     f.close()
-    return len(alleles[targetPre])
+    try:
+      return len(alleles[targetPre])
+    except KeyError as e:
+      self.logger.error("Target '{}' has been removed from current version of resFinder! Defaulting hit to length 1".format(targetPre))
+      return 1
 
   def scrape_resistances(self):
     q_list = glob.glob("{}/resistance/*".format(self.sampledir))
@@ -209,6 +217,121 @@ class Scraper():
           conversions[line[0].lower()] = cropped
     return conversions
 
+  def form_fingerprint(self, type):
+    self.logger.info("Start cgMLST fingerprint generation. ETA 1-4 minutes per sample")
+    if type == 'sample':
+      self.lims_fetcher.load_lims_sample_info(self.name)
+      self.sampledir = self.infolder
+      self.scrape_cgmlst()
+    elif type == 'project':
+      for dir in os.listdir(self.infolder):
+       if os.path.isdir("{}/{}".format(self.infolder, dir)):
+         self.sampledir = "{}/{}".format(self.infolder, dir)
+         self.name = dir
+         start = time.time()
+         self.scrape_cgmlst()
+         self.logger.info("Time used for fingerprinting {}: {} seconds".format(self.name, int(time.time()-start)))
+    else:
+     self.logger.error("Invalid type programmed for cgMLST analysis")
+     sys.exit(-1)
+
+  def init_cgmlst(self):
+    """Add downloaded gene list as default to database (if not already existing)"""
+    organism = self.lims_fetcher.get_organism_refname(self.name)
+    gene_list = "{}/{}.fna".format(self.config['folders']['gene_set'], organism)
+    with open(gene_list, 'r') as gfile:
+      for title in gfile:
+        if title[0] == ">":
+          title = title.replace('[','')
+          title = title.replace(']','')
+          title = title.replace('=',' ')
+          #Title seperated
+          title = title.split(' ')
+          id = title[title.index('protein_id')+1]
+          existing = self.db_pusher.query_rec('Profile_cgmlst', {'protein_id':id, 'organism':organism})
+          if len(existing) < 1:
+            self.db_pusher.add_rec({'protein_id':id, 'organism':organism, 'sequence':"Unassigned", 'allele':0}, 'Profile_cgmlst')
+
+  def scrape_cgmlst(self):
+    """Uploads cgmlst results to database and generates a fingerprint"""
+
+    # self.init_cgmlst() <-- Unnecessary, only used for debugging. Even so needs revision, good idea though
+    #Create sample specific node lookup table
+    node_lookup = dict()
+    ref_file = "{}/assembly/contigs.fasta".format(self.sampledir)
+    with open (ref_file, 'r') as infile:
+      for line in infile:
+        if line[0] == ">":
+          key = line[1:].rstrip()
+          value = ""
+        else:
+          value += line.rstrip()
+          node_lookup[key] = value
+
+    #Associate each hit with it's sequence. BLAST displayed has some issues.
+    allele_sequence = dict()
+    res_file = "{}/cgmlst/loci_query_cgmlst.txt".format(self.sampledir)
+    with open(res_file, 'r') as infile:
+      for line in infile:
+        if line[0] == "[":
+          #Blast output seperated
+          la = line.split('\t')
+          title = la[0]
+          title = title.replace('[','')
+          title = title.replace(']','')
+          title = title.replace('=',' ')
+          #Title seperated
+          title = title.split(' ')
+          #Only unique pids for each sample
+          id = title[title.index('protein_id')+1]
+          if not id in allele_sequence:
+            #la[-1] contains gaps
+            #If competing PIDS, add one with lowest e-value
+            if int(la[7]) < int(la[8]):
+              #Indexes might be 1 away. Be careful
+              allele_sequence[id] = node_lookup[la[2]][int(la[7]):int(la[8])]
+            else:
+              self.logger.error("Unhandled action. Index for {} come in reverse order".format(id))
+
+
+    #Set all existing loci entries to N/A
+    fp = dict()
+    organism = self.lims_fetcher.get_organism_refname(self.name)
+
+    #Check if found result exists in database
+    for k,v in allele_sequence.items():
+      span_threshold = 0.9
+      push_dict = self.db_pusher.get_columns('Profile_cgmlst')
+      top_index = self.db_pusher.top_index('Profile_cgmlst', {'protein_id':k, 'organism':organism}, 'allele')
+
+      if top_index == -1:
+        self.db_pusher.add_rec({'protein_id':k, 'organism':organism, 'sequence':v, 'allele':1}, 'Profile_cgmlst')
+        fp[k] = 1
+      else:
+        exists = False
+        for entry in self.db_pusher.query_rec('Profile_cgmlst', {'protein_id':k, 'organism':organism}):
+
+          if entry.sequence in v and len(entry.sequence) > span_threshold*len(v):
+            fp[k] = entry.allele
+            exists = True
+            self.db_pusher.upd_rec({'protein_id':k, 'organism':organism, 'allele':entry.allele}, 'Profile_cgmlst', {'sequence':v})
+            break
+          elif v in entry.sequence and len(v) > span_threshold*len(entry.sequence):
+            fp[k] = entry.allele
+            exists = True
+            break
+           
+        if not exists:
+          self.db_pusher.add_rec({'protein_id':k, 'organism':organism, 'sequence':v, 'allele':top_index+1}, 'Profile_cgmlst')
+          fp[k] = top_index+1
+
+    #Write fingerprint file
+    fingerprint = "{}/cgmlst/fingerprint.txt".format(self.sampledir)
+    fp_pointer = open(fingerprint,'w')
+    for k, v in fp.items():
+      fp_pointer.write("{}:{}\n".format(k,v))
+    self.logger.info("Finished generating cgmlst results for {}".format(self.name)) 
+  
   def scrape_all_loci(self):
     """Scrapes all BLAST output in a folder"""
     q_list = glob.glob("{}/blast/loci_query_*".format(self.sampledir))
@@ -268,28 +391,78 @@ class Scraper():
     except Exception as e:
       self.logger.error("{}".format(str(e)))
 
-    #Reduction to top hit
-    ind = 0
-    while ind < len(hypo)-1:
-      targ = ind+1
-      while targ < len(hypo):
-        ignore = False
-        #Rightmost is worse
-        if float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]["span"])) >= float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]["span"])):
-          #self.logger.warn("Removing {}:{} with span {} and id {}".format(hypo[targ]['loci'],hypo[targ]["allele"], hypo[targ]['span'],hypo[targ]['identity']))
-          del hypo[targ]
-          ignore = True
-        #Leftmost is worse
-        elif float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]['span'])) < float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]['span'])):
-          #self.logger.warn("Removing {}:{} with span {} and id {}".format(hypo[ind]['loci'],hypo[ind]["allele"], hypo[ind]['span'],hypo[ind]['identity']))
-          del hypo[ind]
-          targ = ind +1
-          ignore = True
-        if not ignore:
-          targ += 1
-        else:
-          pass
-      ind += 1
-    for hit in hypo:
-      self.logger.info("Kept {}:{} with span {} and id {}".format(hit['loci'],hit["allele"], hit['span'],hit['identity']))
-      self.db_pusher.add_rec(hit, 'Seq_types')
+  def scrape_alignment(self):
+    """Scrapes a single alignment result"""
+    ins_list = list()
+    cov_dict = dict()
+    align_dict = dict()
+    align_dict["reference_genome"] = self.lims_fetcher.data['reference']
+
+    q_list = glob.glob("{}/alignment/*.stats.*".format(self.sampledir))
+    map_rate = 0.0
+    median_ins = 0
+    ref_len = 0.0
+    tot_reads = 0
+    tot_map = 0
+    for file in q_list:
+      with open(file, 'r') as fh:
+       type = file.split('.')[-1]
+       for line in fh.readlines():
+         lsplit = line.rstrip().split('\t')
+         if type == 'raw':
+           tot_reads = int(lsplit[0])
+         if type == 'ins':
+           ins_list.append(int(lsplit[1]))
+         elif type == 'cov':
+           cov_dict[lsplit[1]] = int(lsplit[2])
+         elif type == 'ref':
+           if lsplit[0] != '*' and len(lsplit) >= 2:
+             ref_len = int(lsplit[1])
+         elif type == 'map':
+           dsplit = line.rstrip().split(' ')
+           if len(dsplit)>= 5 and dsplit[4] == 'total':
+             tot_map = int(dsplit[0])
+           elif len(dsplit)>=4 and dsplit[3] == 'mapped':
+             if tot_map > 0:
+               map_rate = int(dsplit[0])/float(tot_map)
+         elif type == 'dup':
+           dsplit = line.rstrip().split(' ')
+           if dsplit[0] == 'DUPLICATE' and dsplit[1] == 'TOTAL':
+             dup_bp = int(dsplit[2])
+    #Post mangle
+    #Fallbacks
+    if len(ins_list) >= 1:
+      median_ins = ins_list.index(max(ins_list))
+    sum, plus10, plus30, plus50, plus100, total = 0, 0, 0, 0, 0, 0
+    for k, v in cov_dict.items():
+      sum += int(k)*v
+      total += v
+      if int(k) > 10:
+        plus10 += v
+      if int(k) > 30:
+        plus30 += v
+      if int(k) > 50:
+        plus50 += v
+      if int(k) > 100:
+        plus100 += v
+    if total > 0:
+      align_dict['coverage_10x'] = plus10/float(total)
+      align_dict['coverage_30x'] = plus30/float(total)
+      align_dict['coverage_50x'] = plus50/float(total)
+      align_dict['coverage_100x'] = plus100/float(total)
+    else:
+      align_dict['coverage_10x'] = 0.0
+      align_dict['coverage_30x'] = 0.0
+      align_dict['coverage_50x'] = 0.0
+      align_dict['coverage_100x'] = 0.0
+ 
+    align_dict['mapped_rate'] = map_rate
+    align_dict['insert_size'] = median_ins
+    if ref_len > 0:
+      align_dict['duplication_rate'] = dup_bp/float(ref_len)
+      align_dict['average_coverage'] = sum/float(ref_len)
+    else:
+      align_dict['duplication_rate'] = 0.0
+      align_dict['average_coverage'] = 0.0
+    align_dict['total_reads'] = tot_reads
+    self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', align_dict)

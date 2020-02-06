@@ -31,6 +31,17 @@ class Samples(db.Model):
   contigs = db.Column(db.Integer, default=-1)
   priority = db.Column(db.String(20))
 
+   total_reads = db.Column(db.Integer) #Fetch from bcl2fastq
+   insert_size = db.Column(db.Integer)
+   duplication_rate = db.Column(db.Float)
+   mapped_rate = db.Column(db.Float)
+   coverage_10x = db.Column(db.Float)
+   coverage_30x = db.Column(db.Float)
+   coverage_50x = db.Column(db.Float)
+   coverage_100x = db.Column(db.Float)
+   average_coverage = db.Column(db.Float)
+   reference_genome = db.Column(db.String(32))
+
 class Seq_types(db.Model):
   __tablename__ = 'seq_types'
   samples = relationship('Samples', back_populates='seq_types')
@@ -71,9 +82,16 @@ class Resistances(db.Model):
   contig_start=db.Column(db.Integer)
   contig_end=db.Column(db.Integer)
 
+class Profile_cgmlst(db.Model):
+   __tablename__ = 'profile_cgmlst'
+   protein_id = db.Column(db.String(30), primary_key=True)
+   organism = db.Column(db.String(30), primary_key=True)
+   allele = db.Column(db.SmallInteger, default=-1, primary_key=True)
+   sequence = db.Column(db.String(10000))
+
 class Projects(db.Model):
-   __tablename__ = 'projects'
-   samples = relationship('Samples', back_populates='projects')
+  __tablename__ = 'projects'
+  samples = relationship('Samples', back_populates='projects')
 
    CG_ID_project = db.Column(db.String(15), primary_key=True, nullable=False)
    Customer_ID_project = db.Column(db.String(15))
