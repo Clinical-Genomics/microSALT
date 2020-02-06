@@ -35,7 +35,7 @@ class Reporter():
     if output == "":
       self.output = os.getcwd()
     else:
-      self.output = output
+      self.output = output + "/"
     self.config = config
     self.logger = log
     for k, v in config.items():
@@ -203,7 +203,7 @@ class Reporter():
               rowdict[r.resistance] =dict()
             if r.threshold == 'Passed' and not r.gene in rowdict[r.resistance]:
               rowdict[r.resistance][r.gene] = r.identity
-        elif motif=="expac":
+        elif motif=="expec":
           for r in s.expacs:
             if not (r.virulence in rowdict.keys()) and r.threshold == 'Passed':
               rowdict[r.virulence] =dict()
@@ -246,21 +246,21 @@ class Reporter():
       t = dict()
 
       #Since some apps are too basic to filter irrelevant non-standard values..
-      t['ST_status'] = '' if s.ST_status != str(s.ST) else s.ST_status
-      t['threshold'] = '' if s.threshold not in ['Passed', 'Failed'] else s.threshold
-      t['genome_length'] = '' if s.genome_length < 1 else s.genome_length
-      t['gc_percentage'] = '' if s.gc_percentage < 0.1 else str(s.gc_percentage)
-      t['n50'] = '' if s.n50 < 1 else s.n50
-      t['contigs'] = '' if s.contigs < 1 else s.contigs 
-      t['insert_size'] = '' if s.insert_size < 1 else s.insert_size
-      t['duplication_rate'] = '' if s.duplication_rate < 0.1 else s.duplication_rate
-      t['total_reads'] = '' if s.total_reads < 1 else s.total_reads
-      t['mapped_rate'] = '' if s.mapped_rate < 0.1 else s.mapped_rate
-      t['average_coverage'] = '' if s.average_coverage < 0.1 else s.average_coverage
-      t['coverage_10x'] = '' if s.coverage_10x < 0.1 else s.coverage_10x
-      t['coverage_30x'] = '' if s.coverage_30x < 0.1 else s.coverage_30x
-      t['coverage_50x'] = '' if s.coverage_50x < 0.1 else s.coverage_50x
-      t['coverage_100x'] = '' if s.coverage_100x < 0.1 else s.coverage_100x
+      t['ST_status'] = '' if s.ST_status is None or s.ST_status != str(s.ST) else s.ST_status
+      t['threshold'] = '' if s.threshold  is None or s.threshold not in ['Passed', 'Failed'] else s.threshold
+      t['genome_length'] = '' if s.genome_length is None or s.genome_length < 1 else s.genome_length
+      t['gc_percentage'] = '' if s.gc_percentage is None or s.gc_percentage < 0.1 else str(s.gc_percentage)
+      t['n50'] = '' if s.n50 is None or s.n50 < 1 else s.n50
+      t['contigs'] = '' if s.contigs is None or s.contigs < 1 else s.contigs 
+      t['insert_size'] = '' if s.insert_size is None or s.insert_size < 1 else s.insert_size
+      t['duplication_rate'] = '' if s.duplication_rate is None or s.duplication_rate < 0.1 else s.duplication_rate
+      t['total_reads'] = '' if s.total_reads is None or s.total_reads < 1 else s.total_reads
+      t['mapped_rate'] = '' if s.mapped_rate is None or s.mapped_rate < 0.1 else s.mapped_rate
+      t['average_coverage'] = '' if s.average_coverage is None or s.average_coverage < 0.1 else s.average_coverage
+      t['coverage_10x'] = '' if s.coverage_10x is None or s.coverage_10x < 0.1 else s.coverage_10x
+      t['coverage_30x'] = '' if s.coverage_30x is None or s.coverage_30x < 0.1 else s.coverage_30x
+      t['coverage_50x'] = '' if s.coverage_50x is None or s.coverage_50x < 0.1 else s.coverage_50x
+      t['coverage_100x'] = '' if s.coverage_100x is None or s.coverage_100x < 0.1 else s.coverage_100x
 
       report[s.CG_ID_sample] = dict()
       for a in analyses:

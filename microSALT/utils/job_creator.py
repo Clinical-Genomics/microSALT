@@ -21,9 +21,9 @@ class Job_Creator():
   def __init__(self, input, config, log, finishdir="", timestamp="", trim=True, qc_only=False,careful=False,pool=list()):
     self.config = config
     self.logger = log
-    self.batchfile = ""
+    self.batchfile = "/tmp/batchfile.sbatch"
     self.filelist = list()
-    self.indir = ""
+    self.indir = "/tmp/"
     self.trimmed=trim
     self.qc_only = qc_only
     self.careful = careful
@@ -102,10 +102,13 @@ class Job_Creator():
 
     #Warn about file sizes
     for vfile in verified_files:
-      bsize = os.stat("{}/{}".format(self.indir,vfile)).st_size
-      bsize = bsize >> 20
-      if bsize > 1000:
-        self.logger.warning("Input fastq {} exceeds 1000MB".format(vfile))
+      try:
+        bsize = os.stat("{}/{}".format(self.indir,vfile)).st_size
+        bsize = bsize >> 20
+        if bsize > 1000:
+          self.logger.warning("Input fastq {} exceeds 1000MB".format(vfile))
+      except Exception as e:
+        self.logger.warning("Unable to verify size of input file {}/{}".format(self.indir,vfile))
 
     #Warn about invalid fastq files
     for vfile in verified_files:
@@ -253,6 +256,7 @@ class Job_Creator():
   def create_snpsection(self):
     snplist = self.filelist.copy()
     batchfile = open(self.batchfile, "a+")
+    name = ""
 
     #VCFTools filters:
     vcffilter="--minQ 30 --thin 50 --minDP 3 --min-meanDP 20"
@@ -260,7 +264,8 @@ class Job_Creator():
     bcffilter = "GL[0]<-500 & GL[1]=0 & QR/RO>30 & QA/AO>30 & QUAL>5000 & ODDS>1100 & GQ>140 & DP>100 & MQM>59 & SAP<15 & PAIRED>0.9 & EPP>3"
 
     for item in snplist:
-      name = item.split('/')[-2]
+      if item.count('/') >= 2:
+        name = item.split('/')[-2]
       if '_' in name:
         name = name.split('_')[0]
       self.lims_fetcher.load_lims_sample_info(name)
@@ -280,12 +285,16 @@ class Job_Creator():
     batchfile.write('# SNP pair-wise distance\n')
     batchfile.write('touch {}/stats.out\n'.format(self.finishdir))
     while len(snplist) > 1:
+      nameOne = ""
+      nameTwo = ""
       top = snplist.pop(0)
-      nameOne = top.split('/')[-2]
+      if top.count('/') >= 2:
+        nameOne = top.split('/')[-2]
       if '_' in nameOne:
         nameOne = nameOne.split('_')[0]
       for entry in snplist:
-        nameTwo = entry.split('/')[-2]
+        if entry.count('/') >= 2:
+          nameTwo = entry.split('/')[-2]
         if '_' in nameTwo:
           nameTwo = nameTwo.split('_')[0]
 
@@ -447,6 +456,8 @@ class Job_Creator():
     process = subprocess.Popen("id -un".split(), stdout=subprocess.PIPE)
     user, error = process.communicate()
     user = str(user).replace('.',' ').title()
+    #if not os.path.exists(self.finishdir):
+    #  os.makedirs(self.finishdir)
     startfile = "{}/run_started.out".format(self.finishdir)
     configfile = "{}/config.log".format(self.finishdir) 
     mailfile = "{}/mailjob.sh".format(self.finishdir)

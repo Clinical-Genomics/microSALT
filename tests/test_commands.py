@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import click
+import pdb
 import pytest
 import mock
 import os
@@ -41,52 +42,13 @@ def test_groups(check_version, runner):
   assert base_invoke.exit_code == 0
 
 
-
 @patch('subprocess.Popen')
 @patch('os.listdir')
-@patch('os.path.isdir')
 @patch('microSALT.store.lims_fetcher.LIMS_Fetcher')
-@patch('microSALT.utils.job_creator.Job_Creator.verify_fastq')
 @patch('microSALT.store.lims_fetcher.Lims.get_samples')
 @patch('microSALT.store.lims_fetcher.Lims.check_version')
-def test_analyse(check_version, get_samples, vf, LF, isdir, listdir, subproc, runner, config):
-  LF.data.return_value = {'CG_ID_project':"AAA1234",'CG_ID_sample':'AAA1234A3'}
-
-  #Sets up subprocess mocking
-  process_mock = mock.Mock()
-  attrs = {'communicate.return_value': ('output', 'error')}
-  process_mock.configure_mock(**attrs)
-  subproc.return_value = process_mock
-
-  listdir.return_value = ["ACC6438A3_HVMHWDSXX_L1_1.fastq.gz", "ACC6438A3_HVMHWDSXX_L1_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz"]
-  isdir.return_value = True
-
-  #All subcommands
-  for analysis_type in ['sample', 'project', 'collection']:
-    base_invoke = runner.invoke(root, ['analyse', analysis_type])
-    assert base_invoke.exit_code == 2
-
-    #Exhaustive parameter test
-    typical_run = runner.invoke(root, ['analyse', analysis_type, 'AAA1234', '--input', '/tmp/AAA1234', '--config', config, '--email', '2@2.com'])
-    assert typical_run.exit_code == 0
-    dry_run = runner.invoke(root, ['analyse', analysis_type, 'AAA1234', '--dry'])
-    assert dry_run.exit_code == 0
-    special_run = runner.invoke(root, ['analyse', analysis_type, 'AAA1234', '--qc_only', '--skip_update', '--untrimmed', '--uncareful'])
-    assert special_run.exit_code == 0
-
-
-@patch('microSALT.utils.reporter.Reporter.start_web')
-@patch('microSALT.utils.reporter.LIMS_Fetcher')
-@patch('microSALT.store.lims_fetcher.Lims.get_samples')
-@patch('microSALT.store.lims_fetcher.Lims.check_version')
-@patch('microSALT.utils.job_creator.Job_Creator.create_project')
-@patch('multiprocessing.Process.terminate')
-@patch('multiprocessing.Process.join')
-@patch('microSALT.utils.reporter.requests.get')
-@patch('microSALT.utils.reporter.smtplib')
-@patch('os.listdir')
-@patch('os.path.isdir')
-def test_finish(isdir, listdir, smtp, rgqt, pjoin, pterm, jcp, check_version, get_samples, LF, webstart, runner, config):
+@patch('gzip.open')
+def test_analyse(gzip, check_version, get_samples, LF, listdir, subproc, runner, config):
   LF.data.return_value = {'CG_ID_project':"AAA1234",'CG_ID_sample':'AAA1234A1'}
   sample_mock = mock.MagicMock()
   sample_mock.project.id = "AAA1234"
@@ -95,6 +57,46 @@ def test_finish(isdir, listdir, smtp, rgqt, pjoin, pterm, jcp, check_version, ge
   sample_mock.udf = {'Reference Genome Microbial':"NAN", 'customer':"NAN", 'Sequencing Analysis':"NAN"}
   get_samples.return_value = [sample_mock]
 
+  #Sets up subprocess mocking
+  process_mock = mock.Mock()
+  attrs = {'communicate.return_value': ('output', 'error')}
+  process_mock.configure_mock(**attrs)
+  subproc.return_value = process_mock
+
+  listdir.return_value = ["ACC6438A3_HVMHWDSXX_L1_1.fastq.gz", "ACC6438A3_HVMHWDSXX_L1_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz"]
+
+  #All subcommands
+  for analysis_type in ['sample', 'project', 'collection']:
+    base_invoke = runner.invoke(root, ['analyse', analysis_type])
+    assert base_invoke.exit_code == 2
+    #Exhaustive parameter test
+    typical_run = runner.invoke(root, ['analyse', analysis_type, 'AAA1234', '--input', '/tmp/AAA1234', '--config', config, '--email', '2@2.com'])
+    assert typical_run.exit_code == 0
+    dry_run = runner.invoke(root, ['analyse', analysis_type, 'AAA1234', '--input', '/tmp/AAA1234', '--dry'])
+    assert dry_run.exit_code == 0
+    special_run = runner.invoke(root, ['analyse', analysis_type, 'AAA1234', '--qc_only', '--skip_update', '--untrimmed', '--uncareful', '--input', '/tmp/AAA1234'])
+    assert special_run.exit_code == 0
+
+
+@patch('microSALT.utils.job_creator.Job_Creator.create_project')
+@patch('microSALT.utils.reporter.Reporter.start_web')
+@patch('microSALT.utils.reporter.LIMS_Fetcher')
+@patch('microSALT.store.lims_fetcher.Lims.get_samples')
+@patch('microSALT.store.lims_fetcher.Lims.check_version')
+@patch('multiprocessing.Process.terminate')
+@patch('multiprocessing.Process.join')
+@patch('microSALT.utils.reporter.requests.get')
+@patch('microSALT.utils.reporter.smtplib')
+@patch('os.listdir')
+@patch('os.path.isdir')
+def test_finish(isdir, listdir, smtp, reqs_get, proc_join, proc_term, check_version, get_samples, LF, webstart, create_projct, runner, config):
+  LF.data.return_value = {'CG_ID_project':"AAA1234",'CG_ID_sample':'AAA1234A1'}
+  sample_mock = mock.MagicMock()
+  sample_mock.project.id = "AAA1234"
+  sample_mock.id = "AAA1234A3"
+  sample_mock.name = "Trams"
+  sample_mock.udf = {'Reference Genome Microbial':"NAN", 'customer':"NAN", 'Sequencing Analysis':"NAN"}
+  get_samples.return_value = [sample_mock]
 
   listdir.return_value = ['AAA1234_2019.8.12_11.25.2', 'AAA1234A2' , 'AAA1234A3']
   isdir.return_value = True
@@ -166,3 +168,14 @@ def test_refer(check_version, runner):
 def test_view(check_version, webstart, runner):
   view = runner.invoke(root, ['utils', 'view'])
   assert view.exit_code == 0
+
+@patch('subprocess.Popen')
+def test_autobatch(subproc, runner):
+  #Sets up subprocess mocking
+  process_mock = mock.Mock()
+  attrs = {'communicate.return_value': ('"AAA1000_job"', 'error')}
+  process_mock.configure_mock(**attrs)
+  subproc.return_value = process_mock
+
+  ab = runner.invoke(root, ['utils', 'autobatch', '--dry'])
+  assert ab.exit_code == 0

@@ -30,7 +30,7 @@ def set_cli_config(config):
         t = ctx.obj['config']
         with open(os.path.abspath(config), 'r') as conf:
           ctx.obj['config'] = json.load(conf)
-        ctx.obj['config']['folders']['expac'] = t['folders']['expac']
+        ctx.obj['config']['folders']['expec'] = t['folders']['expec']
         ctx.obj['config']['folders']['adapters'] = t['folders']['adapters']
         ctx.obj['config']['config_path'] = os.path.abspath(config)
       except Exception as e:
@@ -197,11 +197,14 @@ def collection(ctx, collection_id, input, dry, qc_only, config, email, untrimmed
   pool = []
   if input != "":
     collection_dir = os.path.abspath(input)
+    if not collection_id in collection_dir:
+      click.echo("ERROR - Path does not contain collection id. Exiting.")
+      sys.exit(-1)
   else:
     collection_dir = "{}/{}".format(ctx.obj['config']['folders']['seqdata'], collection_id)
-  if not os.path.isdir(collection_dir):
-    click.echo("Collection data folder does not exist. Exiting.")
-    sys.exit(-1)
+    if not os.path.isdir(collection_dir):
+      click.echo("Collection data folder does not exist. Exiting.")
+      sys.exit(-1)
 
   for sample in os.listdir(collection_dir):
     if os.path.isdir("{}/{}".format(collection_dir,sample)):
@@ -276,7 +279,6 @@ def sample(ctx, sample_id, rerun, email, input, config, report):
     click.echo("ERROR - Unable to load LIMS sample info.")
     sys.exit(-1)
 
-
   garbageman = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_sample()
 
@@ -314,7 +316,6 @@ def project(ctx, project_id, rerun, email, input, config, report):
     else:
       project_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
 
-  #import pdb; pdb.set_trace()
   garbageman = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
   garbageman.scrape_project()
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_id, output=project_dir)
@@ -424,6 +425,41 @@ def view(ctx):
 @click.pass_context
 def resync(ctx):
   """Updates internal ST with pubMLST equivalent"""
+
+@utils.command()
+@click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
+@click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.pass_context
+def autobatch(ctx, dry, skip_update, email):
+  """Analyses all currently unanalysed projects in the seqdata folder"""
+  #Trace exists by some samples having pubMLST_ST filled in. Make trace function later
+  ctx.obj['config']['regex']['mail_recipient'] = email
+  fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
+  if not skip_update:
+    fixer.update_refs()
+    fixer.resync()
+
+  process = subprocess.Popen('squeue --format="%50j" -h -r'.split(), stdout=subprocess.PIPE)
+  run_jobs, error = process.communicate()
+  run_jobs = run_jobs.splitlines()
+  run_jobs = [ re.search("\"(.+)\"", str(x)).group(1).replace(' ', '') for x in run_jobs];
+  old_jobs = os.listdir(ctx.obj['config']['folders']['results'])
+
+  for f in os.listdir(ctx.obj['config']['folders']['seqdata']):
+      #Project name not found in slurm list 
+      if len([s for s in run_jobs if f in s]) == 0:
+        #Project name not found in results directories
+        if len([s for s in old_jobs if f in s]) == 0:
+          if dry:
+            click.echo("DRY - microSALT analyse {} --skip_update".format(f))
+          else:
+            process = subprocess.Popen("microSALT analyse project {} --skip_update".format(f).split(), stdout=subprocess.PIPE)
+            output, error = process.communicate()
+        elif dry:
+          click.echo("INFO - Skipping {} due to existing analysis in results folder".format(f))
+      elif dry:
+        click.echo("INFO - Skipping {} due to concurrent SLURM run".format(f))
 
 @resync.command()
 @click.option('--type', default='list', type=click.Choice(['report', 'list']), help="Output format")
