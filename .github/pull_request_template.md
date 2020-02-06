@@ -24,17 +24,15 @@ _Basic test routine:_
 - _(SITUATIONAL) `export MICROSALT_CONFIG=/home/proj/dropbox/microSALT.json`_
 - _Select a relevant subset of the following:_
 - _`microSALT analyse project MIC3109`_
-- _`microSALT analyse project MIC3552`_
-- _`microSALT analyse project MIC3557`_
 - _`microSALT analyse project MIC4107`_
 - _`microSALT analyse project MIC4109`_
+- _`microSALT analyse project ACC5551`_
 
-_Verify that the results for projects MIC3109, MIC3552, MIC3557, MIC4107 & MIC4109 are consistent with the results attached to AMSystem doc 1490, Microbial_WGS.xlsx_
+_Verify that the results for projects MIC3109, MIC4107, MIC4109 & ACC5551 are consistent with the results attached to AMSystem doc 1490, Microbial_WGS.xlsx_
 
 ## Test results
 _These are the results of the tests, and necessary conclusions, that prove the stability of the PR._
 
 # Sign-offs
-- [ ] Code reviewed by @sylvinite
-- [ ] Code tested by @octocat
+- [ ] Code tested by @sylvinite
 - [ ] Approved to run at Clinical-Genomics by @octocat
