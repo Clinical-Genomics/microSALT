@@ -492,3 +492,55 @@ def overwrite(ctx,sample_name, force):
   fixer = Referencer(ctx.obj['config'], ctx.obj['log'])
   fixer.resync(type='overwrite', sample=sample_name, ignore=force)
   done()
+
+@util.command()
+@click.argument('sample_id')
+@click.option('--input', help='Full path to result sample folder', default="")
+@click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
+@click.option('--config', help="microSALT config to override default", default="")
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.pass_context
+def contamination(ctx, sample_id, input, dry, config, email):
+  """Performs contamination analysis"""
+  print("Hello!")
+  ctx.obj['config']['regex']['mail_recipient'] = email
+  if config != '':
+    try:
+      with open(os.path.abspath(config), 'r') as conf:
+        ctx.obj['config'] = json.load(conf)
+    except Exception as e:
+      pass
+
+  ctx.obj['config']['dry'] = dry  
+  
+  ##Scientists stuff here
+  
+  if input != "":
+    sample_dir = os.path.abspath(input)
+    if not sample_id in sample_dir:
+      print("Path does not contain sample id. Exiting.")
+      sys.exit(-1)
+  else:
+    hits = 0
+    for i in os.listdir(ctx.obj['config']['folders']['results']):
+      if '{}_'.format(sample_id) in i:
+        hits = hits+1
+        fname = i
+    if hits > 1: #Doublechecks only 1 analysis exists
+      print("Multiple instances of that analysis exists. Specify full path using --input")
+      sys.exit(-1)
+    elif hits < 1:
+      print("No analysis folder prefixed by {} found.".format(sample_id))
+      sys.exit(-1)
+    else:
+      sample_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], fname)
+
+  print(sample_dir)
+
+  scientist=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
+  
+  scientist.load_lims_sample_info(sample_id)
+  
+  #sample_dir = "{}/{}/{}".format(ctx.obj['config']['folders']['seqdata'], scientist.data['CG_ID_project'] ,sample_id)
+  worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'], sample_dir)
+  worker.contamination_job() ##supply database etc here  
