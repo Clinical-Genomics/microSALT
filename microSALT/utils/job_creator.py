@@ -70,6 +70,13 @@ class Job_Creator():
     for file in files:
       file_match = re.match( self.config['regex']['file_pattern'], file)
       if file_match:
+        #Check that symlinks resolve
+        path = '{}/{}'.format(self.indir, file)
+        if os.path.islink(path):
+          if not os.path.exists(os.readlink(path)):
+            raise Exception("Some fastq files are unresolved symlinks in directory {}.".format(self.indir))
+
+        #Make sure both mates exist
         if file_match[1] == '1':
           pairno = '2'
           #Construct mate name
@@ -83,7 +90,7 @@ class Job_Creator():
         elif file_match[1] == '2':
           pass
         else:
-          raise Exception("Some fastq files in directory have no mate in directory {}.".format(self.indir))
+          raise Exception("Some fastq files have no mate in directory {}.".format(self.indir))
     if verified_files == []:
       raise Exception("No files in directory {} match file_pattern '{}'.".format(self.indir, self.config['regex']['file_pattern']))
     return verified_files
@@ -173,7 +180,7 @@ class Job_Creator():
     tfa_list = glob.glob("{}/{}/*.tfa".format(self.config["folders"]["references"], self.organism))
     for entry in tfa_list:
       batchfile.write("# BLAST MLST alignment for {}, {}\n".format(self.organism, os.path.basename(entry[:-4])))
-      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast/loci_query_{}.txt -task megablast -num_threads {} -max_target_seqs 1 -outfmt {}\n".format(\
+      batchfile.write("blastn -db {}  -query {}/assembly/contigs.fasta -out {}/blast/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
       entry[:-4], self.outdir, self.outdir, os.path.basename(entry[:-4]), self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
     batchfile.close()
@@ -309,6 +316,7 @@ class Job_Creator():
     proj_col['CG_ID_project'] = name
     proj_col['Customer_ID_project'] = self.lims_fetcher.data['Customer_ID_project']
     proj_col['date_ordered'] = self.lims_fetcher.data['date_received']
+    proj_col['Customer_ID'] = self.lims_fetcher.data['Customer_ID']
     self.db_pusher.add_rec(proj_col, 'Projects')
 
   def create_sample(self, name):
@@ -321,6 +329,8 @@ class Job_Creator():
       sample_col['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
       sample_col['reference_genome'] = self.lims_fetcher.data['reference']
       sample_col["date_analysis"] = self.dt
+      sample_col['organism']=self.lims_fetcher.data['organism']
+      #self.db_pusher.purge_rec(sample_col['CG_ID_sample'], 'sample')
       self.db_pusher.add_rec(sample_col, 'Samples')
     except Exception as e:
       self.logger.error("Unable to add sample {} to database".format(self.name))
@@ -340,7 +350,6 @@ class Job_Creator():
         self.create_project(self.name)
     except Exception as e:
       self.logger.error("LIMS interaction failed. Unable to read/write project {}".format(self.name))
-    try:
       #Start every sample job
       if single_sample:
         self.sample_job(qc_only=qc_only)
@@ -354,9 +363,12 @@ class Job_Creator():
           jobarray.append(jobno)
         else:
           self.logger.info("Suppressed command: {}".format(bash_cmd))
-      else:
-        for (dirpath, dirnames, filenames) in os.walk(self.indir):
-          for dir in dirnames:
+      except Exception as e:
+        self.logger.error("Unable to analyze single sample {}".format(self.name))
+    else:
+      for (dirpath, dirnames, filenames) in os.walk(self.indir):
+        for dir in dirnames:
+          try:
             sample_in = "{}/{}".format(dirpath, dir)
             sample_out = "{}/{}".format(self.finishdir, dir)
             sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now) 
@@ -373,12 +385,12 @@ class Job_Creator():
               jobarray.append(jobno)
             else:
               self.logger.info("Suppressed command: {}".format(bash_cmd))
-              
+          except Exception as e:
+            pass
+    if not dry:
+      self.finish_job(jobarray, single_sample)
       if (not dry and not qc_only):
         self.finish_job(jobarray, single_sample)
-    except Exception as e:
-      self.logger.error("Issues handling some samples of project at {}\nSource: {}".format(self.finishdir, str(e)))
-      #shutil.rmtree(self.finishdir, ignore_errors=True)
 
   def finish_job(self, joblist, single_sample=False):
     """ Uploads data and sends an email once all analysis jobs are complete. """
@@ -391,14 +403,15 @@ class Job_Creator():
     sb.close()
     mb.write("#!/bin/sh\n\n")
     mb.write("#Uploading of results to database and production of report\n")
-    #mb.write("source ~/.bash_profile\n")
     if 'MICROSALT_CONFIG' in os.environ:
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
     if not single_sample:
-      mb.write("microSALT util finish project {} --input {} --rerun\n".format(self.name, self.finishdir))
+      mb.write("microSALT finish project {} --input {} --rerun --email {}\n".\
+               format(self.name, self.finishdir, self.config['regex']['mail_recipient']))
     else:
-      mb.write("microSALT util finish sample {} --input {} --rerun\n".format(self.name, self.finishdir))
+      mb.write("microSALT finish sample {} --input {} --rerun --email {}\n".\
+               format(self.name, self.finishdir, self.config['regex']['mail_recipient']))
     mb.write("touch {}/run_complete.out".format(self.finishdir))
     mb.close()
 
@@ -417,8 +430,8 @@ class Job_Creator():
       for entry in massagedJobs:
         if massagedJobs.index(entry) < len(massagedJobs)-1:
           head = "-A {} -p core -n 1 -t 00:00:10 -J {}_{}_SUBTRACKER --qos {} --dependency=afterany:{}"\
-                 .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"],\
-                 entry)
+                 .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"],\
+                         self.name,self.config["slurm_header"]["qos"],entry)
           bash_cmd="sbatch {} {}".format(head, startfile)
           mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
           output, error = mailproc.communicate()
@@ -429,7 +442,8 @@ class Job_Creator():
           break 
 
     head = "-A {} -p core -n 1 -t 06:00:00 -J {}_{}_MAILJOB --qos {} --open-mode append --dependency=afterany:{} --output {}"\
-            .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"], self.name,self.config["slurm_header"]["qos"],\
+            .format(self.config["slurm_header"]["project"],self.config["slurm_header"]["job_prefix"],\
+                    self.name,self.config["slurm_header"]["qos"],\
            final, self.config['folders']['log_file'],  self.config['regex']['mail_recipient'])
     bash_cmd="sbatch {} {}".format(head, mailfile)
     mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
@@ -440,13 +454,17 @@ class Job_Creator():
     if not os.path.exists(self.finishdir):
       os.makedirs(self.finishdir)
     try:
-      self.organism = self.lims_fetcher.get_organism_refname(self.name, external=False)
-      # This is one job 
-      self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
-      batchfile = open(self.batchfile, "w+")
-      batchfile.write("#!/bin/sh\n\n")
-      batchfile.write("mkdir -p {}\n".format(self.outdir))
-      batchfile.close()
+      self.trimmed_files = dict()
+      if not os.path.exists(self.finishdir):
+        os.makedirs(self.finishdir)
+      try:
+        self.organism = self.lims_fetcher.get_organism_refname(self.name, external=False)
+        # This is one job 
+        self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
+        batchfile = open(self.batchfile, "w+")
+        batchfile.write("#!/bin/sh\n\n")
+        batchfile.write("mkdir -p {}\n".format(self.outdir))
+        batchfile.close()
 
       self.create_trimsection()
       self.interlace_files()
@@ -460,7 +478,13 @@ class Job_Creator():
       batchfile.write("cp -r {}/* {}".format(self.outdir, self.finishdir))
       batchfile.close()
 
-      self.logger.info("Created runfile for sample {} in folder {}".format(self.name, self.outdir))
+        self.logger.info("Created runfile for sample {} in folder {}".format(self.name, self.outdir))
+      except Exception as e:
+        raise 
+      try: 
+        self.create_sample(self.name)
+      except Exception as e:
+        self.logger.error("Unable to access LIMS info for sample {}".format(self.name))
     except Exception as e:
       self.logger.error("Unable to create job for instance {}\nSource: {}".format(self.indir, str(e)))
       shutil.rmtree(self.finishdir, ignore_errors=True) 

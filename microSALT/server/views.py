@@ -46,7 +46,7 @@ def project_page(project):
     organism_groups.sort()
     return render_template('project_page.html',
         organisms = organism_groups,
-        project = project) 
+        project = project)
 
 @app.route('/microSALT/<project>/qc')
 def alignment_page(project):
@@ -68,6 +68,21 @@ def typing_page(project, organism_group):
         version = sample_info['versions'],
         build = __version__)
 
+@app.route('/microSALT/STtracker/<customer>')
+def STtracker_page(customer):
+    sample_info = gen_reportdata(pid='all', organism_group='all')
+    final_samples = list()
+    for s in sample_info['samples']:
+      if s.projects.Customer_ID == customer or customer == 'all':
+        if s.pubmlst_ST != -1 and s.ST < 0:
+          final_samples.append(s)
+      
+    final_samples = sorted(final_samples, key=lambda sample: \
+                    (sample.CG_ID_sample)) 
+
+    return render_template('STtracker_page.html',
+        internal = final_samples)
+
 def gen_tuples(pid, value):
   """ Generates name:data tuples for highcharts plots """
   tuples = list()
@@ -85,35 +100,45 @@ def gen_tuples(pid, value):
 
 def gen_reportdata(pid, organism_group='all'):
   """ Queries database for all necessary information for the reports """
+  belowCount=0
   output = dict()
   output['samples'] = list()
   output['versions'] = dict()
-  if organism_group=='all':
+  if pid=='all' and organism_group=='all':
+    sample_info = session.query(Samples)
+  elif pid=='all':
+    sample_info = session.query(Samples).filter(Samples.organism==organism_group)
+  elif organism_group=='all':
     sample_info = session.query(Samples).filter(Samples.CG_ID_project==pid)
   else:
     sample_info = session.query(Samples).\
-                  filter(Samples.organism==organism_group, Samples.CG_ID_project==project)
+                  filter(Samples.CG_ID_project==pid, Samples.organism==organism_group)
+     
   #Sorts sample names
   sample_info = sorted(sample_info, key=lambda sample: \
                 int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
+
+  #Set ST status
   for s in sample_info:
     s.ST_status=str(s.ST)
-    if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') \
-    or s.Customer_ID_sample.startswith('NK-'):
+    if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or \
+    s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or \
+    s.Customer_ID_sample.startswith('CTRL') or s.Customer_ID_sample.startswith('Neg') or \
+    s.Customer_ID_sample.startswith('blank') or s.Customer_ID_sample.startswith('dual-NTC'):
       s.ST_status = 'Control (prefix)'
     elif s.ST < 0:
       if s.ST == -1:
-        s.ST_status = 'No pubMLST definition'
-      elif s.ST == -4:
+        s.ST_status = 'Invalid data'
+      elif s.ST <= -4 or s.ST == -2:
         s.ST_status = 'Novel'
       else:
         s.ST_status='None'
 
-    if s.ST_status=='Control' or 'pubMLST' in s.ST_status:
-      s.threshold = 'Passed'
-    elif s.ST == -2 or s.ST == -3:
+    if 'Control' in s.ST_status or s.ST == -1:
+      s.threshold = '-'
+    elif s.ST == -3:
       s.threshold = 'Failed'
-    elif hasattr(s, 'seq_types') and s.seq_types != []:
+    elif hasattr(s, 'seq_types') and s.seq_types != [] or s.ST == -2:
       near_hits=0
       s.threshold = 'Passed'
       for seq_type in s.seq_types:
@@ -122,11 +147,12 @@ def gen_reportdata(pid, organism_group='all'):
         and config["threshold"]["mlst_id"] > seq_type.identity \
         and 1-abs(1-seq_type.span) >= config["threshold"]["mlst_span"]:
           near_hits = near_hits + 1
-        elif (seq_type.identity < config["threshold"]["mlst_novel_id"] or seq_type.span < config["threshold"]["mlst_span"]) and seq_type.st_predictor:
+        elif (seq_type.identity < config["threshold"]["mlst_novel_id"] or \
+              seq_type.span < config["threshold"]["mlst_span"]) and seq_type.st_predictor:
           s.threshold = 'Failed'
 
       if near_hits > 0 and s.threshold == 'Passed':
-        s.ST_status = 'Novel ({} alleles)'.format(near_hits)
+        s.ST_status = 'Novel alleles ({})'.format(near_hits)
     else:
       s.threshold = 'Failed'
 
@@ -135,6 +161,9 @@ def gen_reportdata(pid, organism_group='all'):
       if (s.ST > 0 or s.ST_status == 'Novel') and (r.identity >= config["threshold"]["res_id"] \
       and r.span >= config["threshold"]["res_span"]) or (s.ST < 0 and s.ST_status != 'Novel'):
         r.threshold = 'Passed'
+      elif (50 < r.identity and r.identity < config["threshold"]["res_id"] and 0.45 < r.span and r.span < config["threshold"]["res_span"]):
+        belowCount = belowCount + 1
+        r.threshold = 'BelowPassed'
       else:
         r.threshold = 'Failed'
 

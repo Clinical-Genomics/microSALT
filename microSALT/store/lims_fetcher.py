@@ -19,7 +19,14 @@ class LIMS_Fetcher():
 
   def load_lims_project_info(self, cg_projid):
     project = Project(self.lims, id=cg_projid)
+    samplelist = self.samples_in_project(cg_projid)
 
+    custids = list()
+    for sample in samplelist:
+      self.load_lims_sample_info(sample)
+      custids.append(self.data['Customer_ID'])
+    if not custids[1:] == custids[:-1]:
+      raise Exception("Project {} contains multiple Customer IDs".format(cg_projid))
     try:
       #Resolves old format
       if ' ' in project.name:
@@ -31,14 +38,18 @@ class LIMS_Fetcher():
       newdate = datetime(int(tmp[0]), int(tmp[1]), int(tmp[2]))
       self.data.update({'date_received': newdate,
                                'CG_ID_project': cg_projid,
-                               'Customer_ID_project' : realname})
+                               'Customer_ID_project' : realname,
+                               'Customer_ID': custids[0]})
     except KeyError as e:
       self.logger.warn("Unable to fetch LIMS info for project {}\nSource: {}".format(cg_projid, str(e)))
 
-  def samples_in_project(self, cg_projid):
+  def samples_in_project(self, cg_projid, external=False):
     """ Returns a list of sample names for a project"""
     output = list()
-    samples = self.lims.get_samples(projectlimsid=cg_projid)
+    if not external:
+      samples = self.lims.get_samples(projectlimsid=cg_projid)
+    else:
+      samples = self.lims.get_samples(projectname=cg_projid)
     for s in samples:
       output.append(s.id)
     return output
@@ -57,11 +68,12 @@ class LIMS_Fetcher():
         self.logger.error("LIMS connection timeout")
     organism = "Unset"
     if 'Strain' in sample.udf and organism == "Unset":
-      if sample.udf['Strain'] != 'Other' and sample.udf['Strain'] != 'other':
-        organism = sample.udf['Strain']
-      elif (sample.udf['Strain'] == 'Other' or sample.udf['Strain'] == 'other') and 'Other species' in sample.udf:
-        organism = sample.udf['Other species']
-      # Backwards compatibility
+      #Predefined genus usage. All hail buggy excel files
+      if 'gonorrhoeae' in sample.udf['Strain']:
+        organism = "Neisseria spp."
+      elif 'Cutibacterium acnes' in sample.udf['Strain']:
+        organism = "Propionibacterium acnes" 
+      #Backwards compat, MUST hit first
       elif sample.udf['Strain'] == 'VRE':
         if 'Reference Genome Microbial' in sample.udf:
           if sample.udf['Reference Genome Microbial'] == 'NC_017960.1':
@@ -70,6 +82,16 @@ class LIMS_Fetcher():
             organism = 'Enterococcus faecalis'
         elif 'Comment' in sample.udf:
           organism = sample.udf['Comment']
+      elif sample.udf['Strain'] != 'Other' and sample.udf['Strain'] != 'other':
+        organism = sample.udf['Strain']
+      elif (sample.udf['Strain'] == 'Other' or sample.udf['Strain'] == 'other') and 'Other species' in sample.udf:
+        #Other species predefined genus usage
+        if 'gonorrhoeae' in sample.udf['Other species']:
+          organism = "Neisseria spp."
+        elif 'Cutibacterium acnes' in sample.udf['Other species']:
+          organism = "Propionibacterium acnes"
+        else:
+          organism = sample.udf['Other species']
     if 'Reference Genome Microbial' in sample.udf and organism == "Unset":
       if sample.udf['Reference Genome Microbial'] == 'NC_002163':
         organism = "Campylobacter jejuni"
@@ -95,6 +117,7 @@ class LIMS_Fetcher():
                            'CG_ID_sample': sample.id,
                            'Customer_ID_sample' : sample.name,
                            'organism' : organism,
+                           'Customer_ID': sample.udf['customer']})
                            'priority' : prio,
                            'reference' : sample.udf['Reference Genome Microbial']})
     except KeyError as e:

@@ -21,6 +21,11 @@ cd microSALT && pip install -r requirements.txt && pip install.
 
 Then continue with __Configuration__
 
+## Quick installation
+* `git clone https://github.com/Clinical-Genomics/microSALT.git`
+* `cd microSALT && bash install.sh`
+* Perform all steps under section  __Configuration__
+
 _Optional SNP-calling support:_
 
 `conda install -c bioconda freebayes=1.1.0=py36_2 bcftools=1.3.1=0 \
@@ -43,7 +48,7 @@ __Then edit the fields to match your environment__.
 Create `$HOME/.genologicsrc` with the following formatting:
 ```
 [genologics]
-BASEURI=https://yourlims.corporation.se:8443
+BASEURI=https://yourlims.corporation.se/
 USERNAME=your_username
 PASSWORD=your_password
 [logging]
@@ -62,6 +67,12 @@ Other definitions may be used, as long as they retain the same format.
 ### Resistance genes
 microSALT will automatically download & use the resistance genes of resFinder (https://cge.cbs.dtu.dk/services/data.php).
 Any definitions will work, as long as they retain the same formatting.
+
+## Credits
+* Isak Sylvin - Lead developer
+* Emma Sernstad - Accreditation ready reports
+* Tanja Normark - Contamination analysis, various issues
+* Maya Brandi - Various issues
 
 ## Requirements
 ### Hardware

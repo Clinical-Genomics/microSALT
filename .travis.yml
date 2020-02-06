@@ -1,0 +1,38 @@
+language: python
+python:
+    - '3.6'
+    
+sudo: required
+cache: pip
+
+before_install:
+  - sudo apt-get install -y coreutils ucommon-utils
+addons:
+  apt:
+    update: true
+
+install:
+## Install anaconda
+  - wget https://repo.anaconda.com/archive/Anaconda3-2019.03-Linux-x86_64.sh -O conda.sh;
+  - bash conda.sh -b -p $HOME/anaconda
+  - export PATH="$HOME/anaconda/bin:$PATH"
+  - conda config --add channels defaults
+  - conda config --add channels bioconda
+  - conda config --add channels conda-forge
+  - conda info
+  
+  
+## Install microSALT
+  - conda create -y -n microSALT python=3.6
+  - source activate microSALT
+  - conda install -y -c bioconda blast=2.5.0=hc0b0e79_3 spades=3.12.0=py36_0 trimmomatic=0.38=1
+  - pip install -r requirements.txt
+  - pip install git-lint yamllint
+  - pip install .
+  - pip check
+
+script:
+#    - git lint
+    - mkdir ~/.microSALT && touch ~/.microSALT/config.json
+#    - Create config
+#    - microSALT

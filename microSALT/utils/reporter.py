@@ -2,11 +2,13 @@
    By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
+import json
 import requests
 import time
 import os
 import sys
 import smtplib
+
 
 from os.path import basename
 from email.mime.text  import MIMEText
@@ -48,6 +50,20 @@ class Reporter():
     self.mail()
     for file in self.attachments:
       os.remove(file)
+
+  def gen_STtracker(self, customer="all"):
+    self.start_web()
+    self.name ="Sequence Type Update"
+    try:
+      r = requests.get("http://127.0.0.1:5000/microSALT/STtracker/{}".format(customer), allow_redirects=True)
+    except Exception as e:
+      self.logger.error("Flask instance currently occupied. Possible rogue process. Retry command")
+      self.kill_flask()
+      sys.exit(-1)
+    outname = "ST_updates.html"
+    open(outname, 'wb').write(r.content)
+    self.attachments.append(outname)
+    self.kill_flask()
 
   def gen_qc(self):
     name = self.name
@@ -170,6 +186,31 @@ class Reporter():
     inpath = "{}/{}.csv".format(os.getcwd(), name)
     self.attachments.append(inpath)
 
+  def gen_json(self):
+    report = dict()
+
+    sample_info = gen_reportdata(self.name)
+    analyses = ['blast_pubmlst', 'quast_assembly', 'blast_resfinder_resistence', 'picard_markduplicate', 'microsalt_samtools_stats']
+    for s in sample_info['samples']:
+      report[s.CG_ID_sample] = dict()
+      for a in analyses:
+        if a == 'blast_resfinder_resistence':
+          report[s.CG_ID_sample][a] = list()
+        else:
+          report[s.CG_ID_sample][a] = dict()
+            
+      report[s.CG_ID_sample]['blast_pubmlst'] = {'sequence_type':s.ST_status, 'thresholds':s.threshold}
+      report[s.CG_ID_sample]['quast_assembly'] = {'estimated_genome_length':s.genome_length, 'gc_percentage':float(s.gc_percentage), 'n50':s.n50, 'necessary_contigs':s.contigs}
+
+      for r in s.resistances:
+        if not (r.gene in report[s.CG_ID_sample]['blast_resfinder_resistence']) and r.threshold == 'Passed':
+          report[s.CG_ID_sample]['blast_resfinder_resistence'].append(r.gene)
+
+    #json.dumps(report) #Dumps the json directly
+    inpath = "{}/{}.json".format(os.getcwd(), self.name)
+    with open(inpath, 'w') as outfile: 
+      json.dump(report, outfile)
+    self.attachments.append(inpath)
 
   def kill_flask(self):
     self.server.terminate()

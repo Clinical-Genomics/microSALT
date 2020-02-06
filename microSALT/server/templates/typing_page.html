@@ -9,9 +9,8 @@
               <a href="https://github.com/Clinical-Genomics/microSALT"><img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" alt="MicroSALT Logo" align="left" style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
               <!--<img src="swedac.jpg" alt="Swedac Logo" align="right" style="display:flex;">-->
               <h2 class="page-header">
-                <small><br><br>Clinical Microbiology</small>
+                <small><br><br>Clinical Microbiology - Delivery Report</small>
               <small><p align="right">{{date}}</p></small></h2>
-
               <h3><strong>Project Summary</strong><br></h3>
               <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
                   <tr>
@@ -44,8 +43,10 @@
                       {% else %}
                         <td><i>Unknown</i></td>
                       {% endif %}
-                      {% if sample.ST_status == 'None' %}
-                        <td><font color="red">{{sample.ST_status }}</font></td>
+                      {% if sample.ST_status == 'None' or sample.ST == -1 %}
+                        <td><font color="red">{{ sample.ST_status }}</font></td>
+                      {% elif sample.ST <= -4 %}
+                        <td>I{{sample.ST|int|abs}} (Novel)</td>                  
                       {% else %}
                         <td>{{sample.ST_status }}</td>
                       {% endif %}
@@ -95,6 +96,8 @@
                     <tr><th scope="row" >Sequence Type</th>
                       {% if sample.ST_status == 'None' %}
                         <td><font color="red">{{sample.ST_status }}</font></td>
+                      {% elif sample.ST <= -4 %}
+                        <td>I{{sample.ST|int|abs}} (Novel)</td>
                       {% else %}
                         <td>{{sample.ST_status }}</td>
                       {% endif %}
@@ -127,11 +130,7 @@
                     <tr><th scope="row" >GC content</th><td>{{sample.gc_percentage| round(2)}}%</td></tr>
                     <tr><th scope="row" >N50 (min. contig length for 50% of genome)</th><td>{{'{0:,}'.format(sample.n50)|replace(","," ")}}</td></tr>
                     <tr><th scope="row" >Necessary contigs</th><td>{{sample.contigs}}</td></tr>
-                  {% else %}
-                    <tr><th scope="row" >Estimated genome length</th><td>Insufficient data for QUAST</td></tr>
-                    <tr><th scope="row" >GC content</th><td>Insufficient data for QUAST</td></tr>
-                    <tr><th scope="row" >N50 (min. contig length for 50% of genome)</th><td>Insufficient data for QUAST</td></tr>
-                    <tr><th scope="row" >Necessary contigs</th><td>Insufficient data for QUAST</td></tr>
+                  {% else %}  Insufficient sequencing data to produce assembly!
                   {% endif %}
                 </table></div>
 
@@ -141,10 +140,10 @@
           {% if sample.genome_length > -1 %}
             <footer>
               <div class="panel">
-              <div class="panel-body"> 
+              <div class="panel-body">
 
                 <div class="table-responsive">
-                  {% if not sample.seq_types|length == 0 %}
+                  {% if not sample.seq_types|length == 0 and 'Invalid' not in sample.ST_status%}
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                       <h4>MLST</h4>
                       <thead>
@@ -174,7 +173,7 @@
                 </div>
 
                 <div class="table-responsive">
-                  {% if not sample.resistances|length == 0 %}
+                  {% if not sample.resistances|selectattr('threshold', 'equalto', 'Passed')|list|length == 0 %}
                     <table  class="table table-bordered" style='table-layout:fixed;'>
                     <h4>Resistance</h4>
                       <thead>
@@ -189,7 +188,7 @@
                         </tr>
                       </thead>
                       <tbody>
-                        {% for seq_type in sample.resistances if seq_type.threshold == 'Passed' %} 
+                        {% for seq_type in sample.resistances if seq_type.threshold == 'Passed' %}
                             <tr>
                               <td>{{loop.index}}</td>
                               <td>{{seq_type.gene}}</td>
@@ -222,6 +221,39 @@
             </footer>
           {% endif %}
           {% endfor %}
+
+          <!-- Table with low quality resistance calls -->
+          {% for sample in samples %}
+            {% if loop.first %}
+              <footer>
+                <div class="panel"><div class="panel-body">
+                  <h2 class="page-header"><div class="row"></div><strong>Low quality resistance calls</strong><br>
+                    <small><p align="right">{{date}}</p></small></h2>
+                  <div class="table-responsive">
+              <table  class="table table-bordered" style='table-layout:fixed;'>
+                <tr>
+                  <th width="15%">Sample ID</th>
+                  <th width="75%">Genes</th>
+                </tr>
+            {% endif %}
+            {% for res in sample.resistances %}
+              {% if res|selectattr('threshold', 'equalto', 'BelowCount')%}
+                {% if loop.first %}<tr><td>{{sample.Customer_ID_sample}}</td>{% endif %}
+              {% endif %}
+            {% endfor %}
+            {% for res in sample.resistances %}
+              {% if loop.first %}<td>{% endif %}
+              {% if res|selectattr('threshold', 'equalto', 'BelowCount')%}{{res.gene}} {% endif %}
+              {% if loop.last %}</td></tr>{% endif %}
+            {% endfor %}
+            {% if loop.last %}
+              </table>
+                  </div>
+                </div>
+              </div>
+              </footer>
+            {% endif %}
+          {% endfor %}
         </div>
       </div>
-  {% endblock %}
+{% endblock %}
