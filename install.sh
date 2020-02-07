@@ -5,11 +5,11 @@ shopt -s nullglob
 
 #Suggests provided branch. Else suggests master
 default_branch=${1-master}
-default_name=${1-S_microSALT}
+default_name=${2-microSALT}
 
 echo "Welcome to the microSALT installation script. Q to exit"
 while true; do
-    echo "Name your microSALT environment ['S_microSALT']:"
+    echo "Name your microSALT environment ['microSALT']:"
     read input
     if [[ $input = "q" ]] || [[ $input = "Q" ]]; then
         break
