@@ -5,6 +5,7 @@ shopt -s nullglob
 
 #Suggests provided branch. Else suggests master
 default_branch=${1-master}
+default_name=${1-S_microSALT}
 
 echo "Welcome to the microSALT installation script. Q to exit"
 while true; do
@@ -13,7 +14,7 @@ while true; do
     if [[ $input = "q" ]] || [[ $input = "Q" ]]; then
         break
     elif [[ $input = "y" ]] || [[ $input = "yes" ]]; then
-        cname="S_microSALT"
+        cname=$default_name
         break
     else
         cname=$input
