@@ -18,7 +18,7 @@ from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Referencer():
 
-  def __init__(self, config, log, force=False):
+  def __init__(self, config, log, param={}, force=False):
     self.config = config
     self.logger = log
     self.db_access = DB_Manipulator(config, log)
@@ -29,6 +29,7 @@ class Referencer():
     self.organisms = [*organisms]
     self.lims=LIMS_Fetcher(config, log)
     self.force = force
+    self.param = param
 
   def identify_new(self, cg_id, project=False):
    """ Automatically downloads pubMLST & NCBI organisms not already downloaded """

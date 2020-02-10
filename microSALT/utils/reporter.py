@@ -28,7 +28,7 @@ from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Reporter():
 
-  def __init__(self, config, log, name = "", output = "", collection=False):
+  def __init__(self, config, log, param={}, name = "", output = "", collection=False):
     self.db_pusher=DB_Manipulator(config, log)
     self.name = name
     self.collection = collection
@@ -49,6 +49,7 @@ class Reporter():
     self.filelist = list() 
     self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
     format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
+    self.param = {}
 
   def report(self, type='default', customer='all'):
     self.gen_version(self.name)

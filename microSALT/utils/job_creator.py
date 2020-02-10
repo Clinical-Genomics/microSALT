@@ -18,7 +18,7 @@ from microSALT.store.db_manipulator import DB_Manipulator
 
 class Job_Creator():
 
-  def __init__(self, input, config, log, finishdir="", timestamp="", trim=True, qc_only=False,careful=False,pool=list()):
+  def __init__(self, input, config, log, param={}, finishdir="", timestamp="", trim=True, qc_only=False,careful=False,pool=list()):
     self.config = config
     self.logger = log
     self.batchfile = "/tmp/batchfile.sbatch"
@@ -28,6 +28,7 @@ class Job_Creator():
     self.qc_only = qc_only
     self.careful = careful
     self.pool = pool
+    self.param = param
 
     if isinstance(input, str):
       self.indir = os.path.abspath(input)

@@ -39,6 +39,39 @@ def set_cli_config(config):
 def done():
   click.echo("INFO - Execution finished!")
 
+def validate_param(pfile):
+  pass
+
+def pad_param(pfile):
+  """Reads the provided parameters json and adds default values as necessary"""
+
+  defaults = {
+  "CG_ID_project" : "XXX0000",
+  "CG_ID_sample" : "XXX0000Y1",
+  "Customer_ID_sample" : "XXX0000Y1",
+  "customer_ID" : "cust000",
+  "application_tag" : "NONE",
+  "date_arrival" : "0001-01-01 00:00:00",
+  "date_libprep" : "0001-01-01 00:00:00",
+  "date_sequencing" : "0001-01-01 00:00:00",
+  "method_libprep" : "Not in LIMS",
+  "method_sequencing" : "Not in LIMS",
+  "organism" : "Unset",
+  "priority" : "standard",
+  "reference" : "None"}
+
+  for entry in pfile.items():
+    sample_counter = 1
+    for k, v in defaults.items():
+      if not defaults[k] in entry:
+        click.echo("INFO - Parameter {} was not provided. Used default.".format(k)) 
+        if k in ['CG_ID_sample','Customer_ID_sample']:
+          entry[k] = "XXX0000Y{}".format(sample_counter)
+          sample_counter = sample_counter + 1
+        else:
+          entry[k] = v
+      
+
 @click.group()
 @click.version_option(__version__)
 @click.pass_context
@@ -47,14 +80,59 @@ def root(ctx):
   ctx.obj = {}
   ctx.obj['config'] = config
   ctx.obj['log'] = logger
-  lims_obj=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
-  lims_obj.check_connection() 
 
-@root.group()
+@root.command()
+@click.option('--param','-p',default={},help='Json file describing input samples')
+@click.option('--input', help='Full path to project folder',default="")
+@click.option('--track', help='Run a specific analysis track',default="default", track=click.Choice=['default','typing','qc','cgmlst'])
+@click.option('--config', help="microSALT config to override default", default="")
+@click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
+@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
+@click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
+@click.option('--uncareful', help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
 @click.pass_context
-def analyse(ctx):
-  """Basic sequence and resistance typing"""
-  pass
+def analyse(ctx, param, input, track, config, dry, email, skip_update, untrimmed, uncareful):
+  """Sequence analysis, typing and resistance identification"""
+  #Run section
+  pool = []
+  trimmed = not untrimmed
+  careful = not uncareful
+  set_cli_config(config)
+  ctx.obj['config']['regex']['mail_recipient'] = email
+  ctx.obj['config']['dry'] = dry
+  if not os.path.isdir(input):
+    click.echo("ERROR - Sequence data folder {} does not exist.".format(input))
+    click.abort
+  for subfolder in os.listdir(input):
+    if os.path.isdir("{}/{}".format(input, subfolder)):
+      pool.append(subfolder)
+ run_creator = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'], param, track=track,trim=trimmed,careful=careful, pool=pool)) 
+
+  #Samples section
+  validate_param(param)
+  param = pad_param(param)
+
+  ext_refs = Referencer(ctx.obj['config'], ctx.obj['log'])
+  click.echo("INFO - Checking versions of references..")
+  try:
+    if not skip_update:
+      ext_refs.identify_new(project_id,project=True)
+      ext_refs.update_refs()
+      click.echo("INFO - Version check done. Creating sbatch jobs")
+    else:
+      click.echo("INFO - Skipping version check.")
+  except Exception as e:
+    click.echo("{}".format(e))
+
+  if len(param.items()) > 1:
+    run_creator.project_job()
+  elif len(param.items()) == 1: 
+    run_creator.project_job(single_sample=True)
+  else:
+    click.abort
+ 
+  done()
 
 @root.group()
 @click.pass_context
@@ -73,174 +151,6 @@ def finish(ctx):
 def refer(ctx):
   """ Manipulates MLST organisms """
   pass
-
-@analyse.command()
-@click.argument('project_id')
-@click.option('--input', help='Full path to project folder',default="")
-@click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
-@click.option('--qc_only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
-@click.option('--config', help="microSALT config to override default", default="")
-@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
-@click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
-@click.option('--uncareful', help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
-@click.pass_context
-def project(ctx, project_id, input, dry, config, email, qc_only, untrimmed, skip_update, uncareful):
-  """Analyse a whole project"""
-  trimmed = not untrimmed
-  careful = not uncareful
-  set_cli_config(config)
-  ctx.obj['config']['regex']['mail_recipient'] = email
-  ctx.obj['config']['dry'] = dry
-
-  if input != "":
-    project_dir = os.path.abspath(input)
-    if not project_id in project_dir:
-      click.echo("ERROR - Path does not contain project id. Exiting.")
-      click.abort
-  else:
-    project_dir = "{}/{}".format(ctx.obj['config']['folders']['seqdata'], project_id)
-    if not os.path.isdir(project_dir):
-      click.echo("ERROR - Sequence data folder for {} does not exist.".format(project_id))
-      click.abort
-
-  ext_refs = Referencer(ctx.obj['config'], ctx.obj['log'])
-  click.echo("INFO - Checking versions of references..")
-  try:
-    if not skip_update:
-      ext_refs.identify_new(project_id,project=True)
-      ext_refs.update_refs()
-      click.echo("INFO - Version check done. Creating sbatch jobs")
-    else:
-      click.echo("INFO - Skipping version check.")
-  except Exception as e:
-    click.echo("{}".format(e))
-
-  run_creator = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'],trim=trimmed,qc_only=qc_only, careful=careful)
-  run_creator.project_job()
-  done() 
-
-@analyse.command()
-@click.argument('sample_id')
-@click.option('--input', help='Full path to sample folder', default="")
-@click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
-@click.option('--qc_only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
-@click.option('--config', help="microSALT config to override default", default="")
-@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
-@click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
-@click.option('--uncareful', help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
-@click.pass_context
-def sample(ctx, sample_id, input, dry, config, email, qc_only, untrimmed, skip_update, uncareful):
-  """Analyse a single sample"""
-
-  trimmed = not untrimmed
-  careful = not uncareful
-  set_cli_config(config)
-  ctx.obj['config']['regex']['mail_recipient'] = email
-  ctx.obj['config']['dry'] = dry
-
-  lims_obj=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
-  try:
-    lims_obj.load_lims_sample_info(sample_id)
-  except Exception as e:
-    click.echo("ERROR - Unable to load LIMS sample info.")
-
-  if input != "":
-    sample_dir = os.path.abspath(input)
-    if not sample_id in sample_dir:
-      click.echo("ERROR - Path does not contain sample id. Exiting.")
-      click.abort
-  else:
-    sample_dir = "{}/{}/{}".format(ctx.obj['config']['folders']['seqdata'], lims_obj.data['CG_ID_project'] ,sample_id)
-    if not os.path.isdir(sample_dir):
-      click.echo("ERROR - Sequence data folder for {} does not exist.".format(sample_id))
-      click.abort
-
-  ext_refs = Referencer(ctx.obj['config'], ctx.obj['log'])
-  click.echo("INFO - Checking versions of references..")
-  try:
-    if not skip_update:
-      ext_refs.identify_new(sample_id,project=False) 
-      ext_refs.update_refs()
-      click.echo("INFO - Version check done. Creating sbatch job")
-    else:
-      click.echo("INFO - Skipping version check.")
-    worker = Job_Creator(sample_dir, ctx.obj['config'], ctx.obj['log'], trim=trimmed,qc_only=qc_only, careful=careful)
-    worker.project_job(single_sample=True)
-  except Exception as e:
-    click.echo("ERROR - Unable to process sample {} due to '{}'".format(sample_id,e))
-  done()
-
-
-@analyse.command()
-@click.argument('collection_id')
-@click.option('--input', help='Full path to sample folder', default="")
-@click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
-@click.option('--qc_only', help="Only runs QC (alignment stats)", default=False, is_flag=True)
-@click.option('--config', help="microSALT config to override default", default="")
-@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
-@click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
-@click.option('--uncareful', help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
-@click.pass_context
-def collection(ctx, collection_id, input, dry, qc_only, config, email, untrimmed, skip_update, uncareful):
-  """Analyse a collection of samples"""
-  trimmed = not untrimmed
-  careful = not uncareful
-  set_cli_config(config)
-  ctx.obj['config']['regex']['mail_recipient'] = email
-  ctx.obj['config']['dry'] = dry
-
-  lims_obj=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
-
-  pool = []
-  if input != "":
-    collection_dir = os.path.abspath(input)
-    if not collection_id in collection_dir:
-      click.echo("ERROR - Path does not contain collection id. Exiting.")
-      click.abort
-  else:
-    collection_dir = "{}/{}".format(ctx.obj['config']['folders']['seqdata'], collection_id)
-    if not os.path.isdir(collection_dir):
-      click.echo("Collection data folder does not exist. Exiting.")
-      click.abort
-
-  for sample in os.listdir(collection_dir):
-    if os.path.isdir("{}/{}".format(collection_dir,sample)):
-      pool.append(sample)
-  #if pool == []:
-  #  click.echo("Input collection lacks any valid of samples")
-  #  click.abort
-
-  pool_cg = []
-  for sample in pool:
-    try:
-      lims_obj.load_lims_sample_info(sample,warnings=True)
-      pool_cg.append(lims_obj.data['CG_ID_sample'])
-    except Exception as e:
-      click.echo("ERROR - Unable to load LIMS sample info for sample {}.".format(sample))
-
-  ext_refs = Referencer(ctx.obj['config'], ctx.obj['log'])
-  click.echo("INFO - Checking versions of references..")
-  for sample in pool_cg:
-    try:
-      if not skip_update:
-        ext_refs.identify_new(sample,project=False)
-    except Exception as e:
-      click.echo("ERROR - Unable to update references for sample {} due to '{}'".format(sample,str(e)))
-  if not skip_update:
-    ext_refs.update_refs()
-    click.echo("INFO - Version check done. Creating sbatch job")
-  else:
-    click.echo("INFO - Skipping version check")
-
-  try: 
-    worker = Job_Creator(collection_dir, ctx.obj['config'], ctx.obj['log'], trim=trimmed,qc_only=qc_only, careful=careful, pool=pool_cg)
-    worker.project_job()
-  except Exception as e:
-    click.echo("ERROR - Unable to process collection due to '{}'".format(str(e)))
-  done()
 
 @finish.command()
 @click.argument('sample_id')
