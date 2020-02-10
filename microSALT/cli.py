@@ -103,7 +103,7 @@ def analyse(ctx, param, input, track, config, dry, email, skip_update, untrimmed
   ctx.obj['config']['dry'] = dry
   if not os.path.isdir(input):
     click.echo("ERROR - Sequence data folder {} does not exist.".format(input))
-    ctx.abort
+    ctx.abort()
   for subfolder in os.listdir(input):
     if os.path.isdir("{}/{}".format(input, subfolder)):
       pool.append(subfolder)
@@ -285,6 +285,44 @@ def autobatch(ctx, dry, skip_update, email):
           click.echo("INFO - Skipping {} due to existing analysis in results folder".format(foldah))
       elif dry:
         click.echo("INFO - Skipping {} due to concurrent SLURM run".format(foldah))
+
+@utils.command()
+@click.option('--input', help='Full path to project folder',default="")
+@click.pass_context
+def paramgenerate(ctx):
+  """Generates the necessary parameter file for analysis"""
+  input_folder = os.path.basename(input)
+
+  defaults = {
+  "CG_ID_project" : "XXX0000",
+  "CG_ID_sample" : "XXX0000Y1",
+  "Customer_ID_sample" : "XXX0000Y1",
+  "customer_ID" : "cust000",
+  "application_tag" : "NONE",
+  "date_arrival" : "0001-01-01 00:00:00",
+  "date_libprep" : "0001-01-01 00:00:00",
+  "date_sequencing" : "0001-01-01 00:00:00",
+  "method_libprep" : "Not in LIMS",
+  "method_sequencing" : "Not in LIMS",
+  "organism" : "Unset",
+  "priority" : "standard",
+  "reference" : "None"}
+
+  pool = []
+  if not os.path.isdir(input):
+    click.echo("ERROR - Sequence data folder {} does not exist.".format(input_folder))
+    ctx.abort()
+  for subfolder in os.listdir(input):
+    if os.path.isdir("{}/{}".format(input, subfolder)):
+      pool.append(defaults)
+      pool[-1]['CG_ID_project'] = input_folder
+      pool[-1]['CG_ID_sample'] = subfolder
+
+  output = open("{}/{}".format(os.getcwd(), input_folder), 'w')
+  output.write(pool)
+  output.close()
+  click.echo("INFO - Created {}.json".format(input_folder))
+  done()
 
 @resync.command()
 @click.option('--type', default='list', type=click.Choice(['report', 'list']), help="Output format")

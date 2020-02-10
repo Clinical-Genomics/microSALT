@@ -15,6 +15,7 @@ import time
 from datetime import datetime
 from microSALT.store.lims_fetcher import LIMS_Fetcher
 from microSALT.store.db_manipulator import DB_Manipulator
+from microSALT.utils.referencer import Referencer
 
 class Job_Creator():
 
@@ -53,7 +54,7 @@ class Job_Creator():
     self.db_pusher=DB_Manipulator(config, log)
     self.concat_files = dict()
     self.organism = ""
-    self.lims_fetcher = LIMS_Fetcher(config, log)
+    self.ref_resolver = Referencer(config, log)
 
   def get_sbatch(self):
     """ Returns sbatchfile, slightly superflous"""
@@ -269,7 +270,6 @@ class Job_Creator():
         name = item.split('/')[-2]
       if '_' in name:
         name = name.split('_')[0]
-      self.lims_fetcher.load_lims_sample_info(name)
       batchfile.write('# Basecalling for sample {}\n'.format(name))
       ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
       outbase = "{}/{}_{}".format(item, name, self.lims_fetcher.data['reference'])
@@ -324,10 +324,6 @@ class Job_Creator():
 
   def create_project(self, name):
     """Creates project in database"""
-    try:
-      self.lims_fetcher.load_lims_project_info(name)
-    except Exception as e:
-      self.logger.error("Unable to load LIMS info for project {}".format(name))
     proj_col=dict()
     proj_col['CG_ID_project'] = name
     proj_col['Customer_ID_project'] = self.lims_fetcher.data['Customer_ID_project']
@@ -337,7 +333,6 @@ class Job_Creator():
   def create_sample(self, name):
     """Creates sample in database"""
     try:
-      self.lims_fetcher.load_lims_sample_info(name)
       sample_col = self.db_pusher.get_columns('Samples')
       sample_col['CG_ID_sample'] = self.lims_fetcher.data['CG_ID_sample']
       sample_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
@@ -524,7 +519,7 @@ class Job_Creator():
       if not os.path.exists(self.finishdir):
         os.makedirs(self.finishdir)
       try:
-        self.organism = self.lims_fetcher.get_organism_refname(self.name)
+        self.organism = self.ref_resolver.organism2reference(self.name)
         if not self.organism:
           self.organism = self.lims_fetcher.data['organism']
         # This is one job
