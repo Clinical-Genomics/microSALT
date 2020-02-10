@@ -211,6 +211,33 @@ class Referencer():
     """ Returns list of all organisms currently added """
     return self.organisms
 
+  def organism2reference(self, normal_organism_name):
+    """Finds which reference contains the same words as the organism
+       and returns it in a format for database calls."""
+    orgs = os.listdir(self.config["folders"]["references"])
+    organism = re.split(r'\W+', normal_organism_name)
+    try:
+      refs = 0
+      for target in orgs:
+        hit = 0
+        for piece in organism:
+          if len(piece) == 1:
+            if target.startswith(piece):
+              hit += 1
+          else:
+            if piece in target:
+              hit +=1
+            #For when people misspell the strain in the orderform
+            elif piece == "pneumonsiae" and "pneumoniae" in target:
+              hit +=1
+            else:
+              break
+        if hit == len(organism):
+          return target
+    except Exception as e:
+      self.logger.warn("Unable to find existing reference for {}, strain {} has no reference match\nSource: {}"\
+      .format(organism, normal_organism_name, e))
+
   def download_ncbi(self, reference):
     """ Checks available references, downloads from NCBI if not present """
     try:

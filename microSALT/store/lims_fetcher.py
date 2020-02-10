@@ -162,35 +162,6 @@ class LIMS_Fetcher():
     except Exception as e:
       self.logger.error("LIMS connection timeout: '{}'".format(str(e)))
 
-  def get_organism_refname(self, sample_name):
-    """Finds which reference contains the same words as the LIMS reference
-       and returns it in a format for database calls."""
-    self.load_lims_sample_info(sample_name)
-    lims_organ = self.data['organism'].lower()
-    orgs = os.listdir(self.config["folders"]["references"])
-    organism = re.split(r'\W+', lims_organ)
-    try:
-      refs = 0
-      for target in orgs:
-        hit = 0
-        for piece in organism:
-          if len(piece) == 1:
-            if target.startswith(piece):
-              hit += 1
-          else:
-            if piece in target:
-              hit +=1
-            #For when people misspell the strain in the orderform
-            elif piece == "pneumonsiae" and "pneumoniae" in target:
-              hit +=1
-            else:
-              break
-        if hit == len(organism):
-          return target
-    except Exception as e:
-      self.logger.warn("Unable to find existing reference for {}, strain {} has no reference match\nSource: {}"\
-      .format(sample_name, lims_organ, e))
-
   def get_date(self, sample_id, type=""):
     """ Returns the most recent sequencing date of a sample """
     date_list = list()

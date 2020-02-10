@@ -21,7 +21,7 @@ from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 if config == '':
   click.echo("ERROR - No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
-  click.abort
+  ctx.abort()
 
 def set_cli_config(config):
   if config != '':
@@ -103,7 +103,7 @@ def analyse(ctx, param, input, track, config, dry, email, skip_update, untrimmed
   ctx.obj['config']['dry'] = dry
   if not os.path.isdir(input):
     click.echo("ERROR - Sequence data folder {} does not exist.".format(input))
-    click.abort
+    ctx.abort
   for subfolder in os.listdir(input):
     if os.path.isdir("{}/{}".format(input, subfolder)):
       pool.append(subfolder)
@@ -131,7 +131,7 @@ def analyse(ctx, param, input, track, config, dry, email, skip_update, untrimmed
   elif len(param.items()) == 1: 
     run_creator.project_job(single_sample=True)
   else:
-    click.abort
+    ctx.abort()
  
   done()
 
@@ -167,7 +167,7 @@ def finish(ctx, param, input, track, config, dry, email, skip_update, report):
   ctx.obj['config']['rerun'] = True
   if not os.path.isdir(input):
     click.echo("ERROR - Sequence data folder {} does not exist.".format(input))
-    click.abort
+    ctx.abort()
   for subfolder in os.listdir(input):
     if os.path.isdir("{}/{}".format(input, subfolder)):
       pool.append(subfolder)
@@ -195,15 +195,15 @@ def finish(ctx, param, input, track, config, dry, email, skip_update, report):
       res_scraper = Scraper("{}/{}".format(input, subfolder), ctx.obj['config'], ctx.obj['log'])
       res_scraper.scrape_sample()
   else:
-    click.abort
+    ctx.abort()
   codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], param, output=input, collection=True)
   codemonkey.report(report)
   done()
 
 @refer.command()
 @click.argument('organism')
-@click.pass_context
 @click.option('--force', help="Redownloads existing organism", default=False, is_flag=True)
+@click.pass_context
 def add(ctx, organism, force):
   """ Adds a new internal organism from pubMLST """
   referee = Referencer(ctx.obj['config'], ctx.obj['log'],force=force)
@@ -211,7 +211,7 @@ def add(ctx, organism, force):
     referee.add_pubmlst(organism)
   except Exception as e:
     click.echo(e.args[0])
-    click.abort
+    ctx.abort()
   click.echo("INFO - Checking versions of all references..")
   referee = Referencer(ctx.obj['config'], ctx.obj['log'],force=force)
   referee.update_refs()
