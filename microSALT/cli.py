@@ -107,11 +107,12 @@ def analyse(ctx, param, input, track, config, dry, email, skip_update, untrimmed
   for subfolder in os.listdir(input):
     if os.path.isdir("{}/{}".format(input, subfolder)):
       pool.append(subfolder)
- run_creator = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'], param, track=track,trim=trimmed,careful=careful, pool=pool)) 
 
   #Samples section
   validate_param(param)
   param = pad_param(param)
+  run_creator = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'], param, track=track,trim=trimmed,\
+                            careful=careful, pool=pool))
 
   ext_refs = Referencer(ctx.obj['config'], ctx.obj['log'])
   click.echo("INFO - Checking versions of references..")
@@ -142,148 +143,62 @@ def utils(ctx):
 
 @utils.group()
 @click.pass_context
-def finish(ctx):
-  """Reupload typing analysis and generate results"""
-  pass
-
-@utils.group()
-@click.pass_context
 def refer(ctx):
   """ Manipulates MLST organisms """
   pass
 
-@finish.command()
-@click.argument('sample_id')
-@click.option('--rerun', is_flag=True, default=False, help='Overwrite existing data')
-@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--input', help='Full path to result sample folder', default="")
+@utils.command()
+@click.option('--param','-p',default={},help='Json file describing input samples')
+@click.option('--input', help='Full path to project folder',default="")
+@click.option('--track', help='Run a specific analysis track',default="default", track=click.Choice=['default','typing','qc','cgmlst'])
 @click.option('--config', help="microSALT config to override default", default="")
-@click.option('--report', default='default', type=click.Choice(['default', 'qc']))
-@click.pass_context
-def sample(ctx, sample_id, rerun, email, input, config, report):
-  """Parse results from analysing a single sample"""
-  set_cli_config(config)
-  ctx.obj['config']['regex']['mail_recipient'] = email
-  ctx.obj['config']['rerun'] = rerun
-
-  if input != "":
-    sample_dir = os.path.abspath(input)
-    if not sample_id in sample_dir:
-      click.echo("ERROR - Path does not contain sample id. Exiting.")
-      click.abort
-  else:
-    prohits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(sample_id))]
-    if len(prohits) > 1:
-      click.echo("ERROR - Multiple instances of that analysis exists. Specify full path using --input")
-      click.abort
-    elif len(prohits) <1:
-      click.echo("ERROR - No analysis folder prefixed by {} found.".format(sample_id))
-      click.abort
-    else:
-      sample_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
-
-  lims_obj=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
-  try:
-    lims_obj.load_lims_sample_info(sample_id)
-  except Exception as e:
-    click.echo("ERROR - Unable to load LIMS sample info.")
-    click.abort
-
-  res_scraper = Scraper(sample_dir, ctx.obj['config'], ctx.obj['log'])
-  res_scraper.scrape_sample()
-
-  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], lims_obj.data['CG_ID_project'], output=sample_dir)
-  codemonkey.report(report)
-  done()
-
-@finish.command()
-@click.argument('project_id')
-@click.option('--rerun', is_flag=True, default=False, help='Overwrite existing data')
+@click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--input', help='Full path to result project folder', default="")
-@click.option('--config', help="microSALT config to override default", default="")
-@click.option('--report', default='default', type=click.Choice(['default', 'qc']))
+@click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
+@click.option('--report', default='default', type=click.Choice(['default', 'typing', 'motif_overview', 'qc', 'json_dump', 'st_update']))
 @click.pass_context
-def project(ctx, project_id, rerun, email, input, config, report):
-  """Parse results from analysing a single project"""
-  set_cli_config(config)
-  ctx.obj['config']['regex']['mail_recipient'] = email
-  ctx.obj['config']['rerun'] = rerun
-
-  if input != "":
-    project_dir = os.path.abspath(input)
-    if not project_id in project_dir:
-      click.echo("ERROR - Path does not contain project id. Exiting.")
-      click.abort
-  else:
-    prohits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(project_id))]
-    if len(prohits) > 1:
-      click.echo("ERROR - Multiple instances of that analysis exists. Specify full path using --input")
-      click.abort
-    elif len(prohits) <1:
-      click.echo("ERROR - No analysis folder prefixed by {} found.".format(project_id))
-      click.abort
-    else:
-      project_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
-
-  res_scraper = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'])
-  res_scraper.scrape_project()
-  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_id, output=project_dir)
-  codemonkey.report(report)
-  done()
-
-@finish.command()
-@click.argument('collection_id')
-@click.option('--rerun', is_flag=True, default=False, help='Overwrite existing data')
-@click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
-@click.option('--input', help='Full path to result sample folder', default="")
-@click.option('--config', help="microSALT config to override default", default="")
-@click.option('--report', default='default', type=click.Choice(['default', 'qc','motif_overview']))
-@click.pass_context
-def collection(ctx, collection_id, rerun, email, input, config, report):
-  """Parse results from analysing a set of sample"""
-  set_cli_config(config)
-  ctx.obj['config']['regex']['mail_recipient'] = email
-  ctx.obj['config']['rerun'] = rerun
-
+def finish(ctx, param, input, track, config, dry, email, skip_update, report):
+  """Sequence analysis, typing and resistance identification"""
+  #Run section
   pool = []
-  if input != "":
-    collection_dir = os.path.abspath(input)
-  else:
-    prohits = [x for x in os.listdir(ctx.obj['config']['folders']['results']) if x.startswith("{}_".format(collection_id))]
-    if len(prohits) > 1:
-      click.echo("ERROR - Multiple instances of that analysis exists. Specify full path using --input")
-      click.abort
-    elif len(prohits) <1:
-      click.echo("ERROR - No analysis folder prefixed by {} found.".format(project_id))
-      click.abort
-    else:
-      collection_dir = "{}/{}".format(ctx.obj['config']['folders']['results'], prohits[-1])
-
-  for sample in os.listdir(collection_dir):
-    if os.path.isdir("{}/{}".format(collection_dir,sample)):
-      pool.append(sample)
-  if pool == []:
-    click.echo("ERROR - Input collection lacks any valid of samples")
+  set_cli_config(config)
+  ctx.obj['config']['regex']['mail_recipient'] = email
+  ctx.obj['config']['dry'] = dry
+  ctx.obj['config']['rerun'] = True
+  if not os.path.isdir(input):
+    click.echo("ERROR - Sequence data folder {} does not exist.".format(input))
     click.abort
+  for subfolder in os.listdir(input):
+    if os.path.isdir("{}/{}".format(input, subfolder)):
+      pool.append(subfolder)
 
-  pool_cg = []
-  lims_obj=LIMS_Fetcher(ctx.obj['config'], ctx.obj['log'])
-  for sample in pool:
-    try:
-      lims_obj.load_lims_sample_info(sample,warnings=True)
-      pool_cg.append(lims_obj.data['CG_ID_sample'])
-    except Exception as e:
-      click.echo("ERROR - Unable to load LIMS sample info for sample {}.".format(sample))
-      click.abort
+  #Samples section
+  validate_param(param)
+  param = pad_param(param)
+  res_scraper = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'], param)
 
-  for sample in pool:
-    res_scraper = Scraper("{}/{}".format(collection_dir, sample), ctx.obj['config'], ctx.obj['log'])
-    res_scraper.scrape_sample()
-  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], collection_id, output=collection_dir, collection=True)
+  ext_refs = Referencer(ctx.obj['config'], ctx.obj['log'])
+  click.echo("INFO - Checking versions of references..")
+  try:
+    if not skip_update:
+      ext_refs.identify_new(project_id,project=True)
+      ext_refs.update_refs()
+      click.echo("INFO - Version check done. Creating sbatch jobs")
+    else:
+      click.echo("INFO - Skipping version check.")
+  except Exception as e:
+    click.echo("{}".format(e))
+
+  if len(param.items()) >= 1:
+    #res_scraper.scrape_project()
+    for subfolder in pool:
+      res_scraper = Scraper("{}/{}".format(input, subfolder), ctx.obj['config'], ctx.obj['log'])
+      res_scraper.scrape_sample()
+  else:
+    click.abort
+  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], param, output=input, collection=True)
   codemonkey.report(report)
   done()
-
 
 @refer.command()
 @click.argument('organism')
