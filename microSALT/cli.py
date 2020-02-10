@@ -289,8 +289,8 @@ def autobatch(ctx, dry, skip_update, email):
 @utils.command()
 @click.option('--input', help='Full path to project folder',default="")
 @click.pass_context
-def paramgenerate(ctx):
-  """Generates the necessary parameter file for analysis"""
+def generate(ctx, input):
+  """Creates the necessary parameter file for analysis"""
   input_folder = os.path.basename(input)
 
   defaults = {
@@ -318,9 +318,8 @@ def paramgenerate(ctx):
       pool[-1]['CG_ID_project'] = input_folder
       pool[-1]['CG_ID_sample'] = subfolder
 
-  output = open("{}/{}".format(os.getcwd(), input_folder), 'w')
-  output.write(pool)
-  output.close()
+  with open("{}/{}.json".format(os.getcwd(), input_folder), 'w') as output:
+    json.dump(pool, output)
   click.echo("INFO - Created {}.json".format(input_folder))
   done()
 
