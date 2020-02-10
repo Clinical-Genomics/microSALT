@@ -18,7 +18,7 @@ from microSALT.utils.job_creator import Job_Creator
 # TODO: Rewrite so samples use seperate objects
 class Scraper():
 
-  def __init__(self, config, log, param={} infolder):
+  def __init__(self, config, log, param={}, infolder=""):
     self.config = config
     self.logger = log
     self.db_pusher=DB_Manipulator(config, log)

@@ -84,7 +84,7 @@ def root(ctx):
 @root.command()
 @click.option('--param','-p',default={},help='Json file describing input samples')
 @click.option('--input', help='Full path to project folder',default="")
-@click.option('--track', help='Run a specific analysis track',default="default", track=click.Choice=['default','typing','qc','cgmlst'])
+@click.option('--track', help='Run a specific analysis track',default="default", type=click.Choice(['default','typing','qc','cgmlst']))
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
@@ -112,7 +112,7 @@ def analyse(ctx, param, input, track, config, dry, email, skip_update, untrimmed
   validate_param(param)
   param = pad_param(param)
   run_creator = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'], param, track=track,trim=trimmed,\
-                            careful=careful, pool=pool))
+                            careful=careful, pool=pool)
 
   ext_refs = Referencer(ctx.obj['config'], ctx.obj['log'])
   click.echo("INFO - Checking versions of references..")
@@ -150,7 +150,7 @@ def refer(ctx):
 @utils.command()
 @click.option('--param','-p',default={},help='Json file describing input samples')
 @click.option('--input', help='Full path to project folder',default="")
-@click.option('--track', help='Run a specific analysis track',default="default", track=click.Choice=['default','typing','qc','cgmlst'])
+@click.option('--track', help='Run a specific analysis track',default="default", type=click.Choice(['default','typing','qc','cgmlst']))
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
 @click.option('--email', default=config['regex']['mail_recipient'], help='Forced e-mail recipient')
