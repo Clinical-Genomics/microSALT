@@ -81,7 +81,7 @@ def root(ctx):
   ctx.obj['log'] = logger
 
 @root.command()
-@click.option('--param','-p',default={},help='Json file describing input samples')
+@click.argument('param',help='Json file describing input samples')
 @click.option('--input', help='Full path to project folder',default="")
 @click.option('--track', help='Run a specific analysis track',default="default", type=click.Choice(['default','typing','qc','cgmlst']))
 @click.option('--config', help="microSALT config to override default", default="")
@@ -91,7 +91,7 @@ def root(ctx):
 @click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
 @click.option('--uncareful', help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
 @click.pass_context
-def analyse(ctx, param, input, track, config, dry, email, skip_update, untrimmed, uncareful):
+def analyse(ctx, **kwargs):
   """Sequence analysis, typing and resistance identification"""
   #Run section
   pool = []
@@ -106,6 +106,8 @@ def analyse(ctx, param, input, track, config, dry, email, skip_update, untrimmed
   for subfolder in os.listdir(input):
     if os.path.isdir("{}/{}".format(input, subfolder)):
       pool.append(subfolder)
+
+  run_settings = {'input':input, 'track':track, 'dry':dry, 'email':email, 'skip_update':skip_update, 'trimmed': not untrimmed, 'careful':not uncareful}
 
   #Samples section
   validate_param(param)
@@ -147,7 +149,7 @@ def refer(ctx):
   pass
 
 @utils.command()
-@click.option('--param','-p',default={},help='Json file describing input samples')
+@click.argument('param',help='Json file describing input samples')
 @click.option('--input', help='Full path to project folder',default="")
 @click.option('--track', help='Run a specific analysis track',default="default", type=click.Choice(['default','typing','qc','cgmlst']))
 @click.option('--config', help="microSALT config to override default", default="")
@@ -156,7 +158,7 @@ def refer(ctx):
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.option('--report', default='default', type=click.Choice(['default', 'typing', 'motif_overview', 'qc', 'json_dump', 'st_update']))
 @click.pass_context
-def finish(ctx, param, input, track, config, dry, email, skip_update, report):
+def finish(ctx, **kwargs):
   """Sequence analysis, typing and resistance identification"""
   #Run section
   pool = []
@@ -170,6 +172,8 @@ def finish(ctx, param, input, track, config, dry, email, skip_update, report):
   for subfolder in os.listdir(input):
     if os.path.isdir("{}/{}".format(input, subfolder)):
       pool.append(subfolder)
+
+  run_settings = {'input':input, 'track':track, 'dry':dry, 'email':email, 'skip_update':skip_update, 'trimmed': not untrimmed, 'careful':not uncareful}
 
   #Samples section
   validate_param(param)
