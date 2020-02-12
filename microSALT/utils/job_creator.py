@@ -18,7 +18,7 @@ from microSALT.utils.referencer import Referencer
 
 class Job_Creator():
 
-  def __init__(self, input, config=config, log=log, parameters={}, run_settings=run_settings, finishdir="", timestamp=""):
+  def __init__(self, input, config, log, parameters={}, run_settings, finishdir="", timestamp=""):
     self.config = config
     self.logger = log
     self.batchfile = "/tmp/batchfile.sbatch"

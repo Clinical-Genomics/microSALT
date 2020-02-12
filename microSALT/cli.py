@@ -115,7 +115,7 @@ def analyse(ctx, **kwargs):
   run_creator = Job_Creator(project_dir, config=ctx.obj['config'], log=ctx.obj['log'], parameters=param, run_settings=run_settings)
 
 
-  ext_refs = Referencer(ctx.obj['config'], ctx.obj['log'])
+  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'])
   click.echo("INFO - Checking versions of references..")
   try:
     if not skip_update:
@@ -178,9 +178,9 @@ def finish(ctx, **kwargs):
   #Samples section
   validate_param(param)
   param = pad_param(param)
-  res_scraper = Scraper(project_dir, ctx.obj['config'], ctx.obj['log'], param)
+  res_scraper = Scraper(project_dir, config=ctx.obj['config'], log=ctx.obj['log'], parameters=param)
 
-  ext_refs = Referencer(ctx.obj['config'], ctx.obj['log'])
+  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'])
   click.echo("INFO - Checking versions of references..")
   try:
     if not skip_update:
@@ -195,7 +195,7 @@ def finish(ctx, **kwargs):
   if len(param.items()) >= 1:
     #res_scraper.scrape_project()
     for subfolder in pool:
-      res_scraper = Scraper("{}/{}".format(input, subfolder), ctx.obj['config'], ctx.obj['log'])
+      res_scraper = Scraper("{}/{}".format(input, subfolder), config=ctx.obj['config'], log=ctx.obj['log'], paramters=param)
       res_scraper.scrape_sample()
   else:
     ctx.abort()
@@ -209,21 +209,21 @@ def finish(ctx, **kwargs):
 @click.pass_context
 def add(ctx, organism, force):
   """ Adds a new internal organism from pubMLST """
-  referee = Referencer(ctx.obj['config'], ctx.obj['log'],force=force)
+  referee = Referencer(config=ctx.obj['config'], log=ctx.obj['log'],force=force)
   try:
     referee.add_pubmlst(organism)
   except Exception as e:
     click.echo(e.args[0])
     ctx.abort()
   click.echo("INFO - Checking versions of all references..")
-  referee = Referencer(ctx.obj['config'], ctx.obj['log'],force=force)
+  referee = Referencer(config=ctx.obj['config'], log=ctx.obj['log'],force=force)
   referee.update_refs()
 
 @refer.command()
 @click.pass_context
 def list(ctx):
   """ Lists all stored organisms """
-  refe = Referencer(ctx.obj['config'], ctx.obj['log'])
+  refe = Referencer(config=ctx.obj['config'], log=ctx.obj['log'])
   click.echo("INFO - Currently stored organisms:")
   for org in sorted(refe.existing_organisms()):
     click.echo(org.replace("_"," ").capitalize())
@@ -263,7 +263,7 @@ def autobatch(ctx, dry, skip_update, email):
   """Analyses all currently unanalysed projects in the seqdata folder"""
   #Trace exists by some samples having pubMLST_ST filled in. Make trace function later
   ctx.obj['config']['regex']['mail_recipient'] = email
-  ext_refs = Referencer(ctx.obj['config'], ctx.obj['log'])
+  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'])
   if not skip_update:
     ext_refs.update_refs()
     ext_refs.resync()
@@ -336,7 +336,7 @@ def review(ctx, type, customer, skip_update, email):
   """Generates information about novel ST"""
   #Trace exists by some samples having pubMLST_ST filled in. Make trace function later
   ctx.obj['config']['regex']['mail_recipient'] = email
-  ext_refs = Referencer(ctx.obj['config'], ctx.obj['log'])
+  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'])
   if not skip_update:
     ext_refs.update_refs()
     ext_refs.resync()
@@ -354,6 +354,6 @@ def review(ctx, type, customer, skip_update, email):
 @click.pass_context
 def overwrite(ctx,sample_name, force):
   """Flags sample as resolved"""
-  ext_refs = Referencer(ctx.obj['config'], ctx.obj['log'])
+  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'])
   ext_refs.resync(type='overwrite', sample=sample_name, ignore=force)
   done()
