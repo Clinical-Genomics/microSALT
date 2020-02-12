@@ -24,7 +24,6 @@ from microSALT import __version__
 from microSALT.server.views import app, session, gen_reportdata, gen_collectiondata
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.store.orm_models import Samples
-from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Reporter():
 
@@ -41,7 +40,6 @@ class Reporter():
     for k, v in config.items():
       app.config[k] = v
     self.server = Process(target=app.run)
-    self.ticketFinder = LIMS_Fetcher(self.config, self.logger)
     self.attachments = list()
     self.filelist = list()
     self.error = False
@@ -50,6 +48,13 @@ class Reporter():
     self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
     format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
     self.param = {}
+    self.sample = None
+    for entry in param:
+      if entry.get('CG_ID_sample') == self.name:
+        self.sample = entry
+        break
+    if self.sample is None:
+      raise Exception("Sample {} is not present in provided parameters file.".format(self.name))
 
   def report(self, type='default', customer='all'):
     self.gen_version(self.name)
@@ -98,7 +103,6 @@ class Reporter():
 
   def gen_qc(self,silent=False):
     try:
-      self.ticketFinder.load_lims_project_info(self.name)
       last_version = self.db_pusher.get_report(self.name).version
     except Exception as e:
       self.logger.error("Project {} does not exist".format(self.name))
@@ -106,7 +110,7 @@ class Reporter():
       sys.exit(-1)
     try:
       q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(self.name), allow_redirects=True)
-      outfile = "{}_QC_{}.html".format(self.ticketFinder.data['Customer_ID_project'], last_version)
+      outfile = "{}_QC_{}.html".format(self.sample.get('Customer_ID_project'), last_version)
       output ="{}/{}".format(self.output, outfile)
       storage = "{}/{}".format(self.config['folders']['reports'], outfile)
 
@@ -123,7 +127,6 @@ class Reporter():
  
   def gen_typing(self,silent=False):
     try:
-      self.ticketFinder.load_lims_project_info(self.name)
       last_version = self.db_pusher.get_report(self.name).version
     except Exception as e:
       self.logger.error("Project {} does not exist".format(self.name))
@@ -131,7 +134,7 @@ class Reporter():
       sys.exit(-1)
     try:
       r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
-      outfile = "{}_Typing_{}.html".format(self.ticketFinder.data['Customer_ID_project'], last_version)
+      outfile = "{}_Typing_{}.html".format(self.sample.get('Customer_ID_project'), last_version)
       output ="{}/{}".format(self.output, outfile)
       storage = "{}/{}".format(self.config['folders']['reports'], outfile)
 
@@ -152,7 +155,6 @@ class Reporter():
     if self.collection:
       sample_info = gen_collectiondata(self.name)
     else:
-      self.ticketFinder.load_lims_project_info(self.name)
       sample_info = gen_reportdata(self.name)
     output = "{}/{}_{}_{}.csv".format(self.output,self.name,motif,self.now)
 

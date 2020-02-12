@@ -29,8 +29,7 @@ def test_version(runner):
   assert res.exit_code == 0
   assert __version__ in res.stdout
 
-@patch('microSALT.store.lims_fetcher.Lims.check_version')
-def test_groups(check_version, runner):
+def test_groups(runner):
   """These groups should only return the help text"""
   base = runner.invoke(root, ['analyse'])
   assert base.exit_code == 0
@@ -44,19 +43,8 @@ def test_groups(check_version, runner):
 
 @patch('subprocess.Popen')
 @patch('os.listdir')
-@patch('microSALT.store.lims_fetcher.LIMS_Fetcher')
-@patch('microSALT.store.lims_fetcher.Lims.get_samples')
-@patch('microSALT.store.lims_fetcher.Lims.check_version')
 @patch('gzip.open')
-def test_analyse(gzip, check_version, get_samples, LF, listdir, subproc, runner, config):
-  LF.data.return_value = {'CG_ID_project':"AAA1234",'CG_ID_sample':'AAA1234A1'}
-  sample_mock = mock.MagicMock()
-  sample_mock.project.id = "AAA1234"
-  sample_mock.id = "AAA1234A3"
-  sample_mock.name = "Trams"
-  sample_mock.udf = {'Reference Genome Microbial':"NAN", 'customer':"NAN", 'Sequencing Analysis':"NAN"}
-  get_samples.return_value = [sample_mock]
-
+def test_analyse(gzip, listdir, subproc, runner, config):
   #Sets up subprocess mocking
   process_mock = mock.Mock()
   attrs = {'communicate.return_value': ('output', 'error')}
@@ -80,23 +68,13 @@ def test_analyse(gzip, check_version, get_samples, LF, listdir, subproc, runner,
 
 @patch('microSALT.utils.job_creator.Job_Creator.create_project')
 @patch('microSALT.utils.reporter.Reporter.start_web')
-@patch('microSALT.utils.reporter.LIMS_Fetcher')
-@patch('microSALT.store.lims_fetcher.Lims.get_samples')
-@patch('microSALT.store.lims_fetcher.Lims.check_version')
 @patch('multiprocessing.Process.terminate')
 @patch('multiprocessing.Process.join')
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
 @patch('os.listdir')
 @patch('os.path.isdir')
-def test_finish(isdir, listdir, smtp, reqs_get, proc_join, proc_term, check_version, get_samples, LF, webstart, create_projct, runner, config):
-  LF.data.return_value = {'CG_ID_project':"AAA1234",'CG_ID_sample':'AAA1234A1'}
-  sample_mock = mock.MagicMock()
-  sample_mock.project.id = "AAA1234"
-  sample_mock.id = "AAA1234A3"
-  sample_mock.name = "Trams"
-  sample_mock.udf = {'Reference Genome Microbial':"NAN", 'customer':"NAN", 'Sequencing Analysis':"NAN"}
-  get_samples.return_value = [sample_mock]
+def test_finish(isdir, listdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config):
 
   listdir.return_value = ['AAA1234_2019.8.12_11.25.2', 'AAA1234A2' , 'AAA1234A3']
   isdir.return_value = True
@@ -121,9 +99,7 @@ def test_finish(isdir, listdir, smtp, reqs_get, proc_join, proc_term, check_vers
 @patch('multiprocessing.Process.join')
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
-@patch('microSALT.utils.reporter.LIMS_Fetcher')
-@patch('microSALT.store.lims_fetcher.Lims.check_version')
-def test_report(check_version, LF, smtplib, reqget, join, term, webstart, runner):
+def test_report(smtplib, reqget, join, term, webstart, runner):
   base_invoke = runner.invoke(root, ['utils', 'report'])
   assert base_invoke.exit_code == 2
 
@@ -139,8 +115,7 @@ def test_report(check_version, LF, smtplib, reqget, join, term, webstart, runner
 @patch('multiprocessing.Process.join')
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
-@patch('microSALT.store.lims_fetcher.Lims.check_version')
-def test_resync(check_version, smtplib, reqget, join, term, webstart, runner):
+def test_resync(smtplib, reqget, join, term, webstart, runner):
   a = runner.invoke(root, ['utils', 'resync', 'overwrite', 'AAA1234A1'])
   assert a.exit_code == 0
   b = runner.invoke(root, ['utils', 'resync', 'overwrite', 'AAA1234A1', '--force'])
@@ -153,8 +128,7 @@ def test_resync(check_version, smtplib, reqget, join, term, webstart, runner):
     delimited_work = runner.invoke(root, ['utils', 'resync', 'review', '--skip_update', '--customer', 'custX', '--type', rep_type])
     assert delimited_work.exit_code == 0
 
-@patch('microSALT.store.lims_fetcher.Lims.check_version')
-def test_refer(check_version, runner):
+def test_refer(runner):
   list_invoke = runner.invoke(root, ['utils', 'refer', 'list'])
   assert list_invoke.exit_code == 0
 
@@ -164,8 +138,7 @@ def test_refer(check_version, runner):
   assert b.exit_code == 0
 
 @patch('microSALT.utils.reporter.Reporter.start_web')
-@patch('microSALT.store.lims_fetcher.Lims.check_version')
-def test_view(check_version, webstart, runner):
+def test_view(webstart, runner):
   view = runner.invoke(root, ['utils', 'view'])
   assert view.exit_code == 0
 

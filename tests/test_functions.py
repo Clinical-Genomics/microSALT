@@ -47,10 +47,7 @@ def test_blast_subset(glob_search, research):
   assert count > 0
 
 @patch('subprocess.Popen')
-@patch('microSALT.store.lims_fetcher.LIMS_Fetcher')
-@patch('microSALT.store.lims_fetcher.Lims.get_samples')
-def test_create_snpsection(get_samples, LF, subproc):
-  LF.data.return_value = {'CG_ID_project':"AAA1234",'CG_ID_sample':'AAA1234A1'}
+def test_create_snpsection(get_samples, subproc):
   sample_mock = mock.MagicMock()
   sample_mock.project.id = "AAA1234"
   sample_mock.id = "AAA1234A3"

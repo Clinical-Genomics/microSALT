@@ -14,7 +14,6 @@ import zipfile
 from Bio import Entrez
 from bs4 import BeautifulSoup
 from microSALT.store.db_manipulator import DB_Manipulator
-from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Referencer():
 
@@ -27,9 +26,15 @@ class Referencer():
     self.refs = self.db_access.profiles
     organisms = self.refs.keys()
     self.organisms = [*organisms]
-    self.lims=LIMS_Fetcher(config, log)
     self.force = force
     self.param = param
+    self.sample = None
+    for entry in param:
+      if entry.get('CG_ID_sample') == self.name:
+        self.sample = entry
+        break
+    if self.sample is None:
+      raise Exception("Sample {} is not present in provided parameters file.".format(self.name))
 
   def identify_new(self, cg_id, project=False):
    """ Automatically downloads pubMLST & NCBI organisms not already downloaded """
@@ -38,17 +43,16 @@ class Referencer():
 
    try:
      if project:
-       samplenames = self.lims.samples_in_project(cg_id)
+       samplenames = [ entry.get('CG_ID_sample') for entry in self.param ]
      else: 
        samplenames = [cg_id]
 
      for cg_sampleid in samplenames:
-       self.lims.load_lims_sample_info(cg_sampleid)
-       refname = self.lims.get_organism_refname(cg_sampleid)
-       if refname not in self.organisms and self.lims.data['organism'] not in neworgs:
-         neworgs.append(self.lims.data['organism'])
-       if not "{}.fasta".format(self.lims.data['reference']) in os.listdir(self.config['folders']['genomes']) and not self.lims.data['reference'] in newrefs:
-         newrefs.append(self.lims.data['reference'])
+       refname = self.organism2reference( self.sample.get('organism') )
+       if refname not in self.organisms and self.sample.get('organism') not in neworgs:
+         neworgs.append(self.sample.get('organism'))
+       if not "{}.fasta".format(self.sample.get('reference')) in os.listdir(self.config['folders']['genomes']) and not self.sample.get('reference') in newrefs:
+         newrefs.append(self.sample.get('reference'))
 
      for org in neworgs:
        self.add_pubmlst(org)
