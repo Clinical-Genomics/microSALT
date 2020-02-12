@@ -17,7 +17,6 @@ from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.reporter import Reporter
 from microSALT.utils.referencer import Referencer
-from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 if config == '':
   click.echo("ERROR - No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")

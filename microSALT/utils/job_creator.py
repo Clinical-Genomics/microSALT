@@ -13,7 +13,6 @@ import subprocess
 import time
 
 from datetime import datetime
-from microSALT.store.lims_fetcher import LIMS_Fetcher
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.referencer import Referencer
 
@@ -30,6 +29,14 @@ class Job_Creator():
     self.careful = careful
     self.pool = pool
     self.param = param
+
+    self.sample = None
+    for entry in param:
+      if entry.get('CG_ID_sample') == self.name:
+        self.sample = entry
+        break
+    if self.sample is None:
+      raise Exception("Sample {} is not present in provided parameters file.".format(self.name))
 
     if isinstance(input, str):
       self.indir = os.path.abspath(input)
@@ -167,9 +174,9 @@ class Job_Creator():
 
   def create_variantsection(self):
     """ Creates a job for variant calling based on local alignment """
-    ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
+    ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.sample.get('reference'))
     localdir = "{}/alignment".format(self.finishdir)
-    outbase = "{}/{}_{}".format(localdir, self.name, self.lims_fetcher.data['reference'])
+    outbase = "{}/{}_{}".format(localdir, self.name, self.sample.get('reference'))
 
     #Create run
     batchfile = open(self.batchfile, "a+")
@@ -226,8 +233,8 @@ class Job_Creator():
 
     self.concat_files['f'] = "{}/trimmed/forward_reads.fastq.gz".format(self.finishdir)
     self.concat_files['r'] = "{}/trimmed/reverse_reads.fastq.gz".format(self.finishdir)
-    batchfile.write("cat {} > {}\n".format(' '.join(forward), self.concat_files['f']))
-    batchfile.write("cat {} > {}\n".format(' '.join(reverse), self.concat_files['r']))
+    batchfile.write("cat {} > {}\n".format(' '.join(forward), self.concat_files.get('f')))
+    batchfile.write("cat {} > {}\n".format(' '.join(reverse), self.concat_files.get('r')))
 
     if self.trimmed:
       fp = "{}/{}_trim_front_pair.fastq.gz".format(trimdir, outfile)
@@ -237,14 +244,14 @@ class Job_Creator():
       batchfile.write("##Trimming section\n")
       batchfile.write("trimmomatic PE -threads {} -phred33 {} {} {} {} {} {}\
       ILLUMINACLIP:{}/NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n"\
-      .format(self.config["slurm_header"]["threads"], self.concat_files['f'], self.concat_files['r'], fp, fu, rp, ru, self.config["folders"]["adapters"]))
+      .format(self.config["slurm_header"]["threads"], self.concat_files.get('f'), self.concat_files.get('r'), fp, fu, rp, ru, self.config["folders"]["adapters"]))
 
       batchfile.write("## Interlaced trimmed files\n")
       self.concat_files['f'] = fp
       self.concat_files['r'] = rp 
       self.concat_files['i'] = "{}/{}_trim_unpair.fastq.gz".format(trimdir, outfile)
 
-      batchfile.write("cat {} >> {}\n".format(' '.join([fu, ru]), self.concat_files['i']))
+      batchfile.write("cat {} >> {}\n".format(' '.join([fu, ru]), self.concat_files.get('i')))
     batchfile.write("\n")
     batchfile.close()
 
@@ -271,8 +278,8 @@ class Job_Creator():
       if '_' in name:
         name = name.split('_')[0]
       batchfile.write('# Basecalling for sample {}\n'.format(name))
-      ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
-      outbase = "{}/{}_{}".format(item, name, self.lims_fetcher.data['reference'])
+      ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.sample.get('reference'))
+      outbase = "{}/{}_{}".format(item, name, self.sample.get('reference'))
       batchfile.write("samtools view -h -q 1 -F 4 -F 256 {}.bam_sort_rmdup | grep -v XA:Z | grep -v SA:Z| samtools view -b - > {}/{}.unique\n".format(outbase, self.finishdir, name))
       batchfile.write('freebayes -= --pvar 0.7 -j -J --standard-filters -C 6 --min-coverage 30 --ploidy 1 -f {} -b {}/{}.unique -v {}/{}.vcf\n'.format(ref, self.finishdir, name , self.finishdir, name))
       batchfile.write('bcftools view {}/{}.vcf -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.finishdir, name, self.finishdir, name))
@@ -326,27 +333,27 @@ class Job_Creator():
     """Creates project in database"""
     proj_col=dict()
     proj_col['CG_ID_project'] = name
-    proj_col['Customer_ID_project'] = self.lims_fetcher.data['Customer_ID_project']
-    proj_col['Customer_ID'] = self.lims_fetcher.data['Customer_ID']
+    proj_col['Customer_ID_project'] = self.sample.get('Customer_ID_project')
+    proj_col['Customer_ID'] = self.sample.get('Customer_ID')
     self.db_pusher.add_rec(proj_col, 'Projects')
 
   def create_sample(self, name):
     """Creates sample in database"""
     try:
       sample_col = self.db_pusher.get_columns('Samples')
-      sample_col['CG_ID_sample'] = self.lims_fetcher.data['CG_ID_sample']
-      sample_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
-      sample_col['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
-      sample_col['reference_genome'] = self.lims_fetcher.data['reference']
+      sample_col['CG_ID_sample'] = self.sample.get('CG_ID_sample')
+      sample_col['CG_ID_project'] = self.sample.get('CG_ID_project')
+      sample_col['Customer_ID_sample'] = self.sample.get('Customer_ID_sample')
+      sample_col['reference_genome'] = self.sample.get('reference')
       sample_col["date_analysis"] = self.dt
-      sample_col['organism']=self.lims_fetcher.data['organism']
-      sample_col["application_tag"] = self.lims_fetcher.data['application_tag']
-      sample_col["priority"] = self.lims_fetcher.data['priority']
-      sample_col["date_arrival"] = self.lims_fetcher.data['date_arrival']
-      sample_col["date_sequencing"] = self.lims_fetcher.data['date_sequencing']
-      sample_col["date_libprep"] = self.lims_fetcher.data['date_libprep']
-      sample_col["method_libprep"] = self.lims_fetcher.data['method_libprep']
-      sample_col["method_sequencing"] = self.lims_fetcher.data['method_sequencing']
+      sample_col['organism']=self.sample.get('organism')
+      sample_col["application_tag"] = self.sample.get('application_tag')
+      sample_col["priority"] = self.sample.get('priority')
+      sample_col["date_arrival"] = self.sample.get('date_arrival')
+      sample_col["date_sequencing"] = self.sample.get('date_sequencing')
+      sample_col["date_libprep"] = self.sample.get('date_libprep')
+      sample_col["method_libprep"] = self.sample.get('method_libprep')
+      sample_col["method_sequencing"] = self.sample.get('method_sequencing')
       #self.db_pusher.purge_rec(sample_col['CG_ID_sample'], 'sample')
       self.db_pusher.add_rec(sample_col, 'Samples')
     except Exception as e:
@@ -392,7 +399,7 @@ class Job_Creator():
           try:
             sample_in = "{}/{}".format(dirpath, dir)
             sample_out = "{}/{}".format(self.finishdir, dir)
-            sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now, trim=self.trimmed, qc_only=self.qc_only, careful=self.careful)
+            sample_instance = Job_Creator(sample_in, self.config, self.logger, self.param, sample_out, self.now, trim=self.trimmed, qc_only=self.qc_only, careful=self.careful)
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()
             outfile = ""
@@ -414,7 +421,7 @@ class Job_Creator():
           try:
             sample_in = "{}/{}".format(dirpath, dir)
             sample_out = "{}/{}".format(self.finishdir, dir)
-            sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now, trim=self.trimmed, qc_only=self.qc_only, careful=self.careful) 
+            sample_instance = Job_Creator(sample_in, self.config, self.logger, self.param, sample_out, self.now, trim=self.trimmed, qc_only=self.qc_only, careful=self.careful) 
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()
             outfile = ""
@@ -521,7 +528,7 @@ class Job_Creator():
       try:
         self.organism = self.ref_resolver.organism2reference(self.name)
         if not self.organism:
-          self.organism = self.lims_fetcher.data['organism']
+          self.organism = self.sample.get('organism')
         # This is one job
         self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
         batchfile = open(self.batchfile, "w+")
