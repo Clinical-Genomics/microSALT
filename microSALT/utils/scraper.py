@@ -11,7 +11,7 @@ import sys
 import time
 
 from microSALT.store.db_manipulator import DB_Manipulator
-from microSALT.utils.reporter import Reporter
+from microSALT.utils.referencer import Referencer
 from microSALT.utils.job_creator import Job_Creator
 
 # TODO: Rewrite so samples use seperate objects

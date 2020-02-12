@@ -199,7 +199,7 @@ def finish(ctx, **kwargs):
       res_scraper.scrape_sample()
   else:
     ctx.abort()
-  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], param, output=input, collection=True)
+  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], param, output=input, collection=True)
   codemonkey.report(report)
   done()
 
@@ -238,7 +238,7 @@ def list(ctx):
 def report(ctx, project_name, email, type, output, collection):
   """Re-generates report for a project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
-  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'], project_name, output, collection=collection)
+  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], project_name, output, collection=collection)
   codemonkey.report(type)
   done()
 
@@ -246,7 +246,7 @@ def report(ctx, project_name, email, type, output, collection):
 @click.pass_context
 def view(ctx):
   """Starts an interactive webserver for viewing"""
-  codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
+  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'])
   codemonkey.start_web()
 
 @utils.group()
@@ -342,7 +342,7 @@ def review(ctx, type, customer, skip_update, email):
     ext_refs.resync()
   click.echo("INFO - Version check done. Generating output")
   if type=='report':
-    codemonkey = Reporter(ctx.obj['config'], ctx.obj['log'])
+    codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'])
     codemonkey.report(type='st_update', customer=customer)
   elif type=='list':
     ext_refs.resync(type=type)
