@@ -18,18 +18,20 @@ from microSALT.utils.referencer import Referencer
 
 class Job_Creator():
 
-  def __init__(self, input, config, log, param={}, finishdir="", timestamp="", trim=True, qc_only=False,careful=False,pool=list()):
+  def __init__(self, input, config=config, log=log, parameters={}, run_settings=run_settings, finishdir="", timestamp=""):
     self.config = config
     self.logger = log
     self.batchfile = "/tmp/batchfile.sbatch"
     self.filelist = list()
     self.indir = "/tmp/"
-    self.trimmed=trim
-    self.qc_only = qc_only
-    self.careful = careful
-    self.pool = pool
-    self.param = param
 
+    self.run_settings = run_settings
+    self.trimmed = run_settings.get('trimmed',True)
+    self.qc_only = run_settings.get('qc_only',False)
+    self.careful = run_settings.get('careful',True)
+    self.pool = run_settings.get('pool', [])
+    
+    self.param = parameters
     self.sample = None
     for entry in param:
       if entry.get('CG_ID_sample') == self.name:
@@ -399,7 +401,7 @@ class Job_Creator():
           try:
             sample_in = "{}/{}".format(dirpath, dir)
             sample_out = "{}/{}".format(self.finishdir, dir)
-            sample_instance = Job_Creator(sample_in, self.config, self.logger, self.param, sample_out, self.now, trim=self.trimmed, qc_only=self.qc_only, careful=self.careful)
+            sample_instance = Job_Creator(sample_in, config=self.config, log=self.logger, paramters=self.param, sample_out, self.now, run_settings=self.run_settings)
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()
             outfile = ""
@@ -421,7 +423,7 @@ class Job_Creator():
           try:
             sample_in = "{}/{}".format(dirpath, dir)
             sample_out = "{}/{}".format(self.finishdir, dir)
-            sample_instance = Job_Creator(sample_in, self.config, self.logger, self.param, sample_out, self.now, trim=self.trimmed, qc_only=self.qc_only, careful=self.careful) 
+            sample_instance = Job_Creator(sample_in, config=self.config, log=self.logger, parameters=self.param, sample_out, self.now, run_settings=self.run_settings) 
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()
             outfile = ""

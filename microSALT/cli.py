@@ -107,13 +107,13 @@ def analyse(ctx, **kwargs):
     if os.path.isdir("{}/{}".format(input, subfolder)):
       pool.append(subfolder)
 
-  run_settings = {'input':input, 'track':track, 'dry':dry, 'email':email, 'skip_update':skip_update, 'trimmed': not untrimmed, 'careful':not uncareful}
+  run_settings = {'input':input, 'track':track, 'dry':dry, 'email':email, 'skip_update':skip_update, 'trimmed': not untrimmed, 'careful':not uncareful, 'pool':pool}
 
   #Samples section
   validate_param(param)
   param = pad_param(param)
-  run_creator = Job_Creator(project_dir, ctx.obj['config'], ctx.obj['log'], param, track=track,trim=trimmed,\
-                            careful=careful, pool=pool)
+  run_creator = Job_Creator(project_dir, config=ctx.obj['config'], log=ctx.obj['log'], parameters=param, run_settings=run_settings)
+
 
   ext_refs = Referencer(ctx.obj['config'], ctx.obj['log'])
   click.echo("INFO - Checking versions of references..")
