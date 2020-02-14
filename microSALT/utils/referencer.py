@@ -40,7 +40,7 @@ class Referencer():
         if entry.get('CG_ID_sample') == self.name:
           raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
 
-  def identify_new(self, cg_id, project=False):
+  def identify_new(self, cg_id="", project=False):
    """ Automatically downloads pubMLST & NCBI organisms not already downloaded """
    neworgs = list()
    newrefs = list()
