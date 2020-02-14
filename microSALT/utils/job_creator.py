@@ -18,11 +18,10 @@ from microSALT.utils.referencer import Referencer
 
 class Job_Creator():
 
-  def __init__(self, input, config, log, parameters={}, run_settings, finishdir="", timestamp=""):
+  def __init__(self, input, config, log, parameters={}, run_settings={}, finishdir="", timestamp=""):
     self.config = config
     self.logger = log
     self.batchfile = "/tmp/batchfile.sbatch"
-    self.filelist = list()
     self.indir = "/tmp/"
 
     self.run_settings = run_settings
@@ -31,21 +30,20 @@ class Job_Creator():
     self.careful = run_settings.get('careful',True)
     self.pool = run_settings.get('pool', [])
     
+    self.filelist = list()
+    if type(input) == list:
+      self.filelist = input
+
     self.param = parameters
     self.sample = None
-    for entry in param:
-      if entry.get('CG_ID_sample') == self.name:
-        self.sample = entry
-        break
-    if self.sample is None:
-      raise Exception("Sample {} is not present in provided parameters file.".format(self.name))
-
-    if isinstance(input, str):
-      self.indir = os.path.abspath(input)
-      self.name = os.path.basename(os.path.normpath(self.indir))
-    elif type(input) == list:
-      self.filelist = input
-      self.name = "SNP"
+    if len(self.param) == 1:
+     self.name = self.param[0].get('CG_ID_sample')
+     self.sample = self.param[0]
+    elif len(self.param) > 1:
+      self.name = self.param[0].get('CG_ID_project')
+      for entry in self.param:
+        if entry.get('CG_ID_sample') == self.name:
+          raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
 
     self.now = timestamp
     if timestamp != "":
@@ -401,7 +399,7 @@ class Job_Creator():
           try:
             sample_in = "{}/{}".format(dirpath, dir)
             sample_out = "{}/{}".format(self.finishdir, dir)
-            sample_instance = Job_Creator(sample_in, config=self.config, log=self.logger, paramters=self.param, sample_out, self.now, run_settings=self.run_settings)
+            sample_instance = Job_Creator(input=sample_in, config=self.config, log=self.logger, parameters=self.param, output=sample_out, timestamp=self.now, run_settings=self.run_settings)
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()
             outfile = ""
@@ -423,7 +421,7 @@ class Job_Creator():
           try:
             sample_in = "{}/{}".format(dirpath, dir)
             sample_out = "{}/{}".format(self.finishdir, dir)
-            sample_instance = Job_Creator(sample_in, config=self.config, log=self.logger, parameters=self.param, sample_out, self.now, run_settings=self.run_settings) 
+            sample_instance = Job_Creator(input=sample_in, config=self.config, log=self.logger, parameters=self.param, output=sample_out, timestamp=self.now, run_settings=self.run_settings)
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()
             outfile = ""

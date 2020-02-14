@@ -5,7 +5,7 @@ import os
 import pathlib
 import pytest
 
-from microSALT import config
+from microSALT import preset_config
 
 @pytest.fixture
 def exp_config():
@@ -33,14 +33,14 @@ def test_existence(exp_config):
   """Checks that the configuration contains certain key variables"""
 
   #level one
-  config_level_one = config.keys()
+  config_level_one = preset_config.keys()
   for entry in exp_config.keys():
     if entry != 'dry':
       assert entry in config_level_one
 
       #level two
-      if isinstance(config[entry], collections.Mapping):
-        config_level_two = config[entry].keys()
+      if isinstance(preset_config[entry], collections.Mapping):
+        config_level_two = preset_config[entry].keys()
         for thing in exp_config[entry]:
           assert thing in config_level_two
 
@@ -49,14 +49,14 @@ def test_reverse_existence(exp_config):
 
   #level one
   config_level_one = exp_config.keys()
-  for entry in config.keys():
+  for entry in preset_config.keys():
     if entry not in ['_comment', 'rerun']:
       assert entry in config_level_one
 
       #level two
       config_level_two = exp_config[entry]
-      if isinstance(config[entry], collections.Mapping):
-        for thing in config[entry].keys():
+      if isinstance(preset_config[entry], collections.Mapping):
+        for thing in preset_config[entry].keys():
           if thing != '_comment':
             assert thing in config_level_two
 
@@ -67,16 +67,16 @@ def test_reverse_existence(exp_config):
 def test_paths(exp_config):
   """Tests existence for all paths mentioned in variables"""
   #level one
-  for entry in config.keys():
+  for entry in preset_config.keys():
     if entry != '_comment':
-      if isinstance(config[entry], str) and '/' in config[entry] and entry not in ['database', 'genologics']:
-        unmade_fldr = config[entry][thing]
+      if isinstance(preset_config[entry], str) and '/' in preset_config[entry] and entry not in ['database', 'genologics']:
+        unmade_fldr = preset_config[entry][thing]
         assert (pathlib.Path(unmade_fldr).exists())
     
       #level two
-      elif isinstance(config[entry], collections.Mapping):
-        for thing in config[entry].keys():
-          if isinstance(config[entry][thing], str) and '/' in config[entry][thing] and entry not in ['database', 'genologics']:
-            unmade_fldr = config[entry][thing]
+      elif isinstance(preset_config[entry], collections.Mapping):
+        for thing in preset_config[entry].keys():
+          if isinstance(preset_config[entry][thing], str) and '/' in preset_config[entry][thing] and entry not in ['database', 'genologics']:
+            unmade_fldr = preset_config[entry][thing]
             assert (pathlib.Path(unmade_fldr).exists())
     

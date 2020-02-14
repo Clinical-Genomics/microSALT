@@ -17,7 +17,7 @@ from microSALT.store.db_manipulator import DB_Manipulator
 
 class Referencer():
 
-  def __init__(self, config, log, param={}, force=False):
+  def __init__(self, config, log, parameters={}, force=False):
     self.config = config
     self.logger = log
     self.db_access = DB_Manipulator(config, log)
@@ -27,14 +27,18 @@ class Referencer():
     organisms = self.refs.keys()
     self.organisms = [*organisms]
     self.force = force
-    self.param = param
+
+    self.param = parameters
     self.sample = None
-    for entry in param:
-      if entry.get('CG_ID_sample') == self.name:
-        self.sample = entry
-        break
-    if self.sample is None:
-      raise Exception("Sample {} is not present in provided parameters file.".format(self.name))
+    if self.param == {}:
+      self.name = ""
+    elif len(self.param) == 1:
+     self.name = self.param[0].get('CG_ID_sample')
+    else:
+      self.name = self.param[0].get('CG_ID_project')
+      for entry in self.param:
+        if entry.get('CG_ID_sample') == self.name:
+          raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
 
   def identify_new(self, cg_id, project=False):
    """ Automatically downloads pubMLST & NCBI organisms not already downloaded """

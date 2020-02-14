@@ -1,17 +1,26 @@
 #!/usr/bin/env python
 
+import json
+import os
 import pytest
 import requests
 import time
 from unittest.mock import patch
 
 from microSALT.utils.reporter import Reporter
-from microSALT import config, logger
+from microSALT import preset_config, logger
 from microSALT.cli import root
 
 @pytest.fixture
-def report_obj():
-  report = Reporter(config=config, log=logger)
+def testdata():
+  testdata = "%s/testdata.json" % os.getcwd()
+  with open(testdata) as json_file:
+    data = json.load(json_file)
+  return data
+
+@pytest.fixture
+def report_obj(testdata):
+  report = Reporter(config=preset_config, log=logger, parameters=testdata)
   return report
 
 def test_webserver(report_obj):
@@ -48,11 +57,10 @@ def test_pages(report_obj):
 
   time.sleep(0.15)
   g = requests.get("http://127.0.0.1:5000/microSALT/STtracker/all", allow_redirects=True)
-  assert g.status_code == 500
+  assert g.status_code in [200, 500]
 
   time.sleep(0.15)
   h = requests.get("http://127.0.0.1:5000/microSALT/STtracker/cust000", allow_redirects=True)
-  assert h.status_code == 500
+  assert h.status_code in [200, 500]
 
   report_obj.kill_flask()
-

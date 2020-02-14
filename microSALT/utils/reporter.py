@@ -27,7 +27,7 @@ from microSALT.store.orm_models import Samples
 
 class Reporter():
 
-  def __init__(self, config, log, param={}, name = "", output = "", collection=False):
+  def __init__(self, config, log, parameters={}, name = "", output = "", collection=False):
     self.db_pusher=DB_Manipulator(config, log)
     self.name = name
     self.collection = collection
@@ -47,14 +47,16 @@ class Reporter():
     self.filelist = list() 
     self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
     format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
-    self.param = {}
-    self.sample = None
-    for entry in param:
-      if entry.get('CG_ID_sample') == self.name:
-        self.sample = entry
-        break
-    if self.sample is None:
-      raise Exception("Sample {} is not present in provided parameters file.".format(self.name))
+
+    self.param = parameters
+    if len(self.param) == 1:
+     self.name = self.param[0].get('CG_ID_sample')
+    elif len(self.param) > 1:
+      self.name = self.param[0].get('CG_ID_project')
+      for entry in self.param:
+        if entry.get('CG_ID_sample') == self.name:
+          raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
+    self.sample = self.param[0]
 
   def report(self, type='default', customer='all'):
     self.gen_version(self.name)
