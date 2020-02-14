@@ -47,12 +47,14 @@ def test_groups(runner):
 @patch('subprocess.Popen')
 @patch('os.listdir')
 @patch('gzip.open')
-def test_analyse(gzip, listdir, subproc, runner, config, path_testdata):
+@patch('microSALT.cli.os.path.isdir')
+def test_analyse(isdir, gzip, listdir, subproc, runner, config, path_testdata):
   #Sets up subprocess mocking
   process_mock = mock.Mock()
   attrs = {'communicate.return_value': ('output', 'error')}
   process_mock.configure_mock(**attrs)
   subproc.return_value = process_mock
+  isdir.return_value = True
 
   listdir.return_value = ["ACC6438A3_HVMHWDSXX_L1_1.fastq.gz", "ACC6438A3_HVMHWDSXX_L1_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz"]
 
@@ -78,7 +80,7 @@ def test_analyse(gzip, listdir, subproc, runner, config, path_testdata):
 @patch('os.listdir')
 @patch('os.path.isdir')
 def test_finish(isdir, listdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata):
-  listdir.return_value = ['AAA1234_2019.8.12_11.25.2', 'AAA1234A2' , 'AAA1234A3']
+  listdir.return_value = ['AAA1234A1', 'AAA1234A2' , 'AAA1234A3']
   isdir.return_value = True
 
   #All subcommands
@@ -87,11 +89,10 @@ def test_finish(isdir, listdir, smtp, reqs_get, proc_join, proc_term, webstart, 
    #Exhaustive parameter test
   typical_run = runner.invoke(root, ['utils', 'finish', path_testdata, '--email', '2@2.com', '--input', '/tmp/AAA1234_2019.8.12_11.25.2', '--config', config, '--report', 'default'])
   assert typical_run.exit_code == 0
-  special_run = runner.invoke(root, ['utils', 'finish', path_testdata, '--rerun', '--report', 'qc'])
+  special_run = runner.invoke(root, ['utils', 'finish', path_testdata, '--report', 'qc'])
   assert special_run.exit_code == 0
-  if analysis_type == 'collection':
-    unique_report = runner.invoke(root, ['utils', 'finish', path_testdata, '--report', 'motif_overview'])
-    assert unique_report.exit_code == 0
+  unique_report = runner.invoke(root, ['utils', 'finish', path_testdata, '--report', 'motif_overview'])
+  assert unique_report.exit_code == 0
 
 
 @patch('microSALT.utils.reporter.Reporter.start_web')

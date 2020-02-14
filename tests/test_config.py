@@ -50,7 +50,7 @@ def test_reverse_existence(exp_config):
   #level one
   config_level_one = exp_config.keys()
   for entry in preset_config.keys():
-    if entry not in ['_comment', 'rerun']:
+    if entry not in ['_comment']:
       assert entry in config_level_one
 
       #level two

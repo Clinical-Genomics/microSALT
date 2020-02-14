@@ -117,14 +117,13 @@ def analyse(ctx, samples_json, input, track, config, dry, email, skip_update, un
   #Samples section
   validate_param(samples_json)
   param = pad_param(samples_json)
-  run_creator = Job_Creator(input=project_dir, config=ctx.obj['config'], log=ctx.obj['log'], parameters=param, run_settings=run_settings)
+  run_creator = Job_Creator(input=input, config=ctx.obj['config'], log=ctx.obj['log'], parameters=param, run_settings=run_settings)
 
-
-  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'],parameters=samples_json)
+  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'],parameters=param)
   click.echo("INFO - Checking versions of references..")
   try:
     if not skip_update:
-      ext_refs.identify_new(project_id,project=True)
+      ext_refs.identify_new(project=True)
       ext_refs.update_refs()
       click.echo("INFO - Version check done. Creating sbatch jobs")
     else:
@@ -132,9 +131,9 @@ def analyse(ctx, samples_json, input, track, config, dry, email, skip_update, un
   except Exception as e:
     click.echo("{}".format(e))
 
-  if len(param.items()) > 1:
+  if len(param) > 1:
     run_creator.project_job()
-  elif len(param.items()) == 1: 
+  elif len(param) == 1: 
     run_creator.project_job(single_sample=True)
   else:
     ctx.abort()
@@ -170,7 +169,6 @@ def finish(ctx, samples_json, input, track, config, dry, email, skip_update, rep
   set_cli_config(config)
   ctx.obj['config']['regex']['mail_recipient'] = email
   ctx.obj['config']['dry'] = dry
-  ctx.obj['config']['rerun'] = True
   if not os.path.isdir(input):
     click.echo("ERROR - Sequence data folder {} does not exist.".format(input))
     ctx.abort()
@@ -183,13 +181,12 @@ def finish(ctx, samples_json, input, track, config, dry, email, skip_update, rep
   #Samples section
   validate_param(samples_json)
   param = pad_param(samples_json)
-  res_scraper = Scraper(config=ctx.obj['config'], log=ctx.obj['log'], parameters=param)
 
-  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'], parameters=samples_json)
+  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'], parameters=param)
   click.echo("INFO - Checking versions of references..")
   try:
     if not skip_update:
-      ext_refs.identify_new(project_id,project=True)
+      ext_refs.identify_new(project=True)
       ext_refs.update_refs()
       click.echo("INFO - Version check done. Creating sbatch jobs")
     else:
@@ -197,14 +194,14 @@ def finish(ctx, samples_json, input, track, config, dry, email, skip_update, rep
   except Exception as e:
     click.echo("{}".format(e))
 
-  if len(param.items()) >= 1:
-    #res_scraper.scrape_project()
-    for subfolder in pool:
-      res_scraper = Scraper("{}/{}".format(input, subfolder), config=ctx.obj['config'], log=ctx.obj['log'], paramters=param)
-      res_scraper.scrape_sample()
+  res_scraper = Scraper(config=ctx.obj['config'], log=ctx.obj['log'], parameters=param, input=input)
+  if res_scraper.name == param[0].get('CG_ID_project'):
+    res_scraper.scrape_project()
   else:
-    ctx.abort()
-  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], parameter=param, output=input, collection=True)
+    for subfolder in pool:
+      res_scraper.scrape_sample()
+
+  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], parameters=param, output=input, collection=True)
   codemonkey.report(report)
   done()
 

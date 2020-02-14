@@ -49,14 +49,15 @@ class Reporter():
     format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
     self.param = parameters
+    self.sample = None
     if len(self.param) == 1:
      self.name = self.param[0].get('CG_ID_sample')
+     self.sample = self.param[0]
     elif len(self.param) > 1:
       self.name = self.param[0].get('CG_ID_project')
       for entry in self.param:
         if entry.get('CG_ID_sample') == self.name:
           raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
-    self.sample = self.param[0]
 
   def report(self, type='default', customer='all'):
     self.gen_version(self.name)
