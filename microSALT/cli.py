@@ -263,8 +263,8 @@ def autobatch(ctx, dry, skip_update, email):
   ctx.obj['config']['regex']['mail_recipient'] = email
   ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'])
   if not skip_update:
+    ext_refs.identify_new(project=True)
     ext_refs.update_refs()
-    ext_refs.resync()
 
   process = subprocess.Popen('squeue --format="%50j" -h -r'.split(), stdout=subprocess.PIPE)
   run_jobs, error = process.communicate()

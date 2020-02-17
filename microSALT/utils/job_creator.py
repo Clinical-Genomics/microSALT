@@ -39,15 +39,15 @@ class Job_Creator():
 
     self.param = parameters
     self.sample = None
-    if len(self.param) == 1:
-     self.name = self.param[0].get('CG_ID_sample')
-     self.sample = self.param[0]
-    elif len(self.param) > 1:
+    if isinstance(self.param, list):
       self.name = self.param[0].get('CG_ID_project')
       self.sample = {'CG_ID_project':self.param[0].get('CG_ID_project'), 'customer_ID':self.param[0].get('customer_ID')}
       for entry in self.param:
         if entry.get('CG_ID_sample') == self.name:
           raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
+    else:
+     self.name = self.param.get('CG_ID_sample')
+     self.sample = self.param
 
     self.now = timestamp
     if timestamp != "":
@@ -64,7 +64,6 @@ class Job_Creator():
       self.finishdir="{}/{}_{}".format(config["folders"]["results"], self.name, self.now)
     self.db_pusher=DB_Manipulator(config, log)
     self.concat_files = dict()
-    self.organism = ""
     self.ref_resolver = Referencer(config, log)
 
   def get_sbatch(self):
@@ -161,7 +160,7 @@ class Job_Creator():
     if len(file_list) > 1:
       for ref in file_list:
         ref_nosuf = re.search(r'(\w+(?:\-\w+)*)\.\w+', os.path.basename(ref)).group(1)
-        batchfile.write("# BLAST {} search for {}, {}\n".format(name, self.organism, ref_nosuf))
+        batchfile.write("# BLAST {} search for {}, {}\n".format(name, self.sample.get('organism'), ref_nosuf))
         if name == 'mlst':
           batchfile.write("blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
           os.path.dirname(ref), ref_nosuf, self.finishdir, self.finishdir, name, ref_nosuf, self.config["slurm_header"]["threads"], blast_format))
@@ -170,7 +169,7 @@ class Job_Creator():
           os.path.dirname(ref), ref_nosuf, self.finishdir, self.finishdir, name, ref_nosuf, self.config["slurm_header"]["threads"], blast_format))
     elif len(file_list) == 1:
       ref_nosuf = re.search(r'(\w+(?:\-\w+)*)\.\w+', os.path.basename(file_list[0])).group(1)
-      batchfile.write("## BLAST {} search in {}\n".format(name, self.organism.replace('_', ' ').capitalize() ))
+      batchfile.write("## BLAST {} search in {}\n".format(name, self.sample.get('organism').replace('_', ' ').capitalize() ))
       batchfile.write("blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
                     os.path.dirname(search_string), ref_nosuf, self.finishdir, self.finishdir, name, ref_nosuf, self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
@@ -397,35 +396,18 @@ class Job_Creator():
           self.logger.info("Suppressed command: {}".format(bash_cmd))
       except Exception as e:
         self.logger.error("Unable to analyze single sample {}".format(self.name))
-    elif self.pool:
-      for (dirpath, dirnames, filenames) in os.walk(self.indir):
-        for dir in dirnames:
-          try:
-            sample_in = "{}/{}".format(dirpath, dir)
-            sample_out = "{}/{}".format(self.finishdir, dir)
-            sample_instance = Job_Creator(input=sample_in, config=self.config, log=self.logger, parameters=self.param, finishdir=sample_out, timestamp=self.now, run_settings=self.run_settings)
-            sample_instance.sample_job()
-            headerargs = sample_instance.get_headerargs()
-            outfile = ""
-            if os.path.isfile(sample_instance.get_sbatch()):
-              outfile = sample_instance.get_sbatch()
-            bash_cmd="sbatch {} {}".format(headerargs, outfile)
-            if not dry and outfile != "":
-              projproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
-              output, error = projproc.communicate()
-              jobno = re.search(r'(\d+)', str(output)).group(0)
-              jobarray.append(jobno)
-            else:
-              self.logger.info("Suppressed command: {}".format(bash_cmd))
-          except Exception as e:
-            pass
     else:
-      for (dirpath, dirnames, filenames) in os.walk(self.indir):
-        for dir in dirnames:
+      for ldir in glob.glob("{}/*/".format(self.indir)):
           try:
-            sample_in = "{}/{}".format(dirpath, dir)
-            sample_out = "{}/{}".format(self.finishdir, dir)
-            sample_instance = Job_Creator(input=sample_in, config=self.config, log=self.logger, parameters=self.param, finishdir=sample_out, timestamp=self.now, run_settings=self.run_settings)
+            sample_in = "{}/{}".format(self.indir, ldir)
+            sample_out = "{}/{}".format(self.finishdir, ldir)
+            linkedjson = None
+            local_param = [p for p in self.param if p['CG_ID_sample'] == ldir]
+            if local_param == []:
+              raise Exception("Sample {} has no counterpart in json file".format(ldir))
+            else:
+              local_param = local_param[0]
+            sample_instance = Job_Creator(input=sample_in, config=self.config, log=self.logger, parameters=local_param, finishdir=sample_out, timestamp=self.now, run_settings=self.run_settings)
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()
             outfile = ""
@@ -529,9 +511,6 @@ class Job_Creator():
       if not os.path.exists(self.finishdir):
         os.makedirs(self.finishdir)
       try:
-        self.organism = self.ref_resolver.organism2reference(self.name)
-        if not self.organism:
-          self.organism = self.sample.get('organism')
         # This is one job
         self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
         batchfile = open(self.batchfile, "w+")
@@ -560,13 +539,14 @@ class Job_Creator():
       raise
 
   def create_blast_search(self):
+    reforganism = self.ref_resolver.organism2reference(self.sample.get('organism'))
     self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
     batchfile = open(self.batchfile, "a+")
     batchfile.write("mkdir -p {}/blast_search\n".format(self.finishdir))
     batchfile.close()
-    self.blast_subset('mlst',"{}/{}/*.tfa".format(self.config["folders"]["references"], self.organism))
+    self.blast_subset('mlst',"{}/{}/*.tfa".format(self.config["folders"]["references"], reforganism))
     self.blast_subset('resistance',"{}/*.fsa".format(self.config["folders"]["resistances"]))
-    if self.organism == "escherichia_coli":
+    if reforganism == "escherichia_coli":
       ss = "{}/*{}".format(os.path.dirname(self.config["folders"]["expec"]), os.path.splitext(self.config["folders"]["expec"])[1])
       self.blast_subset('expec', ss)
 

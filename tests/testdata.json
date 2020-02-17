@@ -10,9 +10,9 @@
   "date_sequencing" : "0001-01-01 00:00:00",
   "method_libprep" : "Not in LIMS",
   "method_sequencing" : "Not in LIMS",
-  "organism" : "Unset",
+  "organism" : "Staphylococcus aureus",
   "priority" : "standard",
-  "reference" : "None"},
+  "reference" : "AP017922.1"},
 {
   "CG_ID_project" : "AAA1234",
   "CG_ID_sample" : "AAA1234A2",
@@ -24,9 +24,9 @@
   "date_sequencing" : "0001-01-01 00:00:00",
   "method_libprep" : "Not in LIMS",
   "method_sequencing" : "Not in LIMS",
-  "organism" : "Unset",
+  "organism" : "Escherichia coli",
   "priority" : "standard",
-  "reference" : "None"},
+  "reference" : "NC_011751.1"},
 {
   "CG_ID_project" : "AAA1234",
   "CG_ID_sample" : "AAA1234A3",

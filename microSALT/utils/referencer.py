@@ -30,16 +30,15 @@ class Referencer():
 
     self.param = parameters
     self.sample = None
-    if self.param == {}:
-      self.name = ""
-    elif len(self.param) == 1:
-     self.name = self.param[0].get('CG_ID_sample')
-    else:
+    if isinstance(self.param, list):
       self.name = self.param[0].get('CG_ID_project')
       self.sample = {'CG_ID_project':self.param[0].get('CG_ID_project'), 'customer_ID':self.param[0].get('customer_ID')}
       for entry in self.param:
         if entry.get('CG_ID_sample') == self.name:
           raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
+    else:
+     self.name = self.param.get('CG_ID_sample')
+     self.sample = self.param
 
   def identify_new(self, cg_id="", project=False):
    """ Automatically downloads pubMLST & NCBI organisms not already downloaded """
@@ -47,17 +46,18 @@ class Referencer():
    newrefs = list()
 
    try:
-     if project:
-       samplenames = [ entry.get('CG_ID_sample') for entry in self.param ]
-     else: 
-       samplenames = [cg_id]
+     if not isinstance(self.param, list):
+       samples = [self.param]
+     else:
+       samples = self.param
 
-     for cg_sampleid in samplenames:
-       refname = self.organism2reference( self.sample.get('organism') )
-       if refname not in self.organisms and self.sample.get('organism') not in neworgs:
-         neworgs.append(self.sample.get('organism'))
-       if not "{}.fasta".format(self.sample.get('reference')) in os.listdir(self.config['folders']['genomes']) and not self.sample.get('reference') in newrefs:
-         newrefs.append(self.sample.get('reference'))
+     for entry in samples:
+       org = entry.get('organism')
+       ref = self.organism2reference(org)
+       if ref not in self.organisms and org not in neworgs:
+         neworgs.append(org)
+     if not "{}.fasta".format(entry.get('reference')) in os.listdir(self.config['folders']['genomes']) and not entry.get('reference') in newrefs: 
+       newrefs.append(entry.get('reference'))
 
      for org in neworgs:
        self.add_pubmlst(org)
@@ -65,7 +65,7 @@ class Referencer():
        self.download_ncbi(org)
    except Exception as e:
      self.logger.error("Reference update function failed prematurely. Review immediately")
- 
+
   def update_refs(self):
     """Updates all references. Order is important, since no object is updated twice"""
     #Updates
@@ -346,8 +346,12 @@ class Referencer():
      loci_query = json.loads(response.read().decode('utf-8'))
 
     output = "{}/{}".format(self.config['folders']['references'], organism)
-    if(os.path.isdir(output)):
-      shutil.rmtree(output)
+    
+    try: 
+      if(os.path.isdir(output)):
+        shutil.rmtree(output)
+    except FileNotFoundError as e:
+      pass
     os.makedirs(output)
 
     for locipath in loci_query['loci']:

@@ -50,18 +50,20 @@ class Reporter():
 
     self.param = parameters
     self.sample = None
-    if len(self.param) == 1:
-     self.name = self.param[0].get('CG_ID_sample')
-     self.sample = self.param[0]
-    elif len(self.param) > 1:
+    if isinstance(self.param, list):
       self.name = self.param[0].get('CG_ID_project')
       self.sample = {'CG_ID_project':self.param[0].get('CG_ID_project'), 'customer_ID':self.param[0].get('customer_ID')}
       for entry in self.param:
         if entry.get('CG_ID_sample') == self.name:
           raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
+    else:
+     self.name = self.param.get('CG_ID_sample')
+     self.sample = self.param
 
   def report(self, type='default', customer='all'):
-    self.gen_version(self.name)
+    if type in ['default', 'typing', 'qc']:
+      #Only typing and qc reports are version controlled
+      self.gen_version(self.name)
     if type in ['default','typing','qc', 'st_update']:
       self.start_web()
       if type == 'default':
@@ -97,7 +99,9 @@ class Reporter():
     try:
       r = requests.get("http://127.0.0.1:5000/microSALT/STtracker/{}".format(customer), allow_redirects=True)
       outname = "{}/ST_updates_{}.html".format(self.output, self.now)
-      open(outname, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
+      outfile = open(outname, 'wb')
+      outfile.write(r.content.decode("iso-8859-1").encode("utf8"))
+      outfile.close()
       self.filelist.append(outname)
       if not silent:
         self.attachments.append(outname)
@@ -120,7 +124,9 @@ class Reporter():
 
       if not os.path.isfile(output):
         self.filelist.append(output)
-      open(output, 'wb').write(q.content.decode("iso-8859-1").encode("utf8"))
+      outfile = open(output, 'wb')
+      outfile.write(q.content.decode("iso-8859-1").encode("utf8"))
+      outfile.close()
       copyfile(output, storage)
 
       if not silent:
@@ -144,7 +150,9 @@ class Reporter():
 
       if not os.path.isfile(output):
         self.filelist.append(output)
-      open(output, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
+      outfile = open(output, 'wb')
+      outfile.write(r.content.decode("iso-8859-1").encode("utf8"))
+      outfile.close()
       copyfile(output, storage)
     
       if not silent:

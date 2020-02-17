@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import builtins
 import click
 import json
 import pdb
@@ -10,10 +11,15 @@ import os
 from microSALT import __version__
 
 from click.testing import CliRunner
-from unittest.mock import patch
+from unittest.mock import patch, mock_open
 
 from microSALT import preset_config, logger
 from microSALT.cli import root
+
+@pytest.fixture(autouse=True)
+def no_requests(monkeypatch):
+    """Remove requests.sessions.Session.request for all tests."""
+    monkeypatch.delattr("requests.sessions.Session.request")
 
 @pytest.fixture
 def runner():
@@ -48,14 +54,17 @@ def test_groups(runner):
 @patch('os.listdir')
 @patch('gzip.open')
 @patch('microSALT.cli.os.path.isdir')
-def test_analyse(isdir, gzip, listdir, subproc, runner, config, path_testdata):
+@patch('microSALT.utils.job_creator.glob.glob')
+def test_analyse(jc_glob, isdir, gzip, listdir, subproc, runner, config, path_testdata):
   #Sets up subprocess mocking
   process_mock = mock.Mock()
   attrs = {'communicate.return_value': ('output 123456789', 'error')}
   process_mock.configure_mock(**attrs)
   subproc.return_value = process_mock
-  isdir.return_value = True
 
+  jc_glob.return_value = ['AAA1234A1','AAA1234A2']
+
+  isdir.return_value = True
   listdir.return_value = ["ACC6438A3_HVMHWDSXX_L1_1.fastq.gz", "ACC6438A3_HVMHWDSXX_L1_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz"]
 
   #All subcommands
@@ -100,7 +109,7 @@ def test_finish(isdir, listdir, smtp, reqs_get, proc_join, proc_term, webstart, 
 @patch('multiprocessing.Process.join')
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
-def test_report(smtplib, reqget, join, term, webstart, runner,path_testdata):
+def test_report(smtplib, reqget, join, term, webstart, runner, path_testdata):
   base_invoke = runner.invoke(root, ['utils', 'report'])
   assert base_invoke.exit_code == 2
 
