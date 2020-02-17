@@ -130,7 +130,6 @@ def analyse(ctx, samples_json, input, track, config, dry, email, skip_update, un
       click.echo("INFO - Skipping version check.")
   except Exception as e:
     click.echo("{}".format(e))
-
   if len(param) > 1:
     run_creator.project_job()
   elif len(param) == 1: 

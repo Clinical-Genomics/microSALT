@@ -29,7 +29,10 @@ class Job_Creator():
     self.qc_only = run_settings.get('qc_only',False)
     self.careful = run_settings.get('careful',True)
     self.pool = run_settings.get('pool', [])
-    
+
+    if isinstance(input, str):
+      self.indir = os.path.abspath(input)
+
     self.filelist = list()
     if type(input) == list:
       self.filelist = input
@@ -41,6 +44,7 @@ class Job_Creator():
      self.sample = self.param[0]
     elif len(self.param) > 1:
       self.name = self.param[0].get('CG_ID_project')
+      self.sample = {'CG_ID_project':self.param[0].get('CG_ID_project'), 'customer_ID':self.param[0].get('customer_ID')}
       for entry in self.param:
         if entry.get('CG_ID_sample') == self.name:
           raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
@@ -399,7 +403,7 @@ class Job_Creator():
           try:
             sample_in = "{}/{}".format(dirpath, dir)
             sample_out = "{}/{}".format(self.finishdir, dir)
-            sample_instance = Job_Creator(input=sample_in, config=self.config, log=self.logger, parameters=self.param, output=sample_out, timestamp=self.now, run_settings=self.run_settings)
+            sample_instance = Job_Creator(input=sample_in, config=self.config, log=self.logger, parameters=self.param, finishdir=sample_out, timestamp=self.now, run_settings=self.run_settings)
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()
             outfile = ""
@@ -421,7 +425,7 @@ class Job_Creator():
           try:
             sample_in = "{}/{}".format(dirpath, dir)
             sample_out = "{}/{}".format(self.finishdir, dir)
-            sample_instance = Job_Creator(input=sample_in, config=self.config, log=self.logger, parameters=self.param, output=sample_out, timestamp=self.now, run_settings=self.run_settings)
+            sample_instance = Job_Creator(input=sample_in, config=self.config, log=self.logger, parameters=self.param, finishdir=sample_out, timestamp=self.now, run_settings=self.run_settings)
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()
             outfile = ""

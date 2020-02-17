@@ -36,6 +36,7 @@ class Referencer():
      self.name = self.param[0].get('CG_ID_sample')
     else:
       self.name = self.param[0].get('CG_ID_project')
+      self.sample = {'CG_ID_project':self.param[0].get('CG_ID_project'), 'customer_ID':self.param[0].get('customer_ID')}
       for entry in self.param:
         if entry.get('CG_ID_sample') == self.name:
           raise Exception("Mixed projects in samples_info file. Do not know how to proceed")

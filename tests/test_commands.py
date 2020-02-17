@@ -51,7 +51,7 @@ def test_groups(runner):
 def test_analyse(isdir, gzip, listdir, subproc, runner, config, path_testdata):
   #Sets up subprocess mocking
   process_mock = mock.Mock()
-  attrs = {'communicate.return_value': ('output', 'error')}
+  attrs = {'communicate.return_value': ('output 123456789', 'error')}
   process_mock.configure_mock(**attrs)
   subproc.return_value = process_mock
   isdir.return_value = True

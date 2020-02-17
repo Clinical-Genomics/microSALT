@@ -59,7 +59,7 @@ def test_blast_subset(glob_search, research,testdata):
 def test_create_snpsection(subproc,testdata):
   #Sets up subprocess mocking
   process_mock = mock.Mock()
-  attrs = {'communicate.return_value': ('output', 'error')}
+  attrs = {'communicate.return_value': ('output 123456789', 'error')}
   process_mock.configure_mock(**attrs)
   subproc.return_value = process_mock
   
@@ -77,11 +77,11 @@ def test_create_snpsection(subproc,testdata):
 def test_project_job(subproc,testdata):
   #Sets up subprocess mocking
   process_mock = mock.Mock()
-  attrs = {'communicate.return_value': ('output', 'error')}
+  attrs = {'communicate.return_value': ('output 123456789', 'error')}
   process_mock.configure_mock(**attrs)
   subproc.return_value = process_mock
 
-  jc = Job_Creator('/tmp/', config=preset_config, log=logger, parameters=testdata, run_settings={'pool':["AAA1234A1","AAA1234A2"]})
+  jc = Job_Creator(input='/tmp/AAA1234', config=preset_config, log=logger, parameters=testdata, run_settings={'pool':["AAA1234A1","AAA1234A2"]})
   jc.project_job()
 
 def test_create_collection():
