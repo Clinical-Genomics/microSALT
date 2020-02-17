@@ -64,7 +64,7 @@ def test_create_snpsection(subproc,testdata):
   subproc.return_value = process_mock
   
   testdata = [testdata[0]]
-  jc = Job_Creator(['AAA1234A1'], config=preset_config, log=logger,parameters=testdata)
+  jc = Job_Creator(['AAA1234A1','AAA1234A2'], config=preset_config, log=logger,parameters=testdata)
   jc.snp_job()
   outfile = open(jc.get_sbatch(), 'r')
   count = 0

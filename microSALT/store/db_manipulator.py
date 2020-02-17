@@ -152,30 +152,30 @@ class DB_Manipulator:
         self.session.commit()
     self.logger.info("Removed information for {}".format(name))
 
-  def query_rec(self, table, filters):
-    """Fetches records table, by applying a dict with columns as keys."""
-    table = eval(table)
-    args = list()
-    for k,v in filters.items():
-      if v != None:
-        args.append("table.{}=='{}'".format(k, v))
-    filter = ' and '.join(args)
-    entries = self.session.query(table).filter(eval(filter)).all()
-    return entries
+#  def query_rec(self, table, filters):
+#    """Fetches records table, by applying a dict with columns as keys."""
+#    table = eval(table)
+#    args = list()
+#    for k,v in filters.items():
+#      if v != None:
+#        args.append("table.{}=='{}'".format(k, v))
+#    filter = ' and '.join(args)
+#    entries = self.session.query(table).filter(eval(filter)).all()
+#    return entries
 
-  def top_index(self, table_str, filters, column):
-    """Fetches the top index from column of table, by applying a dict with columns as keys."""
-    table = eval(table_str)
-    args = list()
-    for k,v in filters.items():
-      if v != None:
-        args.append("table.{}=='{}'".format(k, v))
-    filter = ' and '.join(args)
-    entry = self.session.query(table).filter(eval(filter)).order_by(desc(eval("{}.{}".format(table_str, column)))).limit(1).all()
-    if entry == []:
-      return int(-1)
-    else:
-      return eval("entry[0].{}".format(column))
+#  def top_index(self, table_str, filters, column):
+#    """Fetches the top index from column of table, by applying a dict with columns as keys."""
+#    table = eval(table_str)
+#    args = list()
+#    for k,v in filters.items():
+#      if v != None:
+#        args.append("table.{}=='{}'".format(k, v))
+#    filter = ' and '.join(args)
+#    entry = self.session.query(table).filter(eval(filter)).order_by(desc(eval("{}.{}".format(table_str, column)))).limit(1).all()
+#    if entry == []:
+#      return int(-1)
+#    else:
+#      return eval("entry[0].{}".format(column))
 
   def reload_profiletable(self, organism):
     """Drop the named non-orm table, then load it with fresh data"""

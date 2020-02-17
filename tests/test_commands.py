@@ -162,3 +162,8 @@ def test_autobatch(subproc, runner):
 
   ab = runner.invoke(root, ['utils', 'autobatch', '--dry'])
   assert ab.exit_code == 0
+
+#@patch('os.path.isdir')
+#def test_generate(isdir, runner):
+#  gent = runner.invoke(root, ['utils', 'generate', '--input', '/tmp/AAA1234'])
+#  assert gent.exit_code == 0
