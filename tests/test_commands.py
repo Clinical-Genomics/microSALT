@@ -3,6 +3,7 @@
 import builtins
 import click
 import json
+import pathlib
 import pdb
 import pytest
 import mock
@@ -11,6 +12,7 @@ import os
 from microSALT import __version__
 
 from click.testing import CliRunner
+from distutils.sysconfig import get_python_lib
 from unittest.mock import patch, mock_open
 
 from microSALT import preset_config, logger
@@ -28,12 +30,21 @@ def runner():
 
 @pytest.fixture
 def config():
-  config = "{}/configExample.json".format(os.path.dirname(os.getcwd()))
+  config = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'configExample.json'))
+  #Check if release install exists
+  for entry in os.listdir(get_python_lib()):
+    if 'microSALT-' in entry:
+      config = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'configExample.json'))
   return config
 
 @pytest.fixture
 def path_testdata():
-  return "%s/testdata.json" % os.getcwd()
+  testdata = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata.json'))
+  #Check if release install exists
+  for entry in os.listdir(get_python_lib()):
+    if 'microSALT-' in entry:
+      testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'tests/testdata.json'))
+  return testdata
 
 def test_version(runner):
   res = runner.invoke(root, '--version')

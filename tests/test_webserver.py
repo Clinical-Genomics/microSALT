@@ -2,10 +2,13 @@
 
 import json
 import os
+import pathlib
 import pdb
 import pytest
 import requests
 import time
+
+from distutils.sysconfig import get_python_lib
 from unittest.mock import patch
 
 from microSALT.utils.reporter import Reporter
@@ -14,7 +17,11 @@ from microSALT.cli import root
 
 @pytest.fixture
 def testdata():
-  testdata = "%s/testdata.json" % os.getcwd()
+  testdata = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata.json'))
+  #Check if release install exists
+  for entry in os.listdir(get_python_lib()):
+    if 'microSALT-' in entry:
+      testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'tests/testdata.json'))
   with open(testdata) as json_file:
     data = json.load(json_file)
   return data
