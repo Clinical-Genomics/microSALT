@@ -7,6 +7,7 @@ import hashlib
 import sys
 import warnings
 
+from collections import OrderedDict
 from datetime import datetime, timezone
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
@@ -322,7 +323,8 @@ class DB_Manipulator:
 
   def list_unresolved(self):
     """Lists all novel samples that current havent been flagged as resolved"""
-    novelbkt = dict()
+    #ST currently not updated at all
+    novelbkt = OrderedDict()
     prequery = self.session.query(Samples).filter(and_(Samples.ST<=-10, Samples.pubmlst_ST==-1)).all()
     for entry in prequery:
       if not entry.organism in novelbkt:
@@ -330,8 +332,10 @@ class DB_Manipulator:
       if not entry.ST in novelbkt[entry.organism]:
         novelbkt[entry.organism][entry.ST] = list()
       novelbkt[entry.organism][entry.ST].append(entry.CG_ID_sample)
+    novelbkt = OrderedDict(sorted(novelbkt.items(), key=lambda t: t[0]))
 
-    novelbkt2= dict()
+    #ST updated on pubMLST but not marked as resolved:
+    novelbkt2= OrderedDict()
     postquery = self.session.query(Samples).filter(and_(Samples.ST<=-10, Samples.pubmlst_ST != -1, Samples.pubmlst_ST != 0)).all()
     for entry in postquery:
       if not entry.organism in novelbkt2:
@@ -340,32 +344,52 @@ class DB_Manipulator:
         novelbkt2[entry.organism][entry.ST] = list()
       novelbkt2[entry.organism][entry.ST].append(entry.CG_ID_sample)
 
-    novelbkt3= dict()
+
+    #Unresolved samples and their respective error flags:
+    novelbkt3= OrderedDict()
     naquery = self.session.query(Samples).filter(and_( Samples.ST<0, Samples.ST>-10, Samples.pubmlst_ST != 0)).all()
     for entry in naquery:
-      if not entry.organism in novelbkt3:
-        novelbkt3[entry.organism] = dict()
-      if not entry.ST in novelbkt3[entry.organism]:
-        novelbkt3[entry.organism][entry.ST] = list()
-      novelbkt3[entry.organism][entry.ST].append(entry.CG_ID_sample) 
+      if not entry.ST in novelbkt3:
+        novelbkt3[entry.ST] = dict()
+      if not entry.organism in novelbkt3[entry.ST]:
+        novelbkt3[entry.ST][entry.organism] = list()
+      novelbkt3[entry.ST][entry.organism].append(entry.CG_ID_sample)
+    novelbkt3 = OrderedDict(sorted(novelbkt3.items(), key=lambda t: t[0], reverse=True))
 
-    print("\n####Unresolved samples and their respective error flags:####")
+    codetrans = {-1: "Invalid pubMLST reference",
+                 -2: "Possibly novel allele, novel ST",
+                 -3: "Can't establish 7 loci due to low quality",
+                 -4: "Miscellaneous issues"}
+
+    print("\n####Unresolved samples and their respective error flags:####\n")
     for k,v in novelbkt3.items():
-      print("Organism {} ({}):".format(k, len(v)))
+      print("\n##Code {} - {}##".format(k, codetrans[k]))
       for x,y in v.items():
-        print("{}:{} ({})".format(x,y,len(y)))
+        if x is not None:
+          x = x.replace('_', ' ').capitalize()
+        print("{} ({} samples):\n{}".format(x, len(y) ,sorted(y),))
+    if len(novelbkt3) == 0:
+      print("None!")
 
-    print("\n####ST updated on pubMLST but not marked as resolved:####")
+    print("\n####ST updated on pubMLST but not marked as resolved:####\n")
     for k,v in novelbkt2.items():
+      if k is not None:
+        k = k.replace('_', ' ').capitalize()
       print("Organism {} ({}):".format(k, len(v)))
       for x,y in v.items():
-        print("{}:{} ({})".format(x,y,len(y)))
+        print("{}:{} ({} ST)".format(x,sorted(y),len(y)))
+    if len(novelbkt2) == 0:
+      print("None!")
 
-    print("\n####ST currently not updated at all:####")
+    print("\n####ST currently not updated at all:####\n")
     for k,v in novelbkt.items():
+      if k is not None:
+        k = k.replace('_', ' ').capitalize()
       print("Organism {} ({}):".format(k, len(v)))
       for x,y in v.items():
-        print("{}:{} ({})".format(x,y,len(y)))
+        print("{}:{} ({} novel ST)".format(x,sorted(y),len(y)))
+    if len(novelbkt) == 0:
+      print("None!")
 
   def setPredictor(self, cg_sid, pks=dict()):
     """ Helper function. Flags a set of seq_types as part of the final prediction.
