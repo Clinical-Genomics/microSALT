@@ -22,7 +22,9 @@ setup(
     include_package_data=True,
     zip_safe=False,
     data_files=[('expec', ['unique_references/ExPEC.fsa']),
-                 ('logos', ['artwork/microsalt.jpg', 'artwork/swedac.jpg'])],
+                ('logos', ['artwork/microsalt.jpg', 'artwork/swedac.jpg']),
+                ('testdata', ['tests/testdata.json','configExample.json']) 
+],
     entry_points={
         'console_scripts': ['microSALT=microSALT.cli:root'],
     },

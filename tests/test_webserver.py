@@ -21,7 +21,7 @@ def testdata():
   #Check if release install exists
   for entry in os.listdir(get_python_lib()):
     if 'microSALT-' in entry:
-      testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'tests/testdata.json'))
+      testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/testdata.json'))
   with open(testdata) as json_file:
     data = json.load(json_file)
   return data

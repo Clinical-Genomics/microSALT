@@ -34,7 +34,7 @@ def config():
   #Check if release install exists
   for entry in os.listdir(get_python_lib()):
     if 'microSALT-' in entry:
-      config = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'configExample.json'))
+      config = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/configExample.json'))
   return config
 
 @pytest.fixture
@@ -43,7 +43,7 @@ def path_testdata():
   #Check if release install exists
   for entry in os.listdir(get_python_lib()):
     if 'microSALT-' in entry:
-      testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'tests/testdata.json'))
+      testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/testdata.json'))
   return testdata
 
 def test_version(runner):
