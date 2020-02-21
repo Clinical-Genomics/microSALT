@@ -18,17 +18,19 @@ from microSALT.utils.referencer import Referencer
 
 class Job_Creator():
 
-  def __init__(self, input, config, log, parameters={}, run_settings={}, finishdir="", timestamp=""):
+  def __init__(self, config, log, sampleinfo={}, run_settings={}):
     self.config = config
     self.logger = log
     self.batchfile = "/tmp/batchfile.sbatch"
-    self.indir = "/tmp/"
 
     self.run_settings = run_settings
+    self.indir = run_settings.get('indir','/tmp/')
     self.trimmed = run_settings.get('trimmed',True)
     self.qc_only = run_settings.get('qc_only',False)
     self.careful = run_settings.get('careful',True)
     self.pool = run_settings.get('pool', [])
+    self.finishdir = run_settings.get('finishdir','')
+    self.timestamp = run_settings.get('timestamp','')
 
     if isinstance(input, str):
       self.indir = os.path.abspath(input)
@@ -37,17 +39,17 @@ class Job_Creator():
     if type(input) == list:
       self.filelist = input
 
-    self.param = parameters
+    self.sampleinfo = sampleinfo
     self.sample = None
-    if isinstance(self.param, list):
-      self.name = self.param[0].get('CG_ID_project')
-      self.sample = {'CG_ID_project':self.param[0].get('CG_ID_project'), 'customer_ID':self.param[0].get('customer_ID')}
-      for entry in self.param:
+    if isinstance(self.sampleinfo, list):
+      self.name = self.sampleinfo[0].get('CG_ID_project')
+      self.sample = {'CG_ID_project':self.sampleinfo[0].get('CG_ID_project'), 'customer_ID':self.sampleinfo[0].get('customer_ID')}
+      for entry in self.sampleinfo:
         if entry.get('CG_ID_sample') == self.name:
           raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
     else:
-     self.name = self.param.get('CG_ID_sample')
-     self.sample = self.param
+     self.name = self.sampleinfo.get('CG_ID_sample')
+     self.sample = self.sampleinfo
 
     self.now = timestamp
     if timestamp != "":
@@ -402,12 +404,16 @@ class Job_Creator():
             sample_in = "{}/{}".format(self.indir, ldir)
             sample_out = "{}/{}".format(self.finishdir, ldir)
             linkedjson = None
-            local_param = [p for p in self.param if p['CG_ID_sample'] == ldir]
-            if local_param == []:
+            local_sampleinfo = [p for p in self.sampleinfo if p['CG_ID_sample'] == ldir]
+            if local_sampleinfo == []:
               raise Exception("Sample {} has no counterpart in json file".format(ldir))
             else:
-              local_param = local_param[0]
-            sample_instance = Job_Creator(input=sample_in, config=self.config, log=self.logger, parameters=local_param, finishdir=sample_out, timestamp=self.now, run_settings=self.run_settings)
+              local_sampleinfo = local_sampleinfo[0]
+            sample_settings = dict(self.run_settings)
+            sample_setting['input'] = sample_in
+            sample_setting['finishdir'] = sample_out
+            sample_setting['timestamp'] = self.now
+            sample_instance = Job_Creator(config=self.config, log=self.logger, sampleinfo=local_sampleinfo, run_settings=sample_settings)
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()
             outfile = ""

@@ -38,11 +38,11 @@ def set_cli_config(config):
 def done():
   click.echo("INFO - Execution finished!")
 
-def validate_param(pfile):
+def validate_sampleinfo(pfile):
   pass
 
-def pad_param(pfile):
-  """Reads the provided parameters json and adds default values as necessary"""
+def pad_sampleinfo(pfile):
+  """Reads the provided sampleinfo json and adds default values as necessary"""
 
   with open(pfile) as json_file:
     data = json.load(json_file)
@@ -86,7 +86,7 @@ def root(ctx):
   ctx.obj['log'] = logger
 
 @root.command()
-@click.argument('samples_json')
+@click.argument('sampleinfo.json')
 @click.option('--input', help='Full path to project folder',default="")
 @click.option('--track', help='Run a specific analysis track',default="default", type=click.Choice(['default','typing','qc','cgmlst']))
 @click.option('--config', help="microSALT config to override default", default="")
@@ -96,7 +96,7 @@ def root(ctx):
 @click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
 @click.option('--uncareful', help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
 @click.pass_context
-def analyse(ctx, samples_json, input, track, config, dry, email, skip_update, untrimmed, uncareful):
+def analyse(ctx, sampleinfo.json, input, track, config, dry, email, skip_update, untrimmed, uncareful):
   """Sequence analysis, typing and resistance identification"""
   #Run section
   pool = []
@@ -115,11 +115,11 @@ def analyse(ctx, samples_json, input, track, config, dry, email, skip_update, un
   run_settings = {'input':input, 'track':track, 'dry':dry, 'email':email, 'skip_update':skip_update, 'trimmed': not untrimmed, 'careful':not uncareful, 'pool':pool}
 
   #Samples section
-  validate_param(samples_json)
-  param = pad_param(samples_json)
-  run_creator = Job_Creator(input=input, config=ctx.obj['config'], log=ctx.obj['log'], parameters=param, run_settings=run_settings)
+  validate_sampleinfo(sampleinfo.json)
+  sampleinfo = pad_sampleinfo(sampleinfo.json)
+  run_creator = Job_Creator(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, run_settings=run_settings)
 
-  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'],parameters=param)
+  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'],sampleinfo=sampleinfo)
   click.echo("INFO - Checking versions of references..")
   try:
     if not skip_update:
@@ -130,9 +130,9 @@ def analyse(ctx, samples_json, input, track, config, dry, email, skip_update, un
       click.echo("INFO - Skipping version check.")
   except Exception as e:
     click.echo("{}".format(e))
-  if len(param) > 1:
+  if len(sampleinfo) > 1:
     run_creator.project_job()
-  elif len(param) == 1: 
+  elif len(sampleinfo) == 1: 
     run_creator.project_job(single_sample=True)
   else:
     ctx.abort()
@@ -152,7 +152,7 @@ def refer(ctx):
   pass
 
 @utils.command()
-@click.argument('samples_json')
+@click.argument('sampleinfo.json')
 @click.option('--input', help='Full path to project folder',default="")
 @click.option('--track', help='Run a specific analysis track',default="default", type=click.Choice(['default','typing','qc','cgmlst']))
 @click.option('--config', help="microSALT config to override default", default="")
@@ -161,7 +161,7 @@ def refer(ctx):
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.option('--report', default='default', type=click.Choice(['default', 'typing', 'motif_overview', 'qc', 'json_dump', 'st_update']))
 @click.pass_context
-def finish(ctx, samples_json, input, track, config, dry, email, skip_update, report):
+def finish(ctx, sampleinfo.json, input, track, config, dry, email, skip_update, report):
   """Sequence analysis, typing and resistance identification"""
   #Run section
   pool = []
@@ -178,10 +178,10 @@ def finish(ctx, samples_json, input, track, config, dry, email, skip_update, rep
   run_settings = {'input':input, 'track':track, 'dry':dry, 'email':email, 'skip_update':skip_update}
 
   #Samples section
-  validate_param(samples_json)
-  param = pad_param(samples_json)
+  validate_sampleinfo(sampleinfo.json)
+  sampleinfo = pad_sampleinfo(sampleinfo.json)
 
-  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'], parameters=param)
+  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo)
   click.echo("INFO - Checking versions of references..")
   try:
     if not skip_update:
@@ -193,14 +193,14 @@ def finish(ctx, samples_json, input, track, config, dry, email, skip_update, rep
   except Exception as e:
     click.echo("{}".format(e))
 
-  res_scraper = Scraper(config=ctx.obj['config'], log=ctx.obj['log'], parameters=param, input=input)
-  if res_scraper.name == param[0].get('CG_ID_project'):
+  res_scraper = Scraper(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, input=input)
+  if res_scraper.name == sampleinfo[0].get('CG_ID_project'):
     res_scraper.scrape_project()
   else:
     for subfolder in pool:
       res_scraper.scrape_sample()
 
-  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], parameters=param, output=input, collection=True)
+  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, output=input, collection=True)
   codemonkey.report(report)
   done()
 
@@ -230,18 +230,18 @@ def list(ctx):
     click.echo(org.replace("_"," ").capitalize())
 
 @utils.command()
-@click.argument('samples_json')
+@click.argument('sampleinfo.json')
 @click.option('--email', default=preset_config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--type', default='default', type=click.Choice(['default', 'typing', 'motif_overview', 'qc', 'json_dump', 'st_update']))
 @click.option('--output',help='Full path to output folder',default="")
 @click.option('--collection',default=False, is_flag=True)
 @click.pass_context
-def report(ctx, samples_json, email, type, output, collection):
+def report(ctx, sampleinfo.json, email, type, output, collection):
   """Re-generates report for a project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
-  validate_param(samples_json)
-  param = pad_param(samples_json)
-  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], parameters=param, output=output, collection=collection)
+  validate_sampleinfo(sampleinfo.json)
+  sampleinfo = pad_sampleinfo(sampleinfo.json)
+  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, output=output, collection=collection)
   codemonkey.report(type)
   done()
 

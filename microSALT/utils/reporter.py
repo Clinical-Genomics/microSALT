@@ -27,7 +27,7 @@ from microSALT.store.orm_models import Samples
 
 class Reporter():
 
-  def __init__(self, config, log, parameters={}, name = "", output = "", collection=False):
+  def __init__(self, config, log, sampleinfo={}, name = "", output = "", collection=False):
     self.db_pusher=DB_Manipulator(config, log)
     self.name = name
     self.collection = collection
@@ -48,17 +48,17 @@ class Reporter():
     self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
     format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
-    self.param = parameters
+    self.sampleinfo = sampleinfo
     self.sample = None
-    if isinstance(self.param, list):
-      self.name = self.param[0].get('CG_ID_project')
-      self.sample = {'CG_ID_project':self.param[0].get('CG_ID_project'), 'customer_ID':self.param[0].get('customer_ID')}
-      for entry in self.param:
+    if isinstance(self.sampleinfo, list):
+      self.name = self.sampleinfo[0].get('CG_ID_project')
+      self.sample = {'CG_ID_project':self.sampleinfo[0].get('CG_ID_project'), 'customer_ID':self.sampleinfo[0].get('customer_ID')}
+      for entry in self.sampleinfo:
         if entry.get('CG_ID_sample') == self.name:
           raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
     else:
-     self.name = self.param.get('CG_ID_sample')
-     self.sample = self.param
+     self.name = self.sampleinfo.get('CG_ID_sample')
+     self.sample = self.sampleinfo
 
   def report(self, type='default', customer='all'):
     if type in ['default', 'typing', 'qc']:

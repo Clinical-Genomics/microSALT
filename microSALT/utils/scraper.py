@@ -17,12 +17,12 @@ from microSALT.utils.job_creator import Job_Creator
 # TODO: Rewrite so samples use seperate objects
 class Scraper():
 
-  def __init__(self, config, log, parameters={}, input=""):
+  def __init__(self, config, log, sampleinfo={}, input=""):
     self.config = config
     self.logger = log
     self.db_pusher=DB_Manipulator(config, log)
     self.referencer = Referencer(config, log)
-    self.job_fallback=Job_Creator("", config=config, log=log, parameters=parameters)
+    self.job_fallback=Job_Creator(config=config, log=log, sampleinfo=sampleinfo)
     self.infolder = os.path.abspath(input)
     self.sampledir = ""
 
@@ -30,7 +30,7 @@ class Scraper():
     last_folder = self.infolder.split('/')[-1]
     self.name = last_folder.split('_')[0]
 
-    self.param = parameters
+    self.param = sampleinfo
     self.sample = None
     if isinstance(self.param, list):
       self.name = self.param[0].get('CG_ID_project')
@@ -57,7 +57,7 @@ class Scraper():
      local_param = [p for p in self.param if p['CG_ID_sample'] == dir]
      if local_param != []:
        local_param = local_param[0]
-       sample_scraper = Scraper(config=self.config, log=self.logger, parameters=local_param, input=subdir)
+       sample_scraper = Scraper(config=self.config, log=self.logger, sampleinfo=local_param, input=subdir)
        sample_scraper.scrape_sample()
      else:
        self.logger.warning("Skipping {} due to lacking info in sample_json file".format(dir))

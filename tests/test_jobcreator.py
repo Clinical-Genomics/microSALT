@@ -39,14 +39,14 @@ def test_verify_fastq(gopen, stat, listdir, testdata):
   stata.st_size = 2000
   stat.return_value = stata
 
-  jc = Job_Creator('/tmp/', config=preset_config, log=logger,parameters=testdata)
+  jc = Job_Creator(run_settings={'input':'/tmp/'}, config=preset_config, log=logger,parameters=testdata)
   t = jc.verify_fastq()
   assert len(t) > 0
 
 @patch('re.search')
 @patch('microSALT.utils.job_creator.glob.glob')
 def test_blast_subset(glob_search, research, testdata):
-  jc = Job_Creator('/tmp/', config=preset_config, log=logger,parameters=testdata)
+  jc = Job_Creator(run_settings={'input':'/tmp/'}, config=preset_config, log=logger,parameters=testdata)
   researcha = mock.MagicMock()
   researcha.group = fake_search
   research.return_value = researcha
@@ -70,7 +70,7 @@ def test_create_snpsection(subproc,testdata):
   subproc.return_value = process_mock
   
   testdata = [testdata[0]]
-  jc = Job_Creator(['AAA1234A1','AAA1234A2'], config=preset_config, log=logger,parameters=testdata)
+  jc = Job_Creator(run_settings={'input':['AAA1234A1','AAA1234A2']}, config=preset_config, log=logger,parameters=testdata)
   jc.snp_job()
   outfile = open(jc.get_sbatch(), 'r')
   count = 0
@@ -87,7 +87,7 @@ def test_project_job(subproc,testdata):
   process_mock.configure_mock(**attrs)
   subproc.return_value = process_mock
 
-  jc = Job_Creator(input='/tmp/AAA1234', config=preset_config, log=logger, parameters=testdata, run_settings={'pool':["AAA1234A1","AAA1234A2"]})
+  jc = Job_Creator( config=preset_config, log=logger, parameters=testdata, run_settings={'pool':["AAA1234A1","AAA1234A2"], input='/tmp/AAA1234'})
   jc.project_job()
 
 def test_create_collection():

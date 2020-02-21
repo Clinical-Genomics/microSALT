@@ -17,7 +17,7 @@ from microSALT.store.db_manipulator import DB_Manipulator
 
 class Referencer():
 
-  def __init__(self, config, log, parameters={}, force=False):
+  def __init__(self, config, log, sampleinfo={}, force=False):
     self.config = config
     self.logger = log
     self.db_access = DB_Manipulator(config, log)
@@ -28,17 +28,17 @@ class Referencer():
     self.organisms = [*organisms]
     self.force = force
 
-    self.param = parameters
+    self.sampleinfo = sampleinfo
     self.sample = None
-    if isinstance(self.param, list):
-      self.name = self.param[0].get('CG_ID_project')
-      self.sample = {'CG_ID_project':self.param[0].get('CG_ID_project'), 'customer_ID':self.param[0].get('customer_ID')}
-      for entry in self.param:
+    if isinstance(self.sampleinfo, list):
+      self.name = self.sampleinfo[0].get('CG_ID_project')
+      self.sample = {'CG_ID_project':self.sampleinfo[0].get('CG_ID_project'), 'customer_ID':self.sampleinfo[0].get('customer_ID')}
+      for entry in self.sampleinfo:
         if entry.get('CG_ID_sample') == self.name:
           raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
     else:
-     self.name = self.param.get('CG_ID_sample')
-     self.sample = self.param
+     self.name = self.sampleinfo.get('CG_ID_sample')
+     self.sample = self.sampleinfo
 
   def identify_new(self, cg_id="", project=False):
    """ Automatically downloads pubMLST & NCBI organisms not already downloaded """
@@ -46,10 +46,10 @@ class Referencer():
    newrefs = list()
 
    try:
-     if not isinstance(self.param, list):
-       samples = [self.param]
+     if not isinstance(self.sampleinfo, list):
+       samples = [self.sampleinfo]
      else:
-       samples = self.param
+       samples = self.sampleinfo
 
      for entry in samples:
        org = entry.get('organism')
