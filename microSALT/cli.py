@@ -78,7 +78,7 @@ def root(ctx):
   ctx.obj['log'] = logger
 
 @root.command()
-@click.argument('sampleinfo.json')
+@click.argument('sampleinfo-file')
 @click.option('--input', help='Full path to project folder',default="")
 @click.option('--track', help='Run a specific analysis track',default="default", type=click.Choice(['default','typing','qc','cgmlst']))
 @click.option('--config', help="microSALT config to override default", default="")
@@ -88,7 +88,7 @@ def root(ctx):
 @click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
 @click.option('--uncareful', help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
 @click.pass_context
-def analyse(ctx, sampleinfo.json, input, track, config, dry, email, skip_update, untrimmed, uncareful):
+def analyse(ctx, sampleinfo-file, input, track, config, dry, email, skip_update, untrimmed, uncareful):
   """Sequence analysis, typing and resistance identification"""
   #Run section
   pool = []
@@ -107,10 +107,10 @@ def analyse(ctx, sampleinfo.json, input, track, config, dry, email, skip_update,
   run_settings = {'input':input, 'track':track, 'dry':dry, 'email':email, 'skip_update':skip_update, 'trimmed': not untrimmed, 'careful':not uncareful, 'pool':pool}
 
   #Samples section
-  review_sampleinfo(sampleinfo.json)
-  run_creator = Job_Creator(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo.json, run_settings=run_settings)
+  review_sampleinfo(sampleinfo-file)
+  run_creator = Job_Creator(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo-file, run_settings=run_settings)
 
-  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'],sampleinfo=sampleinfo.json)
+  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'],sampleinfo=sampleinfo-file)
   click.echo("INFO - Checking versions of references..")
   try:
     if not skip_update:
@@ -143,7 +143,7 @@ def refer(ctx):
   pass
 
 @utils.command()
-@click.argument('sampleinfo.json')
+@click.argument('sampleinfo-file')
 @click.option('--input', help='Full path to project folder',default="")
 @click.option('--track', help='Run a specific analysis track',default="default", type=click.Choice(['default','typing','qc','cgmlst']))
 @click.option('--config', help="microSALT config to override default", default="")
@@ -152,7 +152,7 @@ def refer(ctx):
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.option('--report', default='default', type=click.Choice(['default', 'typing', 'motif_overview', 'qc', 'json_dump', 'st_update']))
 @click.pass_context
-def finish(ctx, sampleinfo.json, input, track, config, dry, email, skip_update, report):
+def finish(ctx, sampleinfo-file, input, track, config, dry, email, skip_update, report):
   """Sequence analysis, typing and resistance identification"""
   #Run section
   pool = []
@@ -169,9 +169,9 @@ def finish(ctx, sampleinfo.json, input, track, config, dry, email, skip_update, 
   run_settings = {'input':input, 'track':track, 'dry':dry, 'email':email, 'skip_update':skip_update}
 
   #Samples section
-  review_sampleinfo(sampleinfo.json)
+  review_sampleinfo(sampleinfo-file)
 
-  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo.json)
+  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo-file)
   click.echo("INFO - Checking versions of references..")
   try:
     if not skip_update:
@@ -183,14 +183,14 @@ def finish(ctx, sampleinfo.json, input, track, config, dry, email, skip_update, 
   except Exception as e:
     click.echo("{}".format(e))
 
-  res_scraper = Scraper(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo.json, input=input)
+  res_scraper = Scraper(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo-file, input=input)
   if res_scraper.name == sampleinfo[0].get('CG_ID_project'):
     res_scraper.scrape_project()
   else:
     for subfolder in pool:
       res_scraper.scrape_sample()
 
-  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo.json, output=input, collection=True)
+  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo-file, output=input, collection=True)
   codemonkey.report(report)
   done()
 
@@ -220,17 +220,17 @@ def list(ctx):
     click.echo(org.replace("_"," ").capitalize())
 
 @utils.command()
-@click.argument('sampleinfo.json')
+@click.argument('sampleinfo-file')
 @click.option('--email', default=preset_config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--type', default='default', type=click.Choice(['default', 'typing', 'motif_overview', 'qc', 'json_dump', 'st_update']))
 @click.option('--output',help='Full path to output folder',default="")
 @click.option('--collection',default=False, is_flag=True)
 @click.pass_context
-def report(ctx, sampleinfo.json, email, type, output, collection):
+def report(ctx, sampleinfo-file, email, type, output, collection):
   """Re-generates report for a project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
-  review_sampleinfo(sampleinfo.json)
-  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo.json, output=output, collection=collection)
+  review_sampleinfo(sampleinfo-file)
+  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo-file, output=output, collection=collection)
   codemonkey.report(type)
   done()
 
