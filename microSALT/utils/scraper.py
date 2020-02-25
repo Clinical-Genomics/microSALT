@@ -101,9 +101,8 @@ class Scraper():
             quast['n50'] = int(lsplit[1])
 
       self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', quast)
-      # Too spammy
-      #self.logger.info("Project {} recieved quast stats: {}"\
-      #               .format(self.name, quast))
+      self.logger.debug("Project {} recieved quast stats: {}"\
+                     .format(self.name, quast))
     except Exception as e:
       self.logger.warning("Cannot generate quast statistics for {}".format(self.name))
 
@@ -239,28 +238,28 @@ class Scraper():
       targ = ind+1
       while targ < len(hypo):
         ignore = False
-        if hypo[ind]["contig_name"] == hypo[targ]["contig_name"]:
+        if hypo[ind].get("contig_name") == hypo[targ].get("contig_name"):
           #Overlapping or shared gene 
-          if (hypo[ind]["contig_start"] >= hypo[targ]["contig_start"] and hypo[ind]["contig_start"] <= hypo[targ]["contig_end"]) or\
-              (hypo[ind]["contig_end"] >= hypo[targ]["contig_start"] and hypo[ind]["contig_end"] <= hypo[targ]["contig_end"]) or \
-              (hypo[ind][identifier] == hypo[targ][identifier]):
+          if (hypo[ind].get("contig_start") >= hypo[targ].get("contig_start") and hypo[ind].get("contig_start") <= hypo[targ].get("contig_end")) or\
+              (hypo[ind].get("contig_end") >= hypo[targ].get("contig_start") and hypo[ind].get("contig_end") <= hypo[targ].get("contig_end")) or \
+              (hypo[ind].get(identifier) == hypo[targ].get(identifier)):
             #Rightmost is worse
-            if float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]["span"])) > float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]["span"])):
+            if float(hypo[ind].get("identity"))*(1-abs(1-hypo[ind].get("span"))) > float(hypo[targ].get("identity"))*(1-abs(1-hypo[targ].get("span"))):
               del hypo[targ]
               ignore = True
             #Leftmost is worse
-            elif float(hypo[ind]["identity"])*(1-abs(1-hypo[ind]['span'])) < float(hypo[targ]["identity"])*(1-abs(1-hypo[targ]['span'])):
+            elif float(hypo[ind].get("identity"))*(1-abs(1-hypo[ind].get('span'))) < float(hypo[targ].get("identity"))*(1-abs(1-hypo[targ].get('span'))):
               del hypo[ind]
               targ = ind +1
               ignore = True
             #Identical identity and span, seperating based on contig coverage
             else:
               #Rightmost is worse
-              if float(hypo[ind]["contig_coverage"]) >= float(hypo[targ]["contig_coverage"]):
+              if float(hypo[ind].get("contig_coverage")) >= float(hypo[targ].get("contig_coverage")):
                 del hypo[targ]
                 ignore = True
               #Leftmost is worse
-              elif float(hypo[ind]["contig_coverage"]) < float(hypo[targ]["contig_coverage"]):
+              elif float(hypo[ind].get("contig_coverage")) < float(hypo[targ].get("contig_coverage")):
                 del hypo[ind]
                 targ = ind +1
                 ignore = True
@@ -272,7 +271,7 @@ class Scraper():
 
     self.logger.info("{} {} hits were added after removing overlaps and duplicate hits".format( len(hypo), type))
     for hit in hypo:
-      #self.logger.info("Kept {}:{} with span {} and id {}".format(hit['loci'],hit["allele"], hit['span'],hit['identity']))
+      self.logger.debug("Kept {}:{} with span {} and id {}".format(hit['loci'],hit["allele"], hit['span'],hit['identity']))
       self.db_pusher.add_rec(hit, '{}'.format(type2db))
   
     if type == 'seq_type':

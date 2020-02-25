@@ -58,7 +58,7 @@ if preset_config != '':
 
     #Initialize logger
     logger = logging.getLogger('main_logger')
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     ch = logging.StreamHandler()
     ch.setLevel(logging.INFO)
     ch.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
