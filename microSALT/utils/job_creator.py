@@ -30,7 +30,6 @@ class Job_Creator():
     self.careful = run_settings.get('careful',True)
     self.pool = run_settings.get('pool', [])
     self.finishdir = run_settings.get('finishdir','')
-    self.timestamp = run_settings.get('timestamp','')
 
     if isinstance(input, str):
       self.indir = os.path.abspath(input)
@@ -51,18 +50,18 @@ class Job_Creator():
      self.name = self.sampleinfo.get('CG_ID_sample')
      self.sample = self.sampleinfo
 
-    self.now = timestamp
-    if timestamp != "":
-      self.now = timestamp
-      temp = timestamp.replace('_','.').split('.')
+    #If timestamp is provided. Use it as analysis time. Else use current time
+    if run_settings.get('timestamp') is not None:
+      self.now = run_settings.get('timestamp')
+      temp = run_settings.get('timestamp').replace('_','.').split('.')
       self.dt = datetime(int(temp[0]),int(temp[1]),int(temp[2]),int(temp[3]),int(temp[4]),int(temp[5]))
     else:
       self.dt = datetime.now()
       self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
       format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
-    self.finishdir = finishdir
-    if self.finishdir == "":
+    
+    if run_settings.get('finishdir') is None:
       self.finishdir="{}/{}_{}".format(config["folders"]["results"], self.name, self.now)
     self.db_pusher=DB_Manipulator(config, log)
     self.concat_files = dict()

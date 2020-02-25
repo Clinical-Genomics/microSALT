@@ -8,6 +8,7 @@ import pdb
 import pytest
 import mock
 import os
+import sys
 
 from microSALT import __version__
 
@@ -90,7 +91,6 @@ def test_analyse(jc_glob, isdir, gzip, listdir, subproc, runner, config, path_te
   special_run = runner.invoke(root, ['analyse', path_testdata, '--track', 'qc', '--skip_update', '--untrimmed', '--uncareful', '--input', '/tmp/AAA1234'])
   assert special_run.exit_code == 0
 
-
 @patch('microSALT.utils.job_creator.Job_Creator.create_project')
 @patch('microSALT.utils.reporter.Reporter.start_web')
 @patch('multiprocessing.Process.terminate')
@@ -128,7 +128,7 @@ def test_report(smtplib, reqget, join, term, webstart, runner, path_testdata):
   for rep_type in ['default','typing','motif_overview','qc','json_dump','st_update']:
     normal_report = runner.invoke(root, ['utils', 'report', path_testdata,'--type', rep_type, '--email', '2@2.com', '--output', '/tmp/'])
     assert normal_report.exit_code == 0
-    collection_report = runner.invoke(root, ['utils', 'report',path_testdata, '--type', rep_type, '--collection'])
+    collection_report = runner.invoke(root, ['utils', 'report',path_testdata, '--type', rep_type, '--collection', '--output', '/tmp/'])
     assert collection_report.exit_code == 0
 
 @patch('microSALT.utils.reporter.Reporter.start_web')
@@ -144,9 +144,9 @@ def test_resync(smtplib, reqget, join, term, webstart, runner):
 
   #Exhaustive parameter test
   for rep_type in ['list', 'report']:
-    typical_work = runner.invoke(root, ['utils', 'resync', 'review', '--email', '2@2.com', '--type', rep_type])
+    typical_work = runner.invoke(root, ['utils', 'resync', 'review', '--email', '2@2.com', '--type', rep_type, '--output', '/tmp/'])
     assert typical_work.exit_code == 0
-    delimited_work = runner.invoke(root, ['utils', 'resync', 'review', '--skip_update', '--customer', 'custX', '--type', rep_type])
+    delimited_work = runner.invoke(root, ['utils', 'resync', 'review', '--skip_update', '--customer', 'custX', '--type', rep_type, '--output', '/tmp/'])
     assert delimited_work.exit_code == 0
 
 def test_refer(runner):

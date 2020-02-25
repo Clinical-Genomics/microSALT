@@ -39,7 +39,7 @@ def done():
   click.echo("INFO - Execution finished!")
 
 def review_sampleinfo(pfile):
-  """Reviews sample info. Generates file with missing fields filled in requested"""
+  """Reviews sample info. Returns loaded json object"""
 
   defaults = {
   "CG_ID_project" : "XXX0000",
@@ -67,6 +67,8 @@ def review_sampleinfo(pfile):
     for k, v in defaults.items():
       if not k in entry:
         click.echo("ERROR - Parameter {} needs to be provided in sample json. Formatting example: ({})".format(k, v))
+
+  return data
 
 @click.group()
 @click.version_option(__version__)
@@ -107,10 +109,10 @@ def analyse(ctx, sampleinfo_file, input, track, config, dry, email, skip_update,
   run_settings = {'input':input, 'track':track, 'dry':dry, 'email':email, 'skip_update':skip_update, 'trimmed': not untrimmed, 'careful':not uncareful, 'pool':pool}
 
   #Samples section
-  review_sampleinfo(sampleinfo_file)
-  run_creator = Job_Creator(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo_file, run_settings=run_settings)
+  sampleinfo=review_sampleinfo(sampleinfo_file)
+  run_creator = Job_Creator(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, run_settings=run_settings)
 
-  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'],sampleinfo=sampleinfo_file)
+  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'],sampleinfo=sampleinfo)
   click.echo("INFO - Checking versions of references..")
   try:
     if not skip_update:
@@ -169,9 +171,9 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
   run_settings = {'input':input, 'track':track, 'dry':dry, 'email':email, 'skip_update':skip_update}
 
   #Samples section
-  review_sampleinfo(sampleinfo_file)
+  sampleinfo=review_sampleinfo(sampleinfo_file)
 
-  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo_file)
+  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo)
   click.echo("INFO - Checking versions of references..")
   try:
     if not skip_update:
@@ -183,14 +185,14 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
   except Exception as e:
     click.echo("{}".format(e))
 
-  res_scraper = Scraper(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo_file, input=input)
+  res_scraper = Scraper(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, input=input)
   if res_scraper.name == sampleinfo[0].get('CG_ID_project'):
     res_scraper.scrape_project()
   else:
     for subfolder in pool:
       res_scraper.scrape_sample()
 
-  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo_file, output=input, collection=True)
+  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, output=input, collection=True)
   codemonkey.report(report)
   done()
 
@@ -229,8 +231,8 @@ def list(ctx):
 def report(ctx, sampleinfo_file, email, type, output, collection):
   """Re-generates report for a project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
-  review_sampleinfo(sampleinfo_file)
-  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo_file, output=output, collection=collection)
+  sampleinfo=review_sampleinfo(sampleinfo_file)
+  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, output=output, collection=collection)
   codemonkey.report(type)
   done()
 
@@ -323,8 +325,9 @@ def resync(ctx):
 @click.option('--customer', default='all', help="Customer id filter")
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.option('--email', default=preset_config['regex']['mail_recipient'], help='Forced e-mail recipient')
+@click.option('--output',help='Full path to output folder',default="")
 @click.pass_context
-def review(ctx, type, customer, skip_update, email):
+def review(ctx, type, customer, skip_update, email, output):
   """Generates information about novel ST"""
   #Trace exists by some samples having pubMLST_ST filled in. Make trace function later
   ctx.obj['config']['regex']['mail_recipient'] = email
@@ -334,7 +337,7 @@ def review(ctx, type, customer, skip_update, email):
     ext_refs.resync()
   click.echo("INFO - Version check done. Generating output")
   if type=='report':
-    codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'])
+    codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], output=output)
     codemonkey.report(type='st_update', customer=customer)
   elif type=='list':
     ext_refs.resync(type=type)

@@ -176,15 +176,19 @@ class Reporter():
       if motif=='resistance':
         for r in s.resistances:
           if not (r.resistance in motifdict.keys()) and r.threshold == 'Passed':
+            if r.resistance is None:
+              r.resistance = "None"
             motifdict[r.resistance] =list()
           if r.threshold == 'Passed' and not r.gene in motifdict[r.resistance]:
             motifdict[r.resistance].append(r.gene)
       elif motif=='expec':
-        for r in s.expacs:
-          if not (r.virulence in motifdict.keys()) and r.threshold == 'Passed':
-            motifdict[r.virulence] =list()
-          if r.threshold == 'Passed' and not r.gene in motifdict[r.virulence]:
-            motifdict[r.virulence].append(r.gene)
+        for e in s.expacs:
+          if not (e.virulence in motifdict.keys()) and e.threshold == 'Passed':
+            if e.virulence is None:
+              e.virulence = "None"
+            motifdict[e.virulence] =list()
+          if e.threshold == 'Passed' and not e.gene in motifdict[e.virulence]:
+            motifdict[e.virulence].append(e.gene)
     for k, v in motifdict.items():
       motifdict[k] = sorted(v)
 
@@ -219,11 +223,11 @@ class Reporter():
             if r.threshold == 'Passed' and not r.gene in rowdict[r.resistance]:
               rowdict[r.resistance][r.gene] = r.identity
         elif motif=="expec":
-          for r in s.expacs:
-            if not (r.virulence in rowdict.keys()) and r.threshold == 'Passed':
-              rowdict[r.virulence] =dict()
-            if r.threshold == 'Passed' and not r.gene in rowdict[r.virulence]:
-              rowdict[r.virulence][r.gene] = r.identity
+          for e in s.expacs:
+            if not (e.virulence in rowdict.keys()) and e.threshold == 'Passed':
+              rowdict[e.virulence] =dict()
+            if e.threshold == 'Passed' and not e.gene in rowdict[e.virulence]:
+              rowdict[e.virulence][e.gene] = e.identity
         #Compare single sample to all
         hits = ""
         for res in sorted(motifdict.keys()):

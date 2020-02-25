@@ -28,7 +28,7 @@ def testdata():
 
 @pytest.fixture
 def report_obj(testdata):
-  report = Reporter(config=preset_config, log=logger, parameters=testdata)
+  report = Reporter(config=preset_config, log=logger, sampleinfo=testdata)
   return report
 
 def test_webserver(report_obj):
