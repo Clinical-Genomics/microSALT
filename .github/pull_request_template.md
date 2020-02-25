@@ -1,9 +1,11 @@
 # Description
+_##Remove elements in cursive as needed.##_
+
 _The features of this PR primarily concerns end-users/bioinformaticians/internals_
 
-_This is a summary of the changes made._
+_Summary of the changes made:_
 
-_If not self-evident, also mention what prompted the change._
+_If not self-evident, mention what prompted the change._
 
 ## Primary function of PR
 - [ ] Hotfix
@@ -15,9 +17,9 @@ _If not self-evident, also mention what prompted the change._
 - [ ] This change requires another repository to be updated
 
 # Testing
-_This is a description of the tests necessary to verify the stability of the PR._
+_If the update is a hotfix, it is sufficient to rely on the development testing along with the Travis self-test automatically applied to the PR._
 
-_Basic test routine:_
+_Test routine to verify the stability of the PR:_
 - _`bash /home/proj/production/servers/resources/hasta.scilifelab.se/update-microsalt-stage.sh BRANCHNAME`_
 - _`us`_
 - _`source activate S_microSALT`_
@@ -35,4 +37,4 @@ _These are the results of the tests, and necessary conclusions, that prove the s
 
 # Sign-offs
 - [ ] Code tested by @sylvinite
-- [ ] Approved to run at Clinical-Genomics by @octocat
+- [ ] Approved to run at Clinical-Genomics by @sylvinite
