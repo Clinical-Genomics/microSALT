@@ -24,15 +24,12 @@ class Job_Creator():
     self.batchfile = "/tmp/batchfile.sbatch"
 
     self.run_settings = run_settings
-    self.indir = run_settings.get('indir','/tmp/')
+    self.indir = os.path.abspath(run_settings.get('indir','/tmp/'))
     self.trimmed = run_settings.get('trimmed',True)
     self.qc_only = run_settings.get('qc_only',False)
     self.careful = run_settings.get('careful',True)
     self.pool = run_settings.get('pool', [])
     self.finishdir = run_settings.get('finishdir','')
-
-    if isinstance(input, str):
-      self.indir = os.path.abspath(input)
 
     self.filelist = list()
     if type(input) == list:
