@@ -38,43 +38,35 @@ def set_cli_config(config):
 def done():
   click.echo("INFO - Execution finished!")
 
-def validate_sampleinfo(pfile):
-  pass
-
-def pad_sampleinfo(pfile):
-  """Reads the provided sampleinfo json and adds default values as necessary"""
-
-  with open(pfile) as json_file:
-    data = json.load(json_file)
+def review_sampleinfo(pfile):
+  """Reviews sample info. Generates file with missing fields filled in requested"""
 
   defaults = {
   "CG_ID_project" : "XXX0000",
   "CG_ID_sample" : "XXX0000Y1",
-  "Customer_ID_sample" : "XXX0000Y1",
+  "Customer_ID_sample" : "SAMPLEIDTHING1",
   "customer_ID" : "cust000",
-  "application_tag" : "NONE",
+  "application_tag" : "MWGNXTR1000",
   "date_arrival" : "0001-01-01 00:00:00",
   "date_libprep" : "0001-01-01 00:00:00",
   "date_sequencing" : "0001-01-01 00:00:00",
-  "method_libprep" : "Not in LIMS",
-  "method_sequencing" : "Not in LIMS",
-  "organism" : "Unset",
+  "method_libprep" : "9999:10",
+  "method_sequencing" : "9998:10",
+  "organism" : "Staphylococcus aureus",
   "priority" : "standard",
-  "reference" : "None"}
+  "reference" : "NC_007795"}
+
+  try:
+    with open(pfile) as json_file:
+      data = json.load(json_file)
+  except Exception as e:
+    click.echo("Unable to read provided sample info file as json. Exiting..")
+    sys.exit(-1)
 
   for entry in data:
-    sample_counter = 1
     for k, v in defaults.items():
       if not k in entry:
-        click.echo("INFO - Parameter {} was not provided. Used default.".format(k)) 
-        if k in ['CG_ID_sample','Customer_ID_sample']:
-          entry[k] = "XXX0000Y{}".format(sample_counter)
-          sample_counter = sample_counter + 1
-        else:
-          entry[k] = v
-    data[data.index(entry)] = entry
-  return data
-      
+        click.echo("ERROR - Parameter {} needs to be provided in sample json. Formatting example: ({})".format(k, v))
 
 @click.group()
 @click.version_option(__version__)
@@ -115,11 +107,10 @@ def analyse(ctx, sampleinfo.json, input, track, config, dry, email, skip_update,
   run_settings = {'input':input, 'track':track, 'dry':dry, 'email':email, 'skip_update':skip_update, 'trimmed': not untrimmed, 'careful':not uncareful, 'pool':pool}
 
   #Samples section
-  validate_sampleinfo(sampleinfo.json)
-  sampleinfo = pad_sampleinfo(sampleinfo.json)
-  run_creator = Job_Creator(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, run_settings=run_settings)
+  review_sampleinfo(sampleinfo.json)
+  run_creator = Job_Creator(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo.json, run_settings=run_settings)
 
-  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'],sampleinfo=sampleinfo)
+  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'],sampleinfo=sampleinfo.json)
   click.echo("INFO - Checking versions of references..")
   try:
     if not skip_update:
@@ -178,10 +169,9 @@ def finish(ctx, sampleinfo.json, input, track, config, dry, email, skip_update, 
   run_settings = {'input':input, 'track':track, 'dry':dry, 'email':email, 'skip_update':skip_update}
 
   #Samples section
-  validate_sampleinfo(sampleinfo.json)
-  sampleinfo = pad_sampleinfo(sampleinfo.json)
+  review_sampleinfo(sampleinfo.json)
 
-  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo)
+  ext_refs = Referencer(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo.json)
   click.echo("INFO - Checking versions of references..")
   try:
     if not skip_update:
@@ -193,14 +183,14 @@ def finish(ctx, sampleinfo.json, input, track, config, dry, email, skip_update, 
   except Exception as e:
     click.echo("{}".format(e))
 
-  res_scraper = Scraper(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, input=input)
+  res_scraper = Scraper(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo.json, input=input)
   if res_scraper.name == sampleinfo[0].get('CG_ID_project'):
     res_scraper.scrape_project()
   else:
     for subfolder in pool:
       res_scraper.scrape_sample()
 
-  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, output=input, collection=True)
+  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo.json, output=input, collection=True)
   codemonkey.report(report)
   done()
 
@@ -239,9 +229,8 @@ def list(ctx):
 def report(ctx, sampleinfo.json, email, type, output, collection):
   """Re-generates report for a project"""
   ctx.obj['config']['regex']['mail_recipient'] = email
-  validate_sampleinfo(sampleinfo.json)
-  sampleinfo = pad_sampleinfo(sampleinfo.json)
-  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, output=output, collection=collection)
+  review_sampleinfo(sampleinfo.json)
+  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo.json, output=output, collection=collection)
   codemonkey.report(type)
   done()
 
@@ -291,7 +280,7 @@ def autobatch(ctx, dry, skip_update, email):
 @click.option('--input', help='Full path to project folder',default="")
 @click.pass_context
 def generate(ctx, input):
-  """Creates the necessary parameter file for analysis"""
+  """Creates a blank sample info json for the given input folder"""
   input_folder = os.path.basename(input)
 
   defaults = {
