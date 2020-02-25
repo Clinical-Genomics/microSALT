@@ -189,14 +189,14 @@ class Scraper():
 
                 if type == 'resistance':
                   hypo[-1]["instance"] = filename
-                  partials = re.search(r'(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3])
+                  partials = re.search(r'(?:\>)*(.+)_(\d+){1,3}(?:_(.+))*', elem_list[3])
                   hypo[-1]["reference"] = partials.group(3)
                   hypo[-1]["gene"] = partials.group(1)
                   if hypo[-1]["gene"] in self.gene2resistance.keys():
                     hypo[-1]["resistance"] = self.gene2resistance[hypo[-1]["gene"]]
                   else:
                     hypo[-1]["{}".format(type)] = hypo[-1]["instance"].capitalize()
-                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(partials.group(0))]
+                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(elem_list[3])]
 
                 elif type == 'expec':
                   hypo[-1]["instance"] = filename
@@ -218,13 +218,13 @@ class Scraper():
                     hypo[-1]["virulence"] = partials.group(4).replace('_', ' ').capitalize()
                   else:
                     hypo[-1]["virulence"] = ""
-                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(elem_list[0])]
+                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(elem_list[3])]
 
                 elif type == 'seq_type':
                   partials = re.search(r'(.+)_(\d+){1,3}(?:_(\w+))*', elem_list[3])
                   hypo[-1]["loci"] = partials.group(1)
                   hypo[-1]["allele"] = int(partials.group(2))
-                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(partials.group(0))]
+                  hypo[-1]["span"] = float(hypo[-1]["subject_length"])/locilengths['>{}'.format(elem_list[3])]
 
                 # split elem 2 into contig node_NO, length, cov
                 nodeinfo = elem_list[2].split('_')
