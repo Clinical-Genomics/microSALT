@@ -108,11 +108,11 @@ def test_finish(isdir, listdir, smtp, reqs_get, proc_join, proc_term, webstart, 
   base_invoke = runner.invoke(root, ['utils', 'finish'])
   assert base_invoke.exit_code == 2
    #Exhaustive parameter test
-  typical_run = runner.invoke(root, ['utils', 'finish', path_testdata, '--email', '2@2.com', '--input', '/tmp/AAA1234_2019.8.12_11.25.2', '--config', config, '--report', 'default'])
+  typical_run = runner.invoke(root, ['utils', 'finish', path_testdata, '--email', '2@2.com', '--input', '/tmp/AAA1234_2019.8.12_11.25.2', '--config', config, '--report', 'default', '--output', '/tmp/'])
   assert typical_run.exit_code == 0
-  special_run = runner.invoke(root, ['utils', 'finish', path_testdata, '--report', 'qc'])
+  special_run = runner.invoke(root, ['utils', 'finish', path_testdata, '--report', 'qc', '--output', '/tmp/'])
   assert special_run.exit_code == 0
-  unique_report = runner.invoke(root, ['utils', 'finish', path_testdata, '--report', 'motif_overview'])
+  unique_report = runner.invoke(root, ['utils', 'finish', path_testdata, '--report', 'motif_overview', '--output', '/tmp/'])
   assert unique_report.exit_code == 0
 
 

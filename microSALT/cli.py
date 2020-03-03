@@ -153,8 +153,9 @@ def refer(ctx):
 @click.option('--email', default=preset_config['regex']['mail_recipient'], help='Forced e-mail recipient')
 @click.option('--skip_update', default=False, help="Skips downloading of references", is_flag=True)
 @click.option('--report', default='default', type=click.Choice(['default', 'typing', 'motif_overview', 'qc', 'json_dump', 'st_update']))
+@click.option('--output',help='Report output folder',default="")
 @click.pass_context
-def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, report):
+def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, report, output):
   """Sequence analysis, typing and resistance identification"""
   #Run section
   pool = []
@@ -164,6 +165,8 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
   if not os.path.isdir(input):
     click.echo("ERROR - Sequence data folder {} does not exist.".format(input))
     ctx.abort()
+  if output == "":
+    output = input
   for subfolder in os.listdir(input):
     if os.path.isdir("{}/{}".format(input, subfolder)):
       pool.append(subfolder)
@@ -192,7 +195,7 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
     for subfolder in pool:
       res_scraper.scrape_sample()
 
-  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, output=input, collection=True)
+  codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, output=output, collection=True)
   codemonkey.report(report)
   done()
 

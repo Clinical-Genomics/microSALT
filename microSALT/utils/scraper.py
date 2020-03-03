@@ -30,31 +30,33 @@ class Scraper():
     last_folder = self.infolder.split('/')[-1]
     self.name = last_folder.split('_')[0]
 
-    self.param = sampleinfo
+    self.sampleinfo = sampleinfo
     self.sample = None
-    if isinstance(self.param, list):
-      self.name = self.param[0].get('CG_ID_project')
-      self.sample = {'CG_ID_project':self.param[0].get('CG_ID_project'), 'customer_ID':self.param[0].get('customer_ID')}
-      for entry in self.param:
+    if isinstance(self.sampleinfo, list):
+      self.name = self.sampleinfo[0].get('CG_ID_project')
+      self.sample = {'CG_ID_project':self.sampleinfo[0].get('CG_ID_project'), 'customer_ID':self.sampleinfo[0].get('customer_ID')}
+      for entry in self.sampleinfo:
         if entry.get('CG_ID_sample') == self.name:
           raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
     else:
-     self.name = self.param.get('CG_ID_sample')
-     self.sample = self.param
+     self.name = self.sampleinfo.get('CG_ID_sample')
+     self.sample = self.sampleinfo
 
     self.gene2resistance = self.load_resistances()
 
-  def scrape_project(self):
+  def scrape_project(self, project=None):
     """Scrapes a project folder for information"""
-    self.db_pusher.purge_rec(self.name, 'Projects')
-    if not self.db_pusher.exists('Projects', {'CG_ID_project':self.name}):
-      self.logger.warning("Replacing project {}".format(self.name))
-      self.job_fallback.create_project(self.name)
+    if project is None:
+      project=self.name
+    self.db_pusher.purge_rec(project, 'Projects')
+    if not self.db_pusher.exists('Projects', {'CG_ID_project':project}):
+      self.logger.warning("Replacing project {}".format(project))
+      self.job_fallback.create_project(project)
 
     #Scrape order matters a lot!
     for dir in os.listdir(self.infolder):
      subdir = "{}/{}".format(self.infolder, dir)
-     local_param = [p for p in self.param if p['CG_ID_sample'] == dir]
+     local_param = [p for p in self.sampleinfo if p['CG_ID_sample'] == dir]
      if local_param != []:
        local_param = local_param[0]
        sample_scraper = Scraper(config=self.config, log=self.logger, sampleinfo=local_param, input=subdir)
@@ -62,17 +64,19 @@ class Scraper():
      else:
        self.logger.warning("Skipping {} due to lacking info in sample_json file".format(dir))
 
-  def scrape_sample(self):
+  def scrape_sample(self, sample=None):
     """Scrapes a sample folder for information"""
-    self.db_pusher.purge_rec(self.name, 'Samples')
+    if sample is None:
+      sample=self.name
+    self.db_pusher.purge_rec(sample, 'Samples')
 
     if not self.db_pusher.exists('Projects', {'CG_ID_project':self.sample.get('CG_ID_project')}):
       self.logger.warning("Replacing project {}".format(self.sample.get('CG_ID_project')))
       self.job_fallback.create_project(self.sample.get('CG_ID_project'))
 
-    if not self.db_pusher.exists('Samples', {'CG_ID_sample':self.name}):
-      self.logger.warning("Replacing sample {}".format(self.name))
-      self.job_fallback.create_sample(self.name)
+    if not self.db_pusher.exists('Samples', {'CG_ID_sample':sample}):
+      self.logger.warning("Replacing sample {}".format(sample))
+      self.job_fallback.create_sample(sample)
 
     #Scrape order matters a lot!
     self.sampledir = self.infolder
@@ -83,12 +87,13 @@ class Scraper():
     self.scrape_alignment()
     self.scrape_quast()
 
-  def scrape_quast(self):
+  def scrape_quast(self, filename=""):
     """Scrapes a quast report for assembly information"""
+    if filename == "":
+      filename="{}/assembly/quast/report.tsv".format(self.sampledir)
     quast = dict()
-    report = "{}/assembly/quast/report.tsv".format(self.sampledir)
     try:
-      with open(report, 'r') as infile:
+      with open(filename, 'r') as infile:
         for line in infile:
           lsplit = line.rstrip().split('\t')
           if lsplit[0] == '# contigs':
@@ -126,15 +131,18 @@ class Scraper():
 
     return finalalleles
 
-  def scrape_blast(self,type=""):
+  def scrape_blast(self,type="",file_list=[]):
     hypo = list()
     type2db = type.capitalize() + 's'
     if type == 'expec':
       type2db = 'Expacs'
-    folder = type
-    folder = folder.replace('seq_type', 'mlst')
- 
-    q_list = glob.glob("{}/blast_search/{}/*".format(self.sampledir, folder))
+
+    if file_list == []:
+      if type == 'seq_type':
+        file_list = glob.glob("{}/blast_search/mlst/*".format(self.sampledir))
+      else:
+        file_list = glob.glob("{}/blast_search/{}/*".format(self.sampledir, type))
+
     organism = self.referencer.organism2reference( self.sample.get('organism') )
     if not organism:
       organism = self.sample.get('organism')
@@ -143,7 +151,7 @@ class Scraper():
 
     try:
       old_ref = ""
-      for file in q_list:
+      for file in file_list:
         filename = os.path.basename(file).rsplit('.',1)[0] #Removes suffix
         if filename == 'lactam':
           filename = 'beta-lactam'
@@ -298,22 +306,24 @@ class Scraper():
       self.logger.error("Unable to initialize trivial names for resistances ({})".format(e))
     return conversions
 
-  def scrape_alignment(self):
+  def scrape_alignment(self, file_list=[]):
     """Scrapes a single alignment result"""
+    if file_list == []:
+      file_list=glob.glob("{}/alignment/*.stats.*".format(self.sampledir))
     ins_list = list()
     cov_dict = dict()
     align_dict = dict()
     align_dict["reference_genome"] = self.sample.get('reference')
 
     #Reading
-    q_list = glob.glob("{}/alignment/*.stats.*".format(self.sampledir))
+    file_list = glob.glob("{}/alignment/*.stats.*".format(self.sampledir))
     map_rate = 0.0
     median_ins = 0
     ref_len = 0.0
     tot_reads = 0
     tot_map = 0
     duprate = 0.0
-    for file in q_list:
+    for file in file_list:
       with open(file, 'r') as fh:
        type = file.split('.')[-1]
        for line in fh.readlines():
