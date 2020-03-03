@@ -2,11 +2,15 @@
 
 import json
 import os
+import pathlib
 import pdb
 import pytest
 import re
 import requests
+import sys
 import time
+
+from distutils.sysconfig import get_python_lib
 from unittest.mock import patch
 
 from microSALT.store.db_manipulator import DB_Manipulator
@@ -15,112 +19,18 @@ from microSALT.cli import root
 
 @pytest.fixture
 def mlst_data():
-	return [
-	{'CG_ID_sample':'MLS1234A1',
-	 'loci':'arcC',
-	 'allele':'6',
-	 'contig_name':'NODE_1',
-	 'contig_length':'592262',
-	 'contig_coverage':'150',
-	 'identity':'100.0',
-	 'evalue':'0.0',
-	 'bitscore':'900',
-	 'st_predictor':True,
-	 'span':'1.0',
-	 'subject_length':'456',
-	 'contig_start':'588316',
-	 'contig_end':'588771',
-	},
-	{'CG_ID_sample':'MLS1234A1',
-	 'loci':'aroE',
-	 'allele':'57',
-	 'contig_name':'NODE_1',
-	 'contig_length':'592262',
-	 'contig_coverage':'150',
-	 'identity':'100.0',
-	 'evalue':'0.0',
-	 'bitscore':'900',
-	 'st_predictor':True,
-	 'span':'1.0',
-	 'subject_length':'456',
-	 'contig_start':'588316',
-	 'contig_end':'588771',
-	},
-	{'CG_ID_sample':'MLS1234A1',
-	 'loci':'glpF',
-	 'allele':'45',
-	 'contig_name':'NODE_1',
-	 'contig_length':'592262',
-	 'contig_coverage':'150',
-	 'identity':'100.0',
-	 'evalue':'0.0',
-	 'bitscore':'900',
-	 'st_predictor':True,
-	 'span':'1.0',
-	 'subject_length':'456',
-	 'contig_start':'588316',
-	 'contig_end':'588771',
-	},
-	{'CG_ID_sample':'MLS1234A1',
-	 'loci':'gmk',
-	 'allele':'2',
-	 'contig_name':'NODE_1',
-	 'contig_length':'592262',
-	 'contig_coverage':'150',
-	 'identity':'100.0',
-	 'evalue':'0.0',
-	 'bitscore':'900',
-	 'st_predictor':True,
-	 'span':'1.0',
-	 'subject_length':'456',
-	 'contig_start':'588316',
-	 'contig_end':'588771',
-	},
-	{'CG_ID_sample':'MLS1234A1',
-	 'loci':'pta',
-	 'allele':'7',
-	 'contig_name':'NODE_1',
-	 'contig_length':'592262',
-	 'contig_coverage':'150',
-	 'identity':'100.0',
-	 'evalue':'0.0',
-	 'bitscore':'900',
-	 'st_predictor':True,
-	 'span':'1.0',
-	 'subject_length':'456',
-	 'contig_start':'588316',
-	 'contig_end':'588771',
-	},
-	{'CG_ID_sample':'MLS1234A1',
-	 'loci':'tpi',
-	 'allele':'58',
-	 'contig_name':'NODE_1',
-	 'contig_length':'592262',
-	 'contig_coverage':'150',
-	 'identity':'100.0',
-	 'evalue':'0.0',
-	 'bitscore':'900',
-	 'st_predictor':True,
-	 'span':'1.0',
-	 'subject_length':'456',
-	 'contig_start':'588316',
-	 'contig_end':'588771',
-	},
-	{'CG_ID_sample':'MLS1234A1',
-	 'loci':'yqiL',
-	 'allele':'52',
-	 'contig_name':'NODE_1',
-	 'contig_length':'592262',
-	 'contig_coverage':'150',
-	 'identity':'100.0',
-	 'evalue':'0.0',
-	 'bitscore':'900',
-	 'st_predictor':True,
-	 'span':'1.0',
-	 'subject_length':'456',
-	 'contig_start':'588316',
-	 'contig_end':'588771',
-	}]
+  pfile = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/sampleinfo_mlst.json'))
+  #Check if release install exists
+  for entry in os.listdir(get_python_lib()):
+    if 'microSALT-' in entry:
+      pfile = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/sampleinfo_mlst.json'))
+  try:
+    with open(pfile) as json_file:
+      data = json.load(json_file)
+  except Exception as e:
+    print("Unable to read provided sample info file as json. Exiting..")
+    sys.exit(-1)
+  return data
 
 @pytest.fixture
 def dbm():
