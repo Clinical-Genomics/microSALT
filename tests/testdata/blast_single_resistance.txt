@@ -1,0 +1,33 @@
+# BLASTN 2.9.0+
+# Query: NODE_31_length_3240_cov_286.006593
+# Database: /tmp/aminoglycoside
+# 0 hits found
+# BLASTN 2.9.0+
+# Query: NODE_32_length_3197_cov_303.662317
+# Database: /tmp/aminoglycoside
+# Fields: subject title, subject strand, query acc.ver, subject acc.ver, % identity, evalue, bit score, q. start, q. end, s. start, s. end, alignment length
+# 7 hits found
+aph(3')-III_1_M26832 	plus	NODE_32_length_3197_cov_303.662317	aph(3')-III_1_M26832	100.000	0.0	1469	1392	2186	1	795	795
+aph(3')-IIIa_2_AJ490186 	plus	NODE_32_length_3197_cov_303.662317	aph(3')-IIIa_2_AJ490186	99.874	0.0	1463	1392	2186	1	795	795
+aph(3')-IIIa_1_AF330699 	plus	NODE_32_length_3197_cov_303.662317	aph(3')-IIIa_1_AF330699	99.874	0.0	1463	1392	2186	1	795	795
+aph(3')-IIIa_3_AB247327 	plus	NODE_32_length_3197_cov_303.662317	aph(3')-IIIa_3_AB247327	99.372	0.0	1441	1392	2186	1	795	796
+ant(6)-Ia_1_AF330699 	plus	NODE_32_length_3197_cov_303.662317	ant(6)-Ia_1_AF330699	99.688	0.0	1173	131	772	269	909	642
+ant(6)-Ia_5_AB247327 	plus	NODE_32_length_3197_cov_303.662317	ant(6)-Ia_5_AB247327	99.377	0.0	1162	131	772	269	909	642
+ant(6)-Ia_2_KF421157 	plus	NODE_32_length_3197_cov_303.662317	ant(6)-Ia_2_KF421157	84.201	1.28e-159	556	131	705	269	842	576
+# BLASTN 2.9.0+
+# Query: NODE_33_length_3121_cov_306.530985
+# Database: /tmp/aminoglycoside
+# 0 hits found
+# BLASTN 2.9.0+
+# Query: NODE_34_length_1659_cov_289.301746
+# Database: /tmp/aminoglycoside
+# 0 hits found
+# BLASTN 2.9.0+
+# Query: NODE_35_length_1618_cov_2.178503
+# Database: /tmp/aminoglycoside
+# 0 hits found
+# BLASTN 2.9.0+
+# Query: NODE_36_length_1210_cov_161.702165
+# Database: /tmp/aminoglycoside
+# 0 hits found
+# BLAST processed 215 queries
