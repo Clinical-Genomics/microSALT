@@ -141,11 +141,12 @@ def gen_add_info(sample_info=dict()):
 
   for s in sample_info:
     s.ST_status=str(s.ST)
-    if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or \
-    s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or \
-    s.Customer_ID_sample.startswith('CTRL') or s.Customer_ID_sample.startswith('Neg') or \
-    s.Customer_ID_sample.startswith('blank') or s.Customer_ID_sample.startswith('dual-NTC'):
-      s.ST_status = 'Kontroll (prefix)'
+    if s.Customer_ID_sample is not None:
+      if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or \
+      s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or \
+      s.Customer_ID_sample.startswith('CTRL') or s.Customer_ID_sample.startswith('Neg') or \
+      s.Customer_ID_sample.startswith('blank') or s.Customer_ID_sample.startswith('dual-NTC'):
+        s.ST_status = 'Kontroll (prefix)'
 
     if 'Kontroll' in s.ST_status or 'Control' in s.ST_status or s.ST == -1:
       s.threshold = '-'

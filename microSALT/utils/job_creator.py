@@ -157,7 +157,10 @@ class Job_Creator():
 
     if len(file_list) > 1:
       for ref in file_list:
-        ref_nosuf = re.search(r'(\w+(?:\-\w+)*)\.\w+', os.path.basename(ref)).group(1)
+        if re.search(r'(\w+(?:\-\w+)*)\.\w+', os.path.basename(ref)) is None:
+          self.logger.error("File {} does not match typical format. Consider deleting and redownloading")
+        else:
+          ref_nosuf = re.search(r'(\w+(?:\-\w+)*)\.\w+', os.path.basename(ref)).group(1)
         batchfile.write("# BLAST {} search for {}, {}\n".format(name, self.sample.get('organism'), ref_nosuf))
         if name == 'mlst':
           batchfile.write("blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
@@ -406,9 +409,9 @@ class Job_Creator():
             else:
               local_sampleinfo = local_sampleinfo[0]
             sample_settings = dict(self.run_settings)
-            sample_setting['input'] = sample_in
-            sample_setting['finishdir'] = sample_out
-            sample_setting['timestamp'] = self.now
+            sample_settings['input'] = sample_in
+            sample_settings['finishdir'] = sample_out
+            sample_settings['timestamp'] = self.now
             sample_instance = Job_Creator(config=self.config, log=self.logger, sampleinfo=local_sampleinfo, run_settings=sample_settings)
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()

@@ -180,7 +180,7 @@ class Referencer():
     hiddensrc ="{}/.resfinder_db".format(self.config['folders']['resistances'])
     wipeIndex = False
 
-    if not os.path.isdir(hiddensrc):
+    if not os.path.exists(hiddensrc):
       self.logger.info("resFinder database not found. Caching..")
       os.makedirs(hiddensrc)
       cmd = "git clone {} --quiet".format(url)

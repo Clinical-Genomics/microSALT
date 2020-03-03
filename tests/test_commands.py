@@ -65,18 +65,19 @@ def test_groups(runner):
 @patch('subprocess.Popen')
 @patch('os.listdir')
 @patch('gzip.open')
-@patch('microSALT.cli.os.path.isdir')
 @patch('microSALT.utils.job_creator.glob.glob')
-def test_analyse(jc_glob, isdir, gzip, listdir, subproc, runner, config, path_testdata):
+@patch('microSALT.cli.os.path.isdir')
+def test_analyse(isdir, jc_glob, gzip, listdir, subproc, runner, config, path_testdata):
   #Sets up subprocess mocking
   process_mock = mock.Mock()
   attrs = {'communicate.return_value': ('output 123456789', 'error')}
   process_mock.configure_mock(**attrs)
   subproc.return_value = process_mock
+  isdir.return_value = True
 
   jc_glob.return_value = ['AAA1234A1','AAA1234A2']
 
-  isdir.return_value = True
+#  isdir.return_value = True
   listdir.return_value = ["ACC6438A3_HVMHWDSXX_L1_1.fastq.gz", "ACC6438A3_HVMHWDSXX_L1_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz"]
 
   #All subcommands
@@ -98,7 +99,7 @@ def test_analyse(jc_glob, isdir, gzip, listdir, subproc, runner, config, path_te
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
 @patch('os.listdir')
-@patch('os.path.isdir')
+@patch('microSALT.cli.os.path.isdir')
 def test_finish(isdir, listdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata):
   listdir.return_value = ['AAA1234A1', 'AAA1234A2' , 'AAA1234A3']
   isdir.return_value = True
