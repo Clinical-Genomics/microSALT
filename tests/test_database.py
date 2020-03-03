@@ -187,7 +187,7 @@ def test_upd_rec(dbm):
   assert len(dbm.query_rec('Samples', {'CG_ID_sample':'UPD1234A1'})) == 0
   assert len(dbm.query_rec('Samples', {'CG_ID_sample':'UPD1234A2'})) == 1
 
-def test_various(dbm, mlst_data):
+def test_allele_ranker(dbm, mlst_data):
   for entry in mlst_data:
     dbm.add_rec(entry, 'Seq_types')
   dbm.add_rec({'CG_ID_sample':'MLS1234A1', 'CG_ID_project':'MLS1234','organism':'staphylococcus_aureus'}, 'Samples')
@@ -195,4 +195,16 @@ def test_various(dbm, mlst_data):
   best_alleles = {'arcC': {'contig_name': 'NODE_1', 'allele': 6}, 'aroE': {'contig_name': 'NODE_1', 'allele': 57}, 'glpF': {'contig_name': 'NODE_1', 'allele': 45}, 'gmk': {'contig_name': 'NODE_1', 'allele': 2}, 'pta': {'contig_name': 'NODE_1', 'allele': 7}, 'tpi': {'contig_name': 'NODE_1', 'allele': 58}, 'yqiL': {'contig_name': 'NODE_1', 'allele': 52}}
   assert dbm.bestAlleles('MLS1234A1') == best_alleles
 
+  for entry in mlst_data:
+    entry['allele'] = 0
+    entry['CG_ID_sample'] = 'MLS1234A2'
+    dbm.add_rec(entry, 'Seq_types') 
+  dbm.alleles2st('MLS1234A2') == -1
 
+def test_get_and_set_report(dbm):
+  dbm.add_rec({'CG_ID_sample':'ADD1234A1', 'method_sequencing':'1000:1'}, 'Samples')
+  dbm.add_rec({'CG_ID_project':'ADD1234','version':'1'}, 'Reports')
+  assert dbm.get_report('ADD1234').version == 1
+  dbm.upd_rec({'CG_ID_sample':'ADD1234A1', 'method_sequencing':'1000:1'}, 'Samples', {'CG_ID_sample':'ADD1234A1', 'method_sequencing':'1000:2'})
+  dbm.set_report('ADD1234')
+  assert dbm.get_report('ADD1234').version != 1
