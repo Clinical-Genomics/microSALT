@@ -81,8 +81,7 @@ def root(ctx):
 
 @root.command()
 @click.argument('sampleinfo_file')
-@click.option('--input', help='Full path to project folder',default="")
-@click.option('--track', help='Run a specific analysis track',default="default", type=click.Choice(['default','typing','qc','cgmlst']))
+@click.option('--input', help='Full path to input folder',default="")
 @click.option('--config', help="microSALT config to override default", default="")
 @click.option('--dry', help="Builds instance without posting to SLURM", default=False, is_flag=True)
 @click.option('--email', default=preset_config['regex']['mail_recipient'], help='Forced e-mail recipient')
@@ -90,7 +89,7 @@ def root(ctx):
 @click.option('--untrimmed', help="Use untrimmed input data", default=False, is_flag=True)
 @click.option('--uncareful', help="Avoids running SPAdes in careful mode. Sometimes fix assemblies", default=False, is_flag=True)
 @click.pass_context
-def analyse(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, untrimmed, uncareful):
+def analyse(ctx, sampleinfo_file, input, config, dry, email, skip_update, untrimmed, uncareful):
   """Sequence analysis, typing and resistance identification"""
   #Run section
   pool = []
@@ -106,7 +105,7 @@ def analyse(ctx, sampleinfo_file, input, track, config, dry, email, skip_update,
     if os.path.isdir("{}/{}".format(input, subfolder)):
       pool.append(subfolder)
 
-  run_settings = {'input':input, 'track':track, 'dry':dry, 'email':email, 'skip_update':skip_update, 'trimmed': not untrimmed, 'careful':not uncareful, 'pool':pool}
+  run_settings = {'input':input, 'dry':dry, 'email':email, 'skip_update':skip_update, 'trimmed': not untrimmed, 'careful':not uncareful, 'pool':pool}
 
   #Samples section
   sampleinfo=review_sampleinfo(sampleinfo_file)
