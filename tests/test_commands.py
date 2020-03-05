@@ -89,7 +89,7 @@ def test_analyse(isdir, jc_glob, gzip, listdir, subproc, runner, config, path_te
   dry_run = runner.invoke(root, ['analyse', path_testdata, '--input', '/tmp/AAA1234', '--dry'])
   assert dry_run.exit_code == 0
   special_run_settings = {'trimmed':False, 'careful':False,'skip_update':True}
-  special_run = runner.invoke(root, ['analyse', path_testdata, '--track', 'qc', '--skip_update', '--untrimmed', '--uncareful', '--input', '/tmp/AAA1234'])
+  special_run = runner.invoke(root, ['analyse', path_testdata, '--skip_update', '--untrimmed', '--uncareful', '--input', '/tmp/AAA1234'])
   assert special_run.exit_code == 0
 
 @patch('microSALT.utils.job_creator.Job_Creator.create_project')
