@@ -111,24 +111,25 @@ class Scraper():
     except Exception as e:
       self.logger.warning("Cannot generate quast statistics for {}".format(self.name))
 
-  def get_locilengths(self, filename):
+  def get_locilengths(self, foldername, suffix):
     """ Generate a dict of length for any given loci """
     #Create dict with full name as key, associated nucleotides as value. 
     alleles=dict()
     finalalleles=dict()
-    lastallele=""
-    f = open(filename,"r")
-    for row in f:
-      if ">" in row:
-        lastallele = row.strip()
-        alleles[lastallele] = ""
-      else:
-        alleles[lastallele] = alleles[lastallele] + row.strip()
-    f.close()
+    for file in os.listdir(foldername):
+      if file.endswith(suffix):
+        lastallele=""
+        f = open("{}/{}".format(foldername,file),"r")
+        for row in f:
+          if ">" in row:
+            lastallele = row.strip()
+            alleles[lastallele] = ""
+          else:
+            alleles[lastallele] = alleles[lastallele] + row.strip()
+        f.close()
 
-    for k, v in alleles.items():
-      finalalleles[k] = len(v) 
-
+        for k, v in alleles.items():
+          finalalleles[k] = len(v) 
     return finalalleles
 
   def scrape_blast(self,type="",file_list=[]):
@@ -144,8 +145,6 @@ class Scraper():
         file_list = glob.glob("{}/blast_search/{}/*".format(self.sampledir, type))
 
     organism = self.referencer.organism2reference( self.sample.get('organism') )
-    if not organism:
-      organism = self.sample.get('organism')
     self.db_pusher.upd_rec({'CG_ID_sample' : self.name}, 'Samples', {'organism': organism})
     res_cols = self.db_pusher.get_columns('{}'.format(type2db))
 
@@ -156,17 +155,15 @@ class Scraper():
         if filename == 'lactam':
           filename = 'beta-lactam'
         if type == 'resistance':
-          ref_file = "{}/{}.fsa".format(self.config["folders"]["resistances"], filename)
+          ref_folder = self.config["folders"]["resistances"]
+          suffix = "fsa"
         elif type == 'expec':
-          ref_file = self.config["folders"]["expec"]
+          ref_folder = os.path.dirname(self.config["folders"]["expec"])
+          suffix = os.path.basename(self.config["folders"]["expec"]).rsplit('.',1)[1]
         elif type == 'seq_type':
-          ref_file =  "{}/{}/{}.tfa".format(self.config['folders']['references'], organism, filename.split('_')[-1])
-
-        #Only re-initializes locilengths if the ref_file changed between iterations
-        if old_ref != ref_file:
-          old_ref = ref_file
-          locilengths = self.get_locilengths(ref_file)
-          
+          ref_folder = "{}/{}".format(self.config['folders']['references'], organism)
+          suffix = "tfa"
+        locilengths = self.get_locilengths(ref_folder, suffix)
 
         with open("{}".format(file), 'r') as sample:
           for line in sample:
@@ -232,6 +229,7 @@ class Scraper():
                 hypo[-1]["contig_name"] = "{}_{}".format(nodeinfo[0], nodeinfo[1])
                 hypo[-1]["contig_length"] = int(nodeinfo[3])
                 hypo[-1]["contig_coverage"] = nodeinfo[5]
+                self.logger.debug("scrape_blast scrape loop hit")
       self.logger.info("{} candidate {} hits found".format(len(hypo), type2db))
     except Exception as e:
       self.logger.error("Unable to process the pattern of {}".format(str(e)))
@@ -279,7 +277,7 @@ class Scraper():
 
     self.logger.info("{} {} hits were added after removing overlaps and duplicate hits".format( len(hypo), type))
     for hit in hypo:
-      self.logger.debug("Kept {}:{} with span {} and id {}".format(hit['loci'],hit["allele"], hit['span'],hit['identity']))
+      self.logger.debug("Kept {}:{} with span {} and id {}".format(hit.get('loci'),hit.get("allele"), hit.get('span'),hit.get('identity')))
       self.db_pusher.add_rec(hit, '{}'.format(type2db))
   
     if type == 'seq_type':

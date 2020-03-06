@@ -82,7 +82,8 @@ class Referencer():
     files = os.listdir(full_dir)
     sufx_files = glob.glob("{}/*{}".format(full_dir, suffix)) #List of source files
     for file in sufx_files:
-      base = re.sub('\{}$'.format(suffix), '', file)
+      subsuf = '\{}$'.format(suffix)
+      base = re.sub(subsuf, '', file)
 
       bases = 0
       newer = 0
@@ -224,7 +225,7 @@ class Referencer():
     """Finds which reference contains the same words as the organism
        and returns it in a format for database calls."""
     orgs = os.listdir(self.config["folders"]["references"])
-    organism = re.split(r'\W+', normal_organism_name)
+    organism = re.split(r'\W+', normal_organism_name.lower())
     try:
       refs = 0
       for target in orgs:

@@ -279,6 +279,7 @@ def autobatch(ctx, dry, skip_update, email):
           click.echo("INFO - Skipping {} due to existing analysis in results folder".format(foldah))
       elif dry:
         click.echo("INFO - Skipping {} due to concurrent SLURM run".format(foldah))
+  done()
 
 @utils.command()
 @click.option('--input', help='Full path to project folder',default="")
