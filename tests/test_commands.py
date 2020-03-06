@@ -90,16 +90,16 @@ def test_analyse(isdir, jc_glob, gzip, listdir, subproc, runner, config, path_te
   #Exhaustive parameter test
   typical_run = runner.invoke(root, ['analyse', path_testdata, '--input', '/tmp/AAA1234', '--config', config, '--email', '2@2.com'])
   assert typical_run.exit_code == 0
-  #assert "INFO - Execution finished!" in caplog.text
+  assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
   dry_run = runner.invoke(root, ['analyse', path_testdata, '--input', '/tmp/AAA1234', '--dry'])
   assert dry_run.exit_code == 0
-  #assert "INFO - Execution finished!" in caplog.text
+  assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
   special_run_settings = {'trimmed':False, 'careful':False,'skip_update':True}
   special_run = runner.invoke(root, ['analyse', path_testdata, '--skip_update', '--untrimmed', '--uncareful', '--input', '/tmp/AAA1234'])
   assert special_run.exit_code == 0
-  #assert "INFO - Execution finished!" in caplog.text
+  assert "INFO - Execution finished!" in caplog.text
 
 @patch('microSALT.utils.job_creator.Job_Creator.create_project')
 @patch('microSALT.utils.reporter.Reporter.start_web')
@@ -122,15 +122,15 @@ def test_finish(isdir, listdir, smtp, reqs_get, proc_join, proc_term, webstart, 
    #Exhaustive parameter test
   typical_run = runner.invoke(root, ['utils', 'finish', path_testdata, '--email', '2@2.com', '--input', '/tmp/AAA1234_2019.8.12_11.25.2', '--config', config, '--report', 'default', '--output', '/tmp/'])
   assert typical_run.exit_code == 0
-  #assert "INFO - Execution finished!" in caplog.text
+  assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
   special_run = runner.invoke(root, ['utils', 'finish', path_testdata, '--report', 'qc', '--output', '/tmp/'])
   assert special_run.exit_code == 0
-  #assert "INFO - Execution finished!" in caplog.text
+  assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
   unique_report = runner.invoke(root, ['utils', 'finish', path_testdata, '--report', 'motif_overview', '--output', '/tmp/'])
   assert unique_report.exit_code == 0
-  #assert "INFO - Execution finished!" in caplog.text
+  assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
 
 
@@ -150,11 +150,11 @@ def test_report(smtplib, reqget, join, term, webstart, runner, path_testdata, ca
   for rep_type in ['default','typing','motif_overview','qc','json_dump','st_update']:
     normal_report = runner.invoke(root, ['utils', 'report', path_testdata,'--type', rep_type, '--email', '2@2.com', '--output', '/tmp/'])
     assert normal_report.exit_code == 0
-    #assert "INFO - Execution finished!" in caplog.text
+    assert "INFO - Execution finished!" in caplog.text
     caplog.clear()
     collection_report = runner.invoke(root, ['utils', 'report',path_testdata, '--type', rep_type, '--collection', '--output', '/tmp/'])
     assert collection_report.exit_code == 0
-    #assert "INFO - Execution finished!" in caplog.text
+    assert "INFO - Execution finished!" in caplog.text
     caplog.clear()
 
 
@@ -169,22 +169,22 @@ def test_resync(smtplib, reqget, join, term, webstart, runner, caplog):
 
   a = runner.invoke(root, ['utils', 'resync', 'overwrite', 'AAA1234A1'])
   assert a.exit_code == 0
-  #assert "INFO - Execution finished!" in caplog.text
+  assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
   b = runner.invoke(root, ['utils', 'resync', 'overwrite', 'AAA1234A1', '--force'])
   assert b.exit_code == 0
-  #assert "INFO - Execution finished!" in caplog.text
+  assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
 
   #Exhaustive parameter test
   for rep_type in ['list', 'report']:
     typical_work = runner.invoke(root, ['utils', 'resync', 'review', '--email', '2@2.com', '--type', rep_type, '--output', '/tmp/'])
     assert typical_work.exit_code == 0
-    #assert "INFO - Execution finished!" in caplog.text
+    assert "INFO - Execution finished!" in caplog.text
     caplog.clear()
     delimited_work = runner.invoke(root, ['utils', 'resync', 'review', '--skip_update', '--customer', 'custX', '--type', rep_type, '--output', '/tmp/'])
     assert delimited_work.exit_code == 0
-    #assert "INFO - Execution finished!" in caplog.text
+    assert "INFO - Execution finished!" in caplog.text
     caplog.clear()
 
 def test_refer(runner, caplog):
@@ -223,7 +223,7 @@ def test_autobatch(subproc, runner, caplog):
 
   ab = runner.invoke(root, ['utils', 'autobatch', '--dry'])
   assert ab.exit_code == 0
-  #assert "INFO - Execution finished!" in caplog.text
+  assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
 
 #@patch('os.path.isdir')

@@ -37,6 +37,7 @@ def set_cli_config(config):
 
 def done():
   click.echo("INFO - Execution finished!")
+  logger.debug("INFO - Execution finished!")
 
 def review_sampleinfo(pfile):
   """Reviews sample info. Returns loaded json object"""
