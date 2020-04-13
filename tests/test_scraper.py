@@ -37,8 +37,9 @@ def scraper(testdata):
   scrape_obj = Scraper(config=preset_config, log=logger,sampleinfo=testdata[0]) 
   return scrape_obj
 
-def test_quast_scraping(scraper, testdata_prefix):
+def test_quast_scraping(scraper, testdata_prefix, caplog):
   scraper.scrape_quast(filename="{}/quast_results.tsv".format(testdata_prefix))
+
 
 def test_blast_scraping(scraper, testdata_prefix):
   scraper.scrape_blast(type='seq_type',file_list=["{}/blast_single_loci.txt".format(testdata_prefix)])
