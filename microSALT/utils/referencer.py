@@ -82,7 +82,8 @@ class Referencer():
     files = os.listdir(full_dir)
     sufx_files = glob.glob("{}/*{}".format(full_dir, suffix)) #List of source files
     for file in sufx_files:
-      base = re.sub('\{}$'.format(suffix), '', file)
+      subsuf = '\{}$'.format(suffix)
+      base = re.sub(subsuf, '', file)
 
       bases = 0
       newer = 0
@@ -180,9 +181,10 @@ class Referencer():
     hiddensrc ="{}/.resfinder_db".format(self.config['folders']['resistances'])
     wipeIndex = False
 
-    if not os.path.exists(hiddensrc):
+    if not os.path.exists(hiddensrc) or len(os.listdir(hiddensrc)) == 0:
       self.logger.info("resFinder database not found. Caching..")
-      os.makedirs(hiddensrc)
+      if not os.path.exists(hiddensrc):
+        os.makedirs(hiddensrc)
       cmd = "git clone {} --quiet".format(url)
       process = subprocess.Popen(cmd.split(),cwd=self.config['folders']['resistances'], stdout=subprocess.PIPE)
       output, error = process.communicate()
@@ -191,6 +193,7 @@ class Referencer():
     else:
       if not wipeIndex:
         actual = os.listdir(self.config['folders']['resistances'])
+          
         for file in os.listdir(hiddensrc):
           if file not in actual and ('.fsa' in file):
             self.logger.info("resFinder database files corrupted. Syncing...")
@@ -224,7 +227,7 @@ class Referencer():
     """Finds which reference contains the same words as the organism
        and returns it in a format for database calls."""
     orgs = os.listdir(self.config["folders"]["references"])
-    organism = re.split(r'\W+', normal_organism_name)
+    organism = re.split(r'\W+', normal_organism_name.lower())
     try:
       refs = 0
       for target in orgs:

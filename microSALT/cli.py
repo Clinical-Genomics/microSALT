@@ -37,6 +37,7 @@ def set_cli_config(config):
 
 def done():
   click.echo("INFO - Execution finished!")
+  logger.debug("INFO - Execution finished!")
 
 def review_sampleinfo(pfile):
   """Reviews sample info. Returns loaded json object"""
@@ -279,6 +280,7 @@ def autobatch(ctx, dry, skip_update, email):
           click.echo("INFO - Skipping {} due to existing analysis in results folder".format(foldah))
       elif dry:
         click.echo("INFO - Skipping {} due to concurrent SLURM run".format(foldah))
+  done()
 
 @utils.command()
 @click.option('--input', help='Full path to project folder',default="")
