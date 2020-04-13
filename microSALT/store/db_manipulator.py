@@ -13,6 +13,7 @@ from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
 # maintain the same connection per thread
 from sqlalchemy.pool import SingletonThreadPool
+from typing import Dict, List
 
 from microSALT import __version__
 from microSALT.store.orm_models import app, Collections, Expacs, Projects, Reports, Resistances, Samples, Seq_types, Versions
@@ -72,7 +73,7 @@ class DB_Manipulator:
         self.add_rec({'name': 'novel_{}'.format(k), 'version': '0'}, 'Versions', force=True)
         self.logger.info("Profile table novel_{} initialized".format(k))
 
-  def add_rec(self, data_dict, tablename, force=False):
+  def add_rec(self, data_dict: Dict[str, str], tablename: str, force=False):
     """Adds a record to the specified table through a dict with columns as keys."""
     pk_list = list()
     #Non-orm
@@ -112,7 +113,7 @@ class DB_Manipulator:
       else:
         self.logger.warning("Record [{}]=[{}] in table {} already exists".format(', '.join(pk_list), ', '.join(pk_values), tablename))
 
-  def upd_rec(self, req_dict, tablename, upd_dict):
+  def upd_rec(self, req_dict: Dict[str, str], tablename: str, upd_dict: Dict[str, str]):
     """Updates a record to the specified table through a dict with columns as keys."""
     table = eval(tablename)
     argy = list()
@@ -129,7 +130,7 @@ class DB_Manipulator:
       self.session.commit()
 
 
-  def purge_rec(self, name, type):
+  def purge_rec(self, name: str, type: str):
     """Removes seq_data, resistances, sample(s) and possibly project"""
     entries = list()
     if type == "Projects":
@@ -154,7 +155,7 @@ class DB_Manipulator:
         self.session.commit()
     self.logger.info("Removed information for {}".format(name))
 
-  def query_rec(self, tablename, filters):
+  def query_rec(self, tablename: str, filters: Dict[str, str]):
     """Fetches records table, using a primary-key dict with columns as keys.
        Non-PK are ignored"""
     #Non-orm
@@ -179,7 +180,7 @@ class DB_Manipulator:
       entries = self.session.query(table).filter(eval(filter)).all()
       return entries
 
-  def top_index(self, table_str, filters, column):
+  def top_index(self, table_str: str, filters: Dict[str, str], column: str):
     """Fetches the top index from column of table, by applying a dict with columns as keys."""
     table = eval(table_str)
     args = list()
@@ -193,14 +194,14 @@ class DB_Manipulator:
     else:
       return eval("entry[0].{}".format(column))
 
-  def reload_profiletable(self, organism):
+  def reload_profiletable(self, organism: str):
     """Drop the named non-orm table, then load it with fresh data"""
     table = self.profiles[organism]
     self.profiles[organism].drop()
     self.profiles[organism].create()
     self.init_profiletable(organism, table)
  
-  def init_profiletable(self, filename, table):
+  def init_profiletable(self, filename: str, table):
     """Creates profile tables by looping, since a lot of infiles exist"""
     data = table.insert()
     linedict = dict.fromkeys(table.c.keys())
@@ -216,12 +217,12 @@ class DB_Manipulator:
           index = index+1
         data.execute(linedict)
 
-  def get_columns(self, tablename):
+  def get_columns(self, tablename:str):
     """ Returns all records for a given ORM table"""
     table = eval(tablename)
     return dict.fromkeys(table.__table__.columns.keys())
 
-  def exists(self, table, item):
+  def exists(self, table, item: Dict[str, str]):
     """ Takes a k-v pair and checks for the entrys existence in the given table """
     filterstring = ""
     for k, v in item.items():
@@ -234,7 +235,7 @@ class DB_Manipulator:
     else:
       return True
 
-  def get_version(self, name):
+  def get_version(self, name:str):
     """ Gets the version from a given name. Should be generalized to return any value for any input"""
     version = self.session.query(Versions).filter(Versions.name==name).scalar()
     if version is None:
@@ -242,7 +243,7 @@ class DB_Manipulator:
     else:
       return version.version
 
-  def get_report(self, name):
+  def get_report(self, name:str):
     #Sort based on version
     prev_report = []
     prev_reports = self.session.query(Reports).filter(Reports.CG_ID_project==name).order_by(desc(Reports.version)).all()
@@ -250,7 +251,7 @@ class DB_Manipulator:
       prev_report = prev_reports[0]
     return prev_report
 
-  def set_report(self, name):
+  def set_report(self, name:str):
     #Generate string
     totalstring = list()
     dt = datetime.now()
@@ -406,7 +407,7 @@ class DB_Manipulator:
     if len(novelbkt) == 0:
       print("None!")
 
-  def setPredictor(self, cg_sid, pks=dict()):
+  def setPredictor(self, cg_sid:str, pks=dict()):
     """ Helper function. Flags a set of seq_types as part of the final prediction.
     Uses optional pks[loci][column] = VALUE dictionary to distinguish in scenarios where an allele number has multiple hits"""
     sample = self.session.query(Seq_types).filter(Seq_types.CG_ID_sample==cg_sid)
@@ -425,7 +426,7 @@ class DB_Manipulator:
         sample.filter(eval(args)).update({Seq_types.st_predictor : 1})
     self.session.commit()
 
-  def alleles2st(self, cg_sid):
+  def alleles2st(self, cg_sid:str):
     """ Takes a CG_ID_sample and predicts the correct ST """
     threshold = True
     organism = self.session.query(Samples.organism).filter(Samples.CG_ID_sample==cg_sid).scalar()
@@ -518,7 +519,7 @@ class DB_Manipulator:
       self.setPredictor(cg_sid, bestSet)
       return -2
 
-  def bestST(self, cg_sid, st_list,type='profile'):
+  def bestST(self, cg_sid:str, st_list:List,type='profile'):
     """Takes in a list of ST and a sample.
        Establishes which ST is most likely by criteria id*span -> eval -> contig coverage
        & flags involved alleles"""
@@ -605,7 +606,7 @@ class DB_Manipulator:
     self.setPredictor(cg_sid, bestalleles[topST])
     return topST
 
-  def bestAlleles(self, cg_sid):
+  def bestAlleles(self, cg_sid: str):
     """ Establishes which allele set (for bad samples) is most likely by criteria span* id -> eval -> contig coverage"""
     hits = self.session.query(Seq_types.contig_name, Seq_types.loci, Seq_types.span, Seq_types.identity, Seq_types.evalue, Seq_types.contig_coverage, Seq_types.allele)\
            .filter(Seq_types.CG_ID_sample==cg_sid).all()
@@ -629,7 +630,7 @@ class DB_Manipulator:
     return bestHits
 
 
-  def get_unique_alleles(self, cg_sid, organism, threshold=True):
+  def get_unique_alleles(self, cg_sid: str, organism:str, threshold=True):
     """ Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
     tid = float(self.config["threshold"]["mlst_id"])
     tspan = (self.config["threshold"]["mlst_span"])/100.0
