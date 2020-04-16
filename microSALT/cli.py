@@ -283,11 +283,12 @@ def autobatch(ctx, dry, skip_update, email):
   done()
 
 @utils.command()
-@click.option('--input', help='Full path to project folder',default="")
+@click.option('--input', help='Full path to project folder', default=os.getcwd())
 @click.pass_context
 def generate(ctx, input):
   """Creates a blank sample info json for the given input folder"""
-  input_folder = os.path.basename(input)
+  input = os.path.abspath(input)
+  project_name = os.path.basename(input)
 
   defaults = {
   "CG_ID_project" : "XXX0000",
@@ -306,17 +307,21 @@ def generate(ctx, input):
 
   pool = []
   if not os.path.isdir(input):
-    click.echo("ERROR - Sequence data folder {} does not exist.".format(input_folder))
+    click.echo("ERROR - Sequence data folder {} does not exist.".format(project_name))
     ctx.abort()
-  for subfolder in os.listdir(input):
-    if os.path.isdir("{}/{}".format(input, subfolder)):
-      pool.append(defaults)
-      pool[-1]['CG_ID_project'] = input_folder
-      pool[-1]['CG_ID_sample'] = subfolder
+  elif input != os.getcwd():
+    for subfolder in os.listdir(input):
+      if os.path.isdir("{}/{}".format(input, subfolder)):
+        pool.append(defaults)
+        pool[-1]['CG_ID_project'] = project_name
+        pool[-1]['CG_ID_sample'] = subfolder
+  else:
+    project_name = "default_sample_info"
+    pool.append(defaults)
 
-  with open("{}/{}.json".format(os.getcwd(), input_folder), 'w') as output:
+  with open("{}/{}.json".format(os.getcwd(), project_name), 'w') as output:
     json.dump(pool, output)
-  click.echo("INFO - Created {}.json".format(input_folder))
+  click.echo("INFO - Created {}.json in current folder".format(project_name))
   done()
 
 @utils.group()

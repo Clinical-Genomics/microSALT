@@ -226,8 +226,11 @@ def test_autobatch(subproc, runner, caplog):
   assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
 
-#@patch('os.path.isdir')
-#def test_generate(isdir, runner, caplog):
-#  caplog.set_level(logging.DEBUG, logger="main_logger")
-#  gent = runner.invoke(root, ['utils', 'generate', '--input', '/tmp/AAA1234'])
-#  assert gent.exit_code == 0
+@patch('os.path.isdir')
+def test_generate(isdir, runner, caplog):
+  caplog.set_level(logging.DEBUG, logger="main_logger")
+  gent = runner.invoke(root, ['utils', 'generate', '--input', '/tmp/'])
+  assert gent.exit_code == 0
+  fent = runner.invoke(root, ['utils', 'generate'])
+  assert fent.exit_code == 0
+
