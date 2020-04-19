@@ -353,9 +353,9 @@ class Job_Creator():
       sample_col['organism']=self.sample.get('organism')
       sample_col["application_tag"] = self.sample.get('application_tag')
       sample_col["priority"] = self.sample.get('priority')
-      sample_col["date_arrival"] = self.sample.get('date_arrival')
-      sample_col["date_sequencing"] = self.sample.get('date_sequencing')
-      sample_col["date_libprep"] = self.sample.get('date_libprep')
+      sample_col["date_arrival"] =  datetime.strptime(self.sample.get('date_arrival') , '%Y-%m-%d %H:%M:%S')
+      sample_col["date_sequencing"] = datetime.strptime(self.sample.get('date_sequencing') , '%Y-%m-%d %H:%M:%S')
+      sample_col["date_libprep"] = datetime.strptime(self.sample.get('date_libprep') , '%Y-%m-%d %H:%M:%S')
       sample_col["method_libprep"] = self.sample.get('method_libprep')
       sample_col["method_sequencing"] = self.sample.get('method_sequencing')
       #self.db_pusher.purge_rec(sample_col['CG_ID_sample'], 'sample')
@@ -399,6 +399,7 @@ class Job_Creator():
         self.logger.error("Unable to analyze single sample {}".format(self.name))
     else:
       for ldir in glob.glob("{}/*/".format(self.indir)):
+          ldir = os.path.basename(os.path.normpath(ldir))
           try:
             sample_in = "{}/{}".format(self.indir, ldir)
             sample_out = "{}/{}".format(self.finishdir, ldir)

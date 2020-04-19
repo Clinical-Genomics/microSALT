@@ -312,12 +312,12 @@ def generate(ctx, input):
   elif input != os.getcwd():
     for subfolder in os.listdir(input):
       if os.path.isdir("{}/{}".format(input, subfolder)):
-        pool.append(defaults)
+        pool.append(defaults.copy())
         pool[-1]['CG_ID_project'] = project_name
         pool[-1]['CG_ID_sample'] = subfolder
   else:
     project_name = "default_sample_info"
-    pool.append(defaults)
+    pool.append(defaults.copy())
 
   with open("{}/{}.json".format(os.getcwd(), project_name), 'w') as output:
     json.dump(pool, output)
