@@ -22,7 +22,9 @@ setup(
     include_package_data=True,
     zip_safe=False,
     data_files=[('expec', ['unique_references/ExPEC.fsa']),
-                 ('logos', ['artwork/microsalt.jpg', 'artwork/swedac.jpg'])],
+                ('logos', ['artwork/microsalt.jpg', 'artwork/swedac.jpg']),
+                ('testdata', ['tests/testdata/sampleinfo_samples.json','tests/testdata/sampleinfo_mlst.json','tests/testdata/quast_results.tsv', 'tests/testdata/blast_single_resistance.txt','tests/testdata/blast_single_loci.txt','tests/testdata/alignment.stats.ref','tests/testdata/alignment.stats.raw','tests/testdata/alignment.stats.map','tests/testdata/alignment.stats.ins','tests/testdata/alignment.stats.dup','tests/testdata/alignment.stats.cov','configExample.json']) 
+],
     entry_points={
         'console_scripts': ['microSALT=microSALT.cli:root'],
     },

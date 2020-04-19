@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import *
 from sqlalchemy.sql.expression import case, func
 
-from microSALT import config, __version__
+from microSALT import preset_config, __version__
 from microSALT.store.db_manipulator import app
 from microSALT.store.orm_models import Collections, Projects, Reports, Samples, Seq_types, Versions
 
@@ -60,7 +60,7 @@ def alignment_page(project):
         date = date.today().isoformat(),
         version = sample_info['versions'],
         user = sample_info['user'],
-        threshold = config['threshold'],
+        threshold = preset_config['threshold'],
         reports = sample_info['reports'],
         build = __version__)
 
@@ -73,8 +73,8 @@ def typing_page(project, organism_group):
         date = date.today().isoformat(),
         version = sample_info['versions'],
         user = sample_info['user'],
-        threshold = config['threshold'],
-        verified_organisms = config['regex']['verified_organisms'],
+        threshold = preset_config['threshold'],
+        verified_organisms = preset_config['regex']['verified_organisms'],
         reports = sample_info['reports'],
         build = __version__)
 
@@ -84,7 +84,7 @@ def STtracker_page(customer):
     sample_info = gen_reportdata(pid='all', organism_group='all')
     final_samples = list()
     for s in sample_info['samples']:
-      if s.projects.Customer_ID == customer or customer == 'all':
+      if customer == 'all' or s.projects.Customer_ID == customer:
         if s.pubmlst_ST != -1 and s.ST < 0:
           final_samples.append(s)
       
@@ -132,20 +132,27 @@ def gen_add_info(sample_info=dict()):
   output['versions'] = dict()
 
   #Sorts sample names
-  try:
-    sample_info = sorted(sample_info, key=lambda sample: \
-                  int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
-  except ValueError as e:
-    pass
+  valid = True
+  for sam in sample_info.all():
+    if sam.CG_ID_project is None:
+      valid = False
+      break
+  if valid:
+    try:
+      sample_info = sorted(sample_info, key=lambda sample: \
+                    int(sample.CG_ID_sample.replace(sample.CG_ID_project, '')[1:]))
+    except ValueError as e:
+      pass
 
 
   for s in sample_info:
     s.ST_status=str(s.ST)
-    if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or \
-    s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or \
-    s.Customer_ID_sample.startswith('CTRL') or s.Customer_ID_sample.startswith('Neg') or \
-    s.Customer_ID_sample.startswith('blank') or s.Customer_ID_sample.startswith('dual-NTC'):
-      s.ST_status = 'Kontroll (prefix)'
+    if s.Customer_ID_sample is not None:
+      if s.Customer_ID_sample.startswith('NTC') or s.Customer_ID_sample.startswith('0-') or \
+      s.Customer_ID_sample.startswith('NK-') or s.Customer_ID_sample.startswith('NEG') or \
+      s.Customer_ID_sample.startswith('CTRL') or s.Customer_ID_sample.startswith('Neg') or \
+      s.Customer_ID_sample.startswith('blank') or s.Customer_ID_sample.startswith('dual-NTC'):
+        s.ST_status = 'Kontroll (prefix)'
 
     if 'Kontroll' in s.ST_status or 'Control' in s.ST_status or s.ST == -1:
       s.threshold = '-'
@@ -156,11 +163,11 @@ def gen_add_info(sample_info=dict()):
       s.threshold = 'Passed'
       for seq_type in s.seq_types:
         #Identify single deviating allele
-        if seq_type.st_predictor and seq_type.identity >= config["threshold"]["mlst_novel_id"] and \
-        config["threshold"]["mlst_id"] > seq_type.identity and 1-abs(1-seq_type.span) >= (config["threshold"]["mlst_span"]/100.0):
+        if seq_type.st_predictor and seq_type.identity >= preset_config["threshold"]["mlst_novel_id"] and \
+        preset_config["threshold"]["mlst_id"] > seq_type.identity and 1-abs(1-seq_type.span) >= (preset_config["threshold"]["mlst_span"]/100.0):
           near_hits = near_hits + 1
-        elif (seq_type.identity < config["threshold"]["mlst_novel_id"] or \
-              seq_type.span < (config["threshold"]["mlst_span"]/100.0)) and seq_type.st_predictor:
+        elif (seq_type.identity < preset_config["threshold"]["mlst_novel_id"] or \
+              seq_type.span < (preset_config["threshold"]["mlst_span"]/100.0)) and seq_type.st_predictor:
           s.threshold = 'Failed'
 
       if near_hits > 0 and s.threshold == 'Passed':
@@ -178,13 +185,13 @@ def gen_add_info(sample_info=dict()):
 
     #Resistence filter
     for r in s.resistances:
-      if (r.identity >= config["threshold"]["motif_id"] and r.span >= config["threshold"]["motif_span"]/100.0):
+      if (r.identity >= preset_config["threshold"]["motif_id"] and r.span >= preset_config["threshold"]["motif_span"]/100.0):
         r.threshold = 'Passed'
       else:
         r.threshold = 'Failed'
     for v in s.expacs:
-      if (v.identity >= config["threshold"]["motif_id"] and \
-      v.span >= config["threshold"]["motif_span"]/100.0):
+      if (v.identity >= preset_config["threshold"]["motif_id"] and \
+      v.span >= preset_config["threshold"]["motif_span"]/100.0):
         v.threshold = 'Passed'
       else:
         v.threshold = 'Failed'

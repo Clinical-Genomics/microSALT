@@ -14,11 +14,10 @@ import zipfile
 from Bio import Entrez
 from bs4 import BeautifulSoup
 from microSALT.store.db_manipulator import DB_Manipulator
-from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Referencer():
 
-  def __init__(self, config, log, force=False):
+  def __init__(self, config, log, sampleinfo={}, force=False):
     self.config = config
     self.logger = log
     self.db_access = DB_Manipulator(config, log)
@@ -27,27 +26,38 @@ class Referencer():
     self.refs = self.db_access.profiles
     organisms = self.refs.keys()
     self.organisms = [*organisms]
-    self.lims=LIMS_Fetcher(config, log)
     self.force = force
 
-  def identify_new(self, cg_id, project=False):
+    self.sampleinfo = sampleinfo
+    self.sample = None
+    if isinstance(self.sampleinfo, list):
+      self.name = self.sampleinfo[0].get('CG_ID_project')
+      self.sample = {'CG_ID_project':self.sampleinfo[0].get('CG_ID_project'), 'customer_ID':self.sampleinfo[0].get('customer_ID')}
+      for entry in self.sampleinfo:
+        if entry.get('CG_ID_sample') == self.name:
+          raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
+    else:
+     self.name = self.sampleinfo.get('CG_ID_sample')
+     self.sample = self.sampleinfo
+
+  def identify_new(self, cg_id="", project=False):
    """ Automatically downloads pubMLST & NCBI organisms not already downloaded """
    neworgs = list()
    newrefs = list()
 
    try:
-     if project:
-       samplenames = self.lims.samples_in_project(cg_id)
-     else: 
-       samplenames = [cg_id]
+     if not isinstance(self.sampleinfo, list):
+       samples = [self.sampleinfo]
+     else:
+       samples = self.sampleinfo
 
-     for cg_sampleid in samplenames:
-       self.lims.load_lims_sample_info(cg_sampleid)
-       refname = self.lims.get_organism_refname(cg_sampleid)
-       if refname not in self.organisms and self.lims.data['organism'] not in neworgs:
-         neworgs.append(self.lims.data['organism'])
-       if not "{}.fasta".format(self.lims.data['reference']) in os.listdir(self.config['folders']['genomes']) and not self.lims.data['reference'] in newrefs:
-         newrefs.append(self.lims.data['reference'])
+     for entry in samples:
+       org = entry.get('organism')
+       ref = self.organism2reference(org)
+       if ref not in self.organisms and org not in neworgs:
+         neworgs.append(org)
+     if not "{}.fasta".format(entry.get('reference')) in os.listdir(self.config['folders']['genomes']) and not entry.get('reference') in newrefs: 
+       newrefs.append(entry.get('reference'))
 
      for org in neworgs:
        self.add_pubmlst(org)
@@ -55,7 +65,7 @@ class Referencer():
        self.download_ncbi(org)
    except Exception as e:
      self.logger.error("Reference update function failed prematurely. Review immediately")
- 
+
   def update_refs(self):
     """Updates all references. Order is important, since no object is updated twice"""
     #Updates
@@ -72,7 +82,8 @@ class Referencer():
     files = os.listdir(full_dir)
     sufx_files = glob.glob("{}/*{}".format(full_dir, suffix)) #List of source files
     for file in sufx_files:
-      base = re.sub('\{}$'.format(suffix), '', file)
+      subsuf = '\{}$'.format(suffix)
+      base = re.sub(subsuf, '', file)
 
       bases = 0
       newer = 0
@@ -170,9 +181,10 @@ class Referencer():
     hiddensrc ="{}/.resfinder_db".format(self.config['folders']['resistances'])
     wipeIndex = False
 
-    if not os.path.isdir(hiddensrc):
+    if not os.path.exists(hiddensrc) or len(os.listdir(hiddensrc)) == 0:
       self.logger.info("resFinder database not found. Caching..")
-      os.makedirs(hiddensrc)
+      if not os.path.exists(hiddensrc):
+        os.makedirs(hiddensrc)
       cmd = "git clone {} --quiet".format(url)
       process = subprocess.Popen(cmd.split(),cwd=self.config['folders']['resistances'], stdout=subprocess.PIPE)
       output, error = process.communicate()
@@ -181,6 +193,7 @@ class Referencer():
     else:
       if not wipeIndex:
         actual = os.listdir(self.config['folders']['resistances'])
+          
         for file in os.listdir(hiddensrc):
           if file not in actual and ('.fsa' in file):
             self.logger.info("resFinder database files corrupted. Syncing...")
@@ -209,6 +222,33 @@ class Referencer():
   def existing_organisms(self):
     """ Returns list of all organisms currently added """
     return self.organisms
+
+  def organism2reference(self, normal_organism_name):
+    """Finds which reference contains the same words as the organism
+       and returns it in a format for database calls."""
+    orgs = os.listdir(self.config["folders"]["references"])
+    organism = re.split(r'\W+', normal_organism_name.lower())
+    try:
+      refs = 0
+      for target in orgs:
+        hit = 0
+        for piece in organism:
+          if len(piece) == 1:
+            if target.startswith(piece):
+              hit += 1
+          else:
+            if piece in target:
+              hit +=1
+            #For when people misspell the strain in the orderform
+            elif piece == "pneumonsiae" and "pneumoniae" in target:
+              hit +=1
+            else:
+              break
+        if hit == len(organism):
+          return target
+    except Exception as e:
+      self.logger.warn("Unable to find existing reference for {}, strain {} has no reference match\nSource: {}"\
+      .format(organism, normal_organism_name, e))
 
   def download_ncbi(self, reference):
     """ Checks available references, downloads from NCBI if not present """
@@ -309,8 +349,12 @@ class Referencer():
      loci_query = json.loads(response.read().decode('utf-8'))
 
     output = "{}/{}".format(self.config['folders']['references'], organism)
-    if(os.path.isdir(output)):
-      shutil.rmtree(output)
+    
+    try: 
+      if(os.path.isdir(output)):
+        shutil.rmtree(output)
+    except FileNotFoundError as e:
+      pass
     os.makedirs(output)
 
     for locipath in loci_query['loci']:

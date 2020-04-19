@@ -17,7 +17,8 @@ Then continue with __Configuration__
 
 ## Quick installation
 * `yes | bash <(curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/install.sh)`
-* Perform all steps under section  __Configuration__
+* `cp configExample.json $HOME/.microSALT/config.json`
+* `vim $HOME/.microSALT/config.json`
 
 ## Configuration
 Copy the configuration file to microSALTs hidden home directory, _or_ copy the configuration file anywhere and direct the envvar MICROSALT_CONFIG to it. See example: 
@@ -34,7 +35,7 @@ __Then edit the fields to match your environment__.
 
 ## Usage
 * `microSALT analyse` contains functions to start sbatch job(s) & produce output to `folders['results']`. Afterwards the parsed results  are uploaded to the SQL back-end and produce reports (HTML), which are then automatically e-mailed to the user.
-* `microSALT utils` contains various functionality, including adding manually new reference organisms and re-generating reports.
+* `microSALT utils` contains various functionality, including generating the sample description json, manually adding new reference organisms and re-generating reports.
 
 ## Databases
 ### MLST Definitions

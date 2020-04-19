@@ -24,11 +24,10 @@ from microSALT import __version__
 from microSALT.server.views import app, session, gen_reportdata, gen_collectiondata
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.store.orm_models import Samples
-from microSALT.store.lims_fetcher import LIMS_Fetcher
 
 class Reporter():
 
-  def __init__(self, config, log, name = "", output = "", collection=False):
+  def __init__(self, config, log, sampleinfo={}, name = "", output = "", collection=False):
     self.db_pusher=DB_Manipulator(config, log)
     self.name = name
     self.collection = collection
@@ -41,7 +40,6 @@ class Reporter():
     for k, v in config.items():
       app.config[k] = v
     self.server = Process(target=app.run)
-    self.ticketFinder = LIMS_Fetcher(self.config, self.logger)
     self.attachments = list()
     self.filelist = list()
     self.error = False
@@ -50,8 +48,22 @@ class Reporter():
     self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
     format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
+    self.sampleinfo = sampleinfo
+    self.sample = None
+    if isinstance(self.sampleinfo, list):
+      self.name = self.sampleinfo[0].get('CG_ID_project')
+      self.sample = {'CG_ID_project':self.sampleinfo[0].get('CG_ID_project'), 'customer_ID':self.sampleinfo[0].get('customer_ID')}
+      for entry in self.sampleinfo:
+        if entry.get('CG_ID_sample') == self.name:
+          raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
+    else:
+     self.name = self.sampleinfo.get('CG_ID_sample')
+     self.sample = self.sampleinfo
+
   def report(self, type='default', customer='all'):
-    self.gen_version(self.name)
+    if type in ['default', 'typing', 'qc']:
+      #Only typing and qc reports are version controlled
+      self.gen_version(self.name)
     if type in ['default','typing','qc', 'st_update']:
       self.start_web()
       if type == 'default':
@@ -87,7 +99,9 @@ class Reporter():
     try:
       r = requests.get("http://127.0.0.1:5000/microSALT/STtracker/{}".format(customer), allow_redirects=True)
       outname = "{}/ST_updates_{}.html".format(self.output, self.now)
-      open(outname, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
+      outfile = open(outname, 'wb')
+      outfile.write(r.content.decode("iso-8859-1").encode("utf8"))
+      outfile.close()
       self.filelist.append(outname)
       if not silent:
         self.attachments.append(outname)
@@ -97,7 +111,6 @@ class Reporter():
 
   def gen_qc(self,silent=False):
     try:
-      self.ticketFinder.load_lims_project_info(self.name)
       last_version = self.db_pusher.get_report(self.name).version
     except Exception as e:
       self.logger.error("Project {} does not exist".format(self.name))
@@ -105,13 +118,15 @@ class Reporter():
       sys.exit(-1)
     try:
       q = requests.get("http://127.0.0.1:5000/microSALT/{}/qc".format(self.name), allow_redirects=True)
-      outfile = "{}_QC_{}.html".format(self.ticketFinder.data['Customer_ID_project'], last_version)
+      outfile = "{}_QC_{}.html".format(self.sample.get('Customer_ID_project'), last_version)
       output ="{}/{}".format(self.output, outfile)
       storage = "{}/{}".format(self.config['folders']['reports'], outfile)
 
       if not os.path.isfile(output):
         self.filelist.append(output)
-      open(output, 'wb').write(q.content.decode("iso-8859-1").encode("utf8"))
+      outfile = open(output, 'wb')
+      outfile.write(q.content.decode("iso-8859-1").encode("utf8"))
+      outfile.close()
       copyfile(output, storage)
 
       if not silent:
@@ -122,7 +137,6 @@ class Reporter():
  
   def gen_typing(self,silent=False):
     try:
-      self.ticketFinder.load_lims_project_info(self.name)
       last_version = self.db_pusher.get_report(self.name).version
     except Exception as e:
       self.logger.error("Project {} does not exist".format(self.name))
@@ -130,13 +144,15 @@ class Reporter():
       sys.exit(-1)
     try:
       r = requests.get("http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name), allow_redirects=True)
-      outfile = "{}_Typing_{}.html".format(self.ticketFinder.data['Customer_ID_project'], last_version)
+      outfile = "{}_Typing_{}.html".format(self.sample.get('Customer_ID_project'), last_version)
       output ="{}/{}".format(self.output, outfile)
       storage = "{}/{}".format(self.config['folders']['reports'], outfile)
 
       if not os.path.isfile(output):
         self.filelist.append(output)
-      open(output, 'wb').write(r.content.decode("iso-8859-1").encode("utf8"))
+      outfile = open(output, 'wb')
+      outfile.write(r.content.decode("iso-8859-1").encode("utf8"))
+      outfile.close()
       copyfile(output, storage)
     
       if not silent:
@@ -151,7 +167,6 @@ class Reporter():
     if self.collection:
       sample_info = gen_collectiondata(self.name)
     else:
-      self.ticketFinder.load_lims_project_info(self.name)
       sample_info = gen_reportdata(self.name)
     output = "{}/{}_{}_{}.csv".format(self.output,self.name,motif,self.now)
 
@@ -161,15 +176,19 @@ class Reporter():
       if motif=='resistance':
         for r in s.resistances:
           if not (r.resistance in motifdict.keys()) and r.threshold == 'Passed':
+            if r.resistance is None:
+              r.resistance = "None"
             motifdict[r.resistance] =list()
           if r.threshold == 'Passed' and not r.gene in motifdict[r.resistance]:
             motifdict[r.resistance].append(r.gene)
       elif motif=='expec':
-        for r in s.expacs:
-          if not (r.virulence in motifdict.keys()) and r.threshold == 'Passed':
-            motifdict[r.virulence] =list()
-          if r.threshold == 'Passed' and not r.gene in motifdict[r.virulence]:
-            motifdict[r.virulence].append(r.gene)
+        for e in s.expacs:
+          if not (e.virulence in motifdict.keys()) and e.threshold == 'Passed':
+            if e.virulence is None:
+              e.virulence = "None"
+            motifdict[e.virulence] =list()
+          if e.threshold == 'Passed' and not e.gene in motifdict[e.virulence]:
+            motifdict[e.virulence].append(e.gene)
     for k, v in motifdict.items():
       motifdict[k] = sorted(v)
 
@@ -204,11 +223,11 @@ class Reporter():
             if r.threshold == 'Passed' and not r.gene in rowdict[r.resistance]:
               rowdict[r.resistance][r.gene] = r.identity
         elif motif=="expec":
-          for r in s.expacs:
-            if not (r.virulence in rowdict.keys()) and r.threshold == 'Passed':
-              rowdict[r.virulence] =dict()
-            if r.threshold == 'Passed' and not r.gene in rowdict[r.virulence]:
-              rowdict[r.virulence][r.gene] = r.identity
+          for e in s.expacs:
+            if not (e.virulence in rowdict.keys()) and e.threshold == 'Passed':
+              rowdict[e.virulence] =dict()
+            if e.threshold == 'Passed' and not e.gene in rowdict[e.virulence]:
+              rowdict[e.virulence][e.gene] = e.identity
         #Compare single sample to all
         hits = ""
         for res in sorted(motifdict.keys()):

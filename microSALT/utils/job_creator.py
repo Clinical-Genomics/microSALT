@@ -13,46 +13,56 @@ import subprocess
 import time
 
 from datetime import datetime
-from microSALT.store.lims_fetcher import LIMS_Fetcher
 from microSALT.store.db_manipulator import DB_Manipulator
+from microSALT.utils.referencer import Referencer
 
 class Job_Creator():
 
-  def __init__(self, input, config, log, finishdir="", timestamp="", trim=True, qc_only=False,careful=False,pool=list()):
+  def __init__(self, config, log, sampleinfo={}, run_settings={}):
     self.config = config
     self.logger = log
     self.batchfile = "/tmp/batchfile.sbatch"
+
+    self.run_settings = run_settings
+    self.indir = os.path.abspath(run_settings.get('input','/tmp/'))
+    self.trimmed = run_settings.get('trimmed',True)
+    self.qc_only = run_settings.get('qc_only',False)
+    self.careful = run_settings.get('careful',True)
+    self.pool = run_settings.get('pool', [])
+    self.finishdir = run_settings.get('finishdir','')
+
     self.filelist = list()
-    self.indir = "/tmp/"
-    self.trimmed=trim
-    self.qc_only = qc_only
-    self.careful = careful
-    self.pool = pool
-
-    if isinstance(input, str):
-      self.indir = os.path.abspath(input)
-      self.name = os.path.basename(os.path.normpath(self.indir))
-    elif type(input) == list:
+    if type(input) == list:
       self.filelist = input
-      self.name = "SNP"
 
-    self.now = timestamp
-    if timestamp != "":
-      self.now = timestamp
-      temp = timestamp.replace('_','.').split('.')
+    self.sampleinfo = sampleinfo
+    self.sample = None
+    if isinstance(self.sampleinfo, list):
+      self.name = self.sampleinfo[0].get('CG_ID_project')
+      self.sample = {'CG_ID_project':self.sampleinfo[0].get('CG_ID_project'), 'customer_ID':self.sampleinfo[0].get('customer_ID')}
+      for entry in self.sampleinfo:
+        if entry.get('CG_ID_sample') == self.name:
+          raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
+    else:
+     self.name = self.sampleinfo.get('CG_ID_sample')
+     self.sample = self.sampleinfo
+
+    #If timestamp is provided. Use it as analysis time. Else use current time
+    if run_settings.get('timestamp') is not None:
+      self.now = run_settings.get('timestamp')
+      temp = run_settings.get('timestamp').replace('_','.').split('.')
       self.dt = datetime(int(temp[0]),int(temp[1]),int(temp[2]),int(temp[3]),int(temp[4]),int(temp[5]))
     else:
       self.dt = datetime.now()
       self.now = time.strftime("{}.{}.{}_{}.{}.{}".\
       format(self.dt.year, self.dt.month, self.dt.day, self.dt.hour, self.dt.minute, self.dt.second))
 
-    self.finishdir = finishdir
-    if self.finishdir == "":
+    
+    if run_settings.get('finishdir') is None:
       self.finishdir="{}/{}_{}".format(config["folders"]["results"], self.name, self.now)
     self.db_pusher=DB_Manipulator(config, log)
     self.concat_files = dict()
-    self.organism = ""
-    self.lims_fetcher = LIMS_Fetcher(config, log)
+    self.ref_resolver = Referencer(config, log)
 
   def get_sbatch(self):
     """ Returns sbatchfile, slightly superflous"""
@@ -147,8 +157,11 @@ class Job_Creator():
 
     if len(file_list) > 1:
       for ref in file_list:
-        ref_nosuf = re.search(r'(\w+(?:\-\w+)*)\.\w+', os.path.basename(ref)).group(1)
-        batchfile.write("# BLAST {} search for {}, {}\n".format(name, self.organism, ref_nosuf))
+        if re.search(r'(\w+(?:\-\w+)*)\.\w+', os.path.basename(ref)) is None:
+          self.logger.error("File {} does not match typical format. Consider deleting and redownloading")
+        else:
+          ref_nosuf = re.search(r'(\w+(?:\-\w+)*)\.\w+', os.path.basename(ref)).group(1)
+        batchfile.write("# BLAST {} search for {}, {}\n".format(name, self.sample.get('organism'), ref_nosuf))
         if name == 'mlst':
           batchfile.write("blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
           os.path.dirname(ref), ref_nosuf, self.finishdir, self.finishdir, name, ref_nosuf, self.config["slurm_header"]["threads"], blast_format))
@@ -157,7 +170,7 @@ class Job_Creator():
           os.path.dirname(ref), ref_nosuf, self.finishdir, self.finishdir, name, ref_nosuf, self.config["slurm_header"]["threads"], blast_format))
     elif len(file_list) == 1:
       ref_nosuf = re.search(r'(\w+(?:\-\w+)*)\.\w+', os.path.basename(file_list[0])).group(1)
-      batchfile.write("## BLAST {} search in {}\n".format(name, self.organism.replace('_', ' ').capitalize() ))
+      batchfile.write("## BLAST {} search in {}\n".format(name, self.sample.get('organism').replace('_', ' ').capitalize() ))
       batchfile.write("blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(\
                     os.path.dirname(search_string), ref_nosuf, self.finishdir, self.finishdir, name, ref_nosuf, self.config["slurm_header"]["threads"], blast_format))
     batchfile.write("\n")
@@ -165,9 +178,9 @@ class Job_Creator():
 
   def create_variantsection(self):
     """ Creates a job for variant calling based on local alignment """
-    ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
+    ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.sample.get('reference'))
     localdir = "{}/alignment".format(self.finishdir)
-    outbase = "{}/{}_{}".format(localdir, self.name, self.lims_fetcher.data['reference'])
+    outbase = "{}/{}_{}".format(localdir, self.name, self.sample.get('reference'))
 
     #Create run
     batchfile = open(self.batchfile, "a+")
@@ -224,8 +237,8 @@ class Job_Creator():
 
     self.concat_files['f'] = "{}/trimmed/forward_reads.fastq.gz".format(self.finishdir)
     self.concat_files['r'] = "{}/trimmed/reverse_reads.fastq.gz".format(self.finishdir)
-    batchfile.write("cat {} > {}\n".format(' '.join(forward), self.concat_files['f']))
-    batchfile.write("cat {} > {}\n".format(' '.join(reverse), self.concat_files['r']))
+    batchfile.write("cat {} > {}\n".format(' '.join(forward), self.concat_files.get('f')))
+    batchfile.write("cat {} > {}\n".format(' '.join(reverse), self.concat_files.get('r')))
 
     if self.trimmed:
       fp = "{}/{}_trim_front_pair.fastq.gz".format(trimdir, outfile)
@@ -235,14 +248,14 @@ class Job_Creator():
       batchfile.write("##Trimming section\n")
       batchfile.write("trimmomatic PE -threads {} -phred33 {} {} {} {} {} {}\
       ILLUMINACLIP:{}/NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n"\
-      .format(self.config["slurm_header"]["threads"], self.concat_files['f'], self.concat_files['r'], fp, fu, rp, ru, self.config["folders"]["adapters"]))
+      .format(self.config["slurm_header"]["threads"], self.concat_files.get('f'), self.concat_files.get('r'), fp, fu, rp, ru, self.config["folders"]["adapters"]))
 
       batchfile.write("## Interlaced trimmed files\n")
       self.concat_files['f'] = fp
       self.concat_files['r'] = rp 
       self.concat_files['i'] = "{}/{}_trim_unpair.fastq.gz".format(trimdir, outfile)
 
-      batchfile.write("cat {} >> {}\n".format(' '.join([fu, ru]), self.concat_files['i']))
+      batchfile.write("cat {} >> {}\n".format(' '.join([fu, ru]), self.concat_files.get('i')))
     batchfile.write("\n")
     batchfile.close()
 
@@ -268,10 +281,9 @@ class Job_Creator():
         name = item.split('/')[-2]
       if '_' in name:
         name = name.split('_')[0]
-      self.lims_fetcher.load_lims_sample_info(name)
       batchfile.write('# Basecalling for sample {}\n'.format(name))
-      ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.lims_fetcher.data['reference'])
-      outbase = "{}/{}_{}".format(item, name, self.lims_fetcher.data['reference'])
+      ref = "{}/{}.fasta".format(self.config['folders']['genomes'],self.sample.get('reference'))
+      outbase = "{}/{}_{}".format(item, name, self.sample.get('reference'))
       batchfile.write("samtools view -h -q 1 -F 4 -F 256 {}.bam_sort_rmdup | grep -v XA:Z | grep -v SA:Z| samtools view -b - > {}/{}.unique\n".format(outbase, self.finishdir, name))
       batchfile.write('freebayes -= --pvar 0.7 -j -J --standard-filters -C 6 --min-coverage 30 --ploidy 1 -f {} -b {}/{}.unique -v {}/{}.vcf\n'.format(ref, self.finishdir, name , self.finishdir, name))
       batchfile.write('bcftools view {}/{}.vcf -o {}/{}.bcf.gz -O b --exclude-uncalled --types snps\n'.format(self.finishdir, name, self.finishdir, name))
@@ -323,34 +335,29 @@ class Job_Creator():
 
   def create_project(self, name):
     """Creates project in database"""
-    try:
-      self.lims_fetcher.load_lims_project_info(name)
-    except Exception as e:
-      self.logger.error("Unable to load LIMS info for project {}".format(name))
     proj_col=dict()
     proj_col['CG_ID_project'] = name
-    proj_col['Customer_ID_project'] = self.lims_fetcher.data['Customer_ID_project']
-    proj_col['Customer_ID'] = self.lims_fetcher.data['Customer_ID']
+    proj_col['Customer_ID_project'] = self.sample.get('Customer_ID_project')
+    proj_col['Customer_ID'] = self.sample.get('Customer_ID')
     self.db_pusher.add_rec(proj_col, 'Projects')
 
   def create_sample(self, name):
     """Creates sample in database"""
     try:
-      self.lims_fetcher.load_lims_sample_info(name)
       sample_col = self.db_pusher.get_columns('Samples')
-      sample_col['CG_ID_sample'] = self.lims_fetcher.data['CG_ID_sample']
-      sample_col['CG_ID_project'] = self.lims_fetcher.data['CG_ID_project']
-      sample_col['Customer_ID_sample'] = self.lims_fetcher.data['Customer_ID_sample']
-      sample_col['reference_genome'] = self.lims_fetcher.data['reference']
+      sample_col['CG_ID_sample'] = self.sample.get('CG_ID_sample')
+      sample_col['CG_ID_project'] = self.sample.get('CG_ID_project')
+      sample_col['Customer_ID_sample'] = self.sample.get('Customer_ID_sample')
+      sample_col['reference_genome'] = self.sample.get('reference')
       sample_col["date_analysis"] = self.dt
-      sample_col['organism']=self.lims_fetcher.data['organism']
-      sample_col["application_tag"] = self.lims_fetcher.data['application_tag']
-      sample_col["priority"] = self.lims_fetcher.data['priority']
-      sample_col["date_arrival"] = self.lims_fetcher.data['date_arrival']
-      sample_col["date_sequencing"] = self.lims_fetcher.data['date_sequencing']
-      sample_col["date_libprep"] = self.lims_fetcher.data['date_libprep']
-      sample_col["method_libprep"] = self.lims_fetcher.data['method_libprep']
-      sample_col["method_sequencing"] = self.lims_fetcher.data['method_sequencing']
+      sample_col['organism']=self.sample.get('organism')
+      sample_col["application_tag"] = self.sample.get('application_tag')
+      sample_col["priority"] = self.sample.get('priority')
+      sample_col["date_arrival"] = self.sample.get('date_arrival')
+      sample_col["date_sequencing"] = self.sample.get('date_sequencing')
+      sample_col["date_libprep"] = self.sample.get('date_libprep')
+      sample_col["method_libprep"] = self.sample.get('method_libprep')
+      sample_col["method_sequencing"] = self.sample.get('method_sequencing')
       #self.db_pusher.purge_rec(sample_col['CG_ID_sample'], 'sample')
       self.db_pusher.add_rec(sample_col, 'Samples')
     except Exception as e:
@@ -390,35 +397,22 @@ class Job_Creator():
           self.logger.info("Suppressed command: {}".format(bash_cmd))
       except Exception as e:
         self.logger.error("Unable to analyze single sample {}".format(self.name))
-    elif self.pool:
-      for (dirpath, dirnames, filenames) in os.walk(self.indir):
-        for dir in dirnames:
-          try:
-            sample_in = "{}/{}".format(dirpath, dir)
-            sample_out = "{}/{}".format(self.finishdir, dir)
-            sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now, trim=self.trimmed, qc_only=self.qc_only, careful=self.careful)
-            sample_instance.sample_job()
-            headerargs = sample_instance.get_headerargs()
-            outfile = ""
-            if os.path.isfile(sample_instance.get_sbatch()):
-              outfile = sample_instance.get_sbatch()
-            bash_cmd="sbatch {} {}".format(headerargs, outfile)
-            if not dry and outfile != "":
-              projproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
-              output, error = projproc.communicate()
-              jobno = re.search(r'(\d+)', str(output)).group(0)
-              jobarray.append(jobno)
-            else:
-              self.logger.info("Suppressed command: {}".format(bash_cmd))
-          except Exception as e:
-            pass
     else:
-      for (dirpath, dirnames, filenames) in os.walk(self.indir):
-        for dir in dirnames:
+      for ldir in glob.glob("{}/*/".format(self.indir)):
           try:
-            sample_in = "{}/{}".format(dirpath, dir)
-            sample_out = "{}/{}".format(self.finishdir, dir)
-            sample_instance = Job_Creator(sample_in, self.config, self.logger, sample_out, self.now, trim=self.trimmed, qc_only=self.qc_only, careful=self.careful) 
+            sample_in = "{}/{}".format(self.indir, ldir)
+            sample_out = "{}/{}".format(self.finishdir, ldir)
+            linkedjson = None
+            local_sampleinfo = [p for p in self.sampleinfo if p['CG_ID_sample'] == ldir]
+            if local_sampleinfo == []:
+              raise Exception("Sample {} has no counterpart in json file".format(ldir))
+            else:
+              local_sampleinfo = local_sampleinfo[0]
+            sample_settings = dict(self.run_settings)
+            sample_settings['input'] = sample_in
+            sample_settings['finishdir'] = sample_out
+            sample_settings['timestamp'] = self.now
+            sample_instance = Job_Creator(config=self.config, log=self.logger, sampleinfo=local_sampleinfo, run_settings=sample_settings)
             sample_instance.sample_job()
             headerargs = sample_instance.get_headerargs()
             outfile = ""
@@ -441,7 +435,6 @@ class Job_Creator():
     """ Uploads data and sends an email once all analysis jobs are complete. """
     report = 'default'
     scope = 'project'
-    extraflag = '--rerun'
     if single_sample:
       scope = 'sample' 
     elif self.pool:
@@ -478,8 +471,8 @@ class Job_Creator():
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
 
-    mb.write("microSALT utils finish {} {} --input {} {} --email {} --report {} {}\n".\
-               format(scope, self.name, self.finishdir, extraflag, self.config['regex']['mail_recipient'], report, custom_conf))
+    mb.write("microSALT utils finish {} {} --input {} --email {} --report {} {}\n".\
+               format(scope, self.name, self.finishdir, self.config['regex']['mail_recipient'], report, custom_conf))
     mb.write("touch {}/run_complete.out".format(self.finishdir))
     mb.close()
 
@@ -523,9 +516,6 @@ class Job_Creator():
       if not os.path.exists(self.finishdir):
         os.makedirs(self.finishdir)
       try:
-        self.organism = self.lims_fetcher.get_organism_refname(self.name)
-        if not self.organism:
-          self.organism = self.lims_fetcher.data['organism']
         # This is one job
         self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
         batchfile = open(self.batchfile, "w+")
@@ -554,13 +544,14 @@ class Job_Creator():
       raise
 
   def create_blast_search(self):
+    reforganism = self.ref_resolver.organism2reference(self.sample.get('organism'))
     self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
     batchfile = open(self.batchfile, "a+")
     batchfile.write("mkdir -p {}/blast_search\n".format(self.finishdir))
     batchfile.close()
-    self.blast_subset('mlst',"{}/{}/*.tfa".format(self.config["folders"]["references"], self.organism))
+    self.blast_subset('mlst',"{}/{}/*.tfa".format(self.config["folders"]["references"], reforganism))
     self.blast_subset('resistance',"{}/*.fsa".format(self.config["folders"]["resistances"]))
-    if self.organism == "escherichia_coli":
+    if reforganism == "escherichia_coli":
       ss = "{}/*{}".format(os.path.dirname(self.config["folders"]["expec"]), os.path.splitext(self.config["folders"]["expec"])[1])
       self.blast_subset('expec', ss)
 
