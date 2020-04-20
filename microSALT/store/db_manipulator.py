@@ -369,7 +369,7 @@ class DB_Manipulator:
 
   def setPredictor(self, cg_sid, pks=dict()):
     """ Helper function. Flags a set of seq_types as part of the final prediction.
-    Uses optional pks[loci][column] = VALUE dictionary to distinguish in scenarios where an allele number has multiple hits"""
+    Uses optional pks[PK_NAME] = VALUE dictionary to distinguish in scenarios where an allele number has multiple hits"""
     sample = self.session.query(Seq_types).filter(Seq_types.CG_ID_sample==cg_sid)
 
     if pks == dict():
