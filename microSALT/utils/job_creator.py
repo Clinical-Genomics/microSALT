@@ -39,7 +39,7 @@ class Job_Creator():
     self.sample = None
     if isinstance(self.sampleinfo, list):
       self.name = self.sampleinfo[0].get('CG_ID_project')
-      self.sample = {'CG_ID_project':self.sampleinfo[0].get('CG_ID_project'), 'customer_ID':self.sampleinfo[0].get('customer_ID')}
+      self.sample = self.sampleinfo[0]
       for entry in self.sampleinfo:
         if entry.get('CG_ID_sample') == self.name:
           raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
@@ -339,7 +339,7 @@ class Job_Creator():
     proj_col['CG_ID_project'] = name
     proj_col['Customer_ID_project'] = self.sample.get('Customer_ID_project')
     proj_col['Customer_ID'] = self.sample.get('Customer_ID')
-    self.db_pusher.add_rec(proj_col, 'Projects')
+    self.db_pusher.add_rec(proj_col, 'Projects', force=True)
 
   def create_sample(self, name):
     """Creates sample in database"""
@@ -435,12 +435,6 @@ class Job_Creator():
   def finish_job(self, joblist, single_sample=False):
     """ Uploads data and sends an email once all analysis jobs are complete. """
     report = 'default'
-    scope = 'project'
-    if single_sample:
-      scope = 'sample' 
-    elif self.pool:
-      scope = 'collection'
-      report = 'motif_overview'
     if self.qc_only:
       report = 'qc'
     custom_conf = ''
@@ -455,9 +449,14 @@ class Job_Creator():
     startfile = "{}/run_started.out".format(self.finishdir)
     configfile = "{}/config.log".format(self.finishdir) 
     mailfile = "{}/mailjob.sh".format(self.finishdir)
+    samplefile = "{}/sampleinfo.json".format(self.finishdir)
+    with open(samplefile, "w+") as outfile:
+      json.dump(self.sampleinfo, outfile)
+
     sb = open(startfile, "w+")
     cb = open(configfile, "w+")
     mb = open(mailfile, "w+")
+     
     sb.write("#!/usr/bin/env bash\n")
     sb.close()
     configout = self.config.copy()
@@ -472,8 +471,8 @@ class Job_Creator():
       mb.write("export MICROSALT_CONFIG={}\n".format(os.environ['MICROSALT_CONFIG']))
     mb.write("source activate $CONDA_DEFAULT_ENV\n")
 
-    mb.write("microSALT utils finish {} {} --input {} --email {} --report {} {}\n".\
-               format(scope, self.name, self.finishdir, self.config['regex']['mail_recipient'], report, custom_conf))
+    mb.write("microSALT utils finish {0}/sampleinfo.json --input {0} --email {1} --report {2} {3}\n".\
+               format(self.finishdir, self.config['regex']['mail_recipient'], report, custom_conf))
     mb.write("touch {}/run_complete.out".format(self.finishdir))
     mb.close()
 

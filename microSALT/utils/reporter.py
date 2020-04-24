@@ -52,7 +52,7 @@ class Reporter():
     self.sample = None
     if isinstance(self.sampleinfo, list):
       self.name = self.sampleinfo[0].get('CG_ID_project')
-      self.sample = {'CG_ID_project':self.sampleinfo[0].get('CG_ID_project'), 'customer_ID':self.sampleinfo[0].get('customer_ID')}
+      self.sample = self.sampleinfo[0]
       for entry in self.sampleinfo:
         if entry.get('CG_ID_sample') == self.name:
           raise Exception("Mixed projects in samples_info file. Do not know how to proceed")

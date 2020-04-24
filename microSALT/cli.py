@@ -45,8 +45,9 @@ def review_sampleinfo(pfile):
   defaults = {
   "CG_ID_project" : "XXX0000",
   "CG_ID_sample" : "XXX0000Y1",
+  "Customer_ID_project" : "PROJECTIDTHING1",
   "Customer_ID_sample" : "SAMPLEIDTHING1",
-  "customer_ID" : "cust000",
+  "Customer_ID" : "cust000",
   "application_tag" : "MWGNXTR1000",
   "date_arrival" : "0001-01-01 00:00:00",
   "date_libprep" : "0001-01-01 00:00:00",
@@ -293,15 +294,16 @@ def generate(ctx, input):
   defaults = {
   "CG_ID_project" : "XXX0000",
   "CG_ID_sample" : "XXX0000Y1",
-  "Customer_ID_sample" : "XXX0000Y1",
-  "customer_ID" : "cust000",
+  "Customer_ID_project" : "AAA0000B1",
+  "Customer_ID_sample" : "AAA0000B1",
+  "Customer_ID" : "cust000",
   "application_tag" : "NONE",
   "date_arrival" : "0001-01-01 00:00:00",
   "date_libprep" : "0001-01-01 00:00:00",
   "date_sequencing" : "0001-01-01 00:00:00",
   "method_libprep" : "Not in LIMS",
   "method_sequencing" : "Not in LIMS",
-  "organism" : "Unset",
+  "organism" : "Staphylococcus aureus",
   "priority" : "standard",
   "reference" : "None"}
 

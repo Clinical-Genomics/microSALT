@@ -96,7 +96,7 @@
                     <tr>
                       <td>{{ sample.Customer_ID_sample }}</td>
                       <td>{{ sample.CG_ID_sample }}</td>
-                      {% if sample.application_tag %}
+                      {% if sample.application_tag and sample.application_tag[-1:]|float != 0 %}
                         <td>{{ sample.application_tag }}</td>
                       {% else %}
                         <td bgcolor="#fa8072">{{ sample.application_tag }}</td>
@@ -109,7 +109,7 @@
                         {% if sample.total_reads is none %}
                           <td class="text-right">0
                         {% else %}
-                          {% if sample.application_tag %}
+                          {% if sample.application_tag and sample.application_tag[-1:]|float != 0 %}
                             {% set bp_perc = ((sample.total_reads*100/((sample.application_tag[-1:]|float)*2000000))|round(2)) %}
                           {% else %}
                             {% set bp_perc = 0.0 %}
