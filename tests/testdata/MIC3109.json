@@ -11,7 +11,7 @@
     "date_sequencing": "0001-01-01 00:00:00",
     "method_libprep": "1764:2",
     "method_sequencing": "1036:15",
-    "organism": "Salmonella Typhimurium LT2",
+    "organism": "SalmonellaÂ Typhimurium LT2",
     "priority": "standard",
     "reference": "SAMN02854572"
   },
@@ -63,7 +63,6 @@
     "priority": "standard",
     "reference": "SAMN02854575"
   },
-
   {
     "CG_ID_project": "MIC3109",
     "CG_ID_sample": "MIC3109A5",
@@ -78,6 +77,6 @@
     "method_sequencing": "1036:15",
     "organism": "MWGNXTR003",
     "priority": "standard",
-    "reference": "MWGNXTR003"
+    "reference": "None"
   }
 ]
