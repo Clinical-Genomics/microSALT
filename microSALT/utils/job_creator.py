@@ -339,7 +339,8 @@ class Job_Creator():
     proj_col['CG_ID_project'] = name
     proj_col['Customer_ID_project'] = self.sample.get('Customer_ID_project')
     proj_col['Customer_ID'] = self.sample.get('Customer_ID')
-    self.db_pusher.add_rec(proj_col, 'Projects', force=True)
+    self.db_pusher.add_rec(proj_col, 'Projects')
+    self.db_pusher.upd_rec({'CG_ID_project':name},'Projects', proj_col)
 
   def create_sample(self, name):
     """Creates sample in database"""

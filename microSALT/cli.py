@@ -322,7 +322,7 @@ def generate(ctx, input):
     pool.append(defaults.copy())
 
   with open("{}/{}.json".format(os.getcwd(), project_name), 'w') as output:
-    json.dump(pool, output)
+    json.dump(pool, output, indent=2)
   click.echo("INFO - Created {}.json in current folder".format(project_name))
   done()
 
