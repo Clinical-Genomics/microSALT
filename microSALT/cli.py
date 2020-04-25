@@ -18,6 +18,23 @@ from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.reporter import Reporter
 from microSALT.utils.referencer import Referencer
 
+default_sampleinfo = {
+  "CG_ID_project" : "XXX0000",
+  "CG_ID_sample" : "XXX0000Y1",
+  "Customer_ID_project" : "AAA0000B1",
+  "Customer_ID_sample" : "AAA0000B1",
+  "Customer_ID" : "cust000",
+  "application_tag" : "NONE",
+  "date_arrival" : "0001-01-01 00:00:00",
+  "date_libprep" : "0001-01-01 00:00:00",
+  "date_sequencing" : "0001-01-01 00:00:00",
+  "method_libprep" : "Not in LIMS",
+  "method_sequencing" : "Not in LIMS",
+  "organism" : "Staphylococcus aureus",
+  "priority" : "standard",
+  "reference" : "None"}
+
+
 if preset_config == '':
   click.echo("ERROR - No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting.")
   sys.exit(-1)
@@ -42,22 +59,6 @@ def done():
 def review_sampleinfo(pfile):
   """Reviews sample info. Returns loaded json object"""
 
-  defaults = {
-  "CG_ID_project" : "XXX0000",
-  "CG_ID_sample" : "XXX0000Y1",
-  "Customer_ID_project" : "PROJECTIDTHING1",
-  "Customer_ID_sample" : "SAMPLEIDTHING1",
-  "Customer_ID" : "cust000",
-  "application_tag" : "MWGNXTR1000",
-  "date_arrival" : "0001-01-01 00:00:00",
-  "date_libprep" : "0001-01-01 00:00:00",
-  "date_sequencing" : "0001-01-01 00:00:00",
-  "method_libprep" : "9999:10",
-  "method_sequencing" : "9998:10",
-  "organism" : "Staphylococcus aureus",
-  "priority" : "standard",
-  "reference" : "NC_007795"}
-
   try:
     with open(pfile) as json_file:
       data = json.load(json_file)
@@ -66,7 +67,7 @@ def review_sampleinfo(pfile):
     sys.exit(-1)
 
   for entry in data:
-    for k, v in defaults.items():
+    for k, v in default_sampleinfo.items():
       if not k in entry:
         click.echo("ERROR - Parameter {} needs to be provided in sample json. Formatting example: ({})".format(k, v))
 
@@ -291,21 +292,7 @@ def generate(ctx, input):
   input = os.path.abspath(input)
   project_name = os.path.basename(input)
 
-  defaults = {
-  "CG_ID_project" : "XXX0000",
-  "CG_ID_sample" : "XXX0000Y1",
-  "Customer_ID_project" : "AAA0000B1",
-  "Customer_ID_sample" : "AAA0000B1",
-  "Customer_ID" : "cust000",
-  "application_tag" : "NONE",
-  "date_arrival" : "0001-01-01 00:00:00",
-  "date_libprep" : "0001-01-01 00:00:00",
-  "date_sequencing" : "0001-01-01 00:00:00",
-  "method_libprep" : "Not in LIMS",
-  "method_sequencing" : "Not in LIMS",
-  "organism" : "Staphylococcus aureus",
-  "priority" : "standard",
-  "reference" : "None"}
+  defaults = default_sampleinfo.copy()
 
   pool = []
   if not os.path.isdir(input):
