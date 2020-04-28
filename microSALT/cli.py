@@ -195,7 +195,7 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
     click.echo("{}".format(e))
 
   res_scraper = Scraper(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, input=input)
-  if isinstance(sampleinfo, list) and len(self.sampleinfo) > 1:
+  if isinstance(sampleinfo, list) and len(sampleinfo) > 1:
     res_scraper.scrape_project()
     #for subfolder in pool:
     #  res_scraper.scrape_sample()

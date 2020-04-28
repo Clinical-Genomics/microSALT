@@ -2,6 +2,7 @@
 {
   "CG_ID_project" : "AAA1234",
   "CG_ID_sample" : "AAA1234A1",
+  "Customer_ID_project" : "999999",
   "Customer_ID_sample" : "XXX0000Y1",
   "Customer_ID" : "cust000",
   "application_tag" : "NONE",
@@ -16,6 +17,7 @@
 {
   "CG_ID_project" : "AAA1234",
   "CG_ID_sample" : "AAA1234A2",
+  "Customer_ID_project" : "999999",
   "Customer_ID_sample" : "XXX0000Y1",
   "Customer_ID" : "cust000",
   "application_tag" : "NONE",
@@ -30,6 +32,7 @@
 {
   "CG_ID_project" : "AAA1234",
   "CG_ID_sample" : "AAA1234A3",
+  "Customer_ID_project" : "999999",
   "Customer_ID_sample" : "XXX0000Y1",
   "Customer_ID" : "cust000",
   "application_tag" : "NONE",
@@ -44,6 +47,7 @@
 {
   "CG_ID_project" : "AAA1234",
   "CG_ID_sample" : "AAA1234A4",
+  "Customer_ID_project" : "999999",
   "Customer_ID_sample" : "XXX0000Y1",
   "Customer_ID" : "cust000",
   "application_tag" : "NONE",

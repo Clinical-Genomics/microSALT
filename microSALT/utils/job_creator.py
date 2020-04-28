@@ -23,6 +23,11 @@ class Job_Creator():
     self.logger = log
     self.batchfile = "/tmp/batchfile.sbatch"
 
+    self.filelist = list()
+    if isinstance(run_settings.get('input'), list):
+      self.filelist = run_settings.get('input')
+      run_settings['input'] = '/tmp/'
+
     self.run_settings = run_settings
     self.indir = os.path.abspath(run_settings.get('input','/tmp/'))
     self.trimmed = run_settings.get('trimmed',True)
@@ -30,10 +35,6 @@ class Job_Creator():
     self.careful = run_settings.get('careful',True)
     self.pool = run_settings.get('pool', [])
     self.finishdir = run_settings.get('finishdir','')
-
-    self.filelist = list()
-    if type(input) == list:
-      self.filelist = input
 
     self.sampleinfo = sampleinfo
     self.sample = None

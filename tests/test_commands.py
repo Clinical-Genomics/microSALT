@@ -190,7 +190,7 @@ def test_resync(smtplib, reqget, join, term, webstart, runner, caplog):
 def test_refer(runner, caplog):
   caplog.set_level(logging.DEBUG, logger="main_logger")
 
-  list_invoke = runner.invoke(root, ['utils', 'refer', 'list'])
+  list_invoke = runner.invoke(root, ['utils', 'refer', 'observe'])
   assert list_invoke.exit_code == 0
 
   a = runner.invoke(root, ['utils', 'refer', 'add', 'Homosapiens_Trams'])
