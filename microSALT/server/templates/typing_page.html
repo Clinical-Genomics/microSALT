@@ -34,7 +34,7 @@
                 <div class="col">
                   <h3>Kund</h3>
                   <address>
-                  <h4>{{samples[0].projects.Customer_ID}}</h4><br>
+                  <h4>{{topsample.projects.Customer_ID}}</h4><br>
                   </address>
                 </div>
               <br />
@@ -45,11 +45,11 @@
                     <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
                       <tr>
                       <td><b>Ticket ID <i>(CG Projekt ID)</i></b>
-                        <td>{{samples[0].projects.Customer_ID_project}} <i>({{samples[0].projects.CG_ID_project}})</i></td>
+                        <td>{{topsample.projects.Customer_ID_project}} <i>({{topsample.projects.CG_ID_project}})</i></td>
                       </tr>
                       <tr>
                       <td><b>Kund ID (*)</b>
-                        <td>{{samples[0].projects.Customer_ID}}<i></i></td>
+                        <td>{{topsample.projects.Customer_ID}}<i></i></td>
                       </tr>
                       <tr>
                         <td><b>Rapport version</b></td>
@@ -182,25 +182,25 @@
             </div>
 
             <div class="panel"><div class="panel-body">
-              {% if samples[0].application_tag == "MWRNXTR003" %}
-              <h3>Teknisk beskrivning av analysen: {{samples[0].application_tag}}<br></h3>
+              {% if topsample.application_tag == "MWRNXTR003" %}
+              <h3>Teknisk beskrivning av analysen: {{topsample.application_tag}}<br></h3>
               <p>
-              {% if samples[0].application_tag == "MWRNXTR003" %}
+              {% if topsample.application_tag == "MWRNXTR003" %}
               Mikrobiell helgenomssekvensering av rutinprov, med krav på minst 3 miljoner läspar.
               Nextera library preparation.
-              {% elif samples[0].application_tag in ["MWGNXTR003", "MWMNXTR003", "MWLNXTR003"] %}
+              {% elif topsample.application_tag in ["MWGNXTR003", "MWMNXTR003", "MWLNXTR003"] %}
               Mikrobiell helgenomssekvensering, med krav på minst 3 miljoner läspar.
               Nextera library preparation.
-              {% elif samples[0].application_tag == "MWXNXTR003" %}
+              {% elif topsample.application_tag == "MWXNXTR003" %}
               Storskalig mikrobiell helgenomssekvensering av minst 176 prover, med krav på minst 3 miljoner läspar.
               Nextera library preparation.
-              {% elif samples[0].application_tag in ["VWGNXTR001", "VWLNXTR001"] %}
+              {% elif topsample.application_tag in ["VWGNXTR001", "VWLNXTR001"] %}
               Virologisk helgenomssekvensering, med krav på minst 1 miljon läspar.
               Nextera library preparation.
               {% endif %}
               <br></p>
 
-              <h3>Analysbegränsningar för: {{samples[0].application_tag}}<br></h3>
+              <h3>Analysbegränsningar för: {{topsample.application_tag}}<br></h3>
               <p>
               Analysen kan enbart beställas av gruppen Klinisk Mikrobiologi.
               Laboratoriet har inte haft ansvar för provtagningsstadiet och extraktion, resultaten gäller för provet såsom det har mottagits.

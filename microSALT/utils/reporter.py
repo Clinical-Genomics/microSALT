@@ -50,14 +50,16 @@ class Reporter():
 
     self.sampleinfo = sampleinfo
     self.sample = None
-    if isinstance(self.sampleinfo, list):
+    if isinstance(self.sampleinfo, list) and len(self.sampleinfo) > 1:
       self.name = self.sampleinfo[0].get('CG_ID_project')
       self.sample = self.sampleinfo[0]
       for entry in self.sampleinfo:
         if entry.get('CG_ID_sample') == self.name:
           raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
     else:
-     self.name = self.sampleinfo.get('CG_ID_sample')
+     if isinstance(self.sampleinfo, list):
+       self.sampleinfo = self.sampleinfo[0]
+     self.name = self.sampleinfo.get('CG_ID_project')
      self.sample = self.sampleinfo
 
   def report(self, type='default', customer='all'):

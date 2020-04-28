@@ -57,6 +57,7 @@ def alignment_page(project):
 
     return render_template('alignment_page.html',
         samples = sample_info['samples'],
+        topsample = sample_info['samples'][0],
         date = date.today().isoformat(),
         version = sample_info['versions'],
         user = sample_info['user'],
@@ -70,6 +71,7 @@ def typing_page(project, organism_group):
 
     return render_template('typing_page.html',
         samples = sample_info['samples'],
+        topsample = sample_info['samples'][0],
         date = date.today().isoformat(),
         version = sample_info['versions'],
         user = sample_info['user'],

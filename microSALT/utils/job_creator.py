@@ -37,13 +37,15 @@ class Job_Creator():
 
     self.sampleinfo = sampleinfo
     self.sample = None
-    if isinstance(self.sampleinfo, list):
+    if isinstance(self.sampleinfo, list) and len(self.sampleinfo) > 1:
       self.name = self.sampleinfo[0].get('CG_ID_project')
       self.sample = self.sampleinfo[0]
       for entry in self.sampleinfo:
         if entry.get('CG_ID_sample') == self.name:
           raise Exception("Mixed projects in samples_info file. Do not know how to proceed")
     else:
+     if isinstance(self.sampleinfo, list):
+       self.sampleinfo = self.sampleinfo[0]
      self.name = self.sampleinfo.get('CG_ID_sample')
      self.sample = self.sampleinfo
 
@@ -375,7 +377,7 @@ class Job_Creator():
     #Loads project level info.
     try:
        if single_sample:
-         self.create_project(os.path.normpath(self.indir).split('/')[-2])
+         self.create_project(self.sample.get('CG_ID_project'))
        elif self.pool:
          self.create_collection()
        else:

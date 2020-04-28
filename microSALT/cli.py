@@ -66,11 +66,15 @@ def review_sampleinfo(pfile):
     click.echo("Unable to read provided sample info file as json. Exiting..")
     sys.exit(-1)
 
-  for entry in data:
+  if isinstance(data, list):
+    for entry in data:
+      for k, v in default_sampleinfo.items():
+        if not k in entry:
+          click.echo("ERROR - Parameter {} needs to be provided in sample json. Formatting example: ({})".format(k, v))
+  else:
     for k, v in default_sampleinfo.items():
-      if not k in entry:
+      if not k in data:
         click.echo("ERROR - Parameter {} needs to be provided in sample json. Formatting example: ({})".format(k, v))
-
   return data
 
 @click.group()
@@ -191,11 +195,12 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
     click.echo("{}".format(e))
 
   res_scraper = Scraper(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, input=input)
-  if res_scraper.name == sampleinfo[0].get('CG_ID_project'):
+  if isinstance(sampleinfo, list) and len(self.sampleinfo) > 1:
     res_scraper.scrape_project()
+    #for subfolder in pool:
+    #  res_scraper.scrape_sample()
   else:
-    for subfolder in pool:
-      res_scraper.scrape_sample()
+    res_scraper.scrape_sample()
 
   codemonkey = Reporter(config=ctx.obj['config'], log=ctx.obj['log'], sampleinfo=sampleinfo, output=output, collection=True)
   codemonkey.report(report)
@@ -219,7 +224,7 @@ def add(ctx, organism, force):
 
 @refer.command()
 @click.pass_context
-def list(ctx):
+def observe(ctx):
   """ Lists all stored organisms """
   refe = Referencer(config=ctx.obj['config'], log=ctx.obj['log'])
   click.echo("INFO - Currently stored organisms:")
