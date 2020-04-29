@@ -246,7 +246,7 @@ class Scraper():
       targ = ind+1
       while targ < len(hypo):
         ignore = False
-        if hypo[ind].get("contig_name") == hypo[targ].get("contig_name"):
+        if hypo[ind]["contig_name"] == hypo[targ]["contig_name"] or hypo[ind][identifier] == hypo[targ][identifier]:
           #Overlapping or shared gene 
           if (hypo[ind].get("contig_start") >= hypo[targ].get("contig_start") and hypo[ind].get("contig_start") <= hypo[targ].get("contig_end")) or\
               (hypo[ind].get("contig_end") >= hypo[targ].get("contig_start") and hypo[ind].get("contig_end") <= hypo[targ].get("contig_end")) or \
