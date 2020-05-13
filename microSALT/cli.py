@@ -20,11 +20,11 @@ from microSALT.utils.referencer import Referencer
 
 default_sampleinfo = {
   "CG_ID_project" : "XXX0000",
-  "CG_ID_sample" : "XXX0000Y1",
-  "Customer_ID_project" : "AAA0000B1",
-  "Customer_ID_sample" : "AAA0000B1",
+  "CG_ID_sample" : "XXX0000A1",
+  "Customer_ID_project" : "100100",
+  "Customer_ID_sample" : "10XY123456",
   "Customer_ID" : "cust000",
-  "application_tag" : "NONE",
+  "application_tag" : "SOMTIN100",
   "date_arrival" : "0001-01-01 00:00:00",
   "date_libprep" : "0001-01-01 00:00:00",
   "date_sequencing" : "0001-01-01 00:00:00",
@@ -70,11 +70,11 @@ def review_sampleinfo(pfile):
     for entry in data:
       for k, v in default_sampleinfo.items():
         if not k in entry:
-          click.echo("ERROR - Parameter {} needs to be provided in sample json. Formatting example: ({})".format(k, v))
+          click.echo("WARNING - Parameter {} needs to be provided in sample json. Formatting example: ({})".format(k, v))
   else:
     for k, v in default_sampleinfo.items():
       if not k in data:
-        click.echo("ERROR - Parameter {} needs to be provided in sample json. Formatting example: ({})".format(k, v))
+        click.echo("WARNING - Parameter {} needs to be provided in sample json. Formatting example: ({})".format(k, v))
   return data
 
 @click.group()
