@@ -167,7 +167,7 @@ class Scraper:
                 )
 
         organism = self.referencer.organism2reference(self.sample.get("organism"))
-        if organism != '':
+        if organism:
             self.db_pusher.upd_rec(
                 {"CG_ID_sample": self.name}, "Samples", {"organism": organism}
             )
