@@ -275,7 +275,7 @@ class Referencer:
 
     def organism2reference(self, normal_organism_name):
         """Finds which reference contains the same words as the organism
-       and returns it in a format for database calls."""
+       and returns it in a format for database calls. Returns empty string if none found"""
         orgs = os.listdir(self.config["folders"]["references"])
         organism = re.split(r"\W+", normal_organism_name.lower())
         try:
