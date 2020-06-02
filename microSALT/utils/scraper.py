@@ -167,9 +167,10 @@ class Scraper:
                 )
 
         organism = self.referencer.organism2reference(self.sample.get("organism"))
-        self.db_pusher.upd_rec(
-            {"CG_ID_sample": self.name}, "Samples", {"organism": organism}
-        )
+        if organism != '':
+            self.db_pusher.upd_rec(
+                {"CG_ID_sample": self.name}, "Samples", {"organism": organism}
+            )
         res_cols = self.db_pusher.get_columns("{}".format(type2db))
 
         try:
