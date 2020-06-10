@@ -13,7 +13,7 @@ It produces a quality control of the sample, determines a sample's organism spec
 
 _microSALT uses a combination of python, sqLite and flask. Python is used for the majority of functionality, the database is handled through sqLite and the front-end is handled through flask. All analysis activity by microSALT requires a SLURM cluster._
 
-Then continue with __Configuration__
+microSALT has been developed using the GitHub flow development model.
 
 ## Quick installation
 * `yes | bash <(curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/install.sh)`
