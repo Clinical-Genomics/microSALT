@@ -252,6 +252,7 @@ class Reporter:
 
         try:
             excel = open(output, "w+")
+            excel.write("{}\n".format(sepfix))
             excel.write("{}\n".format(topline))
             excel.write("{}\n".format(botline))
 
