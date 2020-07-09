@@ -686,6 +686,7 @@ class Job_Creator:
         user = str(user).replace(".", " ").title()
         # if not os.path.exists(self.finishdir):
         #  os.makedirs(self.finishdir)
+
         startfile = "{}/run_started.out".format(self.finishdir)
         configfile = "{}/config.log".format(self.finishdir)
         mailfile = "{}/mailjob.sh".format(self.finishdir)

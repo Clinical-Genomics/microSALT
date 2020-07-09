@@ -137,6 +137,14 @@ if preset_config != "":
         )
         logger.addHandler(fh)
 
+        #Integrity check database
+        cmd = "sqlite3 {0} 'pragma integrity_check;'".format(preset_config["database"]["SQLALCHEMY_DATABASE_URI"])
+        proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE())
+        output, error = proc.communicate()
+        if not 'ok' in output:
+            logger.error("Database integrity failed! Lock-state detected! Contact Isak (or try again if you dare)")
+            sys.exit(-1)
+
     except Exception as e:
         print("Config error: {}".format(str(e)))
         pass

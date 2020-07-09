@@ -23,7 +23,7 @@ from microSALT.store.orm_models import (
 )
 
 engine = create_engine(
-    app.config["SQLALCHEMY_DATABASE_URI"], connect_args={"check_same_thread": False}
+    app.config["SQLALCHEMY_DATABASE_URI"], connect_args={"check_same_thread": False, timeout=15}
 )
 Session = sessionmaker(bind=engine)
 session = Session()
