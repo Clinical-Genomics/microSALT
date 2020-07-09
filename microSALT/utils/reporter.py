@@ -352,7 +352,7 @@ class Reporter:
         for s in sampleinfo:
             #Contig/Assembly file
             deliv['files'].append({'format':'fasta','id':s["CG_ID_sample"],
-                                   'path':"{}/{}/assembly/contigs.fasta".format(self.output, s["CG_ID_sample"]),
+                                   'path':"{}/{}/assembly/trimmed_contigs.fasta".format(self.output, s["CG_ID_sample"]),
                                    'path_index':'~','step':'assembly','tag':'assembly'})
             #Concat trimmed reads forwards
             deliv['files'].append({'format':'fastq','id':s["CG_ID_sample"],
