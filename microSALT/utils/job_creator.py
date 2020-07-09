@@ -208,7 +208,7 @@ class Job_Creator:
             )
         )
 
-        batchfile.write("sed -n '/NODE_200_/q;p' {0}/assembly/contigs.fasta > {0}/assembly/trimmed_contigs.fasta".format(self.finishdir))
+        batchfile.write("sed -n '/NODE_1000_/q;p' {0}/assembly/contigs.fasta > {0}/assembly/trimmed_contigs.fasta".format(self.finishdir))
         batchfile.write("##Input cleanup\n")
         batchfile.write("rm -r {}/trimmed\n".format(self.finishdir))
         batchfile.write("\n\n")
