@@ -389,8 +389,8 @@ class Reporter:
 
 
 
-    with open("{}/{}_deliverables.yaml".format(self.output, self.sample.get("Customer_ID_project")) 'w') as delivfile:
-        documents = yaml.dump(deliv, delivfile)
+        with open("{}/{}_deliverables.yaml".format(self.output, self.sample.get("Customer_ID_project")), 'w') as delivfile:
+            documents = yaml.dump(deliv, delivfile)
     
     def gen_json(self, silent=False):
         report = dict()
