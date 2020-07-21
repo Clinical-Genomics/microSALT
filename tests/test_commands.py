@@ -161,20 +161,19 @@ def test_analyse_exhaustive(isdir, jc_glob, gzip, listdir, subproc, runner, conf
 @patch('multiprocessing.Process.join')
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
-@patch('os.listdir')
 @patch('microSALT.cli.os.path.isdir')
-def test_finish_typical(isdir, listdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata, caplog):
+@patch('microSALT.server.views.gen_add_info')
+def test_finish_typical(addinfo, isdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata, path_testproject, caplog):
   caplog.set_level(logging.DEBUG, logger="main_logger")
   caplog.clear()
 
-  listdir.return_value = ['AAA1234A1', 'AAA1234A2' , 'AAA1234A3']
   isdir.return_value = True
 
   #All subcommands
   base_invoke = runner.invoke(root, ['utils', 'finish'])
   assert base_invoke.exit_code == 2
    #Exhaustive parameter test
-  typical_run = runner.invoke(root, ['utils', 'finish', path_testdata, '--email', '2@2.com', '--config', config, '--report', 'default', '--output', '/tmp/'])
+  typical_run = runner.invoke(root, ['utils', 'finish', path_testdata, '--email', '2@2.com', '--config', config, '--report', 'default', '--output', '/tmp/', '--input', path_testproject])
   assert typical_run.exit_code == 0
   assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
@@ -185,16 +184,14 @@ def test_finish_typical(isdir, listdir, smtp, reqs_get, proc_join, proc_term, we
 @patch('multiprocessing.Process.join')
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
-@patch('os.listdir')
 @patch('microSALT.cli.os.path.isdir')
-def test_finish_qc(isdir, listdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata, caplog):
+def test_finish_qc(isdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata, path_testproject, caplog):
   caplog.set_level(logging.DEBUG, logger="main_logger")
   caplog.clear()
 
-  listdir.return_value = ['AAA1234A1', 'AAA1234A2' , 'AAA1234A3']
   isdir.return_value = True
 
-  special_run = runner.invoke(root, ['utils', 'finish', path_testdata, '--report', 'qc', '--output', '/tmp/'])
+  special_run = runner.invoke(root, ['utils', 'finish', path_testdata, '--report', 'qc', '--output', '/tmp/', '--input', path_testproject])
   assert special_run.exit_code == 0
   assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
@@ -224,7 +221,8 @@ def test_finish_motif(addinfo, isdir, smtp, reqs_get, proc_join, proc_term, webs
 @patch('multiprocessing.Process.join')
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
-def test_report(smtplib, reqget, join, term, webstart, runner, path_testdata, caplog):
+@patch('microSALT.server.views.gen_add_info')
+def test_report(addinfo, smtplib, reqget, join, term, webstart, runner, path_testdata, caplog):
   caplog.set_level(logging.DEBUG, logger="main_logger")
   caplog.clear()
 

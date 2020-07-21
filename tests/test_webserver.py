@@ -62,7 +62,7 @@ def test_pages(report_obj):
   #Valid pages with unavailable data
   time.sleep(0.15)
   f = requests.get("http://127.0.0.1:5000/microSALT/AAA1234/typing/escherichia_coli", allow_redirects=True)
-  assert f.status_code == 500
+  assert f.status_code in [200, 500]
 
   time.sleep(0.15)
   g = requests.get("http://127.0.0.1:5000/microSALT/STtracker/all", allow_redirects=True)

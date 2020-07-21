@@ -265,7 +265,6 @@ def finish(
 
     # Samples section
     sampleinfo = review_sampleinfo(sampleinfo_file)
-
     ext_refs = Referencer(
         config=ctx.obj["config"], log=ctx.obj["log"], sampleinfo=sampleinfo
     )
