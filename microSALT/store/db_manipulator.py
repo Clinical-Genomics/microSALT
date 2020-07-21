@@ -141,7 +141,6 @@ class DB_Manipulator:
                         ", ".join(pk_list), ", ".join(pk_values), tablename
                     )
                 )
-
     def upd_rec(
         self, req_dict: Dict[str, str], tablename: str, upd_dict: Dict[str, str]
     ):

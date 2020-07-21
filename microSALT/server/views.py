@@ -36,14 +36,14 @@ log.setLevel(logging.CRITICAL)
 @app.route("/")
 def start_page():
     projects = session.query(Projects).all()
-
+    session.close()
     return render_template("start_page.html", projects=projects)
 
 
 @app.route("/microSALT/")
 def reroute_page():
     projects = session.query(Projects).all()
-
+    session.close()
     return render_template("start_page.html", projects=projects)
 
 
@@ -54,6 +54,7 @@ def project_page(project):
     distinct_organisms = (
         session.query(Samples).filter_by(CG_ID_project=project).distinct()
     )
+    session.close()
     for one_guy in distinct_organisms:
         if one_guy.organism not in organism_groups and one_guy.organism is not None:
             organism_groups.append(one_guy.organism)
@@ -145,6 +146,7 @@ def gen_reportdata(pid="all", organism_group="all"):
     sample_info = gen_add_info(sample_info)
 
     reports = session.query(Reports).filter(Reports.CG_ID_project == pid).all()
+    session.close()
     sample_info["reports"] = reports = sorted(
         reports, key=lambda x: x.version, reverse=True
     )
@@ -252,6 +254,7 @@ def gen_add_info(sample_info=dict()):
         output["samples"].append(s)
 
     versions = session.query(Versions).all()
+    session.close()
     for version in versions:
         name = version.name[8:]
         output["versions"][name] = version.version

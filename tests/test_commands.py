@@ -68,7 +68,7 @@ def test_groups(runner):
 @patch('gzip.open')
 @patch('microSALT.utils.job_creator.glob.glob')
 @patch('microSALT.cli.os.path.isdir')
-def test_analyse(isdir, jc_glob, gzip, listdir, subproc, runner, config, path_testdata, caplog):
+def test_analyse_dry(isdir, jc_glob, gzip, listdir, subproc, runner, config, path_testdata, caplog):
   caplog.clear()
   caplog.set_level(logging.DEBUG, logger="main_logger")
 
@@ -88,14 +88,58 @@ def test_analyse(isdir, jc_glob, gzip, listdir, subproc, runner, config, path_te
   base_invoke = runner.invoke(root, ['analyse'])
   assert base_invoke.exit_code == 2
   #Exhaustive parameter test
-  typical_run = runner.invoke(root, ['analyse', path_testdata, '--input', '/tmp/AAA1234', '--config', config, '--email', '2@2.com'])
-  assert typical_run.exit_code == 0
-  assert "INFO - Execution finished!" in caplog.text
-  caplog.clear()
   dry_run = runner.invoke(root, ['analyse', path_testdata, '--input', '/tmp/AAA1234', '--dry'])
   assert dry_run.exit_code == 0
   assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
+
+@patch('subprocess.Popen')
+@patch('os.listdir')
+@patch('gzip.open')
+@patch('microSALT.utils.job_creator.glob.glob')
+@patch('microSALT.cli.os.path.isdir')
+def test_analyse_typical(isdir, jc_glob, gzip, listdir, subproc, runner, config, path_testdata, caplog):
+  caplog.clear()
+  caplog.set_level(logging.DEBUG, logger="main_logger")
+
+  #Sets up subprocess mocking
+  process_mock = mock.Mock()
+  attrs = {'communicate.return_value': ('output 123456789', 'error')}
+  process_mock.configure_mock(**attrs)
+  subproc.return_value = process_mock
+  isdir.return_value = True
+
+  jc_glob.return_value = ['AAA1234A1','AAA1234A2']
+
+#  isdir.return_value = True
+  listdir.return_value = ["ACC6438A3_HVMHWDSXX_L1_1.fastq.gz", "ACC6438A3_HVMHWDSXX_L1_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz"]
+
+  typical_run = runner.invoke(root, ['analyse', path_testdata, '--input', '/tmp/AAA1234', '--config', config, '--email', '2@2.com'])
+  assert typical_run.exit_code == 0
+  assert "INFO - Execution finished!" in caplog.text
+  caplog.clear()
+
+@patch('subprocess.Popen')
+@patch('os.listdir')
+@patch('gzip.open')
+@patch('microSALT.utils.job_creator.glob.glob')
+@patch('microSALT.cli.os.path.isdir')
+def test_analyse_exhaustive(isdir, jc_glob, gzip, listdir, subproc, runner, config, path_testdata, caplog):
+  caplog.clear()
+  caplog.set_level(logging.DEBUG, logger="main_logger")
+
+  #Sets up subprocess mocking
+  process_mock = mock.Mock()
+  attrs = {'communicate.return_value': ('output 123456789', 'error')}
+  process_mock.configure_mock(**attrs)
+  subproc.return_value = process_mock
+  isdir.return_value = True
+
+  jc_glob.return_value = ['AAA1234A1','AAA1234A2']
+
+#  isdir.return_value = True
+  listdir.return_value = ["ACC6438A3_HVMHWDSXX_L1_1.fastq.gz", "ACC6438A3_HVMHWDSXX_L1_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz"]
+
   special_run_settings = {'trimmed':False, 'careful':False,'skip_update':True}
   special_run = runner.invoke(root, ['analyse', path_testdata, '--skip_update', '--untrimmed', '--uncareful', '--input', '/tmp/AAA1234'])
   assert special_run.exit_code == 0
@@ -109,7 +153,7 @@ def test_analyse(isdir, jc_glob, gzip, listdir, subproc, runner, config, path_te
 @patch('microSALT.utils.reporter.smtplib')
 @patch('os.listdir')
 @patch('microSALT.cli.os.path.isdir')
-def test_finish(isdir, listdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata, caplog):
+def test_finish_typical(isdir, listdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata, caplog):
   caplog.set_level(logging.DEBUG, logger="main_logger")
   caplog.clear()
 
@@ -124,10 +168,42 @@ def test_finish(isdir, listdir, smtp, reqs_get, proc_join, proc_term, webstart, 
   assert typical_run.exit_code == 0
   assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
+
+@patch('microSALT.utils.job_creator.Job_Creator.create_project')
+@patch('microSALT.utils.reporter.Reporter.start_web')
+@patch('multiprocessing.Process.terminate')
+@patch('multiprocessing.Process.join')
+@patch('microSALT.utils.reporter.requests.get')
+@patch('microSALT.utils.reporter.smtplib')
+@patch('os.listdir')
+@patch('microSALT.cli.os.path.isdir')
+def test_finish_qc(isdir, listdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata, caplog):
+  caplog.set_level(logging.DEBUG, logger="main_logger")
+  caplog.clear()
+
+  listdir.return_value = ['AAA1234A1', 'AAA1234A2' , 'AAA1234A3']
+  isdir.return_value = True
+
   special_run = runner.invoke(root, ['utils', 'finish', path_testdata, '--report', 'qc', '--output', '/tmp/'])
   assert special_run.exit_code == 0
   assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
+
+@patch('microSALT.utils.job_creator.Job_Creator.create_project')
+@patch('microSALT.utils.reporter.Reporter.start_web')
+@patch('multiprocessing.Process.terminate')
+@patch('multiprocessing.Process.join')
+@patch('microSALT.utils.reporter.requests.get')
+@patch('microSALT.utils.reporter.smtplib')
+@patch('os.listdir')
+@patch('microSALT.cli.os.path.isdir')
+def test_finish_motif(isdir, listdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata, caplog):
+  caplog.set_level(logging.DEBUG, logger="main_logger")
+  caplog.clear()
+
+  listdir.return_value = ['AAA1234A1', 'AAA1234A2' , 'AAA1234A3']
+  isdir.return_value = True
+
   unique_report = runner.invoke(root, ['utils', 'finish', path_testdata, '--report', 'motif_overview', '--output', '/tmp/'])
   assert unique_report.exit_code == 0
   assert "INFO - Execution finished!" in caplog.text
@@ -163,7 +239,7 @@ def test_report(smtplib, reqget, join, term, webstart, runner, path_testdata, ca
 @patch('multiprocessing.Process.join')
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
-def test_resync(smtplib, reqget, join, term, webstart, runner, caplog):
+def test_resync_overwrite(smtplib, reqget, join, term, webstart, runner, caplog):
   caplog.set_level(logging.DEBUG, logger="main_logger")
   caplog.clear()
 
@@ -176,9 +252,18 @@ def test_resync(smtplib, reqget, join, term, webstart, runner, caplog):
   assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
 
+@patch('microSALT.utils.reporter.Reporter.start_web')
+@patch('multiprocessing.Process.terminate')
+@patch('multiprocessing.Process.join')
+@patch('microSALT.utils.reporter.requests.get')
+@patch('microSALT.utils.reporter.smtplib')
+def test_resync_review(smtplib, reqget, join, term, webstart, runner, caplog):
+  caplog.set_level(logging.DEBUG, logger="main_logger")
+  caplog.clear()
+
   #Exhaustive parameter test
   for rep_type in ['list', 'report']:
-    typical_work = runner.invoke(root, ['utils', 'resync', 'review', '--email', '2@2.com', '--type', rep_type, '--output', '/tmp/'])
+    typical_work = runner.invoke(root, ['utils', 'resync', 'review' ,'--email', '2@2.com', '--type', rep_type, '--output', '/tmp/'])
     assert typical_work.exit_code == 0
     assert "INFO - Execution finished!" in caplog.text
     caplog.clear()

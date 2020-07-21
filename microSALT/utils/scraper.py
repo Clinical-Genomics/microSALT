@@ -424,7 +424,6 @@ class Scraper:
         align_dict["reference_genome"] = self.sample.get("reference")
 
         # Reading
-        file_list = glob.glob("{}/alignment/*.stats.*".format(self.sampledir))
         map_rate = 0.0
         median_ins = 0
         ref_len = 0.0
