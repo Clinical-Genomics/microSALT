@@ -48,6 +48,16 @@ def path_testdata():
       testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/sampleinfo_samples.json'))
   return testdata
 
+@pytest.fixture
+def path_testproject():
+  testproject = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/AAA1234_2000.1.2_3.4.5'))
+  #Check if release install exists
+  for entry in os.listdir(get_python_lib()):
+    if 'microSALT-' in entry:
+      testproject = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/AAA1234_2000.1.2_3.4.5'))
+  return testproject
+
+
 def test_version(runner):
   res = runner.invoke(root, '--version')
   assert res.exit_code == 0
@@ -164,7 +174,7 @@ def test_finish_typical(isdir, listdir, smtp, reqs_get, proc_join, proc_term, we
   base_invoke = runner.invoke(root, ['utils', 'finish'])
   assert base_invoke.exit_code == 2
    #Exhaustive parameter test
-  typical_run = runner.invoke(root, ['utils', 'finish', path_testdata, '--email', '2@2.com', '--input', '/tmp/AAA1234_2019.8.12_11.25.2', '--config', config, '--report', 'default', '--output', '/tmp/'])
+  typical_run = runner.invoke(root, ['utils', 'finish', path_testdata, '--email', '2@2.com', '--config', config, '--report', 'default', '--output', '/tmp/'])
   assert typical_run.exit_code == 0
   assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
@@ -195,16 +205,15 @@ def test_finish_qc(isdir, listdir, smtp, reqs_get, proc_join, proc_term, webstar
 @patch('multiprocessing.Process.join')
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
-@patch('os.listdir')
 @patch('microSALT.cli.os.path.isdir')
-def test_finish_motif(isdir, listdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata, caplog):
+@patch('microSALT.server.views.gen_add_info')
+def test_finish_motif(addinfo, isdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata, path_testproject, caplog):
   caplog.set_level(logging.DEBUG, logger="main_logger")
   caplog.clear()
 
-  listdir.return_value = ['AAA1234A1', 'AAA1234A2' , 'AAA1234A3']
   isdir.return_value = True
 
-  unique_report = runner.invoke(root, ['utils', 'finish', path_testdata, '--report', 'motif_overview', '--output', '/tmp/'])
+  unique_report = runner.invoke(root, ['utils', 'finish', path_testdata, '--report', 'motif_overview', '--output', '/tmp/', '--input', path_testproject])
   assert unique_report.exit_code == 0
   assert "INFO - Execution finished!" in caplog.text
   caplog.clear()

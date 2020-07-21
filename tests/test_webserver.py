@@ -14,6 +14,7 @@ from unittest.mock import patch
 from microSALT.utils.reporter import Reporter
 from microSALT import preset_config, logger
 from microSALT.cli import root
+from microSALT.server.views import *
 
 @pytest.fixture
 def testdata():
@@ -72,3 +73,20 @@ def test_pages(report_obj):
   assert h.status_code in [200, 500]
 
   report_obj.kill_flask()
+
+@patch('microSALT.server.views.render_template')
+def test_index_views(renderpatch):
+  start_page()
+  reroute_page()
+
+@patch('microSALT.server.views.render_template')
+def test_project_views(renderpatch):
+  project_page("AAA1234")
+  alignment_page("AAA1234")
+  typing_page("AAA1234","all")
+
+@patch('microSALT.server.views.gen_add_info')
+@patch('microSALT.server.views.render_template')
+def test_tracker_view(addinfo, renderpatch):
+  STtracker_page("cust000")
+   

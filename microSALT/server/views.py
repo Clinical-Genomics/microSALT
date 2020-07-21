@@ -71,7 +71,7 @@ def alignment_page(project):
     return render_template(
         "alignment_page.html",
         samples=sample_info["samples"],
-        topsample=sample_info["samples"][0],
+        topsample=sample_info["CG_ID_project"],
         date=date.today().isoformat(),
         version=sample_info["versions"],
         user=sample_info["user"],
@@ -88,7 +88,7 @@ def typing_page(project, organism_group):
     return render_template(
         "typing_page.html",
         samples=sample_info["samples"],
-        topsample=sample_info["samples"][0],
+        topsample=sample_info["CG_ID_project"],
         date=date.today().isoformat(),
         version=sample_info["versions"],
         user=sample_info["user"],
@@ -160,6 +160,7 @@ def gen_add_info(sample_info=dict()):
     output = dict()
     output["samples"] = list()
     output["versions"] = dict()
+    output["CG_ID_project"] = ""
 
     # Sorts sample names
     valid = True
@@ -179,6 +180,7 @@ def gen_add_info(sample_info=dict()):
             pass
 
     for s in sample_info:
+        s.CG_ID_project = s.projects.CG_ID_project
         s.ST_status = str(s.ST)
         if s.Customer_ID_sample is not None:
             if (
@@ -252,6 +254,7 @@ def gen_add_info(sample_info=dict()):
         s.resistances = sorted(s.resistances, key=lambda x: x.instance)
         s.expacs = sorted(s.expacs, key=lambda x: x.gene)
         output["samples"].append(s)
+        output["CG_ID_project"] = s.CG_ID_project
 
     versions = session.query(Versions).all()
     session.close()
