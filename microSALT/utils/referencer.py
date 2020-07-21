@@ -73,7 +73,7 @@ class Referencer:
                 self.download_ncbi(org)
         except Exception as e:
             self.logger.error(
-                "Reference update function failed prematurely. Review immediately"
+                "Unable to retrieve reference! Analysis using said reference will fail!"
             )
 
     def update_refs(self):

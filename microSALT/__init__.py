@@ -123,6 +123,9 @@ if preset_config != "":
                                     bash_cmd.split(), stdout=subprocess.PIPE
                                 )
                                 output, error = proc.communicate()
+                                if proc.returncode != 0:
+                                  logger.error("Database writing failed! Invalid user access detected!")
+                                  sys.exit(-1)
                             else:
                                 unmade_fldr = preset_config[entry][thing]
                             if not pathlib.Path(unmade_fldr).exists():
@@ -142,7 +145,7 @@ if preset_config != "":
         proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE())
         output, error = proc.communicate()
         if not 'ok' in output:
-            logger.error("Database integrity failed! Lock-state detected! Contact Isak (or try again if you dare)")
+            logger.error("Database integrity failed! Lock-state detected!")
             sys.exit(-1)
 
     except Exception as e:
