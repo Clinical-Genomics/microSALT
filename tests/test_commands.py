@@ -298,22 +298,6 @@ def test_view(webstart, runner, caplog):
   #assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
 
-@patch('microSALT.store.db_manipulator.DB_Manipulator.init_profiletable')
-@patch('subprocess.Popen')
-def test_autobatch(ptable, subproc, runner, caplog):
-  caplog.set_level(logging.DEBUG, logger="main_logger")
-
-  #Sets up subprocess mocking
-  process_mock = mock.Mock()
-  attrs = {'communicate.return_value': ('"AAA1000_job"', 'error')}
-  process_mock.configure_mock(**attrs)
-  subproc.return_value = process_mock
-
-  ab = runner.invoke(root, ['utils', 'autobatch', '--dry'])
-  assert ab.exit_code == 0
-  assert "INFO - Execution finished!" in caplog.text
-  caplog.clear()
-
 @patch('os.path.isdir')
 def test_generate(isdir, runner, caplog):
   caplog.set_level(logging.DEBUG, logger="main_logger")

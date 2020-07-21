@@ -80,11 +80,12 @@ class Reporter:
             # Only typing and qc reports are version controlled
             self.gen_version(self.name)
         if type in ["default", "typing", "qc", "st_update"]:
-            self.start_web()
+            self.restart_web()
             if type == "default":
                 self.gen_typing()
                 self.gen_qc()
                 self.gen_json(silent=True)
+                self.gen_delivery()
             elif type == "typing":
                 self.gen_typing()
             elif type == "qc":
@@ -95,6 +96,7 @@ class Reporter:
         elif type in ["json_dump", "motif_overview"]:
             if type == "json_dump":
                 self.gen_json()
+                self.gen_delivery()
             elif type == "motif_overview":
                 self.gen_motif(motif="resistance")
                 self.gen_motif(motif="expec")
@@ -323,8 +325,10 @@ class Reporter:
             )
 
     def gen_delivery(self):
+        #import pdb; pdb.set_trace()
         deliv = dict()
         deliv['files'] = list()
+        last_version = self.db_pusher.get_report(self.name).version
 
         #Project-wide
         #Sampleinfo
@@ -349,7 +353,7 @@ class Reporter:
                                'path_index':'~','step':'analysis','tag':'runtime-settings'})
 
         #Sample-wide
-        for s in sampleinfo:
+        for s in self.sampleinfo:
             #Contig/Assembly file
             deliv['files'].append({'format':'fasta','id':s["CG_ID_sample"],
                                    'path':"{}/{}/assembly/trimmed_contigs.fasta".format(self.output, s["CG_ID_sample"]),
@@ -557,3 +561,11 @@ class Reporter:
         self.server.terminate()
         self.server.join()
         self.logger.info("Closed webserver on http://127.0.0.1:5000/")
+
+    def restart_web(self):
+        self.server.terminate()
+        self.server.join()
+        self.server.start()
+        self.logger.info("Started webserver on http://127.0.0.1:5000/")
+        # Hinders requests before server goes up
+        time.sleep(0.15)

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import glob
 import json
 import logging
 import os
@@ -62,4 +63,4 @@ def test_blast_scraping(scraper, testdata_prefix, caplog):
   assert "candidate" in caplog.text
 
 def test_alignment_scraping(scraper, init_references, testdata_prefix):
-  scraper.scrape_alignment(file_list="{}/*.stats.*".format(testdata_prefix))
+  scraper.scrape_alignment(file_list=glob.glob("{}/*.stats.*".format(testdata_prefix)))
