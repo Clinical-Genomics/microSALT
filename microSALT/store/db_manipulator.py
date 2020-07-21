@@ -276,9 +276,7 @@ class DB_Manipulator:
         """Creates profile tables by looping, since a lot of infiles exist"""
         data = table.insert()
         linedict = dict.fromkeys(table.c.keys())
-        with open(
-            "{}/{}".format(self.config["folders"]["profiles"], filename), "r"
-        ) as fh:
+        with open("{}/{}".format(self.config["folders"]["profiles"], filename), "r") as fh:
             # Skips header
             head = fh.readline()
             head = head.rstrip().split("\t")

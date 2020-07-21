@@ -257,7 +257,8 @@ def test_resync_overwrite(smtplib, reqget, join, term, webstart, runner, caplog)
 @patch('multiprocessing.Process.join')
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
-def test_resync_review(smtplib, reqget, join, term, webstart, runner, caplog):
+@patch('microSALT.store.db_manipulator.DB_Manipulator.init_profiletable')
+def test_resync_review(ptable, smtplib, reqget, join, term, webstart, runner, caplog):
   caplog.set_level(logging.DEBUG, logger="main_logger")
   caplog.clear()
 
@@ -272,7 +273,8 @@ def test_resync_review(smtplib, reqget, join, term, webstart, runner, caplog):
     assert "INFO - Execution finished!" in caplog.text
     caplog.clear()
 
-def test_refer(runner, caplog):
+@patch('microSALT.store.db_manipulator.DB_Manipulator.init_profiletable')
+def test_refer(ptable, runner, caplog):
   caplog.set_level(logging.DEBUG, logger="main_logger")
 
   list_invoke = runner.invoke(root, ['utils', 'refer', 'observe'])
@@ -296,8 +298,9 @@ def test_view(webstart, runner, caplog):
   #assert "INFO - Execution finished!" in caplog.text
   caplog.clear()
 
+@patch('microSALT.store.db_manipulator.DB_Manipulator.init_profiletable')
 @patch('subprocess.Popen')
-def test_autobatch(subproc, runner, caplog):
+def test_autobatch(ptable, subproc, runner, caplog):
   caplog.set_level(logging.DEBUG, logger="main_logger")
 
   #Sets up subprocess mocking
