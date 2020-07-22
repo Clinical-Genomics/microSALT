@@ -76,17 +76,26 @@ def test_pages(report_obj):
 
 @patch('microSALT.server.views.render_template')
 def test_index_views(renderpatch):
-  start_page()
-  reroute_page()
+  renderpatch.return_value = "ok"
+  start = start_page()
+  assert start == "ok"
+  reroute = reroute_page()
+  assert reroute == "ok"
 
 @patch('microSALT.server.views.render_template')
 def test_project_views(renderpatch):
-  project_page("AAA1234")
-  alignment_page("AAA1234")
-  typing_page("AAA1234","all")
+  renderpatch.return_value = "ok"
+  a = project_page("AAA1234")
+  assert a == "ok"
+  b = alignment_page("AAA1234")
+  assert b == "ok"
+  c = typing_page("AAA1234","all")
+  assert c == "ok"
 
 @patch('microSALT.server.views.gen_add_info')
 @patch('microSALT.server.views.render_template')
-def test_tracker_view(addinfo, renderpatch):
-  STtracker_page("cust000")
+def test_tracker_view(renderpatch, addinfo):
+  renderpatch.return_value = "ok"
+  a = STtracker_page("cust000")
+  assert a == "ok"
    
