@@ -76,6 +76,7 @@ if preset_config != "":
         logger.addHandler(ch)
 
         # Create paths mentioned in config
+        db_file = re.search("sqlite:///(.+)",preset_config["database"]["SQLALCHEMY_DATABASE_URI"],).group(1)
         for entry in preset_config.keys():
             if entry != "_comment":
                 if (
@@ -111,12 +112,6 @@ if preset_config != "":
                                 )
                                 output, error = proc.communicate()
                             elif thing == "SQLALCHEMY_DATABASE_URI":
-                                db_file = re.search(
-                                    "sqlite:///(.+)",
-                                    preset_config["database"][
-                                        "SQLALCHEMY_DATABASE_URI"
-                                    ],
-                                ).group(1)
                                 unmade_fldr = os.path.dirname(db_file)
                                 bash_cmd = "touch {}".format(db_file)
                                 proc = subprocess.Popen(
@@ -141,7 +136,7 @@ if preset_config != "":
         logger.addHandler(fh)
 
         #Integrity check database
-        cmd = "sqlite3 {0} 'pragma integrity_check;'".format(preset_config["database"]["SQLALCHEMY_DATABASE_URI"])
+        cmd = "sqlite3 {0} 'pragma integrity_check;'".format(db_file)
         proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE())
         output, error = proc.communicate()
         if not 'ok' in output:
