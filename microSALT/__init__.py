@@ -135,11 +135,13 @@ if preset_config != "":
         )
         logger.addHandler(fh)
 
-        #Integrity check database
-        cmd = "sqlite3 {0} 'pragma integrity_check;'".format(db_file)
-        proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE())
+        #Integrity check database 
+        cmd = "sqlite3 {0}".format(db_file)
+        cmd = cmd.split()
+        cmd.append("pragma integrity_check;")
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output, error = proc.communicate()
-        if not 'ok' in output:
+        if not 'ok' in str(output):
             logger.error("Database integrity failed! Lock-state detected!")
             sys.exit(-1)
 
