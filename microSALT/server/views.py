@@ -71,7 +71,7 @@ def alignment_page(project):
     return render_template(
         "alignment_page.html",
         samples=sample_info["samples"],
-        topsample=sample_info["CG_ID_project"],
+        topsample=sample_info["single_sample"],
         date=date.today().isoformat(),
         version=sample_info["versions"],
         user=sample_info["user"],
@@ -88,7 +88,7 @@ def typing_page(project, organism_group):
     return render_template(
         "typing_page.html",
         samples=sample_info["samples"],
-        topsample=sample_info["CG_ID_project"],
+        topsample=sample_info["single_sample"],
         date=date.today().isoformat(),
         version=sample_info["versions"],
         user=sample_info["user"],
@@ -254,7 +254,7 @@ def gen_add_info(sample_info=dict()):
         s.resistances = sorted(s.resistances, key=lambda x: x.instance)
         s.expacs = sorted(s.expacs, key=lambda x: x.gene)
         output["samples"].append(s)
-        output["CG_ID_project"] = s.CG_ID_project
+        output["single_sample"] = s
 
     versions = session.query(Versions).all()
     session.close()

@@ -325,7 +325,6 @@ class Reporter:
             )
 
     def gen_delivery(self):
-        #import pdb; pdb.set_trace()
         deliv = dict()
         deliv['files'] = list()
         last_version = self.db_pusher.get_report(self.name).version
@@ -353,7 +352,13 @@ class Reporter:
                                'path_index':'~','step':'analysis','tag':'runtime-settings'})
 
         #Sample-wide
-        for s in self.sampleinfo:
+        if self.sampleinfo == self.sample:
+            hklist = list()
+            hklist.append(self.sampleinfo)
+        else:
+            hklist = self.sampleinfo
+ 
+        for s in hklist:
             #Contig/Assembly file
             deliv['files'].append({'format':'fasta','id':s["CG_ID_sample"],
                                    'path':"{}/{}/assembly/trimmed_contigs.fasta".format(self.output, s["CG_ID_sample"]),
@@ -563,9 +568,12 @@ class Reporter:
         self.logger.info("Closed webserver on http://127.0.0.1:5000/")
 
     def restart_web(self):
-        self.server.terminate()
-        self.server.join()
+        try:
+          self.server.terminate()
+          self.server.join()
+        except Exception as e:
+          pass
         self.server.start()
-        self.logger.info("Started webserver on http://127.0.0.1:5000/")
+        self.logger.info("Refreshed webserver on http://127.0.0.1:5000/")
         # Hinders requests before server goes up
         time.sleep(0.15)
