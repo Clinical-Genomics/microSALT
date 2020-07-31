@@ -160,7 +160,7 @@ def gen_add_info(sample_info=dict()):
     output = dict()
     output["samples"] = list()
     output["versions"] = dict()
-    output["CG_ID_project"] = ""
+    output["single_sample"] = ""
 
     # Sorts sample names
     valid = True
