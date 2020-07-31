@@ -23,7 +23,7 @@ from microSALT.store.orm_models import (
 )
 
 engine = create_engine(
-    app.config["SQLALCHEMY_DATABASE_URI"], connect_args={"check_same_thread": False}
+    app.config["SQLALCHEMY_DATABASE_URI"], connect_args={"check_same_thread": False,'timeout':15}
 )
 Session = sessionmaker(bind=engine)
 session = Session()
@@ -36,14 +36,14 @@ log.setLevel(logging.CRITICAL)
 @app.route("/")
 def start_page():
     projects = session.query(Projects).all()
-
+    session.close()
     return render_template("start_page.html", projects=projects)
 
 
 @app.route("/microSALT/")
 def reroute_page():
     projects = session.query(Projects).all()
-
+    session.close()
     return render_template("start_page.html", projects=projects)
 
 
@@ -54,6 +54,7 @@ def project_page(project):
     distinct_organisms = (
         session.query(Samples).filter_by(CG_ID_project=project).distinct()
     )
+    session.close()
     for one_guy in distinct_organisms:
         if one_guy.organism not in organism_groups and one_guy.organism is not None:
             organism_groups.append(one_guy.organism)
@@ -70,7 +71,7 @@ def alignment_page(project):
     return render_template(
         "alignment_page.html",
         samples=sample_info["samples"],
-        topsample=sample_info["samples"][0],
+        topsample=sample_info["single_sample"],
         date=date.today().isoformat(),
         version=sample_info["versions"],
         user=sample_info["user"],
@@ -87,7 +88,7 @@ def typing_page(project, organism_group):
     return render_template(
         "typing_page.html",
         samples=sample_info["samples"],
-        topsample=sample_info["samples"][0],
+        topsample=sample_info["single_sample"],
         date=date.today().isoformat(),
         version=sample_info["versions"],
         user=sample_info["user"],
@@ -145,6 +146,7 @@ def gen_reportdata(pid="all", organism_group="all"):
     sample_info = gen_add_info(sample_info)
 
     reports = session.query(Reports).filter(Reports.CG_ID_project == pid).all()
+    session.close()
     sample_info["reports"] = reports = sorted(
         reports, key=lambda x: x.version, reverse=True
     )
@@ -158,6 +160,7 @@ def gen_add_info(sample_info=dict()):
     output = dict()
     output["samples"] = list()
     output["versions"] = dict()
+    output["CG_ID_project"] = ""
 
     # Sorts sample names
     valid = True
@@ -177,6 +180,7 @@ def gen_add_info(sample_info=dict()):
             pass
 
     for s in sample_info:
+        s.CG_ID_project = s.projects.CG_ID_project
         s.ST_status = str(s.ST)
         if s.Customer_ID_sample is not None:
             if (
@@ -250,8 +254,10 @@ def gen_add_info(sample_info=dict()):
         s.resistances = sorted(s.resistances, key=lambda x: x.instance)
         s.expacs = sorted(s.expacs, key=lambda x: x.gene)
         output["samples"].append(s)
+        output["single_sample"] = s
 
     versions = session.query(Versions).all()
+    session.close()
     for version in versions:
         name = version.name[8:]
         output["versions"][name] = version.version

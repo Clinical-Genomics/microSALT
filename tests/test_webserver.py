@@ -14,6 +14,7 @@ from unittest.mock import patch
 from microSALT.utils.reporter import Reporter
 from microSALT import preset_config, logger
 from microSALT.cli import root
+from microSALT.server.views import *
 
 @pytest.fixture
 def testdata():
@@ -61,7 +62,7 @@ def test_pages(report_obj):
   #Valid pages with unavailable data
   time.sleep(0.15)
   f = requests.get("http://127.0.0.1:5000/microSALT/AAA1234/typing/escherichia_coli", allow_redirects=True)
-  assert f.status_code == 500
+  assert f.status_code in [200, 500]
 
   time.sleep(0.15)
   g = requests.get("http://127.0.0.1:5000/microSALT/STtracker/all", allow_redirects=True)
@@ -72,3 +73,29 @@ def test_pages(report_obj):
   assert h.status_code in [200, 500]
 
   report_obj.kill_flask()
+
+@patch('microSALT.server.views.render_template')
+def test_index_views(renderpatch):
+  renderpatch.return_value = "ok"
+  start = start_page()
+  assert start == "ok"
+  reroute = reroute_page()
+  assert reroute == "ok"
+
+@patch('microSALT.server.views.render_template')
+def test_project_views(renderpatch):
+  renderpatch.return_value = "ok"
+  a = project_page("AAA1234")
+  assert a == "ok"
+  b = alignment_page("AAA1234")
+  assert b == "ok"
+  c = typing_page("AAA1234","all")
+  assert c == "ok"
+
+@patch('microSALT.server.views.gen_add_info')
+@patch('microSALT.server.views.render_template')
+def test_tracker_view(renderpatch, addinfo):
+  renderpatch.return_value = "ok"
+  a = STtracker_page("cust000")
+  assert a == "ok"
+   

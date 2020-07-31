@@ -265,7 +265,6 @@ def finish(
 
     # Samples section
     sampleinfo = review_sampleinfo(sampleinfo_file)
-
     ext_refs = Referencer(
         config=ctx.obj["config"], log=ctx.obj["log"], sampleinfo=sampleinfo
     )
@@ -368,71 +367,6 @@ def view(ctx):
     """Starts an interactive webserver for viewing"""
     codemonkey = Reporter(config=ctx.obj["config"], log=ctx.obj["log"])
     codemonkey.start_web()
-
-
-@utils.command()
-@click.option(
-    "--dry",
-    help="Builds instance without posting to SLURM",
-    default=False,
-    is_flag=True,
-)
-@click.option(
-    "--skip_update", default=False, help="Skips downloading of references", is_flag=True
-)
-@click.option(
-    "--email",
-    default=preset_config["regex"]["mail_recipient"],
-    help="Forced e-mail recipient",
-)
-@click.pass_context
-def autobatch(ctx, dry, skip_update, email):
-    """Analyses all currently unanalysed projects in the seqdata folder"""
-    # Trace exists by some samples having pubMLST_ST filled in. Make trace function later
-    ctx.obj["config"]["regex"]["mail_recipient"] = email
-    ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"])
-    if not skip_update:
-        ext_refs.identify_new(project=True)
-        ext_refs.update_refs()
-
-    process = subprocess.Popen(
-        'squeue --format="%50j" -h -r'.split(), stdout=subprocess.PIPE
-    )
-    run_jobs, error = process.communicate()
-    run_jobs = run_jobs.splitlines()
-    run_jobs = [
-        re.search('"(.+)"', str(jobname)).group(1).replace(" ", "")
-        for jobname in run_jobs
-    ]
-    old_jobs = os.listdir(ctx.obj["config"]["folders"]["results"])
-
-    for foldah in os.listdir(ctx.obj["config"]["folders"]["seqdata"]):
-        # Project name not found in slurm list
-        if len([job for job in run_jobs if foldah in job]) == 0:
-            # Project name not found in results directories
-            if len([job for job in old_jobs if foldah in job]) == 0:
-                if dry:
-                    click.echo(
-                        "DRY - microSALT analyse {} --skip_update".format(foldah)
-                    )
-                else:
-                    process = subprocess.Popen(
-                        "microSALT analyse project {} --skip_update".format(
-                            foldah
-                        ).split(),
-                        stdout=subprocess.PIPE,
-                    )
-                    output, error = process.communicate()
-            elif dry:
-                click.echo(
-                    "INFO - Skipping {} due to existing analysis in results folder".format(
-                        foldah
-                    )
-                )
-        elif dry:
-            click.echo("INFO - Skipping {} due to concurrent SLURM run".format(foldah))
-    done()
-
 
 @utils.command()
 @click.option("--input", help="Full path to project folder", default=os.getcwd())

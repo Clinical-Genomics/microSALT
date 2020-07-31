@@ -76,6 +76,7 @@ if preset_config != "":
         logger.addHandler(ch)
 
         # Create paths mentioned in config
+        db_file = re.search("sqlite:///(.+)",preset_config["database"]["SQLALCHEMY_DATABASE_URI"],).group(1)
         for entry in preset_config.keys():
             if entry != "_comment":
                 if (
@@ -111,18 +112,15 @@ if preset_config != "":
                                 )
                                 output, error = proc.communicate()
                             elif thing == "SQLALCHEMY_DATABASE_URI":
-                                db_file = re.search(
-                                    "sqlite:///(.+)",
-                                    preset_config["database"][
-                                        "SQLALCHEMY_DATABASE_URI"
-                                    ],
-                                ).group(1)
                                 unmade_fldr = os.path.dirname(db_file)
                                 bash_cmd = "touch {}".format(db_file)
                                 proc = subprocess.Popen(
                                     bash_cmd.split(), stdout=subprocess.PIPE
                                 )
                                 output, error = proc.communicate()
+                                if proc.returncode != 0:
+                                  logger.error("Database writing failed! Invalid user access detected!")
+                                  sys.exit(-1)
                             else:
                                 unmade_fldr = preset_config[entry][thing]
                             if not pathlib.Path(unmade_fldr).exists():
@@ -136,6 +134,16 @@ if preset_config != "":
             logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         )
         logger.addHandler(fh)
+
+        #Integrity check database 
+        cmd = "sqlite3 {0}".format(db_file)
+        cmd = cmd.split()
+        cmd.append("pragma integrity_check;")
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        output, error = proc.communicate()
+        if not 'ok' in str(output):
+            logger.error("Database integrity failed! Lock-state detected!")
+            sys.exit(-1)
 
     except Exception as e:
         print("Config error: {}".format(str(e)))

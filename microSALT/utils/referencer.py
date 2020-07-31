@@ -48,7 +48,6 @@ class Referencer:
         """ Automatically downloads pubMLST & NCBI organisms not already downloaded """
         neworgs = list()
         newrefs = list()
-
         try:
             if not isinstance(self.sampleinfo, list):
                 samples = [self.sampleinfo]
@@ -66,14 +65,13 @@ class Referencer:
                 and not entry.get("reference") in newrefs
             ):
                 newrefs.append(entry.get("reference"))
-
             for org in neworgs:
                 self.add_pubmlst(org)
             for org in newrefs:
                 self.download_ncbi(org)
         except Exception as e:
             self.logger.error(
-                "Reference update function failed prematurely. Review immediately"
+                "Unable to retrieve reference! Analysis using said reference will fail!"
             )
 
     def update_refs(self):
@@ -126,7 +124,7 @@ class Referencer:
                     proc = subprocess.Popen(
                         bash_cmd.split(), cwd=full_dir, stdout=subprocess.PIPE
                     )
-                    output, error = proc.communicate()
+                    proc.communicate()
                 except Exception as e:
                     self.logger.error(
                         "Unable to index requested target {} in {}".format(

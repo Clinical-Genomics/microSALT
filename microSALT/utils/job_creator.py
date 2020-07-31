@@ -207,6 +207,8 @@ class Job_Creator:
                 trimline,
             )
         )
+
+        batchfile.write("sed -n '/NODE_1000_/q;p' {0}/assembly/contigs.fasta > {0}/assembly/trimmed_contigs.fasta".format(self.finishdir))
         batchfile.write("##Input cleanup\n")
         batchfile.write("rm -r {}/trimmed\n".format(self.finishdir))
         batchfile.write("\n\n")
@@ -686,6 +688,7 @@ class Job_Creator:
         user = str(user).replace(".", " ").title()
         # if not os.path.exists(self.finishdir):
         #  os.makedirs(self.finishdir)
+
         startfile = "{}/run_started.out".format(self.finishdir)
         configfile = "{}/config.log".format(self.finishdir)
         mailfile = "{}/mailjob.sh".format(self.finishdir)
