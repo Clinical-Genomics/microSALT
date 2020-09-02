@@ -155,7 +155,11 @@ class Referencer:
                 if "escherichia_coli" in organ and "#1" in organ:
                     organ = organ[:-2]
                 currver = self.db_access.get_version("profile_{}".format(organ))
-                profile_no = re.search(r"\d+", sample[2]).group(0)
+                
+                st_link = entry.find_all("a")[1]["href"]
+                profiles_query = urllib.request.urlopen(st_link)
+                profile_no = profiles_query.readlines()[-1].decode("utf-8").split("\t")[0]
+                #profile_no = re.search(r"\d+", sample[2]).group(0)
                 if (
                     organ in self.organisms
                     and organ.replace("_", " ") not in self.updated
@@ -165,7 +169,7 @@ class Referencer:
                     )
                 ):
                     # Download definition files
-                    st_link = prefix + entry.find_all("a")[1]["href"]
+                    #st_link = prefix + entry.find_all("a")[1]["href"]
                     output = "{}/{}".format(self.config["folders"]["profiles"], organ)
                     urllib.request.urlretrieve(st_link, output)
                     # Update database
@@ -192,6 +196,7 @@ class Referencer:
                     iterator.__next__()
         except StopIteration:
             pass
+
 
     def resync(self, type="", sample="", ignore=False):
         """Manipulates samples that have an internal ST that differs from pubMLST ST"""
