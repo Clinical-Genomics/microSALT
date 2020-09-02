@@ -193,7 +193,6 @@ class Referencer:
         except StopIteration:
             pass
 
-
     def resync(self, type="", sample="", ignore=False):
         """Manipulates samples that have an internal ST that differs from pubMLST ST"""
         if type == "list":
