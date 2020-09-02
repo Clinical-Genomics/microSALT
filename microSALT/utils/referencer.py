@@ -155,7 +155,6 @@ class Referencer:
                 if "escherichia_coli" in organ and "#1" in organ:
                     organ = organ[:-2]
                 currver = self.db_access.get_version("profile_{}".format(organ))
-                
                 st_link = entry.find_all("a")[1]["href"]
                 profiles_query = urllib.request.urlopen(st_link)
                 profile_no = profiles_query.readlines()[-1].decode("utf-8").split("\t")[0]
