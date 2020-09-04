@@ -570,11 +570,7 @@ class Reporter:
 
     def restart_web(self):
         try:
-          self.server.terminate()
-          self.server.join()
+          self.kill_flask()
         except Exception as e:
           pass
-        self.server.start()
-        self.logger.info("Refreshed webserver on http://127.0.0.1:5000/")
-        # Hinders requests before server goes up
-        time.sleep(0.15)
+        self.start_web()
