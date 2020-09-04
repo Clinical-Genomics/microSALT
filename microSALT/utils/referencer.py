@@ -155,7 +155,9 @@ class Referencer:
                 if "escherichia_coli" in organ and "#1" in organ:
                     organ = organ[:-2]
                 currver = self.db_access.get_version("profile_{}".format(organ))
-                profile_no = re.search(r"\d+", sample[2]).group(0)
+                st_link = entry.find_all("a")[1]["href"]
+                profiles_query = urllib.request.urlopen(st_link)
+                profile_no = profiles_query.readlines()[-1].decode("utf-8").split("\t")[0]
                 if (
                     organ in self.organisms
                     and organ.replace("_", " ") not in self.updated
@@ -165,7 +167,6 @@ class Referencer:
                     )
                 ):
                     # Download definition files
-                    st_link = prefix + entry.find_all("a")[1]["href"]
                     output = "{}/{}".format(self.config["folders"]["profiles"], organ)
                     urllib.request.urlretrieve(st_link, output)
                     # Update database
@@ -183,9 +184,8 @@ class Referencer:
                     os.makedirs(out)
                     for loci in entry.find_all("a"):
                         loci = loci["href"]
-                        lociname = os.path.basename(os.path.normpath(loci))
-                        input = prefix + loci
-                        urllib.request.urlretrieve(input, "{}/{}".format(out, lociname))
+                        lociname = os.path.normpath(loci).split("/")[-2] 
+                        urllib.request.urlretrieve(loci, "{}/{}".format(out, lociname))
                     # Create new indexes
                     self.index_db(out, ".tfa")
                 else:
