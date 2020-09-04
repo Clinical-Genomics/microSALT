@@ -1,6 +1,6 @@
 biopython
 bs4
-click==7.1.2
+click==7.0
 flask
 flask_sqlalchemy
 pymysql
