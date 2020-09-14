@@ -185,7 +185,7 @@ class Referencer:
                     for loci in entry.find_all("a"):
                         loci = loci["href"]
                         lociname = os.path.normpath(loci).split("/")[-2] 
-                        urllib.request.urlretrieve(loci, "{}/{}".format(out, lociname))
+                        urllib.request.urlretrieve(loci, "{}/{}.tfa".format(out, lociname))
                     # Create new indexes
                     self.index_db(out, ".tfa")
                 else:
