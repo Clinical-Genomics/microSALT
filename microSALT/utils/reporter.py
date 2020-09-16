@@ -345,7 +345,7 @@ class Reporter:
                                'path_index':'~','step':'result_aggregation','tag':'microsalt-type'})
         #Json (vogue) report
         deliv['files'].append({'format':'json','id':self.sample.get("Customer_ID_project"),
-                               'path':"{}/{}.json".format(self.output, self.sample.get("Customer_ID_project")),
+                               'path':"{}/{}.json".format(self.output, self.sample.get("CG_ID_project")),
                                'path_index':'~','step':'result_aggregation','tag':'microsalt-json'})
         #Settings dump
         deliv['files'].append({'format':'txt','id':self.sample.get("Customer_ID_project"),
@@ -401,7 +401,14 @@ class Reporter:
 
         with open("{}/{}_deliverables.yaml".format(self.output, self.sample.get("Customer_ID_project")), 'w') as delivfile:
             documents = yaml.dump(deliv, delivfile)
-    
+
+        with open("{}/{}_deliverables.yaml".format(self.output, self.sample.get("Customer_ID_project")), 'r') as delivfile:
+            postfix = delivfile.read()
+        postfix = postfix.replace("'~'", "~")
+        with open("{}/{}_deliverables.yaml".format(self.output, self.sample.get("Customer_ID_project")), 'w') as delivfile:
+            delivfile.write(postfix)
+
+
     def gen_json(self, silent=False):
         report = dict()
         output = "{}/{}.json".format(self.output, self.name)
