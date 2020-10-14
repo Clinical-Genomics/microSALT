@@ -376,6 +376,10 @@ class Reporter:
             deliv['files'].append({'format':'fastq','id':s["CG_ID_sample"],
                                    'path':"{0}/trimmed/{1}_trim_rev_pair.fastq.gz".format(resultsdir, s["CG_ID_sample"]),
                                    'path_index':'~','step':'concatination','tag':'trimmed-reverse-reads'})
+            #Concat trimmed reads unpaired
+            deliv['files'].append({'format':'fastq','id':s["CG_ID_sample"],
+                                   'path':"{0}/trimmed/{1}_trim_unpair.fastq.gz".format(resultsdir, s["CG_ID_sample"]),
+                                   'path_index':'~','step':'concatination','tag':'trimmed-unpaired-reads'})            
             #Slurm dump
             deliv['files'].append({'format':'txt','id':s["CG_ID_sample"],
                                    'path':"{0}/slurm_{1}.log".format(resultsdir, s["CG_ID_sample"]),
