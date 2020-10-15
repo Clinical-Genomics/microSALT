@@ -57,22 +57,23 @@ class Scraper:
             self.job_fallback.create_project(project)
 
         # Scrape order matters a lot!
-        for dir in os.listdir(self.infolder):
-            subdir = "{}/{}".format(self.infolder, dir)
-            local_param = [p for p in self.sampleinfo if p["CG_ID_sample"] == dir]
-            if local_param != []:
-                local_param = local_param[0]
-                sample_scraper = Scraper(
-                    config=self.config,
-                    log=self.logger,
-                    sampleinfo=local_param,
-                    input=subdir,
-                )
-                sample_scraper.scrape_sample()
-            else:
-                self.logger.warning(
-                    "Skipping {} due to lacking info in sample_json file".format(dir)
-                )
+        for item in os.listdir(self.infolder):
+            sampledir = "{}/{}".format(self.infolder, item)
+            if os.path.isdir(sampledir):
+                local_param = [p for p in self.sampleinfo if p["CG_ID_sample"] == item]
+                if local_param != []:
+                    local_param = local_param[0]
+                    sample_scraper = Scraper(
+                        config=self.config,
+                        log=self.logger,
+                        sampleinfo=local_param,
+                        input=sampledir,
+                    )
+                    sample_scraper.scrape_sample()
+                else:
+                    self.logger.warning(
+                        "Skipping {} due to lacking info in sample_json file".format(dir)
+                    )
 
     def scrape_sample(self, sample=None):
         """Scrapes a sample folder for information"""
@@ -89,7 +90,7 @@ class Scraper:
             self.job_fallback.create_project(self.sample.get("CG_ID_project"))
 
         if not self.db_pusher.exists("Samples", {"CG_ID_sample": sample}):
-            self.logger.warning("Replacing sample {}".format(sample))
+            self.logger.info("Replacing sample {}".format(sample))
             self.job_fallback.create_sample(sample)
 
         # Scrape order matters a lot!
@@ -107,7 +108,7 @@ class Scraper:
     def scrape_quast(self, filename=""):
         """Scrapes a quast report for assembly information"""
         if filename == "":
-            filename = "{}/assembly/quast/report.tsv".format(self.sampledir)
+            filename = "{}/assembly/quast/{}_report.tsv".format(self.sampledir, self.name)
         quast = dict()
         try:
             with open(filename, "r") as infile:
