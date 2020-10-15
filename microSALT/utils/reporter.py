@@ -353,16 +353,17 @@ class Reporter:
                                'path_index':'~','step':'analysis','tag':'runtime-settings'})
 
         #Sample-wide
+        #Single sample
         if self.sampleinfo == self.sample:
             hklist = list()
             hklist.append(self.sampleinfo)
+            resultsdir = self.output
+        #Project
         else:
             hklist = self.sampleinfo
-        if isinstance(self.sampleinfo, list) and len(self.sampleinfo) == 1:
-            resultsdir = self.output
 
         for s in hklist:
-            if isinstance(self.sampleinfo, list) and len(self.sampleinfo) > 1:
+            if len(hklist) > 1:
                 resultsdir = os.path.join(self.output, s["CG_ID_sample"])
             #Contig/Assembly file
             deliv['files'].append({'format':'fasta','id':s["CG_ID_sample"],
