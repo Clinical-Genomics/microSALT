@@ -353,50 +353,54 @@ class Reporter:
                                'path_index':'~','step':'analysis','tag':'runtime-settings'})
 
         #Sample-wide
+        #Single sample
         if self.sampleinfo == self.sample:
             hklist = list()
             hklist.append(self.sampleinfo)
+            resultsdir = self.output
+        #Project
         else:
             hklist = self.sampleinfo
- 
+
         for s in hklist:
+            if len(hklist) > 1:
+                resultsdir = os.path.join(self.output, s["CG_ID_sample"])
             #Contig/Assembly file
             deliv['files'].append({'format':'fasta','id':s["CG_ID_sample"],
-                                   'path':"{}/{}/assembly/trimmed_contigs.fasta".format(self.output, s["CG_ID_sample"]),
+                                   'path':"{0}/assembly/{1}_trimmed_contigs.fasta".format(resultsdir, s["CG_ID_sample"]),
                                    'path_index':'~','step':'assembly','tag':'assembly'})
             #Concat trimmed reads forwards
             deliv['files'].append({'format':'fastq','id':s["CG_ID_sample"],
-                                   'path':"{}/{}/trimmed/forwards_reads.fastq.gz".format(self.output, s["CG_ID_sample"]),
+                                   'path':"{0}/trimmed/{1}_trim_front_pair.fastq.gz".format(resultsdir, s["CG_ID_sample"]),
                                    'path_index':'~','step':'concatination','tag':'trimmed-forward-reads'}) 
             #Concat trimmed reads reverse
             deliv['files'].append({'format':'fastq','id':s["CG_ID_sample"],
-                                   'path':"{}/{}/trimmed/reverse_reads.fastq.gz".format(self.output, s["CG_ID_sample"]),
+                                   'path':"{0}/trimmed/{1}_trim_rev_pair.fastq.gz".format(resultsdir, s["CG_ID_sample"]),
                                    'path_index':'~','step':'concatination','tag':'trimmed-reverse-reads'})
+            #Concat trimmed reads unpaired
+            deliv['files'].append({'format':'fastq','id':s["CG_ID_sample"],
+                                   'path':"{0}/trimmed/{1}_trim_unpair.fastq.gz".format(resultsdir, s["CG_ID_sample"]),
+                                   'path_index':'~','step':'concatination','tag':'trimmed-unpaired-reads'})            
             #Slurm dump
             deliv['files'].append({'format':'txt','id':s["CG_ID_sample"],
-                                   'path':"{0}/{1}/slurm_{1}.log".format(self.output, s["CG_ID_sample"]),
+                                   'path':"{0}/slurm_{1}.log".format(resultsdir, s["CG_ID_sample"]),
                                    'path_index':'~','step':'analysis','tag':'logfile'})
             #Quast (assembly) qc report
             deliv['files'].append({'format':'tsv','id':s["CG_ID_sample"],
-                                   'path':"{0}/{1}/assembly/quast/report.tsv".format(self.output, s["CG_ID_sample"]),
+                                   'path':"{0}/assembly/quast/{1}_report.tsv".format(resultsdir, s["CG_ID_sample"]),
                                    'path_index':'~','step':'assembly','tag':'quast-results'})
-            #Alignment (sam)
-            deliv['files'].append({'format':'sam','id':s["CG_ID_sample"],
-                                   'path':"{0}/{1}/alignment/{1}_{2}.sam".format(self.output, s["CG_ID_sample"], s["reference"]),
-                                   'path_index':'~','step':'alignment','tag':'reference-alignment'})
             #Alignment (bam, sorted)
             deliv['files'].append({'format':'bam','id':s["CG_ID_sample"],
-                                   'path':"{0}/{1}/alignment/{1}_{2}.bam_sort".format(self.output, s["CG_ID_sample"], s["reference"]),
+                                   'path':"{0}/alignment/{1}_{2}.bam_sort".format(resultsdir, s["CG_ID_sample"], s["reference"]),
                                    'path_index':'~','step':'alignment','tag':'reference-alignment-sorted'})
             #Alignment (bam, sorted, deduplicated)
             deliv['files'].append({'format':'bam','id':s["CG_ID_sample"],
-                                   'path':"{0}/{1}/alignment/{1}_{2}.bam_sort_rmdup".format(self.output, s["CG_ID_sample"], s["reference"]),
+                                   'path':"{0}/alignment/{1}_{2}.bam_sort_rmdup".format(resultsdir, s["CG_ID_sample"], s["reference"]),
                                    'path_index':'~','step':'alignment','tag':'reference-alignment-deduplicated'})
             #Picard insert size stats
             deliv['files'].append({'format':'meta','id':s["CG_ID_sample"],
-                                   'path':"{0}/{1}/alignment/{1}_{2}.stats.ins".format(self.output, s["CG_ID_sample"], s["reference"]),
+                                   'path':"{0}/alignment/{1}_{2}.stats.ins".format(resultsdir, s["CG_ID_sample"], s["reference"]),
                                    'path_index':'~','step':'insertsize_calc','tag':'picard-insertsize'})
-
 
 
         with open("{}/{}_deliverables.yaml".format(self.output, self.sample.get("Customer_ID_project")), 'w') as delivfile:

@@ -208,9 +208,10 @@ class Job_Creator:
             )
         )
 
-        batchfile.write("sed -n '/NODE_1000_/q;p' {0}/assembly/contigs.fasta > {0}/assembly/trimmed_contigs.fasta".format(self.finishdir))
-        batchfile.write("##Input cleanup\n")
-        batchfile.write("rm -r {}/trimmed\n".format(self.finishdir))
+        batchfile.write("mv {0}/assembly/contigs.fasta {0}/assembly/{1}_contigs.fasta\n".format(self.finishdir,self.name))
+        batchfile.write("sed -n '/NODE_1000_/q;p' {0}/assembly/{1}_contigs.fasta > {0}/assembly/{1}_trimmed_contigs.fasta\n".format(self.finishdir,self.name))
+        #batchfile.write("##Input cleanup\n")
+        #batchfile.write("rm -r {}/trimmed\n".format(self.finishdir))
         batchfile.write("\n\n")
         batchfile.close()
 
@@ -238,10 +239,11 @@ class Job_Creator:
                 )
                 if name == "mlst":
                     batchfile.write(
-                        "blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n".format(
+                        "blastn -db {}/{}  -query {}/assembly/{}_contigs.fasta -out {}/blast_search/{}/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}\n".format(
                             os.path.dirname(ref),
                             ref_nosuf,
                             self.finishdir,
+                            self.name,
                             self.finishdir,
                             name,
                             ref_nosuf,
@@ -251,10 +253,11 @@ class Job_Creator:
                     )
                 else:
                     batchfile.write(
-                        "blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(
+                        "blastn -db {}/{}  -query {}/assembly/{}_contigs.fasta -out {}/blast_search/{}/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(
                             os.path.dirname(ref),
                             ref_nosuf,
                             self.finishdir,
+                            self.name,
                             self.finishdir,
                             name,
                             ref_nosuf,
@@ -272,10 +275,11 @@ class Job_Creator:
                 )
             )
             batchfile.write(
-                "blastn -db {}/{}  -query {}/assembly/contigs.fasta -out {}/blast_search/{}/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(
+                "blastn -db {}/{}  -query {}/assembly/{}_contigs.fasta -out {}/blast_search/{}/{}.txt -task megablast -num_threads {} -outfmt {}\n".format(
                     os.path.dirname(search_string),
                     ref_nosuf,
                     self.finishdir,
+                    self.name,
                     self.finishdir,
                     name,
                     ref_nosuf,
@@ -385,11 +389,11 @@ class Job_Creator:
                 reverse.append(fullfile)
         outfile = files[0].split("_")[0]
 
-        self.concat_files["f"] = "{}/trimmed/forward_reads.fastq.gz".format(
-            self.finishdir
+        self.concat_files["f"] = "{}/trimmed/{}_forward_reads.fastq.gz".format(
+            self.finishdir, self.name
         )
-        self.concat_files["r"] = "{}/trimmed/reverse_reads.fastq.gz".format(
-            self.finishdir
+        self.concat_files["r"] = "{}/trimmed/{}_reverse_reads.fastq.gz".format(
+            self.finishdir, self.name
         )
         batchfile.write(
             "cat {} > {}\n".format(" ".join(forward), self.concat_files.get("f"))
@@ -436,8 +440,12 @@ class Job_Creator:
         batchfile.write("# QUAST QC metrics\n")
         batchfile.write("mkdir {}/assembly/quast\n".format(self.finishdir))
         batchfile.write(
-            "quast.py {}/assembly/contigs.fasta -o {}/assembly/quast\n\n".format(
-                self.finishdir, self.finishdir
+            "quast.py {}/assembly/{}_contigs.fasta -o {}/assembly/quast\n".format(
+                self.finishdir, self.name, self.finishdir
+            )
+        )
+        batchfile.write("mv {}/assembly/quast/report.tsv {}/assembly/quast/{}_report.tsv\n\n".format(
+                self.finishdir, self.finishdir, self.name
             )
         )
         batchfile.close()
