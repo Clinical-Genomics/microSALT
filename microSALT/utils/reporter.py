@@ -75,7 +75,13 @@ class Reporter:
             self.name = self.sampleinfo.get("CG_ID_project")
             self.sample = self.sampleinfo
 
+    def create_subfolders(self):
+        os.mkdirs("{0}/deliverables".format(self.config["folders"]["reports"]), exist_ok=True)
+        os.mkdirs("{0}/json".format(self.config["folders"]["reports"]), exist_ok=True)
+        os.mkdirs("{0}/analysis".format(self.config["folders"]["reports"]), exist_ok=True)
+
     def report(self, type="default", customer="all"):
+        self.create_subfolders()
         if type in ["default", "typing", "qc"]:
             # Only typing and qc reports are version controlled
             self.gen_version(self.name)
@@ -147,7 +153,7 @@ class Reporter:
                 self.sample.get("Customer_ID_project"), last_version
             )
             output = "{}/{}".format(self.output, outfile)
-            storage = "{}/{}".format(self.config["folders"]["reports"], outfile)
+            storage = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
 
             if not os.path.isfile(output):
                 self.filelist.append(output)
@@ -180,7 +186,7 @@ class Reporter:
                 self.sample.get("Customer_ID_project"), last_version
             )
             output = "{}/{}".format(self.output, outfile)
-            storage = "{}/{}".format(self.config["folders"]["reports"], outfile)
+            storage = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
 
             if not os.path.isfile(output):
                 self.filelist.append(output)
