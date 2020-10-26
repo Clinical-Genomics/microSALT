@@ -111,7 +111,7 @@ class Reporter:
         #If no output dir is specified; Don't store report locally. Rely on e-mail
         if not self.output == "" or self.output == os.getcwd():
             for k,v in self.filedict.items():
-                if v = "": 
+                if v == "": 
                     os.remove(k)
                 else:
                     copyfile(k, v)
@@ -421,6 +421,9 @@ class Reporter:
 
         with open(output, 'w') as delivfile:
             delivfile.write(postfix)
+
+        if not os.path.isfile(output):
+            self.filedict[output] = local
 
 
     def gen_json(self, silent=False):
