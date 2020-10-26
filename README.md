@@ -1,7 +1,5 @@
 ![Build status](https://travis-ci.com/Clinical-Genomics/microSALT.svg?branch=master) 
-
 [![Coverage Status](https://coveralls.io/repos/github/Clinical-Genomics/microSALT/badge.svg?branch=master)](https://coveralls.io/github/Clinical-Genomics/microSALT?branch=master)
-
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4026043.svg)](https://doi.org/10.5281/zenodo.4026043)
 
 <p align="center">
