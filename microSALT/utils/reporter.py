@@ -44,10 +44,9 @@ class Reporter:
             app.config[k] = v
         self.server = Process(target=app.run)
         self.attachments = list()
-        self.filelist = list()
+        self.filedict = dict()
         self.error = False
         self.dt = datetime.now()
-        self.filelist = list()
         self.now = time.strftime(
             "{}.{}.{}_{}.{}.{}".format(
                 self.dt.year,
@@ -109,9 +108,13 @@ class Reporter:
         else:
             raise Exception("Report function recieved invalid format")
         self.mail()
-        if self.output == "" or self.output == os.getcwd():
-            for file in self.filelist:
-                os.remove(file)
+        #If no output dir is specified; Don't store report locally. Rely on e-mail
+        if not self.output == "" or self.output == os.getcwd():
+            for k,v in self.filedict.items():
+                if v = "": 
+                    os.remove(k)
+                else:
+                    copyfile(k, v)
 
     def gen_version(self, name):
         self.db_pusher.get_report(name)
@@ -128,7 +131,7 @@ class Reporter:
             outfile = open(outname, "wb")
             outfile.write(r.content.decode("iso-8859-1").encode("utf8"))
             outfile.close()
-            self.filelist.append(outname)
+            self.filedict[outname] = ""
             if not silent:
                 self.attachments.append(outname)
         except Exception as e:
@@ -152,15 +155,14 @@ class Reporter:
             outfile = "{}_QC_{}.html".format(
                 self.sample.get("Customer_ID_project"), last_version
             )
-            output = "{}/{}".format(self.output, outfile)
-            storage = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
+            local = "{}/{}".format(self.output, outfile)
+            output = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
 
             if not os.path.isfile(output):
-                self.filelist.append(output)
+                self.filedict[output] = local
             outfile = open(output, "wb")
             outfile.write(q.content.decode("iso-8859-1").encode("utf8"))
             outfile.close()
-            copyfile(output, storage)
 
             if not silent:
                 self.attachments.append(output)
@@ -185,15 +187,14 @@ class Reporter:
             outfile = "{}_Typing_{}.html".format(
                 self.sample.get("Customer_ID_project"), last_version
             )
-            output = "{}/{}".format(self.output, outfile)
-            storage = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
+            local = "{}/{}".format(self.output, outfile)
+            output = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
 
             if not os.path.isfile(output):
-                self.filelist.append(output)
+                self.filedict[output] = local
             outfile = open(output, "wb")
             outfile.write(r.content.decode("iso-8859-1").encode("utf8"))
             outfile.close()
-            copyfile(output, storage)
 
             if not silent:
                 self.attachments.append(output)
@@ -321,7 +322,7 @@ class Reporter:
                 excel.write("{}{}\n".format(pref, hits))
 
             excel.close()
-            self.filelist.append(output)
+            self.filedict[output] = ""
             if not silent:
                 self.attachments.append(output)
         except FileNotFoundError as e:
@@ -335,6 +336,8 @@ class Reporter:
         deliv = dict()
         deliv['files'] = list()
         last_version = self.db_pusher.get_report(self.name).version
+        output = "{}/deliverables/{}_deliverables.yaml".format(self.config["folders"]["reports"], self.sample.get("Customer_ID_project"))
+        local = "{}/{}_deliverables.yaml".format(self.output, self.sample.get("Customer_ID_project"))
 
         #Project-wide
         #Sampleinfo
@@ -409,19 +412,21 @@ class Reporter:
                                    'path_index':'~','step':'insertsize_calc','tag':'picard-insertsize'})
 
 
-        with open("{}/{}_deliverables.yaml".format(self.output, self.sample.get("Customer_ID_project")), 'w') as delivfile:
+        with open(output, 'w') as delivfile:
             documents = yaml.dump(deliv, delivfile)
 
-        with open("{}/{}_deliverables.yaml".format(self.output, self.sample.get("Customer_ID_project")), 'r') as delivfile:
+        with open(output, 'r') as delivfile:
             postfix = delivfile.read()
         postfix = postfix.replace("'~'", "~")
-        with open("{}/{}_deliverables.yaml".format(self.output, self.sample.get("Customer_ID_project")), 'w') as delivfile:
+
+        with open(output, 'w') as delivfile:
             delivfile.write(postfix)
 
 
     def gen_json(self, silent=False):
         report = dict()
-        output = "{}/{}.json".format(self.output, self.name)
+        local = "{}/{}.json".format(self.output, self.name)
+        output = "{}/json/{}.json".format(self.config["folders"]["reports"], self.name)
 
         sample_info = gen_reportdata(self.name)
         analyses = [
@@ -531,7 +536,8 @@ class Reporter:
         try:
             with open(output, "w") as outfile:
                 json.dump(report, outfile)
-            self.filelist.append(output)
+
+            self.filedict[output] = local
             if not silent:
                 self.attachments.append(output)
         except FileNotFoundError as e:
