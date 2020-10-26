@@ -6,6 +6,7 @@ import pathlib
 import pdb
 import pytest
 import requests
+import runpy
 import time
 
 from distutils.sysconfig import get_python_lib
@@ -32,9 +33,17 @@ def report_obj(testdata):
   report = Reporter(config=preset_config, log=logger, sampleinfo=testdata)
   return report
 
+@pytest.fixture
+def appscript():
+  script = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'microSALT/server/app.py'))
+  return script
+
 def test_webserver(report_obj):
   report_obj.start_web()
   report_obj.kill_flask()
+
+def test_appobject(appscript):
+  runpy.run_path(appscript)   
 
 def test_pages(report_obj):
   report_obj.start_web()
