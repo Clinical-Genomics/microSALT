@@ -75,9 +75,9 @@ class Reporter:
             self.sample = self.sampleinfo
 
     def create_subfolders(self):
-        os.mkdirs("{0}/deliverables".format(self.config["folders"]["reports"]), exist_ok=True)
-        os.mkdirs("{0}/json".format(self.config["folders"]["reports"]), exist_ok=True)
-        os.mkdirs("{0}/analysis".format(self.config["folders"]["reports"]), exist_ok=True)
+        os.makedirs("{0}/deliverables".format(self.config["folders"]["reports"]), exist_ok=True)
+        os.makedirs("{0}/json".format(self.config["folders"]["reports"]), exist_ok=True)
+        os.makedirs("{0}/analysis".format(self.config["folders"]["reports"]), exist_ok=True)
 
     def report(self, type="default", customer="all"):
         self.create_subfolders()
