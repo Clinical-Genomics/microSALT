@@ -158,14 +158,14 @@ class Reporter:
             local = "{}/{}".format(self.output, outfile)
             output = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
 
-            if not os.path.isfile(output):
-                self.filedict[output] = local
             outfile = open(output, "wb")
             outfile.write(q.content.decode("iso-8859-1").encode("utf8"))
             outfile.close()
 
-            if not silent:
-                self.attachments.append(output)
+            if os.path.isfile(output):
+                self.filedict[output] = local
+                if not silent:
+                    self.attachments.append(output)
         except Exception as e:
             self.logger.error(
                 "Flask instance currently occupied. Possible rogue process. Retry command"
@@ -190,14 +190,14 @@ class Reporter:
             local = "{}/{}".format(self.output, outfile)
             output = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
 
-            if not os.path.isfile(output):
-                self.filedict[output] = local
             outfile = open(output, "wb")
             outfile.write(r.content.decode("iso-8859-1").encode("utf8"))
             outfile.close()
 
-            if not silent:
-                self.attachments.append(output)
+            if os.path.isfile(output):
+                self.filedict[output] = local
+                if not silent:
+                    self.attachments.append(output)
         except Exception as e:
             self.logger.error(
                 "Flask instance currently occupied. Possible rogue process. Retry command"
@@ -322,9 +322,10 @@ class Reporter:
                 excel.write("{}{}\n".format(pref, hits))
 
             excel.close()
-            self.filedict[output] = ""
-            if not silent:
-                self.attachments.append(output)
+            if os.path.isfile(output):
+                self.filedict[output] = ""
+                if not silent:
+                    self.attachments.append(output)
         except FileNotFoundError as e:
             self.logger.error(
                 "Unable to produce excel file. Path {} does not exist".format(
@@ -422,7 +423,7 @@ class Reporter:
         with open(output, 'w') as delivfile:
             delivfile.write(postfix)
 
-        if not os.path.isfile(output):
+        if os.path.isfile(output):
             self.filedict[output] = local
 
 
@@ -540,9 +541,10 @@ class Reporter:
             with open(output, "w") as outfile:
                 json.dump(report, outfile)
 
-            self.filedict[output] = local
-            if not silent:
-                self.attachments.append(output)
+            if os.path.isfile(output):
+                self.filedict[output] = local
+                if not silent:
+                    self.attachments.append(output)
         except FileNotFoundError as e:
             self.logger.error(
                 "Unable to produce json file. Path {} does not exist".format(
