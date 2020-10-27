@@ -17,29 +17,33 @@ from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT import preset_config, logger
 from microSALT.cli import root
 
-@pytest.fixture
-def mlst_data():
-  pfile = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/sampleinfo_mlst.json'))
+def unpack_db_json(filename):
+  testdata = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/{}'.format(filename)))
   #Check if release install exists
   for entry in os.listdir(get_python_lib()):
     if 'microSALT-' in entry:
-      pfile = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/sampleinfo_mlst.json'))
-  try:
-    with open(pfile) as json_file:
-      data = json.load(json_file)
-  except Exception as e:
-    print("Unable to read provided sample info file as json. Exiting..")
-    sys.exit(-1)
+      testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/{}'.format(filename)))
+  with open(testdata) as json_file:
+    data = json.load(json_file)
   return data
 
 @pytest.fixture
 def dbm():
   db_file = re.search('sqlite:///(.+)', preset_config['database']['SQLALCHEMY_DATABASE_URI']).group(1)
-  os.remove(db_file)
   dbm = DB_Manipulator(config=preset_config,log=logger)
   dbm.create_tables()
-  return dbm
 
+  for antry in unpack_db_json('sampleinfo_projects.json'):
+    dbm.add_rec(antry, 'Projects')
+  for entry in unpack_db_json('sampleinfo_mlst.json'):
+    dbm.add_rec(entry, 'Seq_types')
+  for bentry in unpack_db_json('sampleinfo_resistance.json'):
+    dbm.add_rec(bentry, 'Resistances')
+  for centry in unpack_db_json('sampleinfo_expec.json'):
+    dbm.add_rec(centry, 'Expacs')
+  for dentry in unpack_db_json('sampleinfo_reports.json'):
+    dbm.add_rec(dentry, 'Reports')
+  return dbm
 
 def test_create_every_table(dbm):
   assert dbm.engine.dialect.has_table(dbm.engine, 'samples')
@@ -97,15 +101,13 @@ def test_upd_rec(dbm):
   assert len(dbm.query_rec('Samples', {'CG_ID_sample':'UPD1234A1'})) == 0
   assert len(dbm.query_rec('Samples', {'CG_ID_sample':'UPD1234A2'})) == 1
 
-def test_allele_ranker(dbm, mlst_data):
-  for entry in mlst_data:
-    dbm.add_rec(entry, 'Seq_types')
+def test_allele_ranker(dbm):
   dbm.add_rec({'CG_ID_sample':'MLS1234A1', 'CG_ID_project':'MLS1234','organism':'staphylococcus_aureus'}, 'Samples')
   assert dbm.alleles2st('MLS1234A1') == 130
   best_alleles = {'arcC': {'contig_name': 'NODE_1', 'allele': 6}, 'aroE': {'contig_name': 'NODE_1', 'allele': 57}, 'glpF': {'contig_name': 'NODE_1', 'allele': 45}, 'gmk': {'contig_name': 'NODE_1', 'allele': 2}, 'pta': {'contig_name': 'NODE_1', 'allele': 7}, 'tpi': {'contig_name': 'NODE_1', 'allele': 58}, 'yqiL': {'contig_name': 'NODE_1', 'allele': 52}}
   assert dbm.bestAlleles('MLS1234A1') == best_alleles
 
-  for entry in mlst_data:
+  for entry in unpack_db_json('sampleinfo_mlst.json'):
     entry['allele'] = 0
     entry['CG_ID_sample'] = 'MLS1234A2'
     dbm.add_rec(entry, 'Seq_types') 

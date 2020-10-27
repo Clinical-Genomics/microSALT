@@ -15,12 +15,6 @@ from microSALT.utils.scraper import Scraper
 from microSALT.utils.referencer import Referencer
 
 @pytest.fixture
-def references():
-  ref_obj = Referencer(config=preset_config, log=logger)
-  fixer.identify_new(project_id,project=True)
-  fixer.update_refs()
-
-@pytest.fixture
 def testdata_prefix():
   test_path = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/'))
   #Check if release install exists
