@@ -113,11 +113,15 @@ class DB_Manipulator:
                 data = table.insert()
                 #Loads any dates as datetime objects
                 for k, v in data_dict.items():
-                  try:
-                    parse(v, fuzzy=False)
-                    data_dict[k] = datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f')
-                  except ValueError:
-                    pass
+                  if isinstance(v, str):
+                    try:
+                      parse(v, fuzzy=False)
+                      data_dict[k] = datetime.strptime(v, '%Y-%m-%d %H:%M:%S')
+                    except ValueError as ve:
+                      if len(ve.args) > 0 and ve.args[0].startswith('unconverted data remains: '):
+                        data_dict[k] = datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f')
+                      else:
+                        pass
                 data.execute(data_dict)
                 self.logger.info("Added entry to table {}".format(tablename.fullname))
         # ORM
@@ -141,11 +145,15 @@ class DB_Manipulator:
                 newobj = table()
                 #Loads any dates as datetime objects
                 for k, v in data_dict.items():
-                  try:
-                    parse(v, fuzzy=False)
-                    data_dict[k] = datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f')
-                  except ValueError:
-                    pass
+                  if isinstance(v, str):
+                    try:
+                      parse(v, fuzzy=False)
+                      data_dict[k] = datetime.strptime(v, '%Y-%m-%d %H:%M:%S')
+                    except ValueError as ve:
+                      if len(ve.args) > 0 and ve.args[0].startswith('unconverted data remains: '):
+                        data_dict[k] = datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f')
+                      else:
+                        pass
                 for k, v in data_dict.items():
                     setattr(newobj, k, v)
                 self.session.add(newobj)
