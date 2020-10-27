@@ -7,6 +7,7 @@ import logging
 import pathlib
 import pdb
 import pytest
+import re
 import mock
 import os
 import sys
@@ -19,6 +20,36 @@ from unittest.mock import patch, mock_open
 
 from microSALT import preset_config, logger
 from microSALT.cli import root
+from microSALT.store.db_manipulator import DB_Manipulator
+
+def unpack_db_json(filename):
+  testdata = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/{}'.format(filename)))
+  #Check if release install exists
+  for entry in os.listdir(get_python_lib()):
+    if 'microSALT-' in entry:
+      testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/{}'.format(filename)))
+  with open(testdata) as json_file:
+    data = json.load(json_file)
+  return data
+
+@pytest.fixture
+def dbm():
+  db_file = re.search('sqlite:///(.+)', preset_config['database']['SQLALCHEMY_DATABASE_URI']).group(1)
+  dbm = DB_Manipulator(config=preset_config,log=logger)
+  dbm.create_tables()
+
+  for antry in unpack_db_json('sampleinfo_projects.json'):
+    dbm.add_rec(antry, 'Projects')
+  for entry in unpack_db_json('sampleinfo_mlst.json'):
+    dbm.add_rec(entry, 'Seq_types')
+  for bentry in unpack_db_json('sampleinfo_resistance.json'):
+    dbm.add_rec(bentry, 'Resistances')
+  for centry in unpack_db_json('sampleinfo_expec.json'):
+    dbm.add_rec(centry, 'Expacs')
+  for dentry in unpack_db_json('sampleinfo_reports.json'):
+    dbm.add_rec(dentry, 'Reports')
+  return dbm
+
 
 @pytest.fixture(autouse=True)
 def no_requests(monkeypatch):
@@ -78,7 +109,7 @@ def test_groups(runner):
 @patch('gzip.open')
 @patch('microSALT.utils.job_creator.glob.glob')
 @patch('microSALT.cli.os.path.isdir')
-def test_analyse_dry(isdir, jc_glob, gzip, listdir, subproc, runner, config, path_testdata, caplog):
+def test_analyse_dry(isdir, jc_glob, gzip, listdir, subproc, runner, config, path_testdata, caplog, dbm):
   caplog.clear()
   caplog.set_level(logging.DEBUG, logger="main_logger")
 
@@ -108,7 +139,7 @@ def test_analyse_dry(isdir, jc_glob, gzip, listdir, subproc, runner, config, pat
 @patch('gzip.open')
 @patch('microSALT.utils.job_creator.glob.glob')
 @patch('microSALT.cli.os.path.isdir')
-def test_analyse_typical(isdir, jc_glob, gzip, listdir, subproc, runner, config, path_testdata, caplog):
+def test_analyse_typical(isdir, jc_glob, gzip, listdir, subproc, runner, config, path_testdata, caplog, dbm):
   caplog.clear()
   caplog.set_level(logging.DEBUG, logger="main_logger")
 
@@ -134,7 +165,7 @@ def test_analyse_typical(isdir, jc_glob, gzip, listdir, subproc, runner, config,
 @patch('gzip.open')
 @patch('microSALT.utils.job_creator.glob.glob')
 @patch('microSALT.cli.os.path.isdir')
-def test_analyse_exhaustive(isdir, jc_glob, gzip, listdir, subproc, runner, config, path_testdata, caplog):
+def test_analyse_exhaustive(isdir, jc_glob, gzip, listdir, subproc, runner, config, path_testdata, caplog, dbm):
   caplog.clear()
   caplog.set_level(logging.DEBUG, logger="main_logger")
 
@@ -162,8 +193,7 @@ def test_analyse_exhaustive(isdir, jc_glob, gzip, listdir, subproc, runner, conf
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
 @patch('microSALT.cli.os.path.isdir')
-@patch('microSALT.server.views.gen_add_info')
-def test_finish_typical(addinfo, isdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata, path_testproject, caplog):
+def test_finish_typical(isdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata, path_testproject, caplog, dbm):
   caplog.set_level(logging.DEBUG, logger="main_logger")
   caplog.clear()
 
@@ -185,7 +215,7 @@ def test_finish_typical(addinfo, isdir, smtp, reqs_get, proc_join, proc_term, we
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
 @patch('microSALT.cli.os.path.isdir')
-def test_finish_qc(isdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata, path_testproject, caplog):
+def test_finish_qc(isdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata, path_testproject, caplog, dbm):
   caplog.set_level(logging.DEBUG, logger="main_logger")
   caplog.clear()
 
@@ -203,8 +233,7 @@ def test_finish_qc(isdir, smtp, reqs_get, proc_join, proc_term, webstart, create
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
 @patch('microSALT.cli.os.path.isdir')
-@patch('microSALT.server.views.gen_add_info')
-def test_finish_motif(addinfo, isdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata, path_testproject, caplog):
+def test_finish_motif(isdir, smtp, reqs_get, proc_join, proc_term, webstart, create_projct, runner, config, path_testdata, path_testproject, caplog, dbm):
   caplog.set_level(logging.DEBUG, logger="main_logger")
   caplog.clear()
 
@@ -221,8 +250,7 @@ def test_finish_motif(addinfo, isdir, smtp, reqs_get, proc_join, proc_term, webs
 @patch('multiprocessing.Process.join')
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
-@patch('microSALT.server.views.gen_add_info')
-def test_report(addinfo, smtplib, reqget, join, term, webstart, runner, path_testdata, caplog):
+def test_report(smtplib, reqget, join, term, webstart, runner, path_testdata, caplog, dbm):
   caplog.set_level(logging.DEBUG, logger="main_logger")
   caplog.clear()
 
@@ -246,7 +274,7 @@ def test_report(addinfo, smtplib, reqget, join, term, webstart, runner, path_tes
 @patch('multiprocessing.Process.join')
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
-def test_resync_overwrite(smtplib, reqget, join, term, webstart, runner, caplog):
+def test_resync_overwrite(smtplib, reqget, join, term, webstart, runner, caplog, dbm):
   caplog.set_level(logging.DEBUG, logger="main_logger")
   caplog.clear()
 
@@ -264,8 +292,7 @@ def test_resync_overwrite(smtplib, reqget, join, term, webstart, runner, caplog)
 @patch('multiprocessing.Process.join')
 @patch('microSALT.utils.reporter.requests.get')
 @patch('microSALT.utils.reporter.smtplib')
-@patch('microSALT.store.db_manipulator.DB_Manipulator.init_profiletable')
-def test_resync_review(ptable, smtplib, reqget, join, term, webstart, runner, caplog):
+def test_resync_review(smtplib, reqget, join, term, webstart, runner, caplog, dbm):
   caplog.set_level(logging.DEBUG, logger="main_logger")
   caplog.clear()
 
@@ -280,8 +307,7 @@ def test_resync_review(ptable, smtplib, reqget, join, term, webstart, runner, ca
     assert "INFO - Execution finished!" in caplog.text
     caplog.clear()
 
-@patch('microSALT.store.db_manipulator.DB_Manipulator.init_profiletable')
-def test_refer(ptable, runner, caplog):
+def test_refer(runner, caplog, dbm):
   caplog.set_level(logging.DEBUG, logger="main_logger")
 
   list_invoke = runner.invoke(root, ['utils', 'refer', 'observe'])
@@ -297,7 +323,7 @@ def test_refer(ptable, runner, caplog):
   caplog.clear()
 
 @patch('microSALT.utils.reporter.Reporter.start_web')
-def test_view(webstart, runner, caplog):
+def test_view(webstart, runner, caplog, dbm):
   caplog.set_level(logging.DEBUG, logger="main_logger")
 
   view = runner.invoke(root, ['utils', 'view'])
@@ -306,7 +332,7 @@ def test_view(webstart, runner, caplog):
   caplog.clear()
 
 @patch('os.path.isdir')
-def test_generate(isdir, runner, caplog):
+def test_generate(isdir, runner, caplog, dbm):
   caplog.set_level(logging.DEBUG, logger="main_logger")
   gent = runner.invoke(root, ['utils', 'generate', '--input', '/tmp/'])
   assert gent.exit_code == 0
