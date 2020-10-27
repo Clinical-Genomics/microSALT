@@ -44,23 +44,11 @@ def mock_db():
     dbm.add_rec(centry, 'Expacs')
   for dentry in unpack_db_json('sampleinfo_reports.json'):
     dbm.add_rec(dentry, 'Reports')
-
   return dbm
 
 @pytest.fixture
-def reference_data():
-  testdata = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/sampleinfo_samples.json'))
-  #Check if release install exists
-  for entry in os.listdir(get_python_lib()):
-    if 'microSALT-' in entry:
-      testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/sampleinfo_samples.json'))
-  with open(testdata) as json_file:
-    data = json.load(json_file)
-  return data
-
-@pytest.fixture
-def reporter(reference_data):
-  reporter_obj = Reporter(config=preset_config, log=logger, sampleinfo=reference_data[0], name="MIC1234A1", output="/tmp/MLST")
+def reporter():
+  reporter_obj = Reporter(config=preset_config, log=logger, sampleinfo=unpack_db_json('sampleinfo_samples.json')[0], name="MIC1234A1", output="/tmp/MLST")
   return reporter_obj
 
 def test_motif(mock_db, reporter):

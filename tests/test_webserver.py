@@ -6,6 +6,7 @@ import pathlib
 import pdb
 import pytest
 import requests
+import re
 import runpy
 import time
 
@@ -16,6 +17,35 @@ from microSALT.utils.reporter import Reporter
 from microSALT import preset_config, logger
 from microSALT.cli import root
 from microSALT.server.views import *
+from microSALT.store.db_manipulator import DB_Manipulator
+
+def unpack_db_json(filename):
+  testdata = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/{}'.format(filename)))
+  #Check if release install exists
+  for entry in os.listdir(get_python_lib()):
+    if 'microSALT-' in entry:
+      testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/{}'.format(filename)))
+  with open(testdata) as json_file:
+    data = json.load(json_file)
+  return data
+
+@pytest.fixture
+def mock_db():
+  db_file = re.search('sqlite:///(.+)', preset_config['database']['SQLALCHEMY_DATABASE_URI']).group(1)
+  dbm = DB_Manipulator(config=preset_config,log=logger)
+  dbm.create_tables()
+
+  for antry in unpack_db_json('sampleinfo_projects.json'):
+    dbm.add_rec(antry, 'Projects')
+  for entry in unpack_db_json('sampleinfo_mlst.json'):
+    dbm.add_rec(entry, 'Seq_types')
+  for bentry in unpack_db_json('sampleinfo_resistance.json'):
+    dbm.add_rec(bentry, 'Resistances')
+  for centry in unpack_db_json('sampleinfo_expec.json'):
+    dbm.add_rec(centry, 'Expacs')
+  for dentry in unpack_db_json('sampleinfo_reports.json'):
+    dbm.add_rec(dentry, 'Reports')
+  return dbm
 
 @pytest.fixture
 def testdata():
@@ -45,7 +75,7 @@ def test_webserver(report_obj):
 def test_appobject(appscript):
   runpy.run_path(appscript)   
 
-def test_pages(report_obj):
+def test_pages(report_obj, mock_db):
   report_obj.start_web()
   #Valid pages with available data
   time.sleep(3)
@@ -84,7 +114,7 @@ def test_pages(report_obj):
   report_obj.kill_flask()
 
 @patch('microSALT.server.views.render_template')
-def test_index_views(renderpatch):
+def test_index_views(renderpatch, mock_db):
   renderpatch.return_value = "ok"
   start = start_page()
   assert start == "ok"
@@ -92,7 +122,7 @@ def test_index_views(renderpatch):
   assert reroute == "ok"
 
 @patch('microSALT.server.views.render_template')
-def test_project_views(renderpatch):
+def test_project_views(renderpatch, mock_db):
   renderpatch.return_value = "ok"
   a = project_page("AAA1234")
   assert a == "ok"
@@ -103,7 +133,7 @@ def test_project_views(renderpatch):
 
 @patch('microSALT.server.views.gen_add_info')
 @patch('microSALT.server.views.render_template')
-def test_tracker_view(renderpatch, addinfo):
+def test_tracker_view(renderpatch, addinfo, mock_db):
   renderpatch.return_value = "ok"
   a = STtracker_page("cust000")
   assert a == "ok"
