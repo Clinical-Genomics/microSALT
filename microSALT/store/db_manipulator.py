@@ -11,6 +11,7 @@ from collections import OrderedDict
 from datetime import datetime, timezone
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker
+from dateutil.parser import parse
 
 # maintain the same connection per thread
 from sqlalchemy.pool import SingletonThreadPool
@@ -110,6 +111,13 @@ class DB_Manipulator:
             # Add record
             if len(exist) == 0:
                 data = table.insert()
+                #Loads any dates as datetime objects
+                for k, v in data_dict.items():
+                  try:
+                    parse(v, fuzzy=False)
+                    data_dict[k] = datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f')
+                  except ValueError:
+                    pass
                 data.execute(data_dict)
                 self.logger.info("Added entry to table {}".format(tablename.fullname))
         # ORM
@@ -131,6 +139,13 @@ class DB_Manipulator:
             # Add record
             if not existing or force:
                 newobj = table()
+                #Loads any dates as datetime objects
+                for k, v in data_dict.items():
+                  try:
+                    parse(v, fuzzy=False)
+                    data_dict[k] = datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f')
+                  except ValueError:
+                    pass
                 for k, v in data_dict.items():
                     setattr(newobj, k, v)
                 self.session.add(newobj)
