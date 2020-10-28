@@ -12,6 +12,7 @@ import re
 import sys
 
 from distutils.sysconfig import get_python_lib
+from unittest.mock import patch
 
 from microSALT import preset_config, logger
 from microSALT.utils.reporter import Reporter
@@ -83,3 +84,26 @@ def test_gen_motif(caplog, reporter):
   caplog.clear()
   reporter.gen_motif(motif="unrecognized")
   assert "Invalid motif type" in caplog.text
+  caplog.clear()
+  reporter.output = "/path/that/do/not/exists/"
+  reporter.gen_motif()
+  assert "Gen_motif unable to produce" in caplog.text
+
+def test_gen_json(caplog, reporter):
+  caplog.clear()
+  reporter.output = "/path/that/do/not/exists/"
+  preset_config["folders"]["reports"] = "/path/that/do/not/exists/"
+  reporter.config = preset_config
+  reporter.gen_json()
+  assert "Gen_json unable to produce" in caplog.text
+
+def test_report(caplog, reporter):
+  caplog.clear()
+  reporter.type = "type_not_mentioned_in_list"
+  with pytest.raises(Exception):
+    reporter.report()
+    assert "Report function recieved invalid format" in caplog.text
+
+@patch('microSALT.utils.reporter.Reporter.start_web')
+def test_restart_web(sw, reporter):
+  reporter.restart_web()
