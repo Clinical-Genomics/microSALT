@@ -68,3 +68,18 @@ def test_jsonreport(mock_db, reporter):
   reporter.create_subfolders()
   reporter.gen_json()
   assert len( glob.glob("{}/json/AAA1234.json".format(preset_config['folders']['reports']))) > 0
+
+def test_gen_qc(mock_db, reporter):
+  reporter.name = "name_that_do_not_exist"
+  with pytest.raises(Exception):
+    reporter.gen_qc()
+
+def test_gen_typing(mock_db, reporter):
+  reporter.name = "name_that_do_not_exist"
+  with pytest.raises(Exception):
+    reporter.gen_typing()
+
+def test_gen_motif(caplog, reporter):
+  caplog.clear()
+  reporter.gen_motif(motif="unrecognized")
+  assert "Invalid motif type" in caplog.text
