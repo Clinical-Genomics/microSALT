@@ -328,7 +328,7 @@ class Reporter:
                     self.attachments.append(output)
         except FileNotFoundError as e:
             self.logger.error(
-                "Unable to produce excel file. Path {} does not exist".format(
+                "Gen_motif unable to produce excel file. Path {} does not exist".format(
                     os.path.basename(output)
                 )
             )
@@ -547,7 +547,7 @@ class Reporter:
                     self.attachments.append(output)
         except FileNotFoundError as e:
             self.logger.error(
-                "Unable to produce json file. Path {} does not exist".format(
+                "Gen_json unable to produce json file. Path {} does not exist".format(
                     os.path.basename(output)
                 )
             )
@@ -561,10 +561,9 @@ class Reporter:
         else:
             msg["Subject"] = "{} Failed Generating Report".format(self.name)
 
-        if "." in socket.gethostname():
-            msg["From"] = "microSALT@{}".format(socket.gethostname())
-        else:
-            msg["From"] = "microSALT@{}.com".format(socket.gethostname())
+        sender = socket.gethostname()
+        sender_fixed = "{}.com".format(os.path.splitext(sender)[0])
+        msg["From"] = sender_fixed
 
         msg["To"] = self.config["regex"]["mail_recipient"]
 
