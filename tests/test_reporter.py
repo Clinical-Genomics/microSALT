@@ -107,3 +107,21 @@ def test_report(caplog, reporter):
 @patch('microSALT.utils.reporter.Reporter.start_web')
 def test_restart_web(sw, reporter):
   reporter.restart_web()
+
+def test_constructor():
+  sample_info = [
+                {"CG_ID_project" : "AAA1234","CG_ID_sample" : "AAA1234A1","Customer_ID_project" :
+                  "999999","Customer_ID_sample" : "XXX0000Y1","Customer_ID" : "cust000","application_tag" :
+                  "NONE","date_arrival" : "0001-01-01 00:00:00","date_libprep" : "0001-01-01 00:00:00",
+                  "date_sequencing" : "0001-01-01 00:00:00","method_libprep" : "Not in LIMS",
+                  "method_sequencing" : "Not in LIMS","organism" : "Staphylococcus aureus","priority" :
+                  "standard","reference" : "AP017922.1"},
+                {"CG_ID_project" : "Something_else_than_AAA1234","CG_ID_sample" : "AAA1234A2",
+                 "Customer_ID_project" : "999999","Customer_ID_sample" : "XXX0000Y1","Customer_ID" :
+                 "cust000","application_tag" : "NONE","date_arrival" : "0001-01-01 00:00:00","date_libprep" :
+                 "0001-01-01 00:00:00","date_sequencing" : "0001-01-01 00:00:00","method_libprep" :
+                 "Not in LIMS","method_sequencing" : "Not in LIMS","organism" : "Escherichia coli",
+                 "priority" : "standard","reference" : "NC_011751.1"}
+                ]
+  reporter_obj = Reporter(config=preset_config, log=logger, sampleinfo=sample_info,
+                          name="MIC1234A1", output="/tmp/MLST")
