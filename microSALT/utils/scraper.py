@@ -218,7 +218,7 @@ class Scraper:
                                 if type == "resistance":
                                     hypo[-1]["instance"] = filename
                                     partials = re.search(
-                                        r"(?:\>)*(.+)_(\d+){1,3}(?:_(.+))*",
+                                        r"(?:\>)*(.+)_(\d+){1,3}(?:_(.+))",
                                         elem_list[3],
                                     )
                                     hypo[-1]["reference"] = partials.group(3)
