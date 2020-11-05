@@ -217,10 +217,7 @@ class Scraper:
 
                                 if type == "resistance":
                                     hypo[-1]["instance"] = filename
-                                    partials = re.search(
-                                        r"(?:\>)*(.+)_(\d+){1,3}(?:_(.+))",
-                                        elem_list[3],
-                                    )
+                                    partials = re.search("(?:\>)*(.+)_(\d+){1,3}(?:_(.+))",elem_list[3])
                                     hypo[-1]["reference"] = partials.group(3)
                                     hypo[-1]["gene"] = partials.group(1)
                                     if hypo[-1]["gene"] in self.gene2resistance.keys():
@@ -231,9 +228,11 @@ class Scraper:
                                         hypo[-1]["{}".format(type)] = hypo[-1][
                                             "instance"
                                         ].capitalize()
+                                    #Ignores reference name and finds relevant resFinder entry
+                                    padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))][0]
                                     hypo[-1]["span"] = (
                                         float(hypo[-1]["subject_length"])
-                                        / locilengths[">{}".format(elem_list[3])]
+                                        / locilengths[padder]
                                     )
 
                                 elif type == "expec":
@@ -269,9 +268,10 @@ class Scraper:
                                         )
                                     else:
                                         hypo[-1]["virulence"] = ""
+                                    padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))][0]
                                     hypo[-1]["span"] = (
                                         float(hypo[-1]["subject_length"])
-                                        / locilengths[">{}".format(elem_list[3])]
+                                        / locilengths[padder]
                                     )
 
                                 elif type == "seq_type":
@@ -280,9 +280,10 @@ class Scraper:
                                     )
                                     hypo[-1]["loci"] = partials.group(1)
                                     hypo[-1]["allele"] = int(partials.group(2))
+                                    padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))][0]
                                     hypo[-1]["span"] = (
                                         float(hypo[-1]["subject_length"])
-                                        / locilengths[">{}".format(elem_list[3])]
+                                        / locilengths[padder]
                                     )
 
                                 # split elem 2 into contig node_NO, length, cov
