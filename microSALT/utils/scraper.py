@@ -109,6 +109,9 @@ class Scraper:
         """Scrapes a quast report for assembly information"""
         if filename == "":
             filename = "{}/assembly/quast/{}_report.tsv".format(self.sampledir, self.name)
+            if not os.path.isfile(filename):
+                filename = "{}/assembly/quast/report.tsv".format(self.sampledir)
+
         quast = dict()
         try:
             with open(filename, "r") as infile:
