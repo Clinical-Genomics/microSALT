@@ -229,7 +229,11 @@ class Scraper:
                                             "instance"
                                         ].capitalize()
                                     #Ignores reference name and finds relevant resFinder entry
-                                    padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))][0]
+
+                                    padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))]
+                                    if len(padder) == 0:
+                                        padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1][:-1]))]
+                                    padder = padder[0]
                                     hypo[-1]["span"] = (
                                         float(hypo[-1]["subject_length"])
                                         / locilengths[padder]
@@ -268,10 +272,10 @@ class Scraper:
                                         )
                                     else:
                                         hypo[-1]["virulence"] = ""
-                                    padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))][0]
+                                    #padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))][0]
                                     hypo[-1]["span"] = (
                                         float(hypo[-1]["subject_length"])
-                                        / locilengths[padder]
+                                        / locilengths[">{}".format(elem_list[3])]
                                     )
 
                                 elif type == "seq_type":
@@ -280,7 +284,12 @@ class Scraper:
                                     )
                                     hypo[-1]["loci"] = partials.group(1)
                                     hypo[-1]["allele"] = int(partials.group(2))
-                                    padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))][0]
+                                    #Ignores reference name and finds relevant resFinder entry
+
+                                    padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))]
+                                    if len(padder) == 0:
+                                        padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1][:-1]))]
+                                    padder = padder[0]
                                     hypo[-1]["span"] = (
                                         float(hypo[-1]["subject_length"])
                                         / locilengths[padder]
@@ -293,7 +302,7 @@ class Scraper:
                                 )
                                 hypo[-1]["contig_length"] = int(nodeinfo[3])
                                 hypo[-1]["contig_coverage"] = nodeinfo[5]
-                                self.logger.debug("scrape_blast scrape loop hit")
+                                self.logger.debug("scrape_blast scrape loop hit '{}'".format(elem_list[3]))
             self.logger.info("{} candidate {} hits found".format(len(hypo), type2db))
         except Exception as e:
             self.logger.error("Unable to process the pattern of {}".format(str(e)))
