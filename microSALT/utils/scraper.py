@@ -236,7 +236,11 @@ class Scraper:
                                     padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))]
                                     if len(padder) == 0:
                                         padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1][:-1]))]
-                                    padder = padder[0]
+                                    try:
+                                        padder = padder[0]
+                                    except IndexError as e:
+                                        self.logger.warning("In {} gene {} can't be resolved. Wrong resistance?".format(self.name, partials[1]))
+
                                     hypo[-1]["span"] = (
                                         float(hypo[-1]["subject_length"])
                                         / locilengths[padder]
@@ -289,10 +293,13 @@ class Scraper:
                                     hypo[-1]["allele"] = int(partials.group(2))
                                     #Ignores reference name and finds relevant resFinder entry
 
-                                    padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))]
+                                    padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[0]))]
                                     if len(padder) == 0:
-                                        padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1][:-1]))]
-                                    padder = padder[0]
+                                        padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[0][:-1]))]                 
+                                    try:
+                                        padder = padder[0]
+                                    except IndexError as e:
+                                        self.logger.warning("In {} allele {} can't be resolved. Wrong organism?".format(self.name, partials[0]))
                                     hypo[-1]["span"] = (
                                         float(hypo[-1]["subject_length"])
                                         / locilengths[padder]
