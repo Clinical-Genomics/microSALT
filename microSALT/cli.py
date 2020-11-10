@@ -121,6 +121,9 @@ def root(ctx):
     "--skip_update", default=False, help="Skips downloading of references", is_flag=True
 )
 @click.option(
+    "--force_update", default=False, help="Forces downloading of pubMLST references", is_flag=True
+)
+@click.option(
     "--untrimmed", help="Use untrimmed input data", default=False, is_flag=True
 )
 @click.option(
@@ -131,7 +134,7 @@ def root(ctx):
 )
 @click.pass_context
 def analyse(
-    ctx, sampleinfo_file, input, config, dry, email, skip_update, untrimmed, uncareful
+    ctx, sampleinfo_file, input, config, dry, email, skip_update, force_update, untrimmed, uncareful
 ):
     """Sequence analysis, typing and resistance identification"""
     # Run section
@@ -168,7 +171,7 @@ def analyse(
     )
 
     ext_refs = Referencer(
-        config=ctx.obj["config"], log=ctx.obj["log"], sampleinfo=sampleinfo
+        config=ctx.obj["config"], log=ctx.obj["log"], sampleinfo=sampleinfo, force=force_update
     )
     click.echo("INFO - Checking versions of references..")
     try:
