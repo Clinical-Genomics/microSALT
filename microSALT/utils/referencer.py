@@ -141,8 +141,8 @@ class Referencer:
             root = ET.fromstring(query)
             for entry in root:
                 # Check organism
-                species = entry.text
-                organ = species.strip().lower().replace(" ", "_") 
+                species = entry.text.strip()
+                organ = species.lower().replace(" ", "_") 
                 if "escherichia_coli" in organ and "#1" in organ:
                     organ = organ[:-2]
                 if organ in self.organisms:
