@@ -36,5 +36,5 @@ _Verify that the results for projects MIC3109, MIC4107, MIC4109 & ACC5551 are co
 _These are the results of the tests, and necessary conclusions, that prove the stability of the PR._
 
 # Sign-offs
-- [ ] Code tested by @sylvinite
+- [ ] Code tested by @octocat
 - [ ] Approved to run at Clinical-Genomics by @sylvinite
