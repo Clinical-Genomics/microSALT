@@ -145,41 +145,40 @@ class Referencer:
                 organ = species.strip().lower().replace(" ", "_") 
                 if "escherichia_coli" in organ and "#1" in organ:
                     organ = organ[:-2]
-                if organ not in self.organisms:
-                    continue
-                # Check for newer version
-                currver = self.db_access.get_version("profile_{}".format(organ))
-                st_link = entry.find("./mlst/database/profiles/url").text
-                profiles_query = urllib.request.urlopen(st_link)
-                profile_no = profiles_query.readlines()[-1].decode("utf-8").split("\t")[0]
-                if (
-                    organ.replace("_", " ") not in self.updated
-                    and (
-                        int(profile_no.replace("-", "")) > int(currver.replace("-", ""))
-                        or force
-                    )
-                ):
-                    # Download MLST profiles
-                    self.logger.info("Downloading new MLST profiles for " + species)       
-                    output = "{}/{}".format(self.config["folders"]["profiles"], organ)
-                    urllib.request.urlretrieve(st_link, output)
-                    # Clear existing directory and download allele files
-                    out = "{}/{}".format(self.config["folders"]["references"], organ)
-                    shutil.rmtree(out)
-                    os.makedirs(out)
-                    for locus in entry.findall("./mlst/database/loci/locus"):
-                        locus_name = locus.text.strip()
-                        locus_link = locus.find("./url").text
-                        urllib.request.urlretrieve(locus_link, "{}/{}.tfa".format(out, locus_name))
-                    # Create new indexes
-                    self.index_db(out, ".tfa")
-                    # Update database
-                    self.db_access.upd_rec(
-                        {"name": "profile_{}".format(organ)},
-                        "Versions",
-                        {"version": profile_no},
-                    )
-                    self.db_access.reload_profiletable(organ)
+                if organ in self.organisms:
+                    # Check for newer version
+                    currver = self.db_access.get_version("profile_{}".format(organ))
+                    st_link = entry.find("./mlst/database/profiles/url").text
+                    profiles_query = urllib.request.urlopen(st_link)
+                    profile_no = profiles_query.readlines()[-1].decode("utf-8").split("\t")[0]
+                    if (
+                        organ.replace("_", " ") not in self.updated
+                        and (
+                            int(profile_no.replace("-", "")) > int(currver.replace("-", ""))
+                            or force
+                        )
+                    ):
+                        # Download MLST profiles
+                        self.logger.info("Downloading new MLST profiles for " + species)       
+                        output = "{}/{}".format(self.config["folders"]["profiles"], organ)
+                        urllib.request.urlretrieve(st_link, output)
+                        # Clear existing directory and download allele files
+                        out = "{}/{}".format(self.config["folders"]["references"], organ)
+                        shutil.rmtree(out)
+                        os.makedirs(out)
+                        for locus in entry.findall("./mlst/database/loci/locus"):
+                            locus_name = locus.text.strip()
+                            locus_link = locus.find("./url").text
+                            urllib.request.urlretrieve(locus_link, "{}/{}.tfa".format(out, locus_name))
+                        # Create new indexes
+                        self.index_db(out, ".tfa")
+                        # Update database
+                        self.db_access.upd_rec(
+                            {"name": "profile_{}".format(organ)},
+                            "Versions",
+                            {"version": profile_no},
+                        )
+                        self.db_access.reload_profiletable(organ)
         except Exception as e:
             self.logger.warn(
                 "Unable to update pubMLST external data: {}".format(e)
