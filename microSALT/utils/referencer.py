@@ -12,7 +12,7 @@ import urllib.request
 import zipfile
 
 from Bio import Entrez
-from bs4 import BeautifulSoup
+import xml.etree.ElementTree as ET
 from microSALT.store.db_manipulator import DB_Manipulator
 
 
@@ -59,12 +59,12 @@ class Referencer:
                 ref = self.organism2reference(org)
                 if ref not in self.organisms and org not in neworgs:
                     neworgs.append(org)
-            if (
-                not "{}.fasta".format(entry.get("reference"))
-                in os.listdir(self.config["folders"]["genomes"])
-                and not entry.get("reference") in newrefs
-            ):
-                newrefs.append(entry.get("reference"))
+                if (
+                    not "{}.fasta".format(entry.get("reference"))
+                    in os.listdir(self.config["folders"]["genomes"])
+                    and not entry.get("reference") in newrefs
+                ):
+                    newrefs.append(entry.get("reference"))
             for org in neworgs:
                 self.add_pubmlst(org)
             for org in newrefs:
@@ -135,63 +135,54 @@ class Referencer:
             self.logger.info("Re-indexed contents of {}".format(full_dir))
 
     def fetch_external(self, force=False):
-        """ Updates reference for data that IS ONLY LINKED to pubMLST """
-        prefix = "https://pubmlst.org"
-        query = urllib.request.urlopen("{}/data/".format(prefix))
-        soup = BeautifulSoup(query, "html.parser")
-        tr_sub = soup.find_all("tr", class_="td1")
-        tr_sub = tr_sub + soup.find_all("tr", class_="td2")
-
-        # Only search every other instance
-        iterator = iter(tr_sub)
-        unfound = True
+        url = "https://pubmlst.org/static/data/dbases.xml"
         try:
-            while unfound:
-                entry = iterator.__next__()
-                # Gather general info from first object
-                sample = entry.get_text().split("\n")
-                organ = sample[1].lower().replace(" ", "_")
-                # In order to get ecoli #1
+            query = urllib.request.urlopen(url).read()
+            root = ET.fromstring(query)
+            for entry in root:
+                # Check organism
+                species = entry.text.strip()
+                organ = species.lower().replace(" ", "_") 
                 if "escherichia_coli" in organ and "#1" in organ:
                     organ = organ[:-2]
-                currver = self.db_access.get_version("profile_{}".format(organ))
-                st_link = entry.find_all("a")[1]["href"]
-                profiles_query = urllib.request.urlopen(st_link)
-                profile_no = profiles_query.readlines()[-1].decode("utf-8").split("\t")[0]
-                if (
-                    organ in self.organisms
-                    and organ.replace("_", " ") not in self.updated
-                    and (
-                        int(profile_no.replace("-", "")) > int(currver.replace("-", ""))
-                        or force
-                    )
-                ):
-                    # Download definition files
-                    output = "{}/{}".format(self.config["folders"]["profiles"], organ)
-                    urllib.request.urlretrieve(st_link, output)
-                    # Update database
-                    self.db_access.upd_rec(
-                        {"name": "profile_{}".format(organ)},
-                        "Versions",
-                        {"version": profile_no},
-                    )
-                    self.db_access.reload_profiletable(organ)
-                    # Gather loci from second object
-                    entry = iterator.__next__()
-                    # Clear existing directory and download allele files
-                    out = "{}/{}".format(self.config["folders"]["references"], organ)
-                    shutil.rmtree(out)
-                    os.makedirs(out)
-                    for loci in entry.find_all("a"):
-                        loci = loci["href"]
-                        lociname = os.path.normpath(loci).split("/")[-2] 
-                        urllib.request.urlretrieve(loci, "{}/{}.tfa".format(out, lociname))
-                    # Create new indexes
-                    self.index_db(out, ".tfa")
-                else:
-                    iterator.__next__()
-        except StopIteration:
-            pass
+                if organ in self.organisms:
+                    # Check for newer version
+                    currver = self.db_access.get_version("profile_{}".format(organ))
+                    st_link = entry.find("./mlst/database/profiles/url").text
+                    profiles_query = urllib.request.urlopen(st_link)
+                    profile_no = profiles_query.readlines()[-1].decode("utf-8").split("\t")[0]
+                    if (
+                        organ.replace("_", " ") not in self.updated
+                        and (
+                            int(profile_no.replace("-", "")) > int(currver.replace("-", ""))
+                            or force
+                        )
+                    ):
+                        # Download MLST profiles
+                        self.logger.info("Downloading new MLST profiles for " + species)       
+                        output = "{}/{}".format(self.config["folders"]["profiles"], organ)
+                        urllib.request.urlretrieve(st_link, output)
+                        # Clear existing directory and download allele files
+                        out = "{}/{}".format(self.config["folders"]["references"], organ)
+                        shutil.rmtree(out)
+                        os.makedirs(out)
+                        for locus in entry.findall("./mlst/database/loci/locus"):
+                            locus_name = locus.text.strip()
+                            locus_link = locus.find("./url").text
+                            urllib.request.urlretrieve(locus_link, "{}/{}.tfa".format(out, locus_name))
+                        # Create new indexes
+                        self.index_db(out, ".tfa")
+                        # Update database
+                        self.db_access.upd_rec(
+                            {"name": "profile_{}".format(organ)},
+                            "Versions",
+                            {"version": profile_no},
+                        )
+                        self.db_access.reload_profiletable(organ)
+        except Exception as e:
+            self.logger.warn(
+                "Unable to update pubMLST external data: {}".format(e)
+            )
 
     def resync(self, type="", sample="", ignore=False):
         """Manipulates samples that have an internal ST that differs from pubMLST ST"""
@@ -469,7 +460,7 @@ class Referencer:
         for key, val in seqdef_url.items():
             internal_ver = self.db_access.get_version("profile_{}".format(key))
             external_ver = self.external_version(key, val)
-            if internal_ver < external_ver:
+            if (internal_ver < external_ver) or force:
                 self.logger.info(
                     "pubMLST reference for {} updated to {} from {}".format(
                         key.replace("_", " ").capitalize(), external_ver, internal_ver
