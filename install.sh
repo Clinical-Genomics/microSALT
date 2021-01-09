@@ -45,14 +45,14 @@ while true; do
         else
             branch=$input
         fi
-        curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/LICENSE | grep -q 'License' && validbranch=true||echo "Invalid branch name"
+        curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/LICENSE | tac | tac | grep -q 'License' && validbranch=true||echo "Invalid branch name"
     done
     break
 done
 echo "Thank you, setting up environment $cname!"
 
 #Unload environment
-conda info| grep -q $cname && source deactivate || :
+conda info| tac | tac | grep -q $cname && source deactivate || :
 #Remove environment if already present
 conda remove -y -n $cname --all || :
 
