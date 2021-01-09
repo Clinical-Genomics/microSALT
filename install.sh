@@ -13,7 +13,7 @@ while true; do
     read input
     if [[ $input = "q" ]] || [[ $input = "Q" ]]; then
         break
-    elif [[ $input = "y" ]] || [[ $input = "yes" ]]; then
+    elif [[ $input = "y" ]] || [[ $input = "yes" ]] || [[ $input = "" ]]; then
         cname=$default_name
         break
     else
@@ -26,7 +26,7 @@ while true; do
     read input
     if [[ $input = "q" ]] || [[ $input = "Q" ]]; then
         break
-    elif [[ $input = "y" ]] || [[ $input = "yes" ]]; then
+    elif [[ $input = "y" ]] || [[ $input = "yes" ]] || [[ $input = "" ]]; then
         type="release"
         break
     elif [[ $input == "source" ]]  || [[ $input == "release" ]]; then
@@ -40,7 +40,7 @@ while true; do
     echo "Name the branch to install ['$default_branch']:"
     while ! $validbranch; do
         read input
-        if [[ $input = "y" ]] || [[ $input = "yes" ]]; then
+        if [[ $input = "y" ]] || [[ $input = "yes" ]] || [[ $input = "" ]]; then
             branch=$default_branch
         else
             branch=$input
