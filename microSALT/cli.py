@@ -50,7 +50,6 @@ def set_cli_config(config):
                 t = ctx.obj["config"]
                 with open(os.path.abspath(config), "r") as conf:
                     ctx.obj["config"] = json.load(conf)
-                ctx.obj["config"]["folders"]["expec"] = t["folders"]["expec"]
                 ctx.obj["config"]["folders"]["adapters"] = t["folders"]["adapters"]
                 ctx.obj["config"]["config_path"] = os.path.abspath(config)
             except Exception as e:

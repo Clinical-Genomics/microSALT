@@ -21,7 +21,7 @@ from microSALT import __version__
 from microSALT.store.orm_models import (
     app,
     Collections,
-    Expacs,
+    Custom_targets,
     Projects,
     Reports,
     Resistances,
@@ -72,9 +72,9 @@ class DB_Manipulator:
         if not self.engine.dialect.has_table(self.engine, "collections"):
             Collections.__table__.create(self.engine)
             self.logger.info("Created collections table")
-        if not self.engine.dialect.has_table(self.engine, "expacs"):
-            Expacs.__table__.create(self.engine)
-            self.logger.info("Created ExPEC table")
+        if not self.engine.dialect.has_table(self.engine, "Custom_targets"):
+            Custom_targets.__table__.create(self.engine)
+            self.logger.info("Created custom targets table")
         for k, v in self.profiles.items():
             if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
                 self.profiles[k].create()

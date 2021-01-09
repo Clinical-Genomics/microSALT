@@ -39,8 +39,6 @@ def dbm():
     dbm.add_rec(entry, 'Seq_types')
   for bentry in unpack_db_json('sampleinfo_resistance.json'):
     dbm.add_rec(bentry, 'Resistances')
-  for centry in unpack_db_json('sampleinfo_expec.json'):
-    dbm.add_rec(centry, 'Expacs')
   for dentry in unpack_db_json('sampleinfo_reports.json'):
     dbm.add_rec(dentry, 'Reports')
   return dbm
@@ -49,7 +47,7 @@ def test_create_every_table(dbm):
   assert dbm.engine.dialect.has_table(dbm.engine, 'samples')
   assert dbm.engine.dialect.has_table(dbm.engine, 'seq_types')
   assert dbm.engine.dialect.has_table(dbm.engine, 'resistances')
-  assert dbm.engine.dialect.has_table(dbm.engine, 'expacs')
+  assert dbm.engine.dialect.has_table(dbm.engine, 'custom_targets')
   assert dbm.engine.dialect.has_table(dbm.engine, 'projects')
   assert dbm.engine.dialect.has_table(dbm.engine, 'reports')
   assert dbm.engine.dialect.has_table(dbm.engine, 'collections')

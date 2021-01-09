@@ -104,7 +104,7 @@ class Reporter:
                 self.gen_delivery()
             elif type == "motif_overview":
                 self.gen_motif(motif="resistance")
-                self.gen_motif(motif="expec")
+                self.gen_motif(motif="custom")
         else:
             raise Exception("Report function recieved invalid format")
         self.mail()
@@ -205,7 +205,7 @@ class Reporter:
             self.error = True
 
     def gen_motif(self, motif="resistance", silent=False):
-        if motif not in ["resistance", "expec"]:
+        if motif not in ["resistance", "custmo"]:
             self.logger.error("Invalid motif type specified for gen_motif function")
         if self.collection:
             sample_info = gen_collectiondata(self.name)
@@ -230,8 +230,8 @@ class Reporter:
                         and not r.gene in motifdict[r.resistance]
                     ):
                         motifdict[r.resistance].append(r.gene)
-            elif motif == "expec":
-                for e in s.expacs:
+            elif motif == "custom":
+                for e in s.custom_targets:
                     if (
                         not (e.virulence in motifdict.keys())
                         and e.threshold == "Passed"
@@ -289,8 +289,8 @@ class Reporter:
                             and not r.gene in rowdict[r.resistance]
                         ):
                             rowdict[r.resistance][r.gene] = r.identity
-                elif motif == "expec":
-                    for e in s.expacs:
+                elif motif == "custom":
+                    for e in s.custom_targets:
                         if (
                             not (e.virulence in rowdict.keys())
                             and e.threshold == "Passed"

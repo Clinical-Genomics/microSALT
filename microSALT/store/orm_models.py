@@ -98,8 +98,8 @@ class Resistances(db.Model):
     contig_end = db.Column(db.Integer)
 
 
-class Expacs(db.Model):
-    __tablename__ = "expacs"
+class Custom_targets(db.Model):
+    __tablename__ = "custom_targets"
     samples = relationship("Samples", back_populates="expacs")
 
     CG_ID_sample = db.Column(
