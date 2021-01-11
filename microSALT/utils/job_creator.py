@@ -724,13 +724,17 @@ class Job_Creator:
             )
         mb.write("source activate $CONDA_DEFAULT_ENV\n")
 
+        ct = ""
+        if "custom_target" in self.run_settings and self.run_settings["custom_target"] != "":
+            ct = "--custom_target {}".format(self.run_settings["custom_target"])
+
         mb.write(
-            "microSALT utils finish {0}/sampleinfo.json --input {0} --email {1} --report {2} {3}\n --custom_target {4}".format(
+            "microSALT utils finish {0}/sampleinfo.json --input {0} --email {1} --report {2} {3} {4}\n".format(
                 self.finishdir,
                 self.config["regex"]["mail_recipient"],
                 report,
                 custom_conf,
-                self.run_settings["custom_target"]
+                ct,
             )
         )
         mb.write("touch {}/run_complete.out".format(self.finishdir))
@@ -838,7 +842,7 @@ class Job_Creator:
             "resistance", "{}/*.fsa".format(self.config["folders"]["resistances"])
         )
         if self.run_settings["custom_target"] != "":
-            self.blast_subset("custom", "{}/*.fsa".format(self.run_settings["custom_target"])
+            self.blast_subset("custom", "{}/*.fsa".format(self.run_settings["custom_target"]))
 
     def snp_job(self):
         """ Writes a SNP calling job for a set of samples """

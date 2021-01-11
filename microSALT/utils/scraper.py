@@ -22,7 +22,7 @@ class Scraper:
         self.run_settings = run_settings
         self.db_pusher = DB_Manipulator(config, log)
         self.referencer = Referencer(config, log)
-        self.job_fallback = Job_Creator(config=config, log=log, sampleinfo=sampleinfo)
+        self.job_fallback = Job_Creator(config=config, log=log, sampleinfo=sampleinfo, run_settings=run_settings)
         self.infolder = os.path.abspath(input)
         self.sampledir = ""
 

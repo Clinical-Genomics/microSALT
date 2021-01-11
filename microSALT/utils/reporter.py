@@ -205,7 +205,7 @@ class Reporter:
             self.error = True
 
     def gen_motif(self, motif="resistance", silent=False):
-        if motif not in ["resistance", "custmo"]:
+        if motif not in ["resistance", "custom"]:
             self.logger.error("Invalid motif type specified for gen_motif function")
         if self.collection:
             sample_info = gen_collectiondata(self.name)

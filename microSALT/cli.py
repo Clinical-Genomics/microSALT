@@ -160,7 +160,7 @@ def analyse(
         "trimmed": not untrimmed,
         "careful": not uncareful,
         "pool": pool,
-        "custom_target":custom_target
+        "custom_target":custom_target,
     }
 
     # Samples section
@@ -270,7 +270,7 @@ def finish(
         "dry": dry,
         "email": email,
         "skip_update": skip_update,
-        "custom_target":custom_target
+        "custom_target":custom_target,
     }
 
     # Samples section

@@ -240,7 +240,7 @@ def gen_add_info(sample_info=dict()):
                 r.threshold = "Passed"
             else:
                 r.threshold = "Failed"
-        for v in s.expacs:
+        for v in s.custom_targets:
             if (
                 v.identity >= preset_config["threshold"]["motif_id"]
                 and v.span >= preset_config["threshold"]["motif_span"] / 100.0
@@ -252,7 +252,7 @@ def gen_add_info(sample_info=dict()):
         # Seq_type and resistance sorting
         s.seq_types = sorted(s.seq_types, key=lambda x: x.loci)
         s.resistances = sorted(s.resistances, key=lambda x: x.instance)
-        s.expacs = sorted(s.expacs, key=lambda x: x.gene)
+        s.custom_targets = sorted(s.custom_targets, key=lambda x: x.gene)
         output["samples"].append(s)
         output["single_sample"] = s
 
