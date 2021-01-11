@@ -119,6 +119,7 @@ class Custom_targets(db.Model):
     virulence = db.Column(db.String(120))
     contig_start = db.Column(db.Integer)
     contig_end = db.Column(db.Integer)
+    db_name = db.Column(db.String(50))
 
 
 class Projects(db.Model):

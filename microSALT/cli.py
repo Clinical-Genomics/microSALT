@@ -131,10 +131,10 @@ def root(ctx):
     default=False,
     is_flag=True,
 )
+@click.option("--custom_target", help="Fasta of custom targets to gene check against", default="")
 @click.pass_context
 def analyse(
-    ctx, sampleinfo_file, input, config, dry, email, skip_update, force_update, untrimmed, uncareful
-):
+    ctx, sampleinfo_file, input, config, dry, email, skip_update, force_update, untrimmed, uncareful, custom_target):
     """Sequence analysis, typing and resistance identification"""
     # Run section
     pool = []
@@ -143,6 +143,8 @@ def analyse(
     set_cli_config(config)
     ctx.obj["config"]["regex"]["mail_recipient"] = email
     ctx.obj["config"]["dry"] = dry
+    if custom_target != "":
+        custom_target = os.path.abspath(custom_target)
     if not os.path.isdir(input):
         click.echo("ERROR - Sequence data folder {} does not exist.".format(input))
         ctx.abort()
@@ -158,6 +160,7 @@ def analyse(
         "trimmed": not untrimmed,
         "careful": not uncareful,
         "pool": pool,
+        "custom_target":custom_target
     }
 
     # Samples section
@@ -166,7 +169,7 @@ def analyse(
         config=ctx.obj["config"],
         log=ctx.obj["log"],
         sampleinfo=sampleinfo,
-        run_settings=run_settings,
+        run_settings=run_settings
     )
 
     ext_refs = Referencer(
@@ -238,9 +241,10 @@ def refer(ctx):
     ),
 )
 @click.option("--output", help="Report output folder", default="")
+@click.option("--custom_target", help="Fasta of custom targets to gene check against", default="")
 @click.pass_context
 def finish(
-    ctx, sampleinfo_file, input, track, config, dry, email, skip_update, report, output
+    ctx, sampleinfo_file, input, track, config, dry, email, skip_update, report, output, custom_target
 ):
     """Sequence analysis, typing and resistance identification"""
     # Run section
@@ -248,6 +252,9 @@ def finish(
     set_cli_config(config)
     ctx.obj["config"]["regex"]["mail_recipient"] = email
     ctx.obj["config"]["dry"] = dry
+    if custom_target != "":
+        custom_target =os.path.abspath(custom_target)
+
     if not os.path.isdir(input):
         click.echo("ERROR - Sequence data folder {} does not exist.".format(input))
         ctx.abort()
@@ -263,6 +270,7 @@ def finish(
         "dry": dry,
         "email": email,
         "skip_update": skip_update,
+        "custom_target":custom_target
     }
 
     # Samples section
@@ -282,7 +290,7 @@ def finish(
         click.echo("{}".format(e))
 
     res_scraper = Scraper(
-        config=ctx.obj["config"], log=ctx.obj["log"], sampleinfo=sampleinfo, input=input
+        config=ctx.obj["config"], log=ctx.obj["log"], sampleinfo=sampleinfo, run_settings=run_settings, input=input
     )
     if isinstance(sampleinfo, list) and len(sampleinfo) > 1:
         res_scraper.scrape_project()
