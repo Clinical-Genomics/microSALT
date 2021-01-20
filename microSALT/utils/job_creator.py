@@ -13,6 +13,10 @@ import subprocess
 import time
 
 from datetime import datetime
+from pathlib import Path
+
+import yaml
+
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.referencer import Referencer
 
@@ -78,9 +82,7 @@ class Job_Creator:
             )
 
         if run_settings.get("finishdir") is None:
-            self.finishdir = "{}/{}_{}".format(
-                config["folders"]["results"], self.name, self.now
-            )
+            self.finishdir = "{}/{}_{}".format(config["folders"]["results"], self.name, self.now)
         self.db_pusher = DB_Manipulator(config, log)
         self.concat_files = dict()
         self.ref_resolver = Referencer(config, log)
@@ -148,9 +150,7 @@ class Job_Creator:
                         verified_files.append(pairname)
                 else:
                     raise Exception(
-                        "Some fastq files have no mate in directory {}.".format(
-                            self.indir
-                        )
+                        "Some fastq files have no mate in directory {}.".format(self.indir)
                     )
         if verified_files == []:
             raise Exception(
@@ -168,9 +168,7 @@ class Job_Creator:
                     self.logger.warning("Input fastq {} exceeds 1000MB".format(vfile))
             except Exception as e:
                 self.logger.warning(
-                    "Unable to verify size of input file {}/{}".format(
-                        self.indir, vfile
-                    )
+                    "Unable to verify size of input file {}/{}".format(self.indir, vfile)
                 )
 
         # Warn about invalid fastq files
@@ -178,9 +176,7 @@ class Job_Creator:
             f = gzip.open("{}/{}".format(self.indir, vfile), "r")
             lines = f.read().splitlines()
             if not "+" in str(lines[-2]):
-                self.logger.warning(
-                    "Input fastq {} does not seem to end properly".format(vfile)
-                )
+                self.logger.warning("Input fastq {} does not seem to end properly".format(vfile))
         return sorted(verified_files)
 
     def create_assemblysection(self):
@@ -208,10 +204,18 @@ class Job_Creator:
             )
         )
 
-        batchfile.write("mv {0}/assembly/contigs.fasta {0}/assembly/{1}_contigs.fasta\n".format(self.finishdir,self.name))
-        batchfile.write("sed -n '/NODE_1000_/q;p' {0}/assembly/{1}_contigs.fasta > {0}/assembly/{1}_trimmed_contigs.fasta\n".format(self.finishdir,self.name))
-        #batchfile.write("##Input cleanup\n")
-        #batchfile.write("rm -r {}/trimmed\n".format(self.finishdir))
+        batchfile.write(
+            "mv {0}/assembly/contigs.fasta {0}/assembly/{1}_contigs.fasta\n".format(
+                self.finishdir, self.name
+            )
+        )
+        batchfile.write(
+            "sed -n '/NODE_1000_/q;p' {0}/assembly/{1}_contigs.fasta > {0}/assembly/{1}_trimmed_contigs.fasta\n".format(
+                self.finishdir, self.name
+            )
+        )
+        # batchfile.write("##Input cleanup\n")
+        # batchfile.write("rm -r {}/trimmed\n".format(self.finishdir))
         batchfile.write("\n\n")
         batchfile.close()
 
@@ -229,9 +233,7 @@ class Job_Creator:
                         "File {} does not match typical format. Consider deleting and redownloading"
                     )
                 else:
-                    ref_nosuf = re.search(
-                        r"(\w+(?:\-\w+)*)\.\w+", os.path.basename(ref)
-                    ).group(1)
+                    ref_nosuf = re.search(r"(\w+(?:\-\w+)*)\.\w+", os.path.basename(ref)).group(1)
                 batchfile.write(
                     "# BLAST {} search for {}, {}\n".format(
                         name, self.sample.get("organism"), ref_nosuf
@@ -266,9 +268,7 @@ class Job_Creator:
                         )
                     )
         elif len(file_list) == 1:
-            ref_nosuf = re.search(
-                r"(\w+(?:\-\w+)*)\.\w+", os.path.basename(file_list[0])
-            ).group(1)
+            ref_nosuf = re.search(r"(\w+(?:\-\w+)*)\.\w+", os.path.basename(file_list[0])).group(1)
             batchfile.write(
                 "## BLAST {} search in {}\n".format(
                     name, self.sample.get("organism").replace("_", " ").capitalize()
@@ -292,9 +292,7 @@ class Job_Creator:
 
     def create_variantsection(self):
         """ Creates a job for variant calling based on local alignment """
-        ref = "{}/{}.fasta".format(
-            self.config["folders"]["genomes"], self.sample.get("reference")
-        )
+        ref = "{}/{}.fasta".format(self.config["folders"]["genomes"], self.sample.get("reference"))
         localdir = "{}/alignment".format(self.finishdir)
         outbase = "{}/{}_{}".format(localdir, self.name, self.sample.get("reference"))
 
@@ -330,9 +328,7 @@ class Job_Creator:
         )
         batchfile.write("samtools index {}.bam_sort_rmdup\n".format(outbase))
         batchfile.write(
-            "samtools idxstats {}.bam_sort_rmdup &> {}.stats.ref\n".format(
-                outbase, outbase
-            )
+            "samtools idxstats {}.bam_sort_rmdup &> {}.stats.ref\n".format(outbase, outbase)
         )
         # Removal of temp aligment files
         batchfile.write("rm {}.bam {}.sam\n".format(outbase, outbase))
@@ -351,13 +347,9 @@ class Job_Creator:
             )
         )
         # Mapped rate, no dedup,dedup in MWGS (trimming has no effect)!
-        batchfile.write(
-            "samtools flagstat {}.bam_sort &> {}.stats.map\n".format(outbase, outbase)
-        )
+        batchfile.write("samtools flagstat {}.bam_sort &> {}.stats.map\n".format(outbase, outbase))
         # Total reads, no dedup,dedup in MWGS (trimming has no effect)!
-        batchfile.write(
-            "samtools view -c {}.bam_sort &> {}.stats.raw\n".format(outbase, outbase)
-        )
+        batchfile.write("samtools view -c {}.bam_sort &> {}.stats.raw\n".format(outbase, outbase))
 
         batchfile.write("\n\n")
         batchfile.close()
@@ -395,12 +387,8 @@ class Job_Creator:
         self.concat_files["r"] = "{}/trimmed/{}_reverse_reads.fastq.gz".format(
             self.finishdir, self.name
         )
-        batchfile.write(
-            "cat {} > {}\n".format(" ".join(forward), self.concat_files.get("f"))
-        )
-        batchfile.write(
-            "cat {} > {}\n".format(" ".join(reverse), self.concat_files.get("r"))
-        )
+        batchfile.write("cat {} > {}\n".format(" ".join(forward), self.concat_files.get("f")))
+        batchfile.write("cat {} > {}\n".format(" ".join(reverse), self.concat_files.get("r")))
 
         if self.trimmed:
             fp = "{}/{}_trim_front_pair.fastq.gz".format(trimdir, outfile)
@@ -425,13 +413,9 @@ class Job_Creator:
             batchfile.write("## Interlaced trimmed files\n")
             self.concat_files["f"] = fp
             self.concat_files["r"] = rp
-            self.concat_files["i"] = "{}/{}_trim_unpair.fastq.gz".format(
-                trimdir, outfile
-            )
+            self.concat_files["i"] = "{}/{}_trim_unpair.fastq.gz".format(trimdir, outfile)
 
-            batchfile.write(
-                "cat {} >> {}\n".format(" ".join([fu, ru]), self.concat_files.get("i"))
-            )
+            batchfile.write("cat {} >> {}\n".format(" ".join([fu, ru]), self.concat_files.get("i")))
         batchfile.write("\n")
         batchfile.close()
 
@@ -444,7 +428,8 @@ class Job_Creator:
                 self.finishdir, self.name, self.finishdir
             )
         )
-        batchfile.write("mv {}/assembly/quast/report.tsv {}/assembly/quast/{}_report.tsv\n\n".format(
+        batchfile.write(
+            "mv {}/assembly/quast/report.tsv {}/assembly/quast/{}_report.tsv\n\n".format(
                 self.finishdir, self.finishdir, self.name
             )
         )
@@ -485,9 +470,7 @@ class Job_Creator:
                     self.finishdir, name, self.finishdir, name
                 )
             )
-            batchfile.write(
-                "bcftools index {}/{}.bcf.gz\n".format(self.finishdir, name)
-            )
+            batchfile.write("bcftools index {}/{}.bcf.gz\n".format(self.finishdir, name))
             batchfile.write("\n")
 
             batchfile.write(
@@ -500,9 +483,7 @@ class Job_Creator:
                     self.finishdir, name, bcffilter, self.finishdir, name
                 )
             )
-            batchfile.write(
-                "bcftools index {}/{}.recode.bcf.gz\n\n".format(self.finishdir, name)
-            )
+            batchfile.write("bcftools index {}/{}.recode.bcf.gz\n\n".format(self.finishdir, name))
 
         batchfile.write("# SNP pair-wise distance\n")
         batchfile.write("touch {}/stats.out\n".format(self.finishdir))
@@ -531,9 +512,7 @@ class Job_Creator:
                         self.finishdir, pair, self.finishdir, self.finishdir
                     )
                 )
-                batchfile.write(
-                    "bcftools index {}/{}.bcf.gz\n".format(self.finishdir, pair)
-                )
+                batchfile.write("bcftools index {}/{}.bcf.gz\n".format(self.finishdir, pair))
 
                 batchfile.write(
                     "echo {} $( bcftools stats {}/{}.bcf.gz |grep SNPs: | cut -d $'\\t' -f4 ) >> {}/stats.out\n".format(
@@ -614,9 +593,7 @@ class Job_Creator:
                 self.create_project(self.name)
         except Exception as e:
             self.logger.error(
-                "LIMS interaction failed. Unable to read/write project {}".format(
-                    self.name
-                )
+                "LIMS interaction failed. Unable to read/write project {}".format(self.name)
             )
         # Writes the job creation sbatch
         if single_sample:
@@ -633,9 +610,7 @@ class Job_Creator:
                 else:
                     self.logger.info("Suppressed command: {}".format(bash_cmd))
             except Exception as e:
-                self.logger.error(
-                    "Unable to analyze single sample {}".format(self.name)
-                )
+                self.logger.error("Unable to analyze single sample {}".format(self.name))
         else:
             for ldir in glob.glob("{}/*/".format(self.indir)):
                 ldir = os.path.basename(os.path.normpath(ldir))
@@ -643,13 +618,9 @@ class Job_Creator:
                     sample_in = "{}/{}".format(self.indir, ldir)
                     sample_out = "{}/{}".format(self.finishdir, ldir)
                     linkedjson = None
-                    local_sampleinfo = [
-                        p for p in self.sampleinfo if p["CG_ID_sample"] == ldir
-                    ]
+                    local_sampleinfo = [p for p in self.sampleinfo if p["CG_ID_sample"] == ldir]
                     if local_sampleinfo == []:
-                        raise Exception(
-                            "Sample {} has no counterpart in json file".format(ldir)
-                        )
+                        raise Exception("Sample {} has no counterpart in json file".format(ldir))
                     else:
                         local_sampleinfo = local_sampleinfo[0]
                     sample_settings = dict(self.run_settings)
@@ -669,9 +640,7 @@ class Job_Creator:
                         outfile = sample_instance.get_sbatch()
                     bash_cmd = "sbatch {} {}".format(headerargs, outfile)
                     if not dry and outfile != "":
-                        projproc = subprocess.Popen(
-                            bash_cmd.split(), stdout=subprocess.PIPE
-                        )
+                        projproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
                         output, error = projproc.communicate()
                         jobno = re.search(r"(\d+)", str(output)).group(0)
                         jobarray.append(jobno)
@@ -719,9 +688,7 @@ class Job_Creator:
         mb.write("#!/usr/bin/env bash\n\n")
         mb.write("#Uploading of results to database and production of report\n")
         if "MICROSALT_CONFIG" in os.environ:
-            mb.write(
-                "export MICROSALT_CONFIG={}\n".format(os.environ["MICROSALT_CONFIG"])
-            )
+            mb.write("export MICROSALT_CONFIG={}\n".format(os.environ["MICROSALT_CONFIG"]))
         mb.write("source activate $CONDA_DEFAULT_ENV\n")
 
         mb.write(
@@ -757,9 +724,7 @@ class Job_Creator:
                         entry,
                     )
                     bash_cmd = "sbatch {} {}".format(head, startfile)
-                    mailproc = subprocess.Popen(
-                        bash_cmd.split(), stdout=subprocess.PIPE
-                    )
+                    mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
                     output, error = mailproc.communicate()
                     jobno = re.search(r"(\d+)", str(output)).group(0)
                     massagedJobs[massagedJobs.index(entry) + 1] += ":{}".format(jobno)
@@ -779,6 +744,31 @@ class Job_Creator:
         bash_cmd = "sbatch {} {}".format(head, mailfile)
         mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
         output, error = mailproc.communicate()
+
+        jobno = str(re.search(r"(\d+)", str(output)).group(0))
+        joblist.append(jobno)
+
+        jobs_report_path = Path(
+            self.config["folders"]["reports"],
+            "trailblazer",
+            f"{self.sampleinfo[0].get('Customer_ID_project')}_slurm_ids.yaml",
+        )
+        jobs_report_path_workdir = Path(
+            self.finishdir,
+            f"{self.sampleinfo[0].get('Customer_ID_project')}_slurm_ids.yaml",
+        )
+        yaml.safe_dump(
+            data={"jobs": [str(job) for job in joblist]}, stream=open(jobs_report_path, "w")
+        )
+        yaml.safe_dump(
+            data={"jobs": [str(job) for job in joblist]},
+            stream=open(jobs_report_path_workdir, "w"),
+        )
+        self.logger.info(
+            "Saved Trailblazer report file to %s and %s",
+            jobs_report_path,
+            jobs_report_path_workdir,
+        )
 
     def sample_job(self):
         """ Writes necessary sbatch job for each individual sample """
@@ -802,23 +792,17 @@ class Job_Creator:
                 batchfile.close()
 
                 self.logger.info(
-                    "Created runfile for sample {} in folder {}".format(
-                        self.name, self.finishdir
-                    )
+                    "Created runfile for sample {} in folder {}".format(self.name, self.finishdir)
                 )
             except Exception as e:
                 raise
             try:
                 self.create_sample(self.name)
             except Exception as e:
-                self.logger.error(
-                    "Unable to access LIMS info for sample {}".format(self.name)
-                )
+                self.logger.error("Unable to access LIMS info for sample {}".format(self.name))
         except Exception as e:
             self.logger.error(
-                "Unable to create job for sample {}\nSource: {}".format(
-                    self.name, str(e)
-                )
+                "Unable to create job for sample {}\nSource: {}".format(self.name, str(e))
             )
             shutil.rmtree(self.finishdir, ignore_errors=True)
             raise
@@ -833,9 +817,7 @@ class Job_Creator:
             "mlst",
             "{}/{}/*.tfa".format(self.config["folders"]["references"], reforganism),
         )
-        self.blast_subset(
-            "resistance", "{}/*.fsa".format(self.config["folders"]["resistances"])
-        )
+        self.blast_subset("resistance", "{}/*.fsa".format(self.config["folders"]["resistances"]))
         if reforganism == "escherichia_coli":
             ss = "{}/*{}".format(
                 os.path.dirname(self.config["folders"]["expec"]),
@@ -858,14 +840,16 @@ class Job_Creator:
         batchfile = open(self.batchfile, "a+")
         batchfile.close()
 
-        headerline = "-A {} -p {} -n 1 -t 24:00:00 -J {}_{} --qos {} --output {}/slurm_{}.log".format(
-            self.config["slurm_header"]["project"],
-            self.config["slurm_header"]["type"],
-            self.config["slurm_header"]["job_prefix"],
-            self.name,
-            self.config["slurm_header"]["qos"],
-            self.finishdir,
-            self.name,
+        headerline = (
+            "-A {} -p {} -n 1 -t 24:00:00 -J {}_{} --qos {} --output {}/slurm_{}.log".format(
+                self.config["slurm_header"]["project"],
+                self.config["slurm_header"]["type"],
+                self.config["slurm_header"]["job_prefix"],
+                self.name,
+                self.config["slurm_header"]["qos"],
+                self.finishdir,
+                self.name,
+            )
         )
         outfile = self.get_sbatch()
         bash_cmd = "sbatch {} {}".format(headerline, outfile)
