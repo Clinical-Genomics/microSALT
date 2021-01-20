@@ -649,22 +649,22 @@ class Job_Creator:
                 except Exception as e:
                     pass
         if not dry:
+            jobs_report_path = Path(
+                self.config["folders"]["reports"],
+                "trailblazer",
+                f"{self.sampleinfo[0].get('Customer_ID_project')}_slurm_ids.yaml",
+            )
             with open(
-                Path(
-                    self.config["folders"]["reports"],
-                    "trailblazer",
-                    f"{self.sampleinfo.get('Customer_ID_project')}_slurm_ids.yaml",
-                ),
+                jobs_report_path,
                 "w",
             ) as wh:
                 yaml.safe_dump(data={"jobs": [str(job) for job in jobarray]}, stream=wh)
-                self.logger.info(
-                    "Saved Trailblazer report file to %s",
+                self.logger.info("Saved Trailblazer report file to %s", jobs_report_path)
+                Path(jobs_report_path).link_to(
                     Path(
-                        self.config["folders"]["reports"],
-                        "trailblazer",
-                        f"{self.sampleinfo.get('Customer_ID_project')}_slurm_ids.yaml",
-                    ),
+                        self.finishdir,
+                        f"{self.sampleinfo[0].get('Customer_ID_project')}_slurm_ids.yaml",
+                    )
                 )
             self.finish_job(jobarray, single_sample)
 
