@@ -649,27 +649,6 @@ class Job_Creator:
                 except Exception as e:
                     pass
         if not dry:
-            jobs_report_path = Path(
-                self.config["folders"]["reports"],
-                "trailblazer",
-                f"{self.sampleinfo[0].get('Customer_ID_project')}_slurm_ids.yaml",
-            )
-            jobs_report_path_workdir = Path(
-                self.finishdir,
-                f"{self.sampleinfo[0].get('Customer_ID_project')}_slurm_ids.yaml",
-            )
-            yaml.safe_dump(
-                data={"jobs": [str(job) for job in jobarray]}, stream=open(jobs_report_path, "w")
-            )
-            yaml.safe_dump(
-                data={"jobs": [str(job) for job in jobarray]},
-                stream=open(jobs_report_path_workdir, "w"),
-            )
-            self.logger.info(
-                "Saved Trailblazer report file to %s and %s",
-                jobs_report_path,
-                jobs_report_path_workdir,
-            )
             self.finish_job(jobarray, single_sample)
 
     def finish_job(self, joblist, single_sample=False):
@@ -765,6 +744,31 @@ class Job_Creator:
         bash_cmd = "sbatch {} {}".format(head, mailfile)
         mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
         output, error = mailproc.communicate()
+
+        jobno = str(re.search(r"(\d+)", str(output)).group(0))
+        joblist.append(jobno)
+
+        jobs_report_path = Path(
+            self.config["folders"]["reports"],
+            "trailblazer",
+            f"{self.sampleinfo[0].get('Customer_ID_project')}_slurm_ids.yaml",
+        )
+        jobs_report_path_workdir = Path(
+            self.finishdir,
+            f"{self.sampleinfo[0].get('Customer_ID_project')}_slurm_ids.yaml",
+        )
+        yaml.safe_dump(
+            data={"jobs": [str(job) for job in joblist]}, stream=open(jobs_report_path, "w")
+        )
+        yaml.safe_dump(
+            data={"jobs": [str(job) for job in joblist]},
+            stream=open(jobs_report_path_workdir, "w"),
+        )
+        self.logger.info(
+            "Saved Trailblazer report file to %s and %s",
+            jobs_report_path,
+            jobs_report_path_workdir,
+        )
 
     def sample_job(self):
         """ Writes necessary sbatch job for each individual sample """
