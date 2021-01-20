@@ -654,18 +654,22 @@ class Job_Creator:
                 "trailblazer",
                 f"{self.sampleinfo[0].get('Customer_ID_project')}_slurm_ids.yaml",
             )
-            with open(
+            jobs_report_path_workdir = Path(
+                self.finishdir,
+                f"{self.sampleinfo[0].get('Customer_ID_project')}_slurm_ids.yaml",
+            )
+            yaml.safe_dump(
+                data={"jobs": [str(job) for job in jobarray]}, stream=open(jobs_report_path, "w")
+            )
+            yaml.safe_dump(
+                data={"jobs": [str(job) for job in jobarray]},
+                stream=open(jobs_report_path_workdir, "w"),
+            )
+            self.logger.info(
+                "Saved Trailblazer report file to %s and %s",
                 jobs_report_path,
-                "w",
-            ) as wh:
-                yaml.safe_dump(data={"jobs": [str(job) for job in jobarray]}, stream=wh)
-                self.logger.info("Saved Trailblazer report file to %s", jobs_report_path)
-                Path(jobs_report_path).link_to(
-                    Path(
-                        self.finishdir,
-                        f"{self.sampleinfo[0].get('Customer_ID_project')}_slurm_ids.yaml",
-                    )
-                )
+                jobs_report_path_workdir,
+            )
             self.finish_job(jobarray, single_sample)
 
     def finish_job(self, joblist, single_sample=False):
