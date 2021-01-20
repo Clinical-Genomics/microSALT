@@ -649,7 +649,14 @@ class Job_Creator:
                 except Exception as e:
                     pass
         if not dry:
-            with open(Path(self.finishdir, "slurm_ids.yaml"), "w") as wh:
+            with open(
+                Path(
+                    self.config["folders"]["reports"],
+                    "trailblazer",
+                    f"{self.sampleinfo.get('Customer_ID_project')}_slurm_ids.yaml",
+                ),
+                "w",
+            ) as wh:
                 yaml.safe_dump(data={"jobs": [str(job) for job in jobarray]}, stream=wh)
             self.finish_job(jobarray, single_sample)
 
