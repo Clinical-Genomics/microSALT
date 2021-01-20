@@ -658,6 +658,14 @@ class Job_Creator:
                 "w",
             ) as wh:
                 yaml.safe_dump(data={"jobs": [str(job) for job in jobarray]}, stream=wh)
+                self.logger.info(
+                    "Saved Trailblazer report file to %s",
+                    Path(
+                        self.config["folders"]["reports"],
+                        "trailblazer",
+                        f"{self.sampleinfo.get('Customer_ID_project')}_slurm_ids.yaml",
+                    ),
+                )
             self.finish_job(jobarray, single_sample)
 
     def finish_job(self, joblist, single_sample=False):
