@@ -175,7 +175,7 @@ class Job_Creator:
         for vfile in verified_files:
             f = gzip.open("{}/{}".format(self.indir, vfile), "r")
             lines = f.read().splitlines()
-            if not "+" in str(lines[-2]):
+            if len(lines) < 2 or not "+" in str(lines[-2]):
                 self.logger.warning("Input fastq {} does not seem to end properly".format(vfile))
         return sorted(verified_files)
 
@@ -748,27 +748,23 @@ class Job_Creator:
         jobno = str(re.search(r"(\d+)", str(output)).group(0))
         joblist.append(jobno)
 
-        jobs_report_path = Path(
-            self.config["folders"]["reports"],
-            "trailblazer",
-            f"{self.sampleinfo[0].get('Customer_ID_project')}_slurm_ids.yaml",
-        )
-        jobs_report_path_workdir = Path(
-            self.finishdir,
-            f"{self.sampleinfo[0].get('Customer_ID_project')}_slurm_ids.yaml",
-        )
-        yaml.safe_dump(
-            data={"jobs": [str(job) for job in joblist]}, stream=open(jobs_report_path, "w")
-        )
-        yaml.safe_dump(
-            data={"jobs": [str(job) for job in joblist]},
-            stream=open(jobs_report_path_workdir, "w"),
-        )
-        self.logger.info(
-            "Saved Trailblazer report file to %s and %s",
-            jobs_report_path,
-            jobs_report_path_workdir,
-        )
+        try:
+            #Generates file with all slurm ids
+            slurmname = "{}_slurm_ids.yaml".format(self.name)
+            slurmreport_storedir = Path(self.config["folders"]["reports"],
+                "trailblazer", slurmname)
+            slurmreport_workdir = Path(self.finishdir, slurmname)
+            yaml.safe_dump(
+                data={"jobs": [str(job) for job in joblist]},
+                      stream=open(slurmreport_workdir, "w"))
+            shutil.copyfile(slurmreport_workdir, slurmreport_storedir)
+            self.logger.info(
+                "Saved Trailblazer slurm report file to %s and %s",
+                slurmreport_storedir,
+                slurmreport_workdir,
+            )
+        except Exception as e:
+            self.logger.info("Unable to generate Trailblazer slurm report file")
 
     def sample_job(self):
         """ Writes necessary sbatch job for each individual sample """
