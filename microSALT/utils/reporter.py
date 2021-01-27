@@ -143,6 +143,38 @@ class Reporter:
             )
             self.error = True
 
+    def gen_typing(self, silent=False):
+        try:
+            last_version = self.db_pusher.get_report(self.name).version
+        except Exception as e:
+            self.logger.error("Project {} does not exist".format(self.name))
+            self.kill_flask()
+            sys.exit(-1)
+        try:
+            r = requests.get(
+                "http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name),
+                allow_redirects=True,
+            )
+            outfile = "{}_Typing_{}.html".format(
+                self.sample.get("Customer_ID_project"), last_version
+            )
+            local = "{}/{}".format(self.output, outfile)
+            output = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
+
+            outfile = open(output, "wb")
+            outfile.write(r.content.decode("iso-8859-1").encode("utf8"))
+            outfile.close()
+
+            if os.path.isfile(output):
+                self.filedict[output] = local
+                if not silent:
+                    self.attachments.append(output)
+        except Exception as e:
+            self.logger.error(
+                "Flask instance currently occupied. Possible rogue process. Retry command"
+            )
+            self.error = True
+
     def gen_qc(self, silent=False):
         try:
             last_version = self.db_pusher.get_report(self.name).version
