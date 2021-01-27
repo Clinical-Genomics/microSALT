@@ -187,10 +187,11 @@ class DB_Manipulator:
         entries = list()
         if type == "Projects":
             entries.append(
-                self.session.query(Expacs)
-                .filter(Expacs.CG_ID_sample.like("{}%".format(name)))
+                self.session.query(Custom_targets)
+                .filter(Custom_targets.CG_ID_sample.like("{}%".format(name)))
                 .all()
             )
+
             entries.append(
                 self.session.query(Seq_types)
                 .filter(Seq_types.CG_ID_sample.like("{}%".format(name)))
@@ -209,7 +210,9 @@ class DB_Manipulator:
             # entries.append(self.session.query(Projects).filter(Projects.CG_ID_project==name).all())
         elif type == "Samples":
             entries.append(
-                self.session.query(Expacs).filter(Expacs.CG_ID_sample == name).all()
+                self.session.query(Custom_targets)
+                .filter(Custom_targets.CG_ID_sample == name)
+                .all()
             )
             entries.append(
                 self.session.query(Seq_types)

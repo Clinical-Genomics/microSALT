@@ -98,7 +98,7 @@ class Scraper:
         self.sampledir = self.infolder
         self.scrape_blast(type="seq_type")
         self.scrape_blast(type="resistance")
-        if self.run_settings["custom_target"] != "":
+        if "custom_target" in self.run_settings and self.run_settings["custom_target"] != "":
             self.scrape_blast(type="custom")
         self.scrape_alignment()
         self.scrape_quast()
@@ -216,7 +216,7 @@ class Scraper:
 
                                 if type == "resistance":
                                     hypo[-1]["instance"] = filename
-                                    partials = re.search("(?:\>)*(.+)_(\d+){1,3}(?:_(.+))",elem_list[3])
+                                    partials = re.search("(?:>)*(.+)_(\d+){1,3}(?:_(.+))",elem_list[3])
                                     hypo[-1]["reference"] = partials.group(3)
                                     hypo[-1]["gene"] = partials.group(1)
                                     if hypo[-1]["gene"] in self.gene2resistance.keys():

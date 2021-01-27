@@ -232,7 +232,7 @@ class Reporter:
                     self.attachments.append(local)
         except Exception as e:
             self.logger.error(
-                self.logger.error("Unable to generate multiqc report."
+                "Unable to generate multiqc report."
             )
             self.error = True
 
