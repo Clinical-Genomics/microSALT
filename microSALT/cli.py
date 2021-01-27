@@ -339,6 +339,19 @@ def observe(ctx):
         click.echo(org.replace("_", " ").capitalize())
 
 
+@refer.command()
+@click.pass_context
+def update(ctx, sampleinfo_file):
+    """Updates all ST and Resistance databases"""
+    ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"])
+    click.echo("INFO - Checking versions of references..")
+    try:
+        ext_refs.update_refs()
+        click.echo("INFO - Version check done.")
+    except Exception as e:
+        click.echo("{}".format(e))
+    done()
+
 @utils.command()
 @click.argument("sampleinfo_file")
 @click.option(
