@@ -203,18 +203,20 @@ def gen_add_info(sample_info=dict()):
             near_hits = 0
             s.threshold = "Passed"
             for seq_type in s.seq_types:
+                absspan = 100*(1 - abs(1 - seq_type.span))
                 # Identify single deviating allele
                 if (
-                    seq_type.st_predictor
-                    and seq_type.identity >= preset_config["threshold"]["mlst_novel_id"]
-                    and preset_config["threshold"]["mlst_id"] > seq_type.identity
-                    and 1 - abs(1 - seq_type.span)
-                    >= (preset_config["threshold"]["mlst_span"] / 100.0)
+                    seq_type.st_predictor and (
+                    seq_type.identity >= preset_config["threshold"]["mlst_novel_id"] and
+                    seq_type.identity < preset_config["threshold"]["mlst_id"] 
+                    or absspan >= preset_config["threshold"]["mlst_span"] and
+                    absspan < 100
+                    )
                 ):
                     near_hits = near_hits + 1
                 elif (
                     seq_type.identity < preset_config["threshold"]["mlst_novel_id"]
-                    or seq_type.span < (preset_config["threshold"]["mlst_span"] / 100.0)
+                    or absspan < preset_config["threshold"]["mlst_span"]
                 ) and seq_type.st_predictor:
                     s.threshold = "Failed"
 
