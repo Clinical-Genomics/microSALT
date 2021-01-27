@@ -36,6 +36,7 @@ log.setLevel(logging.CRITICAL)
 @app.route("/")
 def start_page():
     projects = session.query(Projects).all()
+    projects = sorted(projects, reverse=True, key=lambda proj: (proj.CG_ID_project))
     session.close()
     return render_template("start_page.html", projects=projects)
 
@@ -43,6 +44,7 @@ def start_page():
 @app.route("/microSALT/")
 def reroute_page():
     projects = session.query(Projects).all()
+    projects = sorted(projects, reverse=True, key=lambda proj: (proj.CG_ID_project))
     session.close()
     return render_template("start_page.html", projects=projects)
 
