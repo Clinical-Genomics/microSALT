@@ -182,7 +182,10 @@ def gen_add_info(sample_info=dict()):
             pass
 
     for s in sample_info:
-        s.CG_ID_project = s.projects.CG_ID_project
+        try:
+            s.CG_ID_project = s.projects.CG_ID_project
+        except Exception as e:
+            s.CG_ID_project = ""
         s.ST_status = str(s.ST)
         if s.Customer_ID_sample is not None:
             if (

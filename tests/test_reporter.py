@@ -41,6 +41,8 @@ def mock_db():
     dbm.add_rec(entry, 'Seq_types')
   for bentry in unpack_db_json('sampleinfo_resistance.json'):
     dbm.add_rec(bentry, 'Resistances')
+  for centry in unpack_db_json('sampleinfo_custom.json'):
+    dbm.add_rec(centry, 'Custom_targets')
   for dentry in unpack_db_json('sampleinfo_reports.json'):
     dbm.add_rec(dentry, 'Reports')
   return dbm
@@ -54,6 +56,11 @@ def test_motif(mock_db, reporter):
   reporter.create_subfolders()
   reporter.gen_motif(motif="resistance")
   assert len( glob.glob("{}/AAA1234_resistance*".format(reporter.output))) > 0
+
+  reporter.create_subfolders()
+  reporter.gen_motif(motif="custom")
+  assert len( glob.glob("{}/AAA1234_custom*".format(reporter.output))) > 0
+
 
 def test_deliveryreport(mock_db, reporter):
   reporter.create_subfolders()
