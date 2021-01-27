@@ -91,6 +91,7 @@ class Reporter:
                 self.gen_qc()
                 self.gen_json(silent=True)
                 self.gen_delivery()
+                self.gen_multiqc()
             elif type == "typing":
                 self.gen_typing()
             elif type == "qc":
@@ -105,6 +106,8 @@ class Reporter:
             elif type == "motif_overview":
                 self.gen_motif(motif="resistance")
                 self.gen_motif(motif="custom")
+            elif type == "multiqc":
+                self.gen_multiqc()
         else:
             raise Exception("Report function recieved invalid format")
         self.mail()
@@ -172,35 +175,32 @@ class Reporter:
             )
             self.error = True
 
-    def gen_typing(self, silent=False):
+    def gen_multiqc(self, silent=False):
         try:
             last_version = self.db_pusher.get_report(self.name).version
         except Exception as e:
             self.logger.error("Project {} does not exist".format(self.name))
-            self.kill_flask()
             sys.exit(-1)
         try:
-            r = requests.get(
-                "http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name),
-                allow_redirects=True,
-            )
-            outfile = "{}_Typing_{}.html".format(
+            outfile = "{}_multiqc_{}.html".format(
                 self.sample.get("Customer_ID_project"), last_version
             )
             local = "{}/{}".format(self.output, outfile)
-            output = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
+            
+            cmd = "multiqc {0} -o {0}/multiqc --no-megaqc-upload".format(self.output)
+            proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+            output, error = proc.communicate() 
+            cmd = "mv multiqc/multiqc_report.html {0} && rm -r {0}/multiqc".format(local, self.output)
+            proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+            output, error = proc.communicate() 
 
-            outfile = open(output, "wb")
-            outfile.write(r.content.decode("iso-8859-1").encode("utf8"))
-            outfile.close()
-
-            if os.path.isfile(output):
+            if os.path.isfile(local):
                 self.filedict[output] = local
                 if not silent:
-                    self.attachments.append(output)
+                    self.attachments.append(local)
         except Exception as e:
             self.logger.error(
-                "Flask instance currently occupied. Possible rogue process. Retry command"
+                self.logger.error("Unable to generate multiqc report."
             )
             self.error = True
 

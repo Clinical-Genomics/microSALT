@@ -237,7 +237,7 @@ def refer(ctx):
     "--report",
     default="default",
     type=click.Choice(
-        ["default", "typing", "motif_overview", "qc", "json_dump", "st_update"]
+        ["default", "typing", "motif_overview", "qc", "json_dump", "st_update", "multiqc"]
     ),
 )
 @click.option("--output", help="Report output folder", default="")
@@ -363,7 +363,7 @@ def update(ctx, sampleinfo_file):
     "--type",
     default="default",
     type=click.Choice(
-        ["default", "typing", "motif_overview", "qc", "json_dump", "st_update"]
+        ["default", "typing", "motif_overview", "qc", "json_dump", "st_update","multiqc"]
     ),
 )
 @click.option("--output", help="Full path to output folder", default="")
