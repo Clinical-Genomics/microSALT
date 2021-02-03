@@ -180,7 +180,7 @@ class Referencer:
                         )
                         self.db_access.reload_profiletable(organ)
         except Exception as e:
-            self.logger.warn(
+            self.logger.warning(
                 "Unable to update pubMLST external data: {}".format(e)
             )
 
@@ -286,7 +286,7 @@ class Referencer:
                 if hit == len(organism):
                     return target
         except Exception as e:
-            self.logger.warn(
+            self.logger.warning(
                 "Unable to find existing reference for {}, strain {} has no reference match\nSource: {}".format(
                     organism, normal_organism_name, e
                 )
@@ -393,17 +393,39 @@ class Referencer:
             db_query = json.loads(response.read().decode("utf-8"))
         return db_query
 
+    def get_mlst_scheme(self, subtype_href):
+        """ Returns the path for the MLST data scheme at pubMLST """
+        try:
+            scheme_req = urllib.request.Request("{}/schemes".format(subtype_href))
+            with urllib.request.urlopen(scheme_req) as response:
+                scheme_query = json.loads(response.read().decode("utf-8"))
+                for scheme in scheme_query["schemes"]:
+                    if scheme["description"] == "MLST":
+                        return scheme["scheme"]
+            self.logger.warning("Could not find MLST data at {}".format(subtype_href))
+        except Exception as e:
+            self.logger.warning(e)
+
+    def external_version(self, organism, subtype_href):
+        """ Returns the version (date) of the data available on pubMLST """
+        mlst_href = self.get_mlst_scheme(subtype_href)
+        try:
+            with urllib.request.urlopen(mlst_href) as response:
+                ver_query = json.loads(response.read().decode("utf-8"))
+            return ver_query["last_updated"]
+        except Exception as e:
+            self.logger.warning("Could not determine pubMLST version for {}".format(organism))
+            self.logger.warning(e)
+
     def download_pubmlst(self, organism, subtype_href, force=False):
         """ Downloads ST and loci for a given organism stored on pubMLST if it is more recent. Returns update date """
         organism = organism.lower().replace(" ", "_")
 
         # Pull version
-        ver_req = urllib.request.Request("{}/schemes/1/profiles".format(subtype_href))
-        with urllib.request.urlopen(ver_req) as response:
-            ver_query = json.loads(response.read().decode("utf-8"))
+        extver = self.external_version(organism, subtype_href)
         currver = self.db_access.get_version("profile_{}".format(organism))
         if (
-            int(ver_query["last_updated"].replace("-", ""))
+            int(extver.replace("-", ""))
             <= int(currver.replace("-", ""))
             and not force
         ):
@@ -411,11 +433,13 @@ class Referencer:
             return currver
 
         # Pull ST file
+        mlst_href = self.get_mlst_scheme(subtype_href)
         st_target = "{}/{}".format(self.config["folders"]["profiles"], organism)
-        input = "{}/schemes/1/profiles_csv".format(subtype_href)
-        urllib.request.urlretrieve(input, st_target)
+        st_input = "{}/profiles_csv".format(mlst_href)
+        urllib.request.urlretrieve(st_input, st_target)
+
         # Pull locus files
-        loci_input = "{}/schemes/1".format(subtype_href)
+        loci_input = mlst_href
         loci_req = urllib.request.Request(loci_input)
         with urllib.request.urlopen(loci_req) as response:
             loci_query = json.loads(response.read().decode("utf-8"))
@@ -436,12 +460,6 @@ class Referencer:
             )
         # Create new indexes
         self.index_db(output, ".tfa")
-
-    def external_version(self, organism, subtype_href):
-        ver_req = urllib.request.Request("{}/schemes/1/profiles".format(subtype_href))
-        with urllib.request.urlopen(ver_req) as response:
-            ver_query = json.loads(response.read().decode("utf-8"))
-        return ver_query["last_updated"]
 
     def fetch_pubmlst(self, force=False):
         """ Updates reference for data that is stored on pubMLST """
