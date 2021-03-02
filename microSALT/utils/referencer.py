@@ -396,13 +396,24 @@ class Referencer:
     def get_mlst_scheme(self, subtype_href):
         """ Returns the path for the MLST data scheme at pubMLST """
         try:
-            scheme_req = urllib.request.Request("{}/schemes".format(subtype_href))
-            with urllib.request.urlopen(scheme_req) as response:
-                scheme_query = json.loads(response.read().decode("utf-8"))
-                for scheme in scheme_query["schemes"]:
-                    if scheme["description"] == "MLST":
-                        return scheme["scheme"]
-            self.logger.warning("Could not find MLST data at {}".format(subtype_href))
+            mlst = False
+            record_req_1 = urllib.request.Request("{}/schemes/1".format(subtype_href))
+            with urllib.request.urlopen(record_req_1) as response:
+                scheme_query_1 = json.loads(response.read().decode("utf-8"))
+                if "MLST" in scheme_query_1["description"]:
+                    mlst = "{}/schemes/1".format(subtype_href)
+            if not mlst:
+                record_req = urllib.request.Request("{}/schemes".format(subtype_href))
+                with urllib.request.urlopen(record_req) as response:
+                    record_query = json.loads(response.read().decode("utf-8"))
+                    for scheme in record_query["schemes"]:
+                        if scheme["description"] == "MLST":
+                            mlst = scheme["scheme"]
+            if mlst:
+                self.logger.debug("Found data at pubMLST: {}".format(mlst))
+                return mlst
+            else: 
+                self.logger.warning("Could not find MLST data at {}".format(subtype_href))
         except Exception as e:
             self.logger.warning(e)
 
