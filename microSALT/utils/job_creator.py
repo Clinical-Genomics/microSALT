@@ -745,8 +745,11 @@ class Job_Creator:
         mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
         output, error = mailproc.communicate()
 
-        jobno = str(re.search(r"(\d+)", str(output)).group(0))
-        joblist.append(jobno)
+        try:
+            jobno = str(re.search(r"(\d+)", str(output)).group(0))
+            joblist.append(jobno)
+        except Exception as e:
+            self.logger.info("Unable to grab SLURMID for {0}".format(self.name))
 
         try:
             #Generates file with all slurm ids
