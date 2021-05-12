@@ -318,7 +318,7 @@
                 {% if sample.genome_length > -1 %}
                   <div class="panel"><div class="panel-body">
                   <h4>MLST</h4>
-                  <h6>Identitetströskel: {{threshold.mlst_id}}%, Novel misstankströskel (längd): {{threshold.mlst_span}}%, Novel misstankströskel: {{threshold.mlst_novel_id}}%</h6>
+                  <h6>Identitetströskel: {{threshold.mlst_id}}%, Längdtröskel: 100%, Novel misstankströskel (längd): {{threshold.mlst_span}}%, Novel misstankströskel: {{threshold.mlst_novel_id}}%</h6>
                   {% if not sample.seq_types|length == 0 and 'saknas' not in sample.ST_status%}
                     <div class="table-responsive"><table  class="table table-bordered" style='table-layout:fixed;'>
                     <tr>
