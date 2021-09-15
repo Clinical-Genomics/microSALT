@@ -1,6 +1,6 @@
 biopython==1.78
 bs4==0.0.1
-click==7.0
+click==7.1.2
 flask==1.1.2
 flask_sqlalchemy==2.4.4
 pymysql==0.10.1
