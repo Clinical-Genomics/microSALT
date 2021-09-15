@@ -43,6 +43,7 @@ class Samples(db.Model):
     coverage_100x = db.Column(db.Float)
     average_coverage = db.Column(db.Float)
     reference_genome = db.Column(db.String(32))
+    reference_length = db.Column(db.Integer)
 
     application_tag = db.Column(db.String(15))
     date_arrival = db.Column(db.DateTime)

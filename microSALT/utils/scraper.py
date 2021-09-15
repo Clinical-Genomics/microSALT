@@ -135,6 +135,27 @@ class Scraper:
                 "Cannot generate quast statistics for {}".format(self.name)
             )
 
+    def scrape_reference(self) -> None:
+        """Scrapes a reference assembly to calculate the size"""
+        assembly = "{}/../../references/genomes/{}.fasta".format(self.sampledir, self.sample.get("reference"))
+        reference_data = dict()
+        try:
+            with open(assembly, "r") as infile:
+                assembly_length = 0
+                for line in infile:
+                    if not line.startswith(">"):
+                        curated_line = line.strip()
+                        assembly_length = + len(curated_line)
+                reference_data["reference_length"] = assembly_length
+            self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", reference_data)
+            self.logger.debug(
+                "Project {} recieved quast stats: {}".format(self.name, reference_data)
+            )
+        except Exception as e:
+            self.logger.warning(
+                "Cannot find assembly size for {}".format(self.name)
+            )
+
     def get_locilengths(self, foldername, suffix):
         """ Generate a dict of length for any given loci """
         # Create dict with full name as key, associated nucleotides as value.
