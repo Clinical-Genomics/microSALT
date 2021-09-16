@@ -20,15 +20,26 @@ _If not self-evident, mention what prompted the change._
 _If the update is a hotfix, it is sufficient to rely on the development testing along with the Travis self-test automatically applied to the PR._
 
 _Test routine to verify the stability of the PR:_
-- _`bash /home/proj/production/servers/resources/hasta.scilifelab.se/update-microsalt-stage.sh BRANCHNAME`_
+
+_Deploy correct branch on stage:_
+- _`bash /home/proj/production/servers/resources/hasta.scilifelab.se/update-microsalt-stage.sh <BRANCHNAME>`_
+
+_If starting microSALT with `cg`:_
 - _`us`_
-- _`source activate S_microSALT`_
-- _(SITUATIONAL) `export MICROSALT_CONFIG=/home/proj/dropbox/microSALT.json`_
-- _Select a relevant subset of the following:_
-- _`microSALT analyse project MIC3109`_
-- _`microSALT analyse project MIC4107`_
-- _`microSALT analyse project MIC4109`_
-- _`microSALT analyse project ACC5551`_
+- _`paxa -u <user> -s hasta -r cg-stage`_
+- _`bash /home/proj/production/servers/resources/hasta.scilifelab.se/update-cg-stage.sh master`_
+
+_Test routine to verify the stability of the PR:_
+
+- Run microSALT directly:
+  - _`us`_
+  - _`source activate S_microSALT`_
+  - _(SITUATIONAL) `export MICROSALT_CONFIG=/home/proj/dropbox/<your_new_microSALT_config>.json`_
+  - _`microSALT analyse /home/proj/stage/microbial/queries/merrymink.json --input /home/proj/stage/microbial/fastq/merrymink/`_
+- or: Run microSALT with cg:
+  - _`us`_  
+  - _(SITUATIONAL) `export MICROSALT_CONFIG=/home/proj/dropbox/<your_new_microSALT_config>.json`_    
+  - _`cg workflow microsalt start merrymink`_
 
 _Verify that the results for projects MIC3109, MIC4107, MIC4109 & ACC5551 are consistent with the results attached to AMSystem doc 1490, Microbial_WGS.xlsx_
 
@@ -37,4 +48,4 @@ _These are the results of the tests, and necessary conclusions, that prove the s
 
 # Sign-offs
 - [ ] Code tested by @octocat
-- [ ] Approved to run at Clinical-Genomics by @sylvinite
+- [ ] Approved to run at Clinical-Genomics by @talnor
