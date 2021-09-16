@@ -72,7 +72,9 @@ class Scraper:
                     sample_scraper.scrape_sample()
                 else:
                     self.logger.warning(
-                        "Skipping {} due to lacking info in sample_json file".format(dir)
+                        "Skipping {} due to lacking info in sample_json file".format(
+                            dir
+                        )
                     )
 
     def scrape_sample(self, sample=None):
@@ -108,7 +110,9 @@ class Scraper:
     def scrape_quast(self, filename=""):
         """Scrapes a quast report for assembly information"""
         if filename == "":
-            filename = "{}/assembly/quast/{}_report.tsv".format(self.sampledir, self.name)
+            filename = "{}/assembly/quast/{}_report.tsv".format(
+                self.sampledir, self.name
+            )
             if not os.path.isfile(filename):
                 filename = "{}/assembly/quast/report.tsv".format(self.sampledir)
 
@@ -136,7 +140,7 @@ class Scraper:
             )
 
     def get_locilengths(self, foldername, suffix):
-        """ Generate a dict of length for any given loci """
+        """Generate a dict of length for any given loci"""
         # Create dict with full name as key, associated nucleotides as value.
         alleles = dict()
         finalalleles = dict()
@@ -220,7 +224,9 @@ class Scraper:
 
                                 if type == "resistance":
                                     hypo[-1]["instance"] = filename
-                                    partials = re.search("(?:\>)*(.+)_(\d+){1,3}(?:_(.+))",elem_list[3])
+                                    partials = re.search(
+                                        "(?:\>)*(.+)_(\d+){1,3}(?:_(.+))", elem_list[3]
+                                    )
                                     hypo[-1]["reference"] = partials.group(3)
                                     hypo[-1]["gene"] = partials.group(1)
                                     if hypo[-1]["gene"] in self.gene2resistance.keys():
@@ -231,15 +237,29 @@ class Scraper:
                                         hypo[-1]["{}".format(type)] = hypo[-1][
                                             "instance"
                                         ].capitalize()
-                                    #Ignores reference name and finds relevant resFinder entry
+                                    # Ignores reference name and finds relevant resFinder entry
 
-                                    padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))]
+                                    padder = [
+                                        x
+                                        for x in locilengths.keys()
+                                        if x.startswith(">{}".format(partials[1]))
+                                    ]
                                     if len(padder) == 0:
-                                        padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1][:-1]))]
+                                        padder = [
+                                            x
+                                            for x in locilengths.keys()
+                                            if x.startswith(
+                                                ">{}".format(partials[1][:-1])
+                                            )
+                                        ]
                                     try:
                                         padder = padder[0]
                                     except IndexError as e:
-                                        self.logger.warning("In {} gene {} can't be resolved. Wrong resistance?".format(self.name, partials[1]))
+                                        self.logger.warning(
+                                            "In {} gene {} can't be resolved. Wrong resistance?".format(
+                                                self.name, partials[1]
+                                            )
+                                        )
 
                                     hypo[-1]["span"] = (
                                         float(hypo[-1]["subject_length"])
@@ -279,7 +299,7 @@ class Scraper:
                                         )
                                     else:
                                         hypo[-1]["virulence"] = ""
-                                    #padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))][0]
+                                    # padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))][0]
                                     hypo[-1]["span"] = (
                                         float(hypo[-1]["subject_length"])
                                         / locilengths[">{}".format(elem_list[3])]
@@ -291,15 +311,29 @@ class Scraper:
                                     )
                                     hypo[-1]["loci"] = partials.group(1)
                                     hypo[-1]["allele"] = int(partials.group(2))
-                                    #Ignores reference name and finds relevant resFinder entry
+                                    # Ignores reference name and finds relevant resFinder entry
 
-                                    padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[0]))]
+                                    padder = [
+                                        x
+                                        for x in locilengths.keys()
+                                        if x.startswith(">{}".format(partials[0]))
+                                    ]
                                     if len(padder) == 0:
-                                        padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[0][:-1]))]                 
+                                        padder = [
+                                            x
+                                            for x in locilengths.keys()
+                                            if x.startswith(
+                                                ">{}".format(partials[0][:-1])
+                                            )
+                                        ]
                                     try:
                                         padder = padder[0]
                                     except IndexError as e:
-                                        self.logger.warning("In {} allele {} can't be resolved. Wrong organism?".format(self.name, partials[0]))
+                                        self.logger.warning(
+                                            "In {} allele {} can't be resolved. Wrong organism?".format(
+                                                self.name, partials[0]
+                                            )
+                                        )
                                     hypo[-1]["span"] = (
                                         float(hypo[-1]["subject_length"])
                                         / locilengths[padder]
@@ -312,7 +346,11 @@ class Scraper:
                                 )
                                 hypo[-1]["contig_length"] = int(nodeinfo[3])
                                 hypo[-1]["contig_coverage"] = nodeinfo[5]
-                                self.logger.debug("scrape_blast scrape loop hit '{}'".format(elem_list[3]))
+                                self.logger.debug(
+                                    "scrape_blast scrape loop hit '{}'".format(
+                                        elem_list[3]
+                                    )
+                                )
             self.logger.info("{} candidate {} hits found".format(len(hypo), type2db))
         except Exception as e:
             self.logger.error("Unable to process the pattern of {}".format(str(e)))

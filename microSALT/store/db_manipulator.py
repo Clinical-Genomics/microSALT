@@ -111,17 +111,21 @@ class DB_Manipulator:
             # Add record
             if len(exist) == 0:
                 data = table.insert()
-                #Loads any dates as datetime objects
+                # Loads any dates as datetime objects
                 for k, v in data_dict.items():
-                  if isinstance(v, str):
-                    try:
-                      parse(v, fuzzy=False)
-                      data_dict[k] = datetime.strptime(v, '%Y-%m-%d %H:%M:%S')
-                    except ValueError as ve:
-                      if len(ve.args) > 0 and ve.args[0].startswith('unconverted data remains: '):
-                        data_dict[k] = datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f')
-                      else:
-                        pass
+                    if isinstance(v, str):
+                        try:
+                            parse(v, fuzzy=False)
+                            data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
+                        except ValueError as ve:
+                            if len(ve.args) > 0 and ve.args[0].startswith(
+                                "unconverted data remains: "
+                            ):
+                                data_dict[k] = datetime.strptime(
+                                    v, "%Y-%m-%d %H:%M:%S.%f"
+                                )
+                            else:
+                                pass
                 data.execute(data_dict)
                 self.logger.info("Added entry to table {}".format(tablename.fullname))
         # ORM
@@ -143,17 +147,21 @@ class DB_Manipulator:
             # Add record
             if not existing or force:
                 newobj = table()
-                #Loads any dates as datetime objects
+                # Loads any dates as datetime objects
                 for k, v in data_dict.items():
-                  if isinstance(v, str):
-                    try:
-                      parse(v, fuzzy=False)
-                      data_dict[k] = datetime.strptime(v, '%Y-%m-%d %H:%M:%S')
-                    except ValueError as ve:
-                      if len(ve.args) > 0 and ve.args[0].startswith('unconverted data remains: '):
-                        data_dict[k] = datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f')
-                      else:
-                        pass
+                    if isinstance(v, str):
+                        try:
+                            parse(v, fuzzy=False)
+                            data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
+                        except ValueError as ve:
+                            if len(ve.args) > 0 and ve.args[0].startswith(
+                                "unconverted data remains: "
+                            ):
+                                data_dict[k] = datetime.strptime(
+                                    v, "%Y-%m-%d %H:%M:%S.%f"
+                                )
+                            else:
+                                pass
                 for k, v in data_dict.items():
                     setattr(newobj, k, v)
                 self.session.add(newobj)
@@ -164,6 +172,7 @@ class DB_Manipulator:
                         ", ".join(pk_list), ", ".join(pk_values), tablename
                     )
                 )
+
     def upd_rec(
         self, req_dict: Dict[str, str], tablename: str, upd_dict: Dict[str, str]
     ):
@@ -245,7 +254,7 @@ class DB_Manipulator:
 
     def query_rec(self, tablename: str, filters: Dict[str, str]):
         """Fetches records table, using a primary-key dict with columns as keys.
-       Non-PK are ignored"""
+        Non-PK are ignored"""
         # Non-orm
         if not isinstance(tablename, str):
             # check for existence
@@ -299,7 +308,9 @@ class DB_Manipulator:
         """Creates profile tables by looping, since a lot of infiles exist"""
         data = table.insert()
         linedict = dict.fromkeys(table.c.keys())
-        with open("{}/{}".format(self.config["folders"]["profiles"], filename), "r") as fh:
+        with open(
+            "{}/{}".format(self.config["folders"]["profiles"], filename), "r"
+        ) as fh:
             # Skips header
             head = fh.readline()
             head = head.rstrip().split("\t")
@@ -312,12 +323,12 @@ class DB_Manipulator:
                 data.execute(linedict)
 
     def get_columns(self, tablename: str):
-        """ Returns all records for a given ORM table"""
+        """Returns all records for a given ORM table"""
         table = eval(tablename)
         return dict.fromkeys(table.__table__.columns.keys())
 
     def exists(self, table, item: Dict[str, str]):
-        """ Takes a k-v pair and checks for the entrys existence in the given table """
+        """Takes a k-v pair and checks for the entrys existence in the given table"""
         filterstring = ""
         for k, v in item.items():
             filterstring += "{}.{}=='{}',".format(table, k, v)
@@ -330,7 +341,7 @@ class DB_Manipulator:
             return True
 
     def get_version(self, name: str):
-        """ Gets the version from a given name. Should be generalized to return any value for any input"""
+        """Gets the version from a given name. Should be generalized to return any value for any input"""
         version = self.session.query(Versions).filter(Versions.name == name).scalar()
         if version is None:
             return "0"
@@ -431,7 +442,7 @@ class DB_Manipulator:
 
     def sync_novel(self, overwrite=False, sample=""):
         """Looks at each novel table. See if any record has a profile match in the profile table.
-       Updates these based on parameters"""
+        Updates these based on parameters"""
         prequery = self.session.query(Samples)
 
         for org, novel_table in self.novel.items():
@@ -578,7 +589,13 @@ class DB_Manipulator:
             for x, y in v.items():
                 if x is not None:
                     x = x.replace("_", " ").capitalize()
-                print("{} ({} samples):\n{}".format(x, len(y), sorted(y),))
+                print(
+                    "{} ({} samples):\n{}".format(
+                        x,
+                        len(y),
+                        sorted(y),
+                    )
+                )
         if len(novelbkt3) == 0:
             print("None!")
 
@@ -603,8 +620,8 @@ class DB_Manipulator:
             print("None!")
 
     def setPredictor(self, cg_sid: str, pks=dict()):
-        """ Helper function. Flags a set of seq_types as part of the final prediction.
-    Uses optional pks[PK_NAME] = VALUE dictionary to distinguish in scenarios where an allele number has multiple hits"""
+        """Helper function. Flags a set of seq_types as part of the final prediction.
+        Uses optional pks[PK_NAME] = VALUE dictionary to distinguish in scenarios where an allele number has multiple hits"""
         sample = self.session.query(Seq_types).filter(Seq_types.CG_ID_sample == cg_sid)
 
         if pks == dict():
@@ -622,7 +639,7 @@ class DB_Manipulator:
         self.session.commit()
 
     def alleles2st(self, cg_sid: str):
-        """ Takes a CG_ID_sample and predicts the correct ST """
+        """Takes a CG_ID_sample and predicts the correct ST"""
         threshold = True
         organism = (
             self.session.query(Samples.organism)
@@ -743,8 +760,8 @@ class DB_Manipulator:
 
     def bestST(self, cg_sid: str, st_list: List, type="profile"):
         """Takes in a list of ST and a sample.
-       Establishes which ST is most likely by criteria id*span -> eval -> contig coverage
-       & flags involved alleles"""
+        Establishes which ST is most likely by criteria id*span -> eval -> contig coverage
+        & flags involved alleles"""
         profiles = list()
         scores = dict()
         bestalleles = dict()
@@ -858,7 +875,7 @@ class DB_Manipulator:
         return topST
 
     def bestAlleles(self, cg_sid: str):
-        """ Establishes which allele set (for bad samples) is most likely by criteria span* id -> eval -> contig coverage"""
+        """Establishes which allele set (for bad samples) is most likely by criteria span* id -> eval -> contig coverage"""
         hits = (
             self.session.query(
                 Seq_types.contig_name,
@@ -913,7 +930,7 @@ class DB_Manipulator:
         return bestHits
 
     def get_unique_alleles(self, cg_sid: str, organism: str, threshold=True):
-        """ Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
+        """Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
         tid = float(self.config["threshold"]["mlst_id"])
         tspan = (self.config["threshold"]["mlst_span"]) / 100.0
         if threshold:

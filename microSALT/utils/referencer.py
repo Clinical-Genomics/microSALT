@@ -45,7 +45,7 @@ class Referencer:
             self.sample = self.sampleinfo
 
     def identify_new(self, cg_id="", project=False):
-        """ Automatically downloads pubMLST & NCBI organisms not already downloaded """
+        """Automatically downloads pubMLST & NCBI organisms not already downloaded"""
         neworgs = list()
         newrefs = list()
         try:
@@ -142,7 +142,7 @@ class Referencer:
             for entry in root:
                 # Check organism
                 species = entry.text.strip()
-                organ = species.lower().replace(" ", "_") 
+                organ = species.lower().replace(" ", "_")
                 if "escherichia_coli" in organ and "#1" in organ:
                     organ = organ[:-2]
                 if organ in self.organisms:
@@ -150,26 +150,31 @@ class Referencer:
                     currver = self.db_access.get_version("profile_{}".format(organ))
                     st_link = entry.find("./mlst/database/profiles/url").text
                     profiles_query = urllib.request.urlopen(st_link)
-                    profile_no = profiles_query.readlines()[-1].decode("utf-8").split("\t")[0]
-                    if (
-                        organ.replace("_", " ") not in self.updated
-                        and (
-                            int(profile_no.replace("-", "")) > int(currver.replace("-", ""))
-                            or force
-                        )
+                    profile_no = (
+                        profiles_query.readlines()[-1].decode("utf-8").split("\t")[0]
+                    )
+                    if organ.replace("_", " ") not in self.updated and (
+                        int(profile_no.replace("-", "")) > int(currver.replace("-", ""))
+                        or force
                     ):
                         # Download MLST profiles
-                        self.logger.info("Downloading new MLST profiles for " + species)       
-                        output = "{}/{}".format(self.config["folders"]["profiles"], organ)
+                        self.logger.info("Downloading new MLST profiles for " + species)
+                        output = "{}/{}".format(
+                            self.config["folders"]["profiles"], organ
+                        )
                         urllib.request.urlretrieve(st_link, output)
                         # Clear existing directory and download allele files
-                        out = "{}/{}".format(self.config["folders"]["references"], organ)
+                        out = "{}/{}".format(
+                            self.config["folders"]["references"], organ
+                        )
                         shutil.rmtree(out)
                         os.makedirs(out)
                         for locus in entry.findall("./mlst/database/loci/locus"):
                             locus_name = locus.text.strip()
                             locus_link = locus.find("./url").text
-                            urllib.request.urlretrieve(locus_link, "{}/{}.tfa".format(out, locus_name))
+                            urllib.request.urlretrieve(
+                                locus_link, "{}/{}.tfa".format(out, locus_name)
+                            )
                         # Create new indexes
                         self.index_db(out, ".tfa")
                         # Update database
@@ -180,9 +185,7 @@ class Referencer:
                         )
                         self.db_access.reload_profiletable(organ)
         except Exception as e:
-            self.logger.warning(
-                "Unable to update pubMLST external data: {}".format(e)
-            )
+            self.logger.warning("Unable to update pubMLST external data: {}".format(e))
 
     def resync(self, type="", sample="", ignore=False):
         """Manipulates samples that have an internal ST that differs from pubMLST ST"""
@@ -259,12 +262,12 @@ class Referencer:
         self.index_db(self.config["folders"]["resistances"], ".fsa")
 
     def existing_organisms(self):
-        """ Returns list of all organisms currently added """
+        """Returns list of all organisms currently added"""
         return self.organisms
 
     def organism2reference(self, normal_organism_name):
         """Finds which reference contains the same words as the organism
-       and returns it in a format for database calls. Returns empty string if none found"""
+        and returns it in a format for database calls. Returns empty string if none found"""
         orgs = os.listdir(self.config["folders"]["references"])
         organism = re.split(r"\W+", normal_organism_name.lower())
         try:
@@ -293,7 +296,7 @@ class Referencer:
             )
 
     def download_ncbi(self, reference):
-        """ Checks available references, downloads from NCBI if not present """
+        """Checks available references, downloads from NCBI if not present"""
         try:
             DEVNULL = open(os.devnull, "wb")
             Entrez.email = "2@2.com"
@@ -327,7 +330,7 @@ class Referencer:
             )
 
     def add_pubmlst(self, organism):
-        """ Checks pubmlst for references of given organism and downloads them """
+        """Checks pubmlst for references of given organism and downloads them"""
         # Organism must be in binomial format and only resolve to one hit
         errorg = organism
         try:
@@ -384,7 +387,7 @@ class Referencer:
             self.logger.warning(e.args[0])
 
     def query_pubmlst(self):
-        """ Returns a json object containing all organisms available via pubmlst.org """
+        """Returns a json object containing all organisms available via pubmlst.org"""
         # Example request URI: http://rest.pubmlst.org/db/pubmlst_neisseria_seqdef/schemes/1/profiles_csv
         seqdef_url = dict()
         databases = "http://rest.pubmlst.org/db"
@@ -394,7 +397,7 @@ class Referencer:
         return db_query
 
     def get_mlst_scheme(self, subtype_href):
-        """ Returns the path for the MLST data scheme at pubMLST """
+        """Returns the path for the MLST data scheme at pubMLST"""
         try:
             mlst = False
             record_req_1 = urllib.request.Request("{}/schemes/1".format(subtype_href))
@@ -412,34 +415,34 @@ class Referencer:
             if mlst:
                 self.logger.debug("Found data at pubMLST: {}".format(mlst))
                 return mlst
-            else: 
-                self.logger.warning("Could not find MLST data at {}".format(subtype_href))
+            else:
+                self.logger.warning(
+                    "Could not find MLST data at {}".format(subtype_href)
+                )
         except Exception as e:
             self.logger.warning(e)
 
     def external_version(self, organism, subtype_href):
-        """ Returns the version (date) of the data available on pubMLST """
+        """Returns the version (date) of the data available on pubMLST"""
         mlst_href = self.get_mlst_scheme(subtype_href)
         try:
             with urllib.request.urlopen(mlst_href) as response:
                 ver_query = json.loads(response.read().decode("utf-8"))
             return ver_query["last_updated"]
         except Exception as e:
-            self.logger.warning("Could not determine pubMLST version for {}".format(organism))
+            self.logger.warning(
+                "Could not determine pubMLST version for {}".format(organism)
+            )
             self.logger.warning(e)
 
     def download_pubmlst(self, organism, subtype_href, force=False):
-        """ Downloads ST and loci for a given organism stored on pubMLST if it is more recent. Returns update date """
+        """Downloads ST and loci for a given organism stored on pubMLST if it is more recent. Returns update date"""
         organism = organism.lower().replace(" ", "_")
 
         # Pull version
         extver = self.external_version(organism, subtype_href)
         currver = self.db_access.get_version("profile_{}".format(organism))
-        if (
-            int(extver.replace("-", ""))
-            <= int(currver.replace("-", ""))
-            and not force
-        ):
+        if int(extver.replace("-", "")) <= int(currver.replace("-", "")) and not force:
             # self.logger.info("Profile for {} already at latest version".format(organism.replace('_' ,' ').capitalize()))
             return currver
 
@@ -473,7 +476,7 @@ class Referencer:
         self.index_db(output, ".tfa")
 
     def fetch_pubmlst(self, force=False):
-        """ Updates reference for data that is stored on pubMLST """
+        """Updates reference for data that is stored on pubMLST"""
         seqdef_url = dict()
         db_query = self.query_pubmlst()
 

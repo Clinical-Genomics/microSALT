@@ -96,7 +96,7 @@ def review_sampleinfo(pfile):
 @click.version_option(__version__)
 @click.pass_context
 def root(ctx):
-    """microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline """
+    """microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline"""
     ctx.obj = {}
     ctx.obj["config"] = preset_config
     ctx.obj["log"] = logger
@@ -121,7 +121,10 @@ def root(ctx):
     "--skip_update", default=False, help="Skips downloading of references", is_flag=True
 )
 @click.option(
-    "--force_update", default=False, help="Forces downloading of pubMLST references", is_flag=True
+    "--force_update",
+    default=False,
+    help="Forces downloading of pubMLST references",
+    is_flag=True,
 )
 @click.option(
     "--untrimmed", help="Use untrimmed input data", default=False, is_flag=True
@@ -134,7 +137,16 @@ def root(ctx):
 )
 @click.pass_context
 def analyse(
-    ctx, sampleinfo_file, input, config, dry, email, skip_update, force_update, untrimmed, uncareful
+    ctx,
+    sampleinfo_file,
+    input,
+    config,
+    dry,
+    email,
+    skip_update,
+    force_update,
+    untrimmed,
+    uncareful,
 ):
     """Sequence analysis, typing and resistance identification"""
     # Run section
@@ -171,7 +183,10 @@ def analyse(
     )
 
     ext_refs = Referencer(
-        config=ctx.obj["config"], log=ctx.obj["log"], sampleinfo=sampleinfo, force=force_update
+        config=ctx.obj["config"],
+        log=ctx.obj["log"],
+        sampleinfo=sampleinfo,
+        force=force_update,
     )
     click.echo("INFO - Checking versions of references..")
     try:
@@ -196,14 +211,14 @@ def analyse(
 @root.group()
 @click.pass_context
 def utils(ctx):
-    """ Utilities for specific purposes """
+    """Utilities for specific purposes"""
     pass
 
 
 @utils.group()
 @click.pass_context
 def refer(ctx):
-    """ Manipulates MLST organisms """
+    """Manipulates MLST organisms"""
     pass
 
 
@@ -310,7 +325,7 @@ def finish(
 )
 @click.pass_context
 def add(ctx, organism, force):
-    """ Adds a new internal organism from pubMLST """
+    """Adds a new internal organism from pubMLST"""
     referee = Referencer(config=ctx.obj["config"], log=ctx.obj["log"], force=force)
     try:
         referee.add_pubmlst(organism)
@@ -325,7 +340,7 @@ def add(ctx, organism, force):
 @refer.command()
 @click.pass_context
 def observe(ctx):
-    """ Lists all stored organisms """
+    """Lists all stored organisms"""
     refe = Referencer(config=ctx.obj["config"], log=ctx.obj["log"])
     click.echo("INFO - Currently stored organisms:")
     for org in sorted(refe.existing_organisms()):
@@ -370,6 +385,7 @@ def view(ctx):
     """Starts an interactive webserver for viewing"""
     codemonkey = Reporter(config=ctx.obj["config"], log=ctx.obj["log"])
     codemonkey.start_web()
+
 
 @utils.command()
 @click.option("--input", help="Full path to project folder", default=os.getcwd())

@@ -23,7 +23,8 @@ from microSALT.store.orm_models import (
 )
 
 engine = create_engine(
-    app.config["SQLALCHEMY_DATABASE_URI"], connect_args={"check_same_thread": False,'timeout':15}
+    app.config["SQLALCHEMY_DATABASE_URI"],
+    connect_args={"check_same_thread": False, "timeout": 15},
 )
 Session = sessionmaker(bind=engine)
 session = Session()
@@ -116,7 +117,7 @@ def STtracker_page(customer):
 
 
 def gen_collectiondata(collect_id=[]):
-    """ Queries database using a set of samples"""
+    """Queries database using a set of samples"""
     arglist = []
     samples = (
         session.query(Collections).filter(Collections.ID_collection == collect_id).all()
@@ -131,7 +132,7 @@ def gen_collectiondata(collect_id=[]):
 
 
 def gen_reportdata(pid="all", organism_group="all"):
-    """ Queries database for all necessary information for the reports """
+    """Queries database for all necessary information for the reports"""
     if pid == "all" and organism_group == "all":
         sample_info = session.query(Samples)
     elif pid == "all":
@@ -155,7 +156,7 @@ def gen_reportdata(pid="all", organism_group="all"):
 
 
 def gen_add_info(sample_info=dict()):
-    """ Enhances a sample info struct by adding ST_status, threshold info, versioning and sorting """
+    """Enhances a sample info struct by adding ST_status, threshold info, versioning and sorting"""
     # Set ST status
     output = dict()
     output["samples"] = list()

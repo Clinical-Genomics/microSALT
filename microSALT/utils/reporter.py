@@ -75,9 +75,13 @@ class Reporter:
             self.sample = self.sampleinfo
 
     def create_subfolders(self):
-        os.makedirs("{0}/deliverables".format(self.config["folders"]["reports"]), exist_ok=True)
+        os.makedirs(
+            "{0}/deliverables".format(self.config["folders"]["reports"]), exist_ok=True
+        )
         os.makedirs("{0}/json".format(self.config["folders"]["reports"]), exist_ok=True)
-        os.makedirs("{0}/analysis".format(self.config["folders"]["reports"]), exist_ok=True)
+        os.makedirs(
+            "{0}/analysis".format(self.config["folders"]["reports"]), exist_ok=True
+        )
 
     def report(self, type="default", customer="all"):
         self.create_subfolders()
@@ -108,10 +112,10 @@ class Reporter:
         else:
             raise Exception("Report function recieved invalid format")
         self.mail()
-        #If no output dir is specified; Don't store report locally. Rely on e-mail
+        # If no output dir is specified; Don't store report locally. Rely on e-mail
         if not self.output == "" or self.output == os.getcwd():
-            for k,v in self.filedict.items():
-                if v == "": 
+            for k, v in self.filedict.items():
+                if v == "":
                     os.remove(k)
                 else:
                     copyfile(k, v)
@@ -335,97 +339,219 @@ class Reporter:
 
     def gen_delivery(self):
         deliv = dict()
-        deliv['files'] = list()
+        deliv["files"] = list()
         last_version = self.db_pusher.get_report(self.name).version
-        output = "{}/deliverables/{}_deliverables.yaml".format(self.config["folders"]["reports"], self.sample.get("Customer_ID_project"))
-        local = "{}/{}_deliverables.yaml".format(self.output, self.sample.get("Customer_ID_project"))
+        output = "{}/deliverables/{}_deliverables.yaml".format(
+            self.config["folders"]["reports"], self.sample.get("Customer_ID_project")
+        )
+        local = "{}/{}_deliverables.yaml".format(
+            self.output, self.sample.get("Customer_ID_project")
+        )
 
-        #Project-wide
-        #Sampleinfo
-        deliv['files'].append({'format':'json','id':self.sample.get("Customer_ID_project"),
-                               'path':"{}/sampleinfo.json".format(self.output),
-                               'path_index':'~','step':'analysis','tag':'sampleinfo'})
-        #QC report
-        deliv['files'].append({'format':'html','id':self.sample.get("Customer_ID_project"),
-                               'path':"{}/{}_QC_{}.html".format(self.output, self.sample.get("Customer_ID_project"), last_version),
-                               'path_index':'~','step':'result_aggregation','tag':'microsalt-qc'})
-        #Typing report
-        deliv['files'].append({'format':'html','id':self.sample.get("Customer_ID_project"),
-                               'path':"{}/{}_Typing_{}.html".format(self.output, self.sample.get("Customer_ID_project"), last_version),
-                               'path_index':'~','step':'result_aggregation','tag':'microsalt-type'})
-        #Json (vogue) report
-        deliv['files'].append({'format':'json','id':self.sample.get("Customer_ID_project"),
-                               'path':"{}/{}.json".format(self.output, self.sample.get("CG_ID_project")),
-                               'path_index':'~','step':'result_aggregation','tag':'microsalt-json'})
-        #Settings dump
-        deliv['files'].append({'format':'txt','id':self.sample.get("Customer_ID_project"),
-                               'path':"{}/config.log".format(self.output),
-                               'path_index':'~','step':'analysis','tag':'runtime-settings'})
+        # Project-wide
+        # Sampleinfo
+        deliv["files"].append(
+            {
+                "format": "json",
+                "id": self.sample.get("Customer_ID_project"),
+                "path": "{}/sampleinfo.json".format(self.output),
+                "path_index": "~",
+                "step": "analysis",
+                "tag": "sampleinfo",
+            }
+        )
+        # QC report
+        deliv["files"].append(
+            {
+                "format": "html",
+                "id": self.sample.get("Customer_ID_project"),
+                "path": "{}/{}_QC_{}.html".format(
+                    self.output, self.sample.get("Customer_ID_project"), last_version
+                ),
+                "path_index": "~",
+                "step": "result_aggregation",
+                "tag": "microsalt-qc",
+            }
+        )
+        # Typing report
+        deliv["files"].append(
+            {
+                "format": "html",
+                "id": self.sample.get("Customer_ID_project"),
+                "path": "{}/{}_Typing_{}.html".format(
+                    self.output, self.sample.get("Customer_ID_project"), last_version
+                ),
+                "path_index": "~",
+                "step": "result_aggregation",
+                "tag": "microsalt-type",
+            }
+        )
+        # Json (vogue) report
+        deliv["files"].append(
+            {
+                "format": "json",
+                "id": self.sample.get("Customer_ID_project"),
+                "path": "{}/{}.json".format(
+                    self.output, self.sample.get("CG_ID_project")
+                ),
+                "path_index": "~",
+                "step": "result_aggregation",
+                "tag": "microsalt-json",
+            }
+        )
+        # Settings dump
+        deliv["files"].append(
+            {
+                "format": "txt",
+                "id": self.sample.get("Customer_ID_project"),
+                "path": "{}/config.log".format(self.output),
+                "path_index": "~",
+                "step": "analysis",
+                "tag": "runtime-settings",
+            }
+        )
 
-        #Sample-wide
-        #Single sample
+        # Sample-wide
+        # Single sample
         if self.sampleinfo == self.sample:
             hklist = list()
             hklist.append(self.sampleinfo)
             resultsdir = self.output
-        #Project
+        # Project
         else:
             hklist = self.sampleinfo
 
         for s in hklist:
             if len(hklist) > 1:
                 resultsdir = os.path.join(self.output, s["CG_ID_sample"])
-            #Contig/Assembly file
-            deliv['files'].append({'format':'fasta','id':s["CG_ID_sample"],
-                                   'path':"{0}/assembly/{1}_trimmed_contigs.fasta".format(resultsdir, s["CG_ID_sample"]),
-                                   'path_index':'~','step':'assembly','tag':'assembly'})
-            #Concat trimmed reads forwards
-            deliv['files'].append({'format':'fastq','id':s["CG_ID_sample"],
-                                   'path':"{0}/trimmed/{1}_trim_front_pair.fastq.gz".format(resultsdir, s["CG_ID_sample"]),
-                                   'path_index':'~','step':'concatination','tag':'trimmed-forward-reads'}) 
-            #Concat trimmed reads reverse
-            deliv['files'].append({'format':'fastq','id':s["CG_ID_sample"],
-                                   'path':"{0}/trimmed/{1}_trim_rev_pair.fastq.gz".format(resultsdir, s["CG_ID_sample"]),
-                                   'path_index':'~','step':'concatination','tag':'trimmed-reverse-reads'})
-            #Concat trimmed reads unpaired
-            deliv['files'].append({'format':'fastq','id':s["CG_ID_sample"],
-                                   'path':"{0}/trimmed/{1}_trim_unpair.fastq.gz".format(resultsdir, s["CG_ID_sample"]),
-                                   'path_index':'~','step':'concatination','tag':'trimmed-unpaired-reads'})            
-            #Slurm dump
-            deliv['files'].append({'format':'txt','id':s["CG_ID_sample"],
-                                   'path':"{0}/slurm_{1}.log".format(resultsdir, s["CG_ID_sample"]),
-                                   'path_index':'~','step':'analysis','tag':'logfile'})
-            #Quast (assembly) qc report
-            deliv['files'].append({'format':'tsv','id':s["CG_ID_sample"],
-                                   'path':"{0}/assembly/quast/{1}_report.tsv".format(resultsdir, s["CG_ID_sample"]),
-                                   'path_index':'~','step':'assembly','tag':'quast-results'})
-            #Alignment (bam, sorted)
-            deliv['files'].append({'format':'bam','id':s["CG_ID_sample"],
-                                   'path':"{0}/alignment/{1}_{2}.bam_sort".format(resultsdir, s["CG_ID_sample"], s["reference"]),
-                                   'path_index':'~','step':'alignment','tag':'reference-alignment-sorted'})
-            #Alignment (bam, sorted, deduplicated)
-            deliv['files'].append({'format':'bam','id':s["CG_ID_sample"],
-                                   'path':"{0}/alignment/{1}_{2}.bam_sort_rmdup".format(resultsdir, s["CG_ID_sample"], s["reference"]),
-                                   'path_index':'~','step':'alignment','tag':'reference-alignment-deduplicated'})
-            #Picard insert size stats
-            deliv['files'].append({'format':'meta','id':s["CG_ID_sample"],
-                                   'path':"{0}/alignment/{1}_{2}.stats.ins".format(resultsdir, s["CG_ID_sample"], s["reference"]),
-                                   'path_index':'~','step':'insertsize_calc','tag':'picard-insertsize'})
+            # Contig/Assembly file
+            deliv["files"].append(
+                {
+                    "format": "fasta",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/assembly/{1}_trimmed_contigs.fasta".format(
+                        resultsdir, s["CG_ID_sample"]
+                    ),
+                    "path_index": "~",
+                    "step": "assembly",
+                    "tag": "assembly",
+                }
+            )
+            # Concat trimmed reads forwards
+            deliv["files"].append(
+                {
+                    "format": "fastq",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/trimmed/{1}_trim_front_pair.fastq.gz".format(
+                        resultsdir, s["CG_ID_sample"]
+                    ),
+                    "path_index": "~",
+                    "step": "concatination",
+                    "tag": "trimmed-forward-reads",
+                }
+            )
+            # Concat trimmed reads reverse
+            deliv["files"].append(
+                {
+                    "format": "fastq",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/trimmed/{1}_trim_rev_pair.fastq.gz".format(
+                        resultsdir, s["CG_ID_sample"]
+                    ),
+                    "path_index": "~",
+                    "step": "concatination",
+                    "tag": "trimmed-reverse-reads",
+                }
+            )
+            # Concat trimmed reads unpaired
+            deliv["files"].append(
+                {
+                    "format": "fastq",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/trimmed/{1}_trim_unpair.fastq.gz".format(
+                        resultsdir, s["CG_ID_sample"]
+                    ),
+                    "path_index": "~",
+                    "step": "concatination",
+                    "tag": "trimmed-unpaired-reads",
+                }
+            )
+            # Slurm dump
+            deliv["files"].append(
+                {
+                    "format": "txt",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/slurm_{1}.log".format(resultsdir, s["CG_ID_sample"]),
+                    "path_index": "~",
+                    "step": "analysis",
+                    "tag": "logfile",
+                }
+            )
+            # Quast (assembly) qc report
+            deliv["files"].append(
+                {
+                    "format": "tsv",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/assembly/quast/{1}_report.tsv".format(
+                        resultsdir, s["CG_ID_sample"]
+                    ),
+                    "path_index": "~",
+                    "step": "assembly",
+                    "tag": "quast-results",
+                }
+            )
+            # Alignment (bam, sorted)
+            deliv["files"].append(
+                {
+                    "format": "bam",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/alignment/{1}_{2}.bam_sort".format(
+                        resultsdir, s["CG_ID_sample"], s["reference"]
+                    ),
+                    "path_index": "~",
+                    "step": "alignment",
+                    "tag": "reference-alignment-sorted",
+                }
+            )
+            # Alignment (bam, sorted, deduplicated)
+            deliv["files"].append(
+                {
+                    "format": "bam",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/alignment/{1}_{2}.bam_sort_rmdup".format(
+                        resultsdir, s["CG_ID_sample"], s["reference"]
+                    ),
+                    "path_index": "~",
+                    "step": "alignment",
+                    "tag": "reference-alignment-deduplicated",
+                }
+            )
+            # Picard insert size stats
+            deliv["files"].append(
+                {
+                    "format": "meta",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/alignment/{1}_{2}.stats.ins".format(
+                        resultsdir, s["CG_ID_sample"], s["reference"]
+                    ),
+                    "path_index": "~",
+                    "step": "insertsize_calc",
+                    "tag": "picard-insertsize",
+                }
+            )
 
-
-        with open(output, 'w') as delivfile:
+        with open(output, "w") as delivfile:
             documents = yaml.dump(deliv, delivfile)
 
-        with open(output, 'r') as delivfile:
+        with open(output, "r") as delivfile:
             postfix = delivfile.read()
         postfix = postfix.replace("'~'", "~")
 
-        with open(output, 'w') as delivfile:
+        with open(output, "w") as delivfile:
             delivfile.write(postfix)
 
         if os.path.isfile(output):
             self.filedict[output] = local
-
 
     def gen_json(self, silent=False):
         report = dict()
@@ -597,7 +723,7 @@ class Reporter:
 
     def restart_web(self):
         try:
-          self.kill_flask()
+            self.kill_flask()
         except Exception as e:
-          pass
+            pass
         self.start_web()

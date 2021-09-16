@@ -76,7 +76,10 @@ if preset_config != "":
         logger.addHandler(ch)
 
         # Create paths mentioned in config
-        db_file = re.search("sqlite:///(.+)",preset_config["database"]["SQLALCHEMY_DATABASE_URI"],).group(1)
+        db_file = re.search(
+            "sqlite:///(.+)",
+            preset_config["database"]["SQLALCHEMY_DATABASE_URI"],
+        ).group(1)
         for entry in preset_config.keys():
             if entry != "_comment":
                 if (
@@ -119,8 +122,10 @@ if preset_config != "":
                                 )
                                 output, error = proc.communicate()
                                 if proc.returncode != 0:
-                                  logger.error("Database writing failed! Invalid user access detected!")
-                                  sys.exit(-1)
+                                    logger.error(
+                                        "Database writing failed! Invalid user access detected!"
+                                    )
+                                    sys.exit(-1)
                             else:
                                 unmade_fldr = preset_config[entry][thing]
                             if not pathlib.Path(unmade_fldr).exists():
@@ -135,13 +140,13 @@ if preset_config != "":
         )
         logger.addHandler(fh)
 
-        #Integrity check database 
+        # Integrity check database
         cmd = "sqlite3 {0}".format(db_file)
         cmd = cmd.split()
         cmd.append("pragma integrity_check;")
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output, error = proc.communicate()
-        if not 'ok' in str(output):
+        if not "ok" in str(output):
             logger.error("Database integrity failed! Lock-state detected!")
             sys.exit(-1)
 

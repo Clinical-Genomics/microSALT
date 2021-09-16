@@ -38,8 +38,10 @@ class Profiles:
                 while index < len(head):
                     # Set ST as PK
                     if head[index] == "ST":
-                        header += "Column(head[{}], SmallInteger, primary_key=True),".format(
-                            index
+                        header += (
+                            "Column(head[{}], SmallInteger, primary_key=True),".format(
+                                index
+                            )
                         )
                     # Set Clonal complex as string
                     elif head[index] == "clonal_complex" or head[index] == "species":
@@ -85,8 +87,10 @@ class Novel:
                 while index < len(head):
                     # Set ST as PK
                     if head[index] == "ST":
-                        header += "Column(head[{}], SmallInteger, primary_key=True),".format(
-                            index
+                        header += (
+                            "Column(head[{}], SmallInteger, primary_key=True),".format(
+                                index
+                            )
                         )
                     # Set Clonal complex as string
                     elif head[index] == "clonal_complex" or head[index] == "species":
