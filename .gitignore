@@ -10,3 +10,7 @@ unique_references/*.n*
 *pyc
 *.swp
 .coverage*
+.idea/
+default_sample_info.json
+tmp.json
+
