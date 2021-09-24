@@ -104,6 +104,7 @@ class Scraper:
             self.scrape_blast(type="expec")
         self.scrape_alignment()
         self.scrape_quast()
+        self.scrape_reference()
 
     def scrape_quast(self, filename=""):
         """Scrapes a quast report for assembly information"""
