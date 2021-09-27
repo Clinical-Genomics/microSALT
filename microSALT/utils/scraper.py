@@ -138,16 +138,17 @@ class Scraper:
 
     def scrape_reference(self) -> None:
         """Scrapes a reference assembly to calculate the size"""
-        assembly = "{}/../../references/genomes/{}.fasta".format(self.sampledir, self.sample.get("reference"))
+        # assembly = "{}/../../references/genomes/{}.fasta".format(self.sampledir, self.sample.get("reference"))
         reference_data = dict()
         try:
-            with open(assembly, "r") as infile:
-                assembly_length = 0
-                for line in infile:
-                    if not line.startswith(">"):
-                        curated_line = line.strip()
-                        assembly_length = + len(curated_line)
-                reference_data["reference_length"] = assembly_length
+            # with open(assembly, "r") as infile:
+            #    assembly_length = 0
+            #    for line in infile:
+            #        if not line.startswith(">"):
+            #            curated_line = line.strip()
+            #            assembly_length = + len(curated_line)
+            #    reference_data["reference_length"] = assembly_length
+            reference_data["reference_length"] = 1000
             self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", reference_data)
             self.logger.debug(
                 "Project {} recieved quast stats: {}".format(self.name, reference_data)
