@@ -146,7 +146,7 @@ class Scraper:
                 for line in infile:
                     if not line.startswith(">"):
                         curated_line = line.strip()
-                        assembly_length = + len(curated_line)
+                        assembly_length += len(curated_line)
                 reference_data["reference_length"] = assembly_length
             self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", reference_data)
             self.logger.debug(
