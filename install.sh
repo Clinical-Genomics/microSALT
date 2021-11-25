@@ -59,7 +59,7 @@ conda remove -y -n $cname --all || :
 conda create -y -n $cname python=3.6
 source activate $cname
 conda config --add channels bioconda
-conda install -y -c bioconda -c conda-forge blast=2.12.0 bwa=0.7.17 picard=2.20.3 pigz=2.4 quast=5.0.2 samtools=1.13 spades=3.13.1 trimmomatic=0.39=1 r-base=4.1.1
+conda install -y -c bioconda blast=2.11.0 bwa=0.7.17 picard=2.26.6 pigz=2.6 quast=5.0.2 samtools=1.12 spades=3.13.1 trimmomatic=0.39
 if [[ $type == "release" ]]; then
     pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements.txt -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements-dev.txt 
     pip install -U git+https://github.com/Clinical-Genomics/microSALT@$branch
