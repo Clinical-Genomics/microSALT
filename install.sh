@@ -58,16 +58,29 @@ conda remove -y -n $cname --all || :
 
 conda create -y -n $cname python=3.6
 conda activate $cname
+echo "add defaults"
+conda config --add channels defaults
+echo "add bioconda"
 conda config --add channels bioconda
+echo "add conda-forge"
 conda config --add channels conda-forge
+echo "add blast"
 conda install blast=2.12.0
+echo "add bwa"
 conda install bwa=0.7.17
+echo "add picard"
 conda install picard=2.20.3
+echo "add pigz"
 conda install pigz=2.4
+echo "add quast"
 conda install quast=5.0.2
+echo "add samtools"
 conda install samtools=1.13
+echo "add spades"
 conda install spades=3.13.1
+echo "add trimmomatic"
 conda install trimmomatic=0.39
+echo "add r-base"
 conda install r-base=4.1.1
 
 if [[ $type == "release" ]]; then
