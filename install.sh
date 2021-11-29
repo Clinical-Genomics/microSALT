@@ -52,7 +52,7 @@ done
 echo "Thank you, setting up environment $cname!"
 
 #Unload environment
-conda info | tac | tac | grep -q $cname && conda deactivate || :
+conda info | tac | tac | grep -q $cname && source deactivate || :
 #Remove environment if already present
 conda remove -y -n $cname --all || :
 
