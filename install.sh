@@ -57,7 +57,7 @@ conda info | tac | tac | grep -q $cname && source deactivate || :
 conda remove -y -n $cname --all || :
 
 conda create -y -n $cname python=3.6
-conda activate $cname
+source activate $cname
 conda config --add channels defaults
 conda config --add channels bioconda
 conda config --add channels conda-forge
