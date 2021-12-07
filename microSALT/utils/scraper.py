@@ -156,7 +156,7 @@ class Scraper:
             )
         except Exception as e:
             self.logger.warning(
-                "Cannot find assembly size for {}".format(self.name)
+                "Cannot find assembly size for reference {}".format(self.name)
             )
 
     def get_locilengths(self, foldername, suffix):
