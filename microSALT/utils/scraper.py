@@ -139,6 +139,8 @@ class Scraper:
     def scrape_reference(self) -> None:
         """Scrapes a reference assembly to calculate the size"""
         assembly = "{}/../../../references/genomes/{}.fasta".format(self.sampledir, self.sample.get("reference"))
+        if not os.path.exists(assembly):
+            assembly = "{}/../../references/genomes/{}.fasta".format(self.sampledir, self.sample.get("reference"))
         reference_data = dict()
         try:
             with open(assembly, "r") as infile:
