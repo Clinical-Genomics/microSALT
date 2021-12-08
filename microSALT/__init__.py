@@ -63,7 +63,7 @@ if preset_config != "":
         preset_config["folders"]["adapters"] = os.path.abspath(
             os.path.join(
                 os.path.expandvars("$CONDA_PREFIX"),
-                "share/trimmomatic-0.39-1/adapters/",
+                "share/trimmomatic/adapters/",
             )
         )
 
