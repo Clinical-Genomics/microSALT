@@ -555,6 +555,7 @@ class Job_Creator:
             sample_col["CG_ID_project"] = self.sample.get("CG_ID_project")
             sample_col["Customer_ID_sample"] = self.sample.get("Customer_ID_sample")
             sample_col["reference_genome"] = self.sample.get("reference")
+            sample_col["reference_length"] = self.sample.get("reference_length")
             sample_col["date_analysis"] = self.dt
             sample_col["organism"] = self.sample.get("organism")
             sample_col["application_tag"] = self.sample.get("application_tag")

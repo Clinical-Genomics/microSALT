@@ -104,6 +104,7 @@ class Scraper:
             self.scrape_blast(type="expec")
         self.scrape_alignment()
         self.scrape_quast()
+        self.scrape_reference()
 
     def scrape_quast(self, filename=""):
         """Scrapes a quast report for assembly information"""
@@ -133,6 +134,29 @@ class Scraper:
         except Exception as e:
             self.logger.warning(
                 "Cannot generate quast statistics for {}".format(self.name)
+            )
+
+    def scrape_reference(self) -> None:
+        """Scrapes a reference assembly to calculate the size"""
+        assembly = "{}/../../../references/genomes/{}.fasta".format(self.sampledir, self.sample.get("reference"))
+        if not os.path.exists(assembly):
+            assembly = "{}/../../references/genomes/{}.fasta".format(self.sampledir, self.sample.get("reference"))
+        reference_data = dict()
+        try:
+            with open(assembly, "r") as infile:
+                assembly_length = 0
+                for line in infile:
+                    if not line.startswith(">"):
+                        curated_line = line.strip()
+                        assembly_length += len(curated_line)
+                reference_data["reference_length"] = assembly_length
+            self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", reference_data)
+            self.logger.debug(
+                "Project {} recieved quast stats: {}".format(self.name, reference_data)
+            )
+        except Exception as e:
+            self.logger.warning(
+                "Cannot find assembly size for reference {}".format(self.name)
             )
 
     def get_locilengths(self, foldername, suffix):

@@ -52,14 +52,25 @@ done
 echo "Thank you, setting up environment $cname!"
 
 #Unload environment
-conda info| tac | tac | grep -q $cname && source deactivate || :
+conda info | tac | tac | grep -q $cname && source deactivate || :
 #Remove environment if already present
 conda remove -y -n $cname --all || :
 
 conda create -y -n $cname python=3.6
 source activate $cname
+conda config --add channels defaults
 conda config --add channels bioconda
-conda install -y -c bioconda -c conda-forge blast=2.12.0 bwa=0.7.17 picard=2.20.3 pigz=2.4 quast=5.0.2 samtools=1.13 spades=3.13.1 trimmomatic=0.39=1 r-base=4.1.1
+conda config --add channels conda-forge
+conda install -y blast=2.12.0
+conda install -y bwa=0.7.17
+conda install -y picard=2.20.3
+conda install -y pigz=2.4
+conda install -y quast=5.0.2
+conda install -y samtools=1.13
+conda install -y spades=3.13.1
+conda install -y trimmomatic=0.39
+conda install -y r-base=4.1.1
+
 if [[ $type == "release" ]]; then
     pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements.txt -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements-dev.txt 
     pip install -U git+https://github.com/Clinical-Genomics/microSALT@$branch

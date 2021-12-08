@@ -457,6 +457,11 @@ class Reporter:
                 if s.genome_length is None or s.genome_length < 1
                 else s.genome_length
             )
+            t["reference_length"] = (
+                ""
+                if s.reference_length is None or s.reference_length < 1
+                else s.reference_length
+            )
             t["gc_percentage"] = (
                 ""
                 if s.gc_percentage is None or s.gc_percentage < 0.1

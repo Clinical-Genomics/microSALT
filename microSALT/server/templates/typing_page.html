@@ -305,7 +305,8 @@
         	<div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
         	<h4>Assembly</h4>
         	{% if sample.genome_length > -1 %}
-        	      <tr><th scope="row" >Förväntad genomstorlek</th><td>{{'{0:,}'.format(sample.genome_length)|replace(","," ")}}</td></tr>
+        	      <tr><th scope="row" >Genomstorlek enligt assembly</th><td>{{'{0:,}'.format(sample.genome_length)|replace(","," ")}}</td></tr>
+                  <tr><th scope="row" >Referensens genomstorlek</th><td>{{'{0:,}'.format(sample.reference_length)|replace(","," ")}}</td></tr>
         	      <tr><th scope="row" >GC halt</th><td>{{sample.gc_percentage| round(2)}}%</td></tr>
         	      <tr><th scope="row" >N50 (minsta contiglängd för 50% av genomet)</th><td>{{'{0:,}'.format(sample.n50)|replace(","," ")}}</td></tr>
         	      <tr><th scope="row" >Nödvändiga contigs</th><td>{{sample.contigs}}</td></tr>
