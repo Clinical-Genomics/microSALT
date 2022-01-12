@@ -70,6 +70,7 @@ conda install -y samtools=1.13
 conda install -y spades=3.13.1
 conda install -y trimmomatic=0.39
 conda install -y r-base=4.1.1
+conda install -y openjdk=11.0.9.1
 
 if [[ $type == "release" ]]; then
     pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements.txt -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements-dev.txt 
