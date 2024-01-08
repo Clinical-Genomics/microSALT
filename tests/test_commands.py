@@ -181,8 +181,8 @@ def test_analyse_exhaustive(isdir, jc_glob, gzip, listdir, subproc, runner, conf
 #  isdir.return_value = True
   listdir.return_value = ["ACC6438A3_HVMHWDSXX_L1_1.fastq.gz", "ACC6438A3_HVMHWDSXX_L1_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz"]
 
-  special_run_settings = {'trimmed':False, 'careful':False,'skip_update':True}
-  special_run = runner.invoke(root, ['analyse', path_testdata, '--skip_update', '--untrimmed', '--uncareful', '--input', '/tmp/AAA1234'])
+  special_run_settings = {'trimmed':False, 'careful':True,'skip_update':True}
+  special_run = runner.invoke(root, ['analyse', path_testdata, '--skip_update', '--untrimmed', '--careful', '--input', '/tmp/AAA1234'])
   assert special_run.exit_code == 0
   assert "INFO - Execution finished!" in caplog.text
 
