@@ -128,20 +128,19 @@ def root(ctx):
     "--untrimmed", help="Use untrimmed input data", default=False, is_flag=True
 )
 @click.option(
-    "--uncareful",
-    help="Avoids running SPAdes in careful mode. Sometimes fix assemblies",
+    "--careful",
+    help="Runs SPAdes in careful mode",
     default=False,
     is_flag=True,
 )
 @click.pass_context
 def analyse(
-    ctx, sampleinfo_file, input, config, dry, email, skip_update, force_update, untrimmed, uncareful
+    ctx, sampleinfo_file, input, config, dry, email, skip_update, force_update, untrimmed, careful
 ):
     """Sequence analysis, typing and resistance identification"""
     # Run section
     pool = []
     trimmed = not untrimmed
-    careful = not uncareful
     set_cli_config(config)
     ctx.obj["config"]["regex"]["mail_recipient"] = email
     ctx.obj["config"]["dry"] = dry
@@ -158,7 +157,7 @@ def analyse(
         "email": email,
         "skip_update": skip_update,
         "trimmed": not untrimmed,
-        "careful": not uncareful,
+        "careful": careful,
         "pool": pool,
     }
 
