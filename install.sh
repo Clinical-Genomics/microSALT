@@ -51,8 +51,6 @@ while true; do
 done
 echo "Thank you, setting up environment $cname!"
 
-#Load conda
-source $(conda info --base)/etc/profile.d/conda.sh
 #Unload environment
 conda info | tac | tac | grep -q $cname && source deactivate || :
 #Remove environment if already present
