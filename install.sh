@@ -51,13 +51,15 @@ while true; do
 done
 echo "Thank you, setting up environment $cname!"
 
+#Load conda
+source $(conda info --base)/etc/profile.d/conda.sh
 #Unload environment
 conda info | tac | tac | grep -q $cname && source deactivate || :
 #Remove environment if already present
 conda remove -y -n $cname --all || :
 
 conda create -y -n $cname python=3.6
-source activate $cname
+conda activate $cname
 conda config --add channels defaults
 conda config --add channels bioconda
 conda config --add channels conda-forge
