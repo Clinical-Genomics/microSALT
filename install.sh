@@ -52,12 +52,12 @@ done
 echo "Thank you, setting up environment $cname!"
 
 #Unload environment
-conda info | tac | tac | grep -q $cname && conda deactivate || :
+conda info | tac | tac | grep -q $cname && source deactivate || :
 #Remove environment if already present
 conda remove -y -n $cname --all || :
 
 conda env create -y -n $cname -f https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/environment.yml
-conda activate $cname
+source activate $cname
 
 if [[ $type == "release" ]]; then
     pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements.txt -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements-dev.txt 
