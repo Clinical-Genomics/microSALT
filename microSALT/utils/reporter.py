@@ -474,7 +474,7 @@ class Reporter:
             )
             t["duplication_rate"] = (
                 ""
-                if s.duplication_rate is None or s.duplication_rate < 0.1
+                if s.duplication_rate is None
                 else s.duplication_rate
             )
             t["total_reads"] = (
