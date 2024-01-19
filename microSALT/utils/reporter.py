@@ -14,17 +14,14 @@ import yaml
 from datetime import datetime
 from shutil import copyfile
 
-from os.path import basename
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 
 from multiprocessing import Process
 
 from microSALT import __version__
-from microSALT.server.views import app, session, gen_reportdata, gen_collectiondata
+from microSALT.server.views import app, gen_reportdata, gen_collectiondata
 from microSALT.store.db_manipulator import DB_Manipulator
-from microSALT.store.orm_models import Samples
 
 
 class Reporter:
@@ -473,9 +470,7 @@ class Reporter:
                 "" if s.insert_size is None or s.insert_size < 1 else s.insert_size
             )
             t["duplication_rate"] = (
-                ""
-                if s.duplication_rate is None
-                else s.duplication_rate
+                "" if s.duplication_rate is None else s.duplication_rate
             )
             t["total_reads"] = (
                 "" if s.total_reads is None or s.total_reads < 1 else s.total_reads
