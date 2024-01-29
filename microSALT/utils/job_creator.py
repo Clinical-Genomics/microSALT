@@ -36,7 +36,7 @@ class Job_Creator:
         self.indir = os.path.abspath(run_settings.get("input", "/tmp/"))
         self.trimmed = run_settings.get("trimmed", True)
         self.qc_only = run_settings.get("qc_only", False)
-        self.careful = run_settings.get("careful", True)
+        self.careful = run_settings.get("careful", False)
         self.pool = run_settings.get("pool", [])
         self.finishdir = run_settings.get("finishdir", "")
 
