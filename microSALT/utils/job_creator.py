@@ -36,7 +36,7 @@ class Job_Creator:
         self.indir = os.path.abspath(run_settings.get("input", "/tmp/"))
         self.trimmed = run_settings.get("trimmed", True)
         self.qc_only = run_settings.get("qc_only", False)
-        self.careful = run_settings.get("careful", False)
+        self.assembly_mode = run_settings.get("assembly_mode")
         self.pool = run_settings.get("pool", [])
         self.finishdir = run_settings.get("finishdir", "")
 
@@ -187,15 +187,11 @@ class Job_Creator:
             trimline = "-s {}".format(self.concat_files["i"])
         else:
             trimline = ""
-        if self.careful:
-            careline = "--careful"
-        else:
-            careline = ""
 
         batchfile.write(
             "spades.py --threads {} {} --memory {} -o {}/assembly -1 {} -2 {} {}\n".format(
                 self.config["slurm_header"]["threads"],
-                careline,
+                self.assembly_mode,
                 8 * int(self.config["slurm_header"]["threads"]),
                 self.finishdir,
                 self.concat_files["f"],

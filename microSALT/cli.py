@@ -127,14 +127,14 @@ def root(ctx):
     "--untrimmed", help="Use untrimmed input data", default=False, is_flag=True
 )
 @click.option(
-    "--careful",
+    "--assembly-mode",
     help="Runs SPAdes in careful mode",
-    default=False,
-    is_flag=True,
+    options=["careful", "isolate"],
+    default="isolate"
 )
 @click.pass_context
 def analyse(
-    ctx, sampleinfo_file, input, config, dry, email, skip_update, force_update, untrimmed, careful
+    ctx, sampleinfo_file, input, config, dry, email, skip_update, force_update, untrimmed, assembly_mode
 ):
     """Sequence analysis, typing and resistance identification"""
     # Run section
@@ -156,7 +156,7 @@ def analyse(
         "email": email,
         "skip_update": skip_update,
         "trimmed": not untrimmed,
-        "careful": careful,
+        "assembly_mode": assembly_mode,
         "pool": pool,
     }
 
