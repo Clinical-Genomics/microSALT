@@ -88,7 +88,7 @@ class Job_Creator:
         self.ref_resolver = Referencer(config, log)
 
     def get_sbatch(self):
-        """ Returns sbatchfile, slightly superflous"""
+        """Returns sbatchfile, slightly superflous"""
         return self.batchfile
 
     def get_headerargs(self):
@@ -106,7 +106,7 @@ class Job_Creator:
         return headerline
 
     def verify_fastq(self):
-        """ Uses arg indir to return a dict of PE fastq tuples fulfilling naming convention """
+        """Uses arg indir to return a dict of PE fastq tuples fulfilling naming convention"""
         verified_files = list()
         files = os.listdir(self.indir)
         if files == []:
@@ -189,15 +189,10 @@ class Job_Creator:
             trimline = ""
 
         batchfile.write(
-            "spades.py --threads {} {} --memory {} -o {}/assembly -1 {} -2 {} {}\n".format(
-                self.config["slurm_header"]["threads"],
-                self.assembly_mode,
-                8 * int(self.config["slurm_header"]["threads"]),
-                self.finishdir,
-                self.concat_files["f"],
-                self.concat_files["r"],
-                trimline,
-            )
+            f"spades.py --threads {self.config['slurm_header']['threads']} --{self.assembly_mode}"
+            f" --memory {8 * int(self.config['slurm_header']['threads'])} -o "
+            f"{self.finishdir}/assembly -1 {self.concat_files['f']} -2 {self.concat_files['r']} "
+            f"{trimline}\n"
         )
 
         batchfile.write(
@@ -287,7 +282,7 @@ class Job_Creator:
         batchfile.close()
 
     def create_variantsection(self):
-        """ Creates a job for variant calling based on local alignment """
+        """Creates a job for variant calling based on local alignment"""
         ref = "{}/{}.fasta".format(self.config["folders"]["genomes"], self.sample.get("reference"))
         localdir = "{}/alignment".format(self.finishdir)
         outbase = "{}/{}_{}".format(localdir, self.name, self.sample.get("reference"))
@@ -649,7 +644,7 @@ class Job_Creator:
             self.finish_job(jobarray, single_sample)
 
     def finish_job(self, joblist, single_sample=False):
-        """ Uploads data and sends an email once all analysis jobs are complete. """
+        """Uploads data and sends an email once all analysis jobs are complete."""
         report = "default"
         if self.qc_only:
             report = "qc"
@@ -749,14 +744,14 @@ class Job_Creator:
             self.logger.info("Unable to grab SLURMID for {0}".format(self.name))
 
         try:
-            #Generates file with all slurm ids
+            # Generates file with all slurm ids
             slurmname = "{}_slurm_ids.yaml".format(self.name)
-            slurmreport_storedir = Path(self.config["folders"]["reports"],
-                "trailblazer", slurmname)
+            slurmreport_storedir = Path(self.config["folders"]["reports"], "trailblazer", slurmname)
             slurmreport_workdir = Path(self.finishdir, slurmname)
             yaml.safe_dump(
                 data={"jobs": [str(job) for job in joblist]},
-                      stream=open(slurmreport_workdir, "w"))
+                stream=open(slurmreport_workdir, "w"),
+            )
             shutil.copyfile(slurmreport_workdir, slurmreport_storedir)
             self.logger.info(
                 "Saved Trailblazer slurm report file to %s and %s",
@@ -767,7 +762,7 @@ class Job_Creator:
             self.logger.info("Unable to generate Trailblazer slurm report file")
 
     def sample_job(self):
-        """ Writes necessary sbatch job for each individual sample """
+        """Writes necessary sbatch job for each individual sample"""
         try:
             if not os.path.exists(self.finishdir):
                 os.makedirs(self.finishdir)
@@ -822,7 +817,7 @@ class Job_Creator:
             self.blast_subset("expec", ss)
 
     def snp_job(self):
-        """ Writes a SNP calling job for a set of samples """
+        """Writes a SNP calling job for a set of samples"""
         if not os.path.exists(self.finishdir):
             os.makedirs(self.finishdir)
 
