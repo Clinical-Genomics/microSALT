@@ -11,7 +11,7 @@ dependencies:
   - pigz=2.4
   - quast=5.0.2
   - samtools=1.13
-  - spades=3.13.1
+  - spades=3.15.5
   - trimmomatic=0.39
   - r-base=4.1.1
   - openjdk=11.0.9.1
