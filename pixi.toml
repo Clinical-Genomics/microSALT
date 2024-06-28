@@ -1,0 +1,39 @@
+[project]
+name = "microsalt"
+version = "0.1.0"
+description = "Add a short description here"
+authors = ["Samuel Lampa <samuel.lampa@scilifelab.se>"]
+channels = ["conda-forge", "bioconda"]
+platforms = ["linux-64"]
+
+[tasks]
+
+[dependencies]
+python = "3.6.*"
+blast = "2.12.0.*"
+bwa = "0.7.17.*"
+picard = "2.20.3.*"
+pigz = ">=2.8,<3"
+quast = "5.0.2.*"
+samtools = "1.13.*"
+spades = "3.13.1.*"
+trimmomatic = "0.39.*"
+r-base = "4.1.1.*"
+openjdk = "11.0.9.1.*"
+pytest = "==6.2.5"
+pytest-cov = "==2.12.1"
+biopython = ">=1.79,<2"
+click = "==7.1.2"
+bs4 = ">=4.12.3,<4.13"
+flask = "==1.1.2"
+flask-sqlalchemy = "==2.4.4"
+pymysql = "==0.10.1"
+pyyaml = "==5.4.1"
+sqlalchemy = "==1.3.19"
+black = "==21.9b0"
+coverage = "==5.5"
+python-coveralls = "==2.9.3"
+pylint = "==2.10.2"
+mock = "==4.0.3"
+yamllint = "==1.26.3"
+genologics = ">=0.4.1,<0.5"
