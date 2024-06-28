@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -e
+set -x
 shopt -s nullglob
 
 #Suggests provided branch. Else suggests master
@@ -52,11 +53,11 @@ done
 echo "Thank you, setting up environment $cname!"
 
 #Unload environment
-conda info | tac | tac | grep -q $cname && source deactivate || :
+micromamba info | tac | tac | grep -q $cname && source deactivate || :
 #Remove environment if already present
-conda remove -y -n $cname --all || :
+micromamba remove -y -n $cname --all || :
 
-conda env create -n $cname -f https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/environment.yml
+micromamba env create -y -f <(curl -L https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/environment.yml )
 source activate $cname
 
 if [[ $type == "release" ]]; then
