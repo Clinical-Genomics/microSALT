@@ -63,7 +63,7 @@ $conda_cmd info | tac | tac | grep -q $cname && source deactivate || :
 #Remove environment if already present
 $conda_cmd remove -y -n $cname --all || :
 
-$conda_cmd env create -n $cname -f <(curl -L https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/environment.yml )
+$conda_cmd env create -n $cname -f https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/environment.yml
 source activate $cname
 
 if [[ $type == "release" ]]; then
