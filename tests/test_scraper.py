@@ -18,18 +18,18 @@ from microSALT.utils.referencer import Referencer
 def testdata_prefix():
   test_path = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/'))
   #Check if release install exists
-  for entry in os.listdir(get_python_lib()):
-    if 'microSALT-' in entry:
-      test_path = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/'))
+  #for entry in os.listdir(get_python_lib()):
+  #  if 'microSALT-' in entry:
+  #    test_path = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/'))
   return test_path
 
 @pytest.fixture
 def testdata():
   testdata = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/sampleinfo_samples.json'))
   #Check if release install exists
-  for entry in os.listdir(get_python_lib()):
-    if 'microSALT-' in entry:
-      testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/sampleinfo_samples.json'))
+  #for entry in os.listdir(get_python_lib()):
+  #  if 'microSALT-' in entry:
+  #    testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/sampleinfo_samples.json'))
   with open(testdata) as json_file:
     data = json.load(json_file)
   return data

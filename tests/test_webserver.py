@@ -22,9 +22,9 @@ from microSALT.store.db_manipulator import DB_Manipulator
 def unpack_db_json(filename):
   testdata = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/{}'.format(filename)))
   #Check if release install exists
-  for entry in os.listdir(get_python_lib()):
-    if 'microSALT-' in entry:
-      testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/{}'.format(filename)))
+  #for entry in os.listdir(get_python_lib()):
+  #  if 'microSALT-' in entry:
+  #    testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/{}'.format(filename)))
   with open(testdata) as json_file:
     data = json.load(json_file)
   return data
@@ -51,9 +51,9 @@ def mock_db():
 def testdata():
   testdata = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/sampleinfo_samples.json'))
   #Check if release install exists
-  for entry in os.listdir(get_python_lib()):
-    if 'microSALT-' in entry:
-      testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/sampleinfo_samples.json'))
+  #for entry in os.listdir(get_python_lib()):
+  #  if 'microSALT-' in entry:
+  #    testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/sampleinfo_samples.json'))
   with open(testdata) as json_file:
     data = json.load(json_file)
   return data

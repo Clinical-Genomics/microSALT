@@ -25,9 +25,9 @@ from microSALT.store.db_manipulator import DB_Manipulator
 def unpack_db_json(filename):
   testdata = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/{}'.format(filename)))
   #Check if release install exists
-  for entry in os.listdir(get_python_lib()):
-    if 'microSALT-' in entry:
-      testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/{}'.format(filename)))
+  #for entry in os.listdir(get_python_lib()):
+  #  if 'microSALT-' in entry:
+  #    testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/{}'.format(filename)))
   with open(testdata) as json_file:
     data = json.load(json_file)
   return data
@@ -65,27 +65,27 @@ def runner():
 def config():
   config = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'configExample.json'))
   #Check if release install exists
-  for entry in os.listdir(get_python_lib()):
-    if 'microSALT-' in entry:
-      config = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/configExample.json'))
+  #for entry in os.listdir(get_python_lib()):
+  #  if 'microSALT-' in entry:
+  #    config = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/configExample.json'))
   return config
 
 @pytest.fixture
 def path_testdata():
   testdata = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/sampleinfo_samples.json'))
   #Check if release install exists
-  for entry in os.listdir(get_python_lib()):
-    if 'microSALT-' in entry:
-      testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/sampleinfo_samples.json'))
+  #for entry in os.listdir(get_python_lib()):
+  #  if 'microSALT-' in entry:
+  #    testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/sampleinfo_samples.json'))
   return testdata
 
 @pytest.fixture
 def path_testproject():
   testproject = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/AAA1234_2000.1.2_3.4.5'))
   #Check if release install exists
-  for entry in os.listdir(get_python_lib()):
-    if 'microSALT-' in entry:
-      testproject = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testproject/AAA1234_2000.1.2_3.4.5'))
+  #for entry in os.listdir(get_python_lib()):
+  #  if 'microSALT-' in entry:
+  #    testproject = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testproject/AAA1234_2000.1.2_3.4.5'))
   return testproject
 
 
