@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -e
+set -x
 shopt -s nullglob
 
 #Suggests provided branch. Else suggests master
