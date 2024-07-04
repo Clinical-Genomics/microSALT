@@ -39,6 +39,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/dataclasses-0.8-pyh787bdff_2.tar.bz2
       - conda: https://conda.anaconda.org/bioconda/linux-64/entrez-direct-22.1-he881be0_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/expat-2.6.2-h59595ed_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/flake8-4.0.1-pyhd8ed1ab_2.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/flask-1.1.2-pyh9f0ad1d_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/flask-sqlalchemy-2.4.4-pyh9f0ad1d_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/font-ttf-dejavu-sans-mono-2.37-hab24e00_0.tar.bz2
@@ -204,7 +205,9 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pluggy-1.0.0-py36h5fab9bb_1.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pthread-stubs-0.4-h36c2ea0_1001.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/py-1.11.0-pyh6c4a22f_0.tar.bz2
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pycodestyle-2.8.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/pycparser-2.21-pyhd8ed1ab_0.tar.bz2
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pyflakes-2.4.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/pylint-2.10.2-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/pymysql-0.10.1-pyhd3deb0d_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyopenssl-22.0.0-pyhd8ed1ab_1.tar.bz2
@@ -829,6 +832,27 @@ packages:
   license_family: MIT
   size: 137627
   timestamp: 1710362144873
+- kind: conda
+  name: flake8
+  version: 4.0.1
+  build: pyhd8ed1ab_2
+  build_number: 2
+  subdir: noarch
+  noarch: python
+  url: https://conda.anaconda.org/conda-forge/noarch/flake8-4.0.1-pyhd8ed1ab_2.tar.bz2
+  sha256: 4344506c9f60bc2dbeb46aae8d5d8ff247bed5f6c83e3bc5b4e863a784794da7
+  md5: a824bd55ce47e9c637427f730c651231
+  depends:
+  - importlib-metadata
+  - mccabe >=0.6.0,<0.7.0
+  - pycodestyle >=2.8.0,<2.9.0
+  - pyflakes >=2.4.0,<2.5.0
+  - python >=3.6
+  - setuptools >=30.0.0
+  license: MIT
+  license_family: MIT
+  size: 84877
+  timestamp: 1646781177887
 - kind: conda
   name: flask
   version: 1.1.2
@@ -3500,6 +3524,21 @@ packages:
   size: 76038
   timestamp: 1636301988765
 - kind: conda
+  name: pycodestyle
+  version: 2.8.0
+  build: pyhd8ed1ab_0
+  subdir: noarch
+  noarch: python
+  url: https://conda.anaconda.org/conda-forge/noarch/pycodestyle-2.8.0-pyhd8ed1ab_0.tar.bz2
+  sha256: 1da7a030000a8858bf8f46d88e052b51a9296b65ef9bc540ae642729be2cf367
+  md5: f2532eee272d45b1283ea4869d71f044
+  depends:
+  - python ==2.7.*|>=3.5
+  license: MIT
+  license_family: MIT
+  size: 39924
+  timestamp: 1633982586909
+- kind: conda
   name: pycparser
   version: '2.21'
   build: pyhd8ed1ab_0
@@ -3514,6 +3553,21 @@ packages:
   license_family: BSD
   size: 102747
   timestamp: 1636257201998
+- kind: conda
+  name: pyflakes
+  version: 2.4.0
+  build: pyhd8ed1ab_0
+  subdir: noarch
+  noarch: python
+  url: https://conda.anaconda.org/conda-forge/noarch/pyflakes-2.4.0-pyhd8ed1ab_0.tar.bz2
+  sha256: 49689ac77b20fff0123ba5e2645ea68df56066d6ecf32cd05c1f5689c3fe0e86
+  md5: 1aa3ecd37d0694e2ea5fef48da75371e
+  depends:
+  - python ==2.7.*|>=3.5
+  license: MIT
+  license_family: MIT
+  size: 59010
+  timestamp: 1633634964747
 - kind: conda
   name: pylint
   version: 2.10.2
