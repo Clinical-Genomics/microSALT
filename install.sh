@@ -52,12 +52,18 @@ while true; do
 done
 echo "Thank you, setting up environment $cname!"
 
+#Only use micromamba if inside GitHub Actions
+if [[ -z "${GITHUB_ACTIONS}" ]]; then
+    conda_cmd="micromamba"
+else
+    conda_cmd="conda"
+fi
 #Unload environment
-conda info | tac | tac | grep -q $cname && source deactivate || :
+$conda_cmd info | tac | tac | grep -q $cname && source deactivate || :
 #Remove environment if already present
-conda remove -y -n $cname --all || :
+$conda_cmd remove -y -n $cname --all || :
 
-conda env create -n $cname -f https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/environment.yml
+$conda_cmd env create -y -f <(curl -L https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/environment.yml )
 source activate $cname
 
 if [[ $type == "release" ]]; then
