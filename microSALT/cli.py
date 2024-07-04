@@ -43,7 +43,8 @@ if preset_config == "":
     sys.exit(-1)
 
 
-def set_cli_config(config):
+@click.pass_context
+def set_cli_config(ctx, config):
     if config != "":
         if os.path.exists(config):
             try:

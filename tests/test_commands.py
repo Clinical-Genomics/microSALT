@@ -38,8 +38,8 @@ def dbm():
   dbm = DB_Manipulator(config=preset_config,log=logger)
   dbm.create_tables()
 
-  for antry in unpack_db_json('sampleinfo_projects.json'):
-    dbm.add_rec(antry, 'Projects')
+  for entry in unpack_db_json('sampleinfo_projects.json'):
+    dbm.add_rec(entry, 'Projects')
   for entry in unpack_db_json('sampleinfo_mlst.json'):
     dbm.add_rec(entry, 'Seq_types')
   for bentry in unpack_db_json('sampleinfo_resistance.json'):
