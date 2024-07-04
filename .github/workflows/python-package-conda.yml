@@ -2,6 +2,10 @@ name: Python Package using Conda
 
 on: [push]
 
+
+env:
+  CONDA_PREFIX: /opt/hostedtoolcache/Python/3.6.15/x64/lib/python3.6/site-packages/microSALT
+
 jobs:
   build-linux:
     runs-on: ubuntu-20.04
@@ -38,7 +42,6 @@ jobs:
     #    find / -iname '*microSALT*'
     - name: Test with pytest
       run: |
-        export CONDA_PREFIX=$(pwd)/tests;
         pytest --cov=microSALT tests
     #- name: Run Coveralls
     #  run: |
