@@ -1,9 +1,9 @@
 black==21.9b0
-coverage==5.5
+coverage<5
 gitlint==0.15.1
 pytest==6.2.5
-pytest-cov==2.12.1
-python-coveralls==2.9.3
+pytest-cov
+python-coveralls
 pylint==2.10.2
 mock==4.0.3
 yamllint==1.26.3
