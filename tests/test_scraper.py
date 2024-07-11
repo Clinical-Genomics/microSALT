@@ -53,8 +53,9 @@ def test_blast_scraping(scraper, testdata_prefix, caplog):
   scraper.scrape_blast(type='seq_type',file_list=["{}/blast_single_loci.txt".format(testdata_prefix)])
   assert "candidate" in caplog.text
   caplog.clear()
-  scraper.scrape_blast(type='resistance',file_list=["{}/blast_single_resistance.txt".format(testdata_prefix)])
-  assert "candidate" in caplog.text
+  hits = scraper.scrape_blast(type='resistance',file_list=["{}/blast_single_resistance.txt".format(testdata_prefix)])
+  genes = [h["gene"] for h in hits]
+  assert "blaOXA-48" in genes
 
 def test_alignment_scraping(scraper, init_references, testdata_prefix):
   scraper.scrape_alignment(file_list=glob.glob("{}/*.stats.*".format(testdata_prefix)))
