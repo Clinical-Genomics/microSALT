@@ -438,6 +438,7 @@ class Scraper:
                         self.name, str(e)
                     )
                 )
+        return hypo
 
     def load_resistances(self):
         """Legacy function, loads common resistance names for genes from notes file"""
