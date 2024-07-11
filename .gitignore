@@ -14,3 +14,6 @@ unique_references/*.n*
 default_sample_info.json
 tmp.json
 
+# pixi environments
+.pixi
+*.egg-info
