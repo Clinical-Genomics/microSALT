@@ -317,9 +317,9 @@ class Scraper:
                                     hypo[-1]["allele"] = int(partials.group(2))
                                     #Ignores reference name and finds relevant resFinder entry
 
-                                    padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[0]))]
+                                    padder = [x for x in locilengths.keys() if x.startswith('>{}_'.format(partials[0]))]
                                     if len(padder) == 0:
-                                        padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[0][:-1]))]                 
+                                        padder = [x for x in locilengths.keys() if x.startswith('>{}_'.format(partials[0][:-1]))]
                                     try:
                                         padder = padder[0]
                                     except IndexError as e:
