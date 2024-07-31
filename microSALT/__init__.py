@@ -10,7 +10,7 @@ import sys
 from flask import Flask
 from distutils.sysconfig import get_python_lib
 
-__version__ = "3.3.7"
+__version__ = "4.0.0"
 
 app = Flask(__name__, template_folder="server/templates")
 app.config.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
