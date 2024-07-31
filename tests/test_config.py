@@ -70,7 +70,7 @@ def test_paths(exp_config):
   for entry in preset_config.keys():
     if entry != '_comment':
       if isinstance(preset_config[entry], str) and '/' in preset_config[entry] and entry not in ['database', 'genologics']:
-        unmade_fldr = preset_config[entry][thing]
+        unmade_fldr = preset_config[entry]
         assert (pathlib.Path(unmade_fldr).exists())
     
       #level two

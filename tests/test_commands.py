@@ -38,8 +38,8 @@ def dbm():
   dbm = DB_Manipulator(config=preset_config,log=logger)
   dbm.create_tables()
 
-  for antry in unpack_db_json('sampleinfo_projects.json'):
-    dbm.add_rec(antry, 'Projects')
+  for entry in unpack_db_json('sampleinfo_projects.json'):
+    dbm.add_rec(entry, 'Projects')
   for entry in unpack_db_json('sampleinfo_mlst.json'):
     dbm.add_rec(entry, 'Seq_types')
   for bentry in unpack_db_json('sampleinfo_resistance.json'):
@@ -85,7 +85,7 @@ def path_testproject():
   #Check if release install exists
   for entry in os.listdir(get_python_lib()):
     if 'microSALT-' in entry:
-      testproject = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testproject/AAA1234_2000.1.2_3.4.5'))
+      testproject = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/AAA1234_2000.1.2_3.4.5'))
   return testproject
 
 
