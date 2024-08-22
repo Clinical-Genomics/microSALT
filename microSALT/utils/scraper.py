@@ -257,9 +257,9 @@ class Scraper:
                                         ].capitalize()
                                     #Ignores reference name and finds relevant resFinder entry
 
-                                    padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))]
+                                    padder = [x for x in locilengths.keys() if x.startswith('>{}_'.format(partials[1]))]
                                     if len(padder) == 0:
-                                        padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1][:-1]))]
+                                        padder = [x for x in locilengths.keys() if x.startswith('>{}_'.format(partials[1][:-1]))]
                                     try:
                                         padder = padder[0]
                                     except IndexError as e:
@@ -438,6 +438,7 @@ class Scraper:
                         self.name, str(e)
                     )
                 )
+        return hypo
 
     def load_resistances(self):
         """Legacy function, loads common resistance names for genes from notes file"""
