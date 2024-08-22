@@ -37,4 +37,4 @@ _These are the results of the tests, and necessary conclusions, that prove the s
 
 # Sign-offs
 - [ ] Code tested by @octocat
-- [ ] Approved to run at Clinical-Genomics by @sylvinite
+- [ ] Approved to run at Clinical-Genomics by @karlnyr 
