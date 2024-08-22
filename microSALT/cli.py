@@ -63,15 +63,6 @@ def done():
     logger.debug("INFO - Execution finished!")
 
 
-def validate_assembly_mode(ctx, param, value):
-    allowed_values = ["careful", "isolate"]
-    if value not in allowed_values:
-        raise click.BadParameter(
-            f"Invalid value: {value}. Allowed values are {', '.join(allowed_values)}"
-        )
-    return value
-
-
 def review_sampleinfo(pfile):
     """Reviews sample info. Returns loaded json object"""
 
@@ -139,12 +130,6 @@ def root(ctx):
 @click.option(
     "--untrimmed", help="Use untrimmed input data", default=False, is_flag=True
 )
-@click.option(
-    "--assembly-mode",
-    help="Runs SPAdes in careful mode",
-    type=click.Choice(["careful", "isolate"]),
-    default="isolate",
-)
 @click.pass_context
 def analyse(
     ctx,
@@ -156,7 +141,6 @@ def analyse(
     skip_update,
     force_update,
     untrimmed,
-    assembly_mode,
 ):
     """Sequence analysis, typing and resistance identification"""
     # Run section
@@ -178,7 +162,6 @@ def analyse(
         "email": email,
         "skip_update": skip_update,
         "trimmed": not untrimmed,
-        "assembly_mode": assembly_mode,
         "pool": pool,
     }
 

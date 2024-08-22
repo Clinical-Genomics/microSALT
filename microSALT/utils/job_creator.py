@@ -36,7 +36,6 @@ class Job_Creator:
         self.indir = os.path.abspath(run_settings.get("input", "/tmp/"))
         self.trimmed = run_settings.get("trimmed", True)
         self.qc_only = run_settings.get("qc_only", False)
-        self.assembly_mode = run_settings.get("assembly_mode")
         self.pool = run_settings.get("pool", [])
         self.finishdir = run_settings.get("finishdir", "")
 
@@ -182,17 +181,14 @@ class Job_Creator:
     def create_assemblysection(self):
         batchfile = open(self.batchfile, "a+")
         # memory is actually 128 per node regardless of cores.
-        batchfile.write("# Spades assembly\n")
-        if self.trimmed:
-            trimline = "-s {}".format(self.concat_files["i"])
-        else:
-            trimline = ""
-
+        batchfile.write("# SKESA assembly\n")
         batchfile.write(
-            f"spades.py --threads {self.config['slurm_header']['threads']} --{self.assembly_mode}"
-            f" --memory {8 * int(self.config['slurm_header']['threads'])} -o "
-            f"{self.finishdir}/assembly -1 {self.concat_files['f']} -2 {self.concat_files['r']} "
-            f"{trimline}\n"
+            f"mkdir -p {self.finishdir}/assembly &&"
+            f"skesa "
+            f"--cores {self.config['slurm_header']['threads']} "
+            f"--memory {8 * int(self.config['slurm_header']['threads'])} "
+            f"--contigs_out {self.finishdir}/assembly/contigs.fasta "
+            f"--reads {self.concat_files['f']},{self.concat_files['r']}\n"
         )
 
         batchfile.write(
