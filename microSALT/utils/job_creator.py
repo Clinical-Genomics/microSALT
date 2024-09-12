@@ -187,15 +187,10 @@ class Job_Creator:
             f"skesa "
             f"--cores {self.config['slurm_header']['threads']} "
             f"--memory {8 * int(self.config['slurm_header']['threads'])} "
-            f"--contigs_out {self.finishdir}/assembly/contigs.fasta "
+            f"--contigs_out {self.finishdir}/assembly/{self.name}_contigs.fasta "
             f"--reads {self.concat_files['f']},{self.concat_files['r']}\n"
         )
 
-        batchfile.write(
-            "mv {0}/assembly/contigs.fasta {0}/assembly/{1}_contigs.fasta\n".format(
-                self.finishdir, self.name
-            )
-        )
         batchfile.write(
             "sed -n '/NODE_1000_/q;p' {0}/assembly/{1}_contigs.fasta > {0}/assembly/{1}_trimmed_contigs.fasta\n".format(
                 self.finishdir, self.name
