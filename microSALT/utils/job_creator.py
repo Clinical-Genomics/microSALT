@@ -180,8 +180,8 @@ class Job_Creator:
 
     def create_assemblysection(self):
         assembly_dir = f"{self.finishdir}/assembly"
+        contigs_file_raw = f"{assembly_dir}/{self.name}_contigs_raw.fasta"
         contigs_file = f"{assembly_dir}/{self.name}_contigs.fasta"
-        contigs_file_spadesfmt = f"{assembly_dir}/{self.name}_contigs_spadesfmt.fasta"
         contigs_trimmed_file = f"{assembly_dir}/{self.name}_trimmed_contigs.fasta"
 
         batchfile = open(self.batchfile, "a+")
@@ -212,12 +212,12 @@ class Job_Creator:
             "gawk " +
             "'/^>/ { match($0, /Contig_([0-9]+)_([0-9\.]+)/, m) } " +
             "!/^>/ { seqlen=length($0); print \">NODE_\" m[1] \"_length_\" seqlen \"_cov_\" m[2]; print $0; }' " +
-            f"{contigs_file} > {contigs_file_spadesfmt}\n"
+            f"{contigs_file_raw} > {contigs_file}\n"
         )
 
         # Keep only the 999(?) top contigs to avoid really low-quality contigs
         batchfile.write(
-            f"sed -n '/NODE_1000_/q;p' {contigs_file_spadesfmt} > {contigs_trimmed_file}\n"
+            f"sed -n '/NODE_1000_/q;p' {contigs_file} > {contigs_trimmed_file}\n"
         )
         # batchfile.write("##Input cleanup\n")
         # batchfile.write("rm -r {}/trimmed\n".format(self.finishdir))
