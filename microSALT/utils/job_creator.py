@@ -179,22 +179,45 @@ class Job_Creator:
         return sorted(verified_files)
 
     def create_assemblysection(self):
+        assembly_dir = f"{self.finishdir}/assembly"
+        contigs_file = f"{assembly_dir}/{self.name}_contigs.fasta"
+        contigs_file_spadesfmt = f"{assembly_dir}/{self.name}_contigs_spadesfmt.fasta"
+        contigs_trimmed_file = f"{assembly_dir}/{self.name}_trimmed_contigs.fasta"
+
         batchfile = open(self.batchfile, "a+")
         # memory is actually 128 per node regardless of cores.
         batchfile.write("# SKESA assembly\n")
         batchfile.write(
-            f"mkdir -p {self.finishdir}/assembly &&"
+            f"mkdir -p {assembly_dir} &"
             f"skesa "
             f"--cores {self.config['slurm_header']['threads']} "
             f"--memory {8 * int(self.config['slurm_header']['threads'])} "
-            f"--contigs_out {self.finishdir}/assembly/{self.name}_contigs.fasta "
+            f"--contigs_out {contigs_file} "
             f"--reads {self.concat_files['f']},{self.concat_files['r']}\n"
         )
 
+        # Convert sequence naming in Skesa output into Spades format in the contigs fasta file:
+        # ----------------------------------------------
+        # Skesa format:  >Contig_1_100.000
+        # Spades format: >NODE_1_length_150_cov_100.000
+        # ----------------------------------------------
+        # We do the change by doing the following with awk:
+        # 1. When the line is a header (starting with >), capture the contig number and coverage
+        # 2. When the line is NOT a header (not starting with >), compute the length of the line
+        #    and then print out:
+        #    a. A new header line in Spades format with the length included
+        #    b. Print out the sequence line.
+        # Note: The match function requires GNU awk (gawk) to be able to capture groups in regexes.
         batchfile.write(
-            "sed -n '/NODE_1000_/q;p' {0}/assembly/{1}_contigs.fasta > {0}/assembly/{1}_trimmed_contigs.fasta\n".format(
-                self.finishdir, self.name
-            )
+            f"gawk "
+            f"'/^>/ { match($0, /Contig_([0-9]+)_([0-9\.]+)/, m) } "
+            f"!/^>/ { seqlen=length($0); print \">NODE_\" m[1] \"_length_\" seqlen \"_cov_\" m[2]; print $0; }' "
+            f"{contigs_file} > {contigs_file_spadesfmt}\n"
+        )
+
+        # Keep only the 999(?) top contigs to avoid really low-quality contigs
+        batchfile.write(
+            f"sed -n '/NODE_1000_/q;p' {contigs_file_spadesfmt} > {contigs_trimmed_file}\n"
         )
         # batchfile.write("##Input cleanup\n")
         # batchfile.write("rm -r {}/trimmed\n".format(self.finishdir))
