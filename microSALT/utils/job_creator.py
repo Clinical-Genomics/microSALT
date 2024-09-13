@@ -209,9 +209,9 @@ class Job_Creator:
         #    b. Print out the sequence line.
         # Note: The match function requires GNU awk (gawk) to be able to capture groups in regexes.
         batchfile.write(
-            f"gawk "
-            f"'/^>/ { match($0, /Contig_([0-9]+)_([0-9\.]+)/, m) } "
-            f"!/^>/ { seqlen=length($0); print \">NODE_\" m[1] \"_length_\" seqlen \"_cov_\" m[2]; print $0; }' "
+            "gawk "
+            "'/^>/ { match($0, /Contig_([0-9]+)_([0-9\.]+)/, m) } "
+            "!/^>/ { seqlen=length($0); print \">NODE_\" m[1] \"_length_\" seqlen \"_cov_\" m[2]; print $0; }' "
             f"{contigs_file} > {contigs_file_spadesfmt}\n"
         )
 
