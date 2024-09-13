@@ -192,7 +192,7 @@ class Job_Creator:
             f"skesa "
             f"--cores {self.config['slurm_header']['threads']} "
             f"--memory {8 * int(self.config['slurm_header']['threads'])} "
-            f"--contigs_out {contigs_file} "
+            f"--contigs_out {contigs_file_raw} "
             f"--reads {self.concat_files['f']},{self.concat_files['r']}\n"
         )
 
