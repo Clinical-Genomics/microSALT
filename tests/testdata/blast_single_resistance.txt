@@ -66,7 +66,7 @@ blaOXA-535_1_KX828709	minus	NODE_65_length_2231_cov_99.410745	blaOXA-535_1_KX828
 blaOXA-436_1_KT959105	minus	NODE_65_length_2231_cov_99.410745	blaOXA-436_1_KT959105	84.481	0.0	787	1409	2206	798	1	799
 # BLASTN 2.12.0+
 # Query: NODE_13_length_813_cov_66.2018
-# Database: /home/proj/stage/microbial/references/resistances/beta-lactam
+# Database: /tmp/beta-lactam
 # Fields: subject title, subject strand, query acc.ver, subject acc.ver, % identity, evalue, bit score, q. start, q. end, s. start, s. end, alignment length
 # 25 hits found
 blaVIM-57_1_MH450217	plus	NODE_13_length_813_cov_66.2018	blaVIM-57_1_MH450217	100.000	1.03e-19	93.5	764	813	1	50	50
@@ -96,7 +96,7 @@ blaVIM-1_1_Y18050	plus	NODE_13_length_813_cov_66.2018	blaVIM-1_1_Y18050	100.000	
 blaVIM-38_1_KC469971	plus	NODE_13_length_813_cov_66.2018	blaVIM-38_1_KC469971	96.000	2.22e-16	82.4	764	813	1	50	50
 # BLASTN 2.12.0+
 # Query: NODE_38_length_14835_cov_85.885
-# Database: /home/proj/stage/microbial/references/resistances/beta-lactam
+# Database: /tmp/beta-lactam
 # Fields: subject title, subject strand, query acc.ver, subject acc.ver, % identity, evalue, bit score, q. start, q. end, s. start, s. end, alignment length
 # 53 hits found
 blaVIM-4_1_EU581706	minus	NODE_38_length_14835_cov_85.885	blaVIM-4_1_EU581706	99.875	0.0	1474	11925	12725	801	1	801
