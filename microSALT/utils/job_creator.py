@@ -36,7 +36,6 @@ class Job_Creator:
         self.indir = os.path.abspath(run_settings.get("input", "/tmp/"))
         self.trimmed = run_settings.get("trimmed", True)
         self.qc_only = run_settings.get("qc_only", False)
-        self.careful = run_settings.get("careful", True)
         self.pool = run_settings.get("pool", [])
         self.finishdir = run_settings.get("finishdir", "")
 
@@ -88,7 +87,7 @@ class Job_Creator:
         self.ref_resolver = Referencer(config, log)
 
     def get_sbatch(self):
-        """ Returns sbatchfile, slightly superflous"""
+        """Returns sbatchfile, slightly superflous"""
         return self.batchfile
 
     def get_headerargs(self):
@@ -106,7 +105,7 @@ class Job_Creator:
         return headerline
 
     def verify_fastq(self):
-        """ Uses arg indir to return a dict of PE fastq tuples fulfilling naming convention """
+        """Uses arg indir to return a dict of PE fastq tuples fulfilling naming convention"""
         verified_files = list()
         files = os.listdir(self.indir)
         if files == []:
@@ -180,39 +179,45 @@ class Job_Creator:
         return sorted(verified_files)
 
     def create_assemblysection(self):
+        assembly_dir = f"{self.finishdir}/assembly"
+        contigs_file_raw = f"{assembly_dir}/{self.name}_contigs_raw.fasta"
+        contigs_file = f"{assembly_dir}/{self.name}_contigs.fasta"
+        contigs_trimmed_file = f"{assembly_dir}/{self.name}_trimmed_contigs.fasta"
+
         batchfile = open(self.batchfile, "a+")
         # memory is actually 128 per node regardless of cores.
-        batchfile.write("# Spades assembly\n")
-        if self.trimmed:
-            trimline = "-s {}".format(self.concat_files["i"])
-        else:
-            trimline = ""
-        if self.careful:
-            careline = "--careful"
-        else:
-            careline = ""
-
+        batchfile.write("# SKESA assembly\n")
         batchfile.write(
-            "spades.py --threads {} {} --memory {} -o {}/assembly -1 {} -2 {} {}\n".format(
-                self.config["slurm_header"]["threads"],
-                careline,
-                8 * int(self.config["slurm_header"]["threads"]),
-                self.finishdir,
-                self.concat_files["f"],
-                self.concat_files["r"],
-                trimline,
-            )
+            f"mkdir -p {assembly_dir} &"
+            f"skesa "
+            f"--cores {self.config['slurm_header']['threads']} "
+            f"--memory {8 * int(self.config['slurm_header']['threads'])} "
+            f"--contigs_out {contigs_file_raw} "
+            f"--reads {self.concat_files['f']},{self.concat_files['r']}\n"
         )
 
+        # Convert sequence naming in Skesa output into Spades format in the contigs fasta file:
+        # ----------------------------------------------
+        # Skesa format:  >Contig_1_100.000
+        # Spades format: >NODE_1_length_150_cov_100.000
+        # ----------------------------------------------
+        # We do the change by doing the following with awk:
+        # 1. When the line is a header (starting with >), capture the contig number and coverage
+        # 2. When the line is NOT a header (not starting with >), compute the length of the line
+        #    and then print out:
+        #    a. A new header line in Spades format with the length included
+        #    b. Print out the sequence line.
+        # Note: The match function requires GNU awk (gawk) to be able to capture groups in regexes.
         batchfile.write(
-            "mv {0}/assembly/contigs.fasta {0}/assembly/{1}_contigs.fasta\n".format(
-                self.finishdir, self.name
-            )
+            "gawk " +
+            "'/^>/ { match($0, /Contig_([0-9]+)_([0-9\.]+)/, m) } " +
+            "!/^>/ { seqlen=length($0); print \">NODE_\" m[1] \"_length_\" seqlen \"_cov_\" m[2]; print $0; }' " +
+            f"{contigs_file_raw} > {contigs_file}\n"
         )
+
+        # Keep only the 999(?) top contigs to avoid really low-quality contigs
         batchfile.write(
-            "sed -n '/NODE_1000_/q;p' {0}/assembly/{1}_contigs.fasta > {0}/assembly/{1}_trimmed_contigs.fasta\n".format(
-                self.finishdir, self.name
-            )
+            f"sed -n '/NODE_1000_/q;p' {contigs_file} > {contigs_trimmed_file}\n"
         )
         # batchfile.write("##Input cleanup\n")
         # batchfile.write("rm -r {}/trimmed\n".format(self.finishdir))
@@ -291,7 +296,7 @@ class Job_Creator:
         batchfile.close()
 
     def create_variantsection(self):
-        """ Creates a job for variant calling based on local alignment """
+        """Creates a job for variant calling based on local alignment"""
         ref = "{}/{}.fasta".format(self.config["folders"]["genomes"], self.sample.get("reference"))
         localdir = "{}/alignment".format(self.finishdir)
         outbase = "{}/{}_{}".format(localdir, self.name, self.sample.get("reference"))
@@ -653,7 +658,7 @@ class Job_Creator:
             self.finish_job(jobarray, single_sample)
 
     def finish_job(self, joblist, single_sample=False):
-        """ Uploads data and sends an email once all analysis jobs are complete. """
+        """Uploads data and sends an email once all analysis jobs are complete."""
         report = "default"
         if self.qc_only:
             report = "qc"
@@ -753,14 +758,14 @@ class Job_Creator:
             self.logger.info("Unable to grab SLURMID for {0}".format(self.name))
 
         try:
-            #Generates file with all slurm ids
+            # Generates file with all slurm ids
             slurmname = "{}_slurm_ids.yaml".format(self.name)
-            slurmreport_storedir = Path(self.config["folders"]["reports"],
-                "trailblazer", slurmname)
+            slurmreport_storedir = Path(self.config["folders"]["reports"], "trailblazer", slurmname)
             slurmreport_workdir = Path(self.finishdir, slurmname)
             yaml.safe_dump(
                 data={"jobs": [str(job) for job in joblist]},
-                      stream=open(slurmreport_workdir, "w"))
+                stream=open(slurmreport_workdir, "w"),
+            )
             shutil.copyfile(slurmreport_workdir, slurmreport_storedir)
             self.logger.info(
                 "Saved Trailblazer slurm report file to %s and %s",
@@ -771,7 +776,7 @@ class Job_Creator:
             self.logger.info("Unable to generate Trailblazer slurm report file")
 
     def sample_job(self):
-        """ Writes necessary sbatch job for each individual sample """
+        """Writes necessary sbatch job for each individual sample"""
         try:
             if not os.path.exists(self.finishdir):
                 os.makedirs(self.finishdir)
@@ -826,7 +831,7 @@ class Job_Creator:
             self.blast_subset("expec", ss)
 
     def snp_job(self):
-        """ Writes a SNP calling job for a set of samples """
+        """Writes a SNP calling job for a set of samples"""
         if not os.path.exists(self.finishdir):
             os.makedirs(self.finishdir)
 

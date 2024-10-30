@@ -23,7 +23,7 @@
                  <address>
                    <strong>Clinical Genomics</strong><br>
                    Science for Life Laboratory<br>
-                   Tomtebodavägen 23<br>
+                   Tomtebodav&auml;gen 23<br>
                    171 65 Solna<br>
                   <abbr title="Telefonnummer">T:</abbr> (08) 524 81 500
                  </address>
@@ -35,7 +35,7 @@
                 </address>
                 <address>
                   <strong>microSALT-teamet</strong><br>
-                  <abbr title="Förslagslåda">E:</abbr><a href="mailto:microsalt-suggestions@scilifelab.se?subject=Förbättringsförslag">
+                  <abbr title="F&ouml;rslagsl&aring;da">E:</abbr><a href="mailto:microsalt-suggestions@scilifelab.se?subject=F&ouml;rb&auml;ttringsf&ouml;rslag">
                   microsalt-suggestions@scilifelab.se
                   </a>
                 </address>
@@ -44,7 +44,7 @@
               <br />
 
               <div class="panel"><div class="panel-body">
-                <h3>Projektsammanställning<br></h3>
+                <h3>Projektsammanst&auml;llning<br></h3>
                     <div class="table-responsive"><table class="table table-bordered" style='table-layout:fixed;'>
                       <tr>
                       <td><b>Ticket ID <i>(CG Projekt ID)</i></b>
@@ -57,7 +57,7 @@
                       <tr>
                         <td><b>Rapport version</b></td>
                         {% if reports|length > 1 %}
-                          <td>Version {{reports[0].version}}, {{reports[0].date.date()}} (Ersätter version {{reports[1].version}}, {{reports[1].date.date()}})</td>
+                          <td>Version {{reports[0].version}}, {{reports[0].date.date()}} (Ers&auml;tter version {{reports[1].version}}, {{reports[1].date.date()}})</td>
                         {% else %}
                           <td>Version {{reports[0].version}}, {{reports[0].date.date()}}</td>
                         {% endif %}
@@ -73,7 +73,7 @@
                     </table></div>
               </div></div>
               <div class="panel"><div class="panel-body">
-              <h3>Provsammanställning<br></h3>
+              <h3>Provsammanst&auml;llning<br></h3>
               <div class="table-responsive">
                 <table  class="table table-bordered" style='table-layout:fixed;'>
                   <tr>
@@ -86,11 +86,11 @@
                     <th>Mappningsgrad %</th>
                     <th>Duplikationsgrad %</th>
                     <th>Insert Storlek (Median)</th>
-                    <th>Medeltäckning</th>
-                    <th>%BP > 10x Täckning</th>
-                    <th>%BP > 30x Täckning</th>
-                    <th>%BP > 50x Täckning</th>
-                    <th>%BP > 100x Täckning</th>
+                    <th>Medelt&auml;ckning</th>
+                    <th>%BP > 10x T&auml;ckning</th>
+                    <th>%BP > 30x T&auml;ckning</th>
+                    <th>%BP > 50x T&auml;ckning</th>
+                    <th>%BP > 100x T&auml;ckning</th>
 
                   </tr>
                   {% for sample in samples %}
@@ -105,7 +105,7 @@
                       {% endif %}
                       {% if sample.organism is not none %}
                         <td>{{sample.organism.replace('_', ' ').capitalize()}}</td>
-                      {% else %}<td>Okänd</td>{% endif %}
+                      {% else %}<td>Ok&auml;nd</td>{% endif %}
                       <td>{{ sample.reference_genome }}</td>
 
                         {% if sample.total_reads is none %}
@@ -210,53 +210,53 @@
                   {% endfor %}
                 </table>
               </div>
-              (*) Information om prover som kommer från kund <br/>
+              (*) Information om prover som kommer fr&aring;n kund <br/>
               </div></div>
 
               <div class="panel"><div class="panel-body">
               <h3>Teknisk beskrivning av analysen: {{topsample.application_tag}}<br></h3>
               <p>
               {% if topsample.application_tag == "MWRNXTR003" %}
-              Mikrobiell helgenomssekvensering av rutinprov, med krav på minst 3 miljoner läspar.
+              Mikrobiell helgenomssekvensering av rutinprov, med krav p&aring; minst 3 miljoner l&auml;spar.
               Nextera library preparation.
               {% elif topsample.application_tag in ["MWGNXTR003", "MWMNXTR003", "MWLNXTR003"] %}
-              Mikrobiell helgenomssekvensering, med krav på minst 3 miljoner läspar.
+              Mikrobiell helgenomssekvensering, med krav p&aring; minst 3 miljoner l&auml;spar.
               Nextera library preparation.
               {% elif topsample.application_tag == "MWXNXTR003" %}
-              Storskalig mikrobiell helgenomssekvensering av minst 176 prover, med krav på minst 3 miljoner läspar.
+              Storskalig mikrobiell helgenomssekvensering av minst 176 prover, med krav p&aring; minst 3 miljoner l&auml;spar.
               Nextera library preparation.
               {% elif topsample.application_tag in ["VWGNXTR001", "VWLNXTR001"] %}
-              Virologisk helgenomssekvensering, med krav på minst 1 miljon läspar.
+              Virologisk helgenomssekvensering, med krav p&aring; minst 1 miljon l&auml;spar.
               Nextera library preparation.
               {% endif %}
               </p>
-              <h3>Analysbegränsningar för: {{topsample.application_tag}}<br></h3>
+              <h3>Analysbegr&auml;nsningar f&ouml;r: {{topsample.application_tag}}<br></h3>
               <p>
-              Tillförlitligheten hos resultaten förutsätter att informationen som bifogats från kund är korrekt.
+              Tillf&ouml;rlitligheten hos resultaten f&ouml;ruts&auml;tter att informationen som bifogats fr&aring;n kund &auml;r korrekt.
               </p>
 
-              <h3>Förbättringsförslag<br></h3>
+              <h3>F&ouml;rb&auml;ttringsf&ouml;rslag<br></h3>
               <p>
-              Alla typer av förbättringsförslag mailas med fördel till microsalt-suggestions@scilifelab.se<br>
-              Din återkopplling uppskattas!
+              Alla typer av f&ouml;rb&auml;ttringsf&ouml;rslag mailas med f&ouml;rdel till microsalt-suggestions@scilifelab.se<br>
+              Din &aring;terkopplling uppskattas!
               </p>
 
-              <h3>Avvikelser från metoden<br></h3>
+              <h3>Avvikelser fr&aring;n metoden<br></h3>
               <p>
-              All kommunikation gällande ordern såsom tillägg, avvikelser eller
-              ev undantag i metoden från Clinical Genomics finns tillgängligt i
-              SupportSystem för dess ticket id. En stängd ticket kan närsomhelst
-              öppnas upp igen för frågor.
+              All kommunikation g&auml;llande ordern s&aring;som till&auml;gg, avvikelser eller
+              ev undantag i metoden fr&aring;n Clinical Genomics finns tillg&auml;ngligt i
+              SupportSystem f&ouml;r dess ticket id. En st&auml;ngd ticket kan n&auml;rsomhelst
+              &ouml;ppnas upp igen f&ouml;r fr&aring;gor.
               </p>
 
-              <h3>Signatur för godkännande av rapport<br></h3>
+              <h3>Signatur f&ouml;r godk&auml;nnande av rapport<br></h3>
               <p>
                 Valtteri Wirta<br>
                 Head of unit, Clinical Genomics
               </p>
               </div></div>
               </div>
-              <div class="text-muted text-center">Slut på rapport</div>
+              <div class="text-muted text-center">Slut p&aring; rapport</div>
             </div>
           </footer>
         </div>

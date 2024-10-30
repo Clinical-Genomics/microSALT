@@ -13,4 +13,5 @@ unique_references/*.n*
 .idea/
 default_sample_info.json
 tmp.json
-
+.venv/
+.vscode*

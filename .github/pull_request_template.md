@@ -20,9 +20,9 @@ _If not self-evident, mention what prompted the change._
 _If the update is a hotfix, it is sufficient to rely on the development testing along with the Travis self-test automatically applied to the PR._
 
 _Test routine to verify the stability of the PR:_
-- _`bash /home/proj/production/servers/resources/hasta.scilifelab.se/update-microsalt-stage.sh BRANCHNAME`_
+- _`bash /home/proj/production/servers/resources/hasta.scilifelab.se/install-microsalt-stage.sh BRANCHNAME`_
 - _`us`_
-- _`source activate S_microSALT`_
+- _`conda activate S_microSALT`_
 - _(SITUATIONAL) `export MICROSALT_CONFIG=/home/proj/dropbox/microSALT.json`_
 - _Select a relevant subset of the following:_
 - _`microSALT analyse project MIC3109`_
