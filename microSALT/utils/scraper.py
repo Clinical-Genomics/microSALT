@@ -391,7 +391,7 @@ class Scraper:
                         # Identical identity and span, seperating based on contig coverage
                         else:
                             # Rightmost is worse
-                            if float(hypo[ind].get("contig_coverage")) > float(
+                            if float(hypo[ind].get("contig_coverage")) >= float(
                                 hypo[targ].get("contig_coverage")
                             ):
                                 del hypo[targ]
