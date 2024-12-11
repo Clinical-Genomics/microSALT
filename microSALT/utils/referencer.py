@@ -56,9 +56,11 @@ class Referencer:
             self.name = self.sampleinfo.get("CG_ID_sample")
             self.sample = self.sampleinfo
 
-        self.token, self.secret = load_session_token()
+        # Use a default database to load or fetch an initial token
+        default_db = "pubmlst_test_seqdef"
+        self.token, self.secret = load_session_token(default_db)
         if not self.token or not self.secret:
-            self.token, self.secret = get_new_session_token()
+            self.token, self.secret = get_new_session_token(default_db)
 
     def identify_new(self, cg_id="", project=False):
         """Automatically downloads pubMLST & NCBI organisms not already downloaded"""
@@ -258,7 +260,6 @@ class Referencer:
                         self.config["folders"]["resistances"],
                     )
 
-        # Double checks indexation is current.
         self.index_db(self.config["folders"]["resistances"], ".fsa")
 
     def existing_organisms(self):
@@ -327,7 +328,6 @@ class Referencer:
 
     def add_pubmlst(self, organism):
         """Checks pubmlst for references of given organism and downloads them"""
-        # Organism must be in binomial format and only resolve to one hit
         errorg = organism
         try:
             organism = organism.lower().replace(".", " ")
@@ -336,7 +336,6 @@ class Referencer:
                 return
             db_query = self.query_pubmlst()
 
-            # Doublecheck organism name is correct and unique
             orgparts = organism.split(" ")
             counter = 0.0
             for item in db_query:
@@ -350,7 +349,6 @@ class Referencer:
                             if not part in subtype["description"].lower():
                                 missingPart = True
                     if not missingPart:
-                        # Seqdef always appear after isolates, so this is fine
                         seqdef_url = subtype["href"]
                         desc = subtype["description"]
                         counter += 1.0
@@ -362,7 +360,6 @@ class Referencer:
                     )
                 )
             elif counter < 1.0:
-                # add external
                 raise Exception(
                     "Unable to find requested organism '{}' in pubMLST database".format(errorg)
                 )
@@ -370,7 +367,6 @@ class Referencer:
                 truename = desc.lower().split(" ")
                 truename = "{}_{}".format(truename[0], truename[1])
                 self.download_pubmlst(truename, seqdef_url)
-                # Update organism list
                 self.refs = self.db_access.profiles
                 self.logger.info("Created table profile_{}".format(truename))
         except Exception as e:
@@ -378,8 +374,6 @@ class Referencer:
 
     def query_pubmlst(self):
         """Returns a json object containing all organisms available via pubmlst.org"""
-        # Example request URI: http://rest.pubmlst.org/db/pubmlst_neisseria_seqdef/schemes/1/profiles_csv
-        seqdef_url = dict()
         databases = "http://rest.pubmlst.org/db"
         db_req = urllib.request.Request(databases)
         with urllib.request.urlopen(db_req) as response:
@@ -425,20 +419,16 @@ class Referencer:
         """Downloads ST and loci for a given organism stored on pubMLST if it is more recent. Returns update date"""
         organism = organism.lower().replace(" ", "_")
 
-        # Pull version
         extver = self.external_version(organism, subtype_href)
         currver = self.db_access.get_version("profile_{}".format(organism))
         if int(extver.replace("-", "")) <= int(currver.replace("-", "")) and not force:
-            # self.logger.info("Profile for {} already at latest version".format(organism.replace('_' ,' ').capitalize()))
             return currver
 
-        # Pull ST file
         mlst_href = self.get_mlst_scheme(subtype_href)
         st_target = "{}/{}".format(self.config["folders"]["profiles"], organism)
         st_input = "{}/profiles_csv".format(mlst_href)
         urllib.request.urlretrieve(st_input, st_target)
 
-        # Pull locus files
         loci_input = mlst_href
         loci_req = urllib.request.Request(loci_input)
         with urllib.request.urlopen(loci_req) as response:
@@ -458,43 +448,45 @@ class Referencer:
             urllib.request.urlretrieve(
                 "{}/alleles_fasta".format(locipath), "{}/{}.tfa".format(output, loci)
             )
-        # Create new indexes
         self.index_db(output, ".tfa")
 
     def fetch_pubmlst(self, force=False):
         """Fetches and updates PubMLST data"""
+
         try:
             self.logger.info("Querying available PubMLST databases...")
             databases = query_databases(self.token, self.secret)
 
             for db in databases.get("databases", []):
-                db_name = db["description"]
-                if db_name.replace(" ", "_").lower() in self.organisms and not force:
-                    self.logger.info(f"Database {db_name} is already up-to-date.")
+                db_name = db["name"]
+                db_desc = db["description"]
+
+                # Load or fetch a session token for this specific database
+                db_token, db_secret = load_session_token(db_name)
+                if not db_token or not db_secret:
+                    db_token, db_secret = get_new_session_token(db_name)
+
+                if db_desc.replace(" ", "_").lower() in self.organisms and not force:
+                    self.logger.info(f"Database {db_desc} is already up-to-date.")
                     continue
 
-                self.logger.info(f"Fetching schemes for {db_name}...")
-                schemes = fetch_schemes(db["name"], self.token, self.secret)
+                self.logger.info(f"Fetching schemes for {db_desc}...")
+                schemes = fetch_schemes(db_name, db_token, db_secret)
 
                 for scheme in schemes.get("schemes", []):
                     if "MLST" in scheme["description"]:
-                        self.logger.info(f"Downloading profiles for {db_name}...")
-                        profiles = download_profiles(
-                            db["name"], scheme["id"], self.token, self.secret
-                        )
+                        self.logger.info(f"Downloading profiles for {db_desc}...")
+                        profiles = download_profiles(db_name, scheme["id"], db_token, db_secret)
+                        self.logger.info(f"Profiles fetched for {db_desc}. Total: {len(profiles)}.")
 
-                        self.logger.info(f"Profiles fetched for {db_name}. Total: {len(profiles)}.")
-
-                        # Handle loci
                         for locus in scheme.get("loci", []):
-                            self.logger.info(f"Downloading locus {locus} for {db_name}...")
-                            locus_data = download_locus(db["name"], locus, self.token, self.secret)
+                            self.logger.info(f"Downloading locus {locus} for {db_desc}...")
+                            locus_data = download_locus(db_name, locus, db_token, db_secret)
                             self.logger.info(f"Locus {locus} downloaded successfully.")
 
-                        # Metadata check
-                        metadata = check_database_metadata(db["name"], self.token, self.secret)
+                        metadata = check_database_metadata(db_name, db_token, db_secret)
                         self.logger.info(
-                            f"Database metadata for {db_name}: {metadata.get('last_updated')}"
+                            f"Database metadata for {db_desc}: {metadata.get('last_updated')}"
                         )
 
         except Exception as e:
