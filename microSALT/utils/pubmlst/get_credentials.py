@@ -1,38 +1,33 @@
 #!/usr/bin/env python3
-
-import json
-import os
 import sys
-
 from rauth import OAuth1Service
-
-BASE_WEB = {
-    "PubMLST": "https://pubmlst.org/bigsdb",
-}
-BASE_API = {
-    "PubMLST": "https://rest.pubmlst.org",
-}
+from microSALT import app
+from microSALT.utils.pubmlst.helpers import get_credentials_file_path, BASE_WEB, BASE_API_DICT
 
 SITE = "PubMLST"
 DB = "pubmlst_test_seqdef"
 
-# Import client_id and client_secret from credentials.py
-try:
-    from microSALT.utils.pubmlst_old.credentials import CLIENT_ID, CLIENT_SECRET
-except ImportError:
-    print("Error: 'credentials.py' file not found or missing CLIENT_ID and CLIENT_SECRET.")
-    sys.exit(1)
-
+def validate_credentials(client_id, client_secret):
+    """Ensure client_id and client_secret are not empty."""
+    if not client_id or not client_id.strip():
+        raise ValueError("Invalid CLIENT_ID: It must not be empty.")
+    if not client_secret or not client_secret.strip():
+        raise ValueError("Invalid CLIENT_SECRET: It must not be empty.")
 
 def main():
-    site = SITE
-    db = DB
+    pubmlst_config = app.config["pubmlst"]
+    client_id = pubmlst_config["client_id"]
+    client_secret = pubmlst_config["client_secret"]
 
-    access_token, access_secret = get_new_access_token(site, db, CLIENT_ID, CLIENT_SECRET)
+    output_path = get_credentials_file_path(pubmlst_config)
+
+    validate_credentials(client_id, client_secret)
+
+    access_token, access_secret = get_new_access_token(SITE, DB, client_id, client_secret)
     print(f"\nAccess Token: {access_token}")
     print(f"Access Token Secret: {access_secret}")
 
-    save_to_credentials_py(CLIENT_ID, CLIENT_SECRET, access_token, access_secret)
+    save_to_credentials_py(client_id, client_secret, access_token, access_secret, output_path)
 
 
 def get_new_access_token(site, db, client_id, client_secret):
@@ -41,9 +36,9 @@ def get_new_access_token(site, db, client_id, client_secret):
         name="BIGSdb_downloader",
         consumer_key=client_id,
         consumer_secret=client_secret,
-        request_token_url=f"{BASE_API[site]}/db/{db}/oauth/get_request_token",
-        access_token_url=f"{BASE_API[site]}/db/{db}/oauth/get_access_token",
-        base_url=BASE_API[site],
+        request_token_url=f"{BASE_API_DICT[site]}/db/{db}/oauth/get_request_token",
+        access_token_url=f"{BASE_API_DICT[site]}/db/{db}/oauth/get_access_token",
+        base_url=BASE_API_DICT[site],
     )
 
     request_token, request_secret = get_request_token(service)
@@ -54,7 +49,6 @@ def get_new_access_token(site, db, client_id, client_secret):
     )
     verifier = input("Please enter verification code: ")
 
-    # Exchange request token for access token
     raw_access = service.get_raw_access_token(
         request_token, request_secret, params={"oauth_verifier": verifier}
     )
@@ -65,32 +59,28 @@ def get_new_access_token(site, db, client_id, client_secret):
     access_data = raw_access.json()
     return access_data["oauth_token"], access_data["oauth_token_secret"]
 
-
 def get_request_token(service):
     """Handle JSON response from the request token endpoint."""
     response = service.get_raw_request_token(params={"oauth_callback": "oob"})
     if response.status_code != 200:
         print(f"Error obtaining request token: {response.text}")
         sys.exit(1)
-    try:
-        data = json.loads(response.text)
-        return data["oauth_token"], data["oauth_token_secret"]
-    except json.JSONDecodeError:
-        print(f"Failed to parse JSON response: {response.text}")
-        sys.exit(1)
+    data = response.json()
+    return data["oauth_token"], data["oauth_token_secret"]
 
-
-def save_to_credentials_py(client_id, client_secret, access_token, access_secret):
+def save_to_credentials_py(client_id, client_secret, access_token, access_secret, output_path):
     """Save tokens in the credentials.py file."""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    credentials_path = os.path.join(script_dir, "credentials.py")
+    # Ensure the directory exists
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Save the credentials file
+    credentials_path = output_path / "PUBMLST_credentials.py"
     with open(credentials_path, "w") as f:
         f.write(f'CLIENT_ID = "{client_id}"\n')
         f.write(f'CLIENT_SECRET = "{client_secret}"\n')
         f.write(f'ACCESS_TOKEN = "{access_token}"\n')
         f.write(f'ACCESS_SECRET = "{access_secret}"\n')
     print(f"Tokens saved to {credentials_path}")
-
 
 if __name__ == "__main__":
     main()
