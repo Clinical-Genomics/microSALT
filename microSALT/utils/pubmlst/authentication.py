@@ -1,102 +1,104 @@
-import base64
-import hashlib
-import hmac
 import json
 import os
-import time
 from datetime import datetime, timedelta
-from urllib.parse import quote_plus, urlencode
-
+from pathlib import Path
 from dateutil import parser
 from rauth import OAuth1Session
+from microSALT import app
+from microSALT.utils.pubmlst.helpers import get_credentials_file_path, BASE_API, load_credentials, generate_oauth_header
 
-import microSALT.utils.pubmlst.credentials as credentials
-
-BASE_API = "https://rest.pubmlst.org"
-SESSION_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "session_credentials.json")
 SESSION_EXPIRATION_BUFFER = 60  # Seconds before expiration to renew
 
+pubmlst_config = app.config["pubmlst"]
+credentials_files_path = get_credentials_file_path(pubmlst_config)
 
-def save_session_token(token, secret, expiration_date):
-    """Save session token, secret, and expiration to a JSON file."""
+# Ensure the directory exists
+credentials_files_path.mkdir(parents=True, exist_ok=True)
+
+CREDENTIALS_FILE = os.path.join(credentials_files_path, "PUBMLST_credentials.py")
+SESSION_FILE = os.path.join(credentials_files_path, "PUBMLST_session_credentials.json")
+
+
+def save_session_token(db, token, secret, expiration_date):
+    """Save session token, secret, and expiration to a JSON file for the specified database."""
     session_data = {
         "token": token,
         "secret": secret,
         "expiration": expiration_date.isoformat(),
     }
-    with open(SESSION_FILE, "w") as f:
-        json.dump(session_data, f)
-    print(f"Session token saved to {SESSION_FILE}.")
 
-
-def load_session_token():
-    """Load session token from file if it exists and is valid."""
+    # Load existing sessions if available
     if os.path.exists(SESSION_FILE):
         with open(SESSION_FILE, "r") as f:
-            session_data = json.load(f)
-            expiration = parser.parse(session_data["expiration"])
-            if datetime.now() < expiration - timedelta(seconds=SESSION_EXPIRATION_BUFFER):
-                print("Using existing session token.")
-                return session_data["token"], session_data["secret"]
-    return None, None
+            all_sessions = json.load(f)
+    else:
+        all_sessions = {}
+
+    # Ensure 'databases' key exists
+    if "databases" not in all_sessions:
+        all_sessions["databases"] = {}
+
+    # Update the session token for the specific database
+    all_sessions["databases"][db] = session_data
+
+    # Save back to file
+    with open(SESSION_FILE, "w") as f:
+        json.dump(all_sessions, f, indent=4)
+    print(f"Session token for '{db}' saved to {SESSION_FILE}.")
 
 
-def generate_oauth_header(url, token, token_secret):
-    """Generate the OAuth1 Authorization header."""
-    oauth_timestamp = str(int(time.time()))
-    oauth_nonce = base64.urlsafe_b64encode(os.urandom(32)).decode("utf-8").strip("=")
-    oauth_signature_method = "HMAC-SHA1"
-    oauth_version = "1.0"
+def load_session_token(db):
+    """Load session token from file for a specific database if it exists and is valid."""
+    if not os.path.exists(SESSION_FILE):
+        print("Session file does not exist.")
+        return None, None
 
-    oauth_params = {
-        "oauth_consumer_key": credentials.CLIENT_ID,
-        "oauth_token": token,
-        "oauth_signature_method": oauth_signature_method,
-        "oauth_timestamp": oauth_timestamp,
-        "oauth_nonce": oauth_nonce,
-        "oauth_version": oauth_version,
-    }
+    with open(SESSION_FILE, "r") as f:
+        all_sessions = json.load(f)
 
-    # Create the signature base string
-    params_encoded = urlencode(sorted(oauth_params.items()))
-    base_string = f"GET&{quote_plus(url)}&{quote_plus(params_encoded)}"
-    signing_key = f"{credentials.CLIENT_SECRET}&{token_secret}"
+    # Check if the database entry exists
+    db_session_data = all_sessions.get("databases", {}).get(db)
+    if not db_session_data:
+        print(f"No session token found for database '{db}'.")
+        return None, None
 
-    # Sign the base string
-    hashed = hmac.new(signing_key.encode("utf-8"), base_string.encode("utf-8"), hashlib.sha1)
-    oauth_signature = base64.b64encode(hashed.digest()).decode("utf-8")
-
-    # Add the signature
-    oauth_params["oauth_signature"] = oauth_signature
-
-    # Construct the Authorization header
-    auth_header = "OAuth " + ", ".join(
-        [f'{quote_plus(k)}="{quote_plus(v)}"' for k, v in oauth_params.items()]
-    )
-    return auth_header
+    expiration = parser.parse(db_session_data["expiration"])
+    if datetime.now() < expiration - timedelta(seconds=SESSION_EXPIRATION_BUFFER):
+        print(f"Using existing session token for database '{db}'.")
+        return db_session_data["token"], db_session_data["secret"]
+    else:
+        print(f"Session token for database '{db}' has expired.")
+        return None, None
 
 
-def get_new_session_token():
-    """Request a new session token using client credentials."""
-    print("Fetching a new session token...")
-    db = "pubmlst_neisseria_seqdef"
+def get_new_session_token(db="pubmlst_test_seqdef"):
+    """Request a new session token using all credentials for a specific database."""
+    print(f"Fetching a new session token for database '{db}'...")
+    client_id, client_secret, access_token, access_secret = load_credentials()
     url = f"{BASE_API}/db/{db}/oauth/get_session_token"
 
+    # Create an OAuth1Session with all credentials
     session = OAuth1Session(
-        consumer_key=credentials.CLIENT_ID,
-        consumer_secret=credentials.CLIENT_SECRET,
-        access_token=credentials.ACCESS_TOKEN,
-        access_token_secret=credentials.ACCESS_SECRET,
+        consumer_key=client_id,
+        consumer_secret=client_secret,
+        access_token=access_token,
+        access_token_secret=access_secret,
     )
 
-    response = session.get(url, headers={"User-Agent": "BIGSdb downloader"})
-    if response.status_code == 200:
-        token_data = response.json()
-        session_token = token_data["oauth_token"]
-        session_secret = token_data["oauth_token_secret"]
-        expiration_time = datetime.now() + timedelta(hours=12)  # 12-hour validity
-        save_session_token(session_token, session_secret, expiration_time)
-        return session_token, session_secret
-    else:
-        print(f"Error: {response.status_code} - {response.text}")
-        return None, None
+    try:
+        response = session.get(url, headers={"User-Agent": "BIGSdb downloader"})
+        print(f"Response Status Code: {response.status_code}")
+        print(f"Response Text: {response.text}")
+
+        if response.status_code == 200:
+            token_data = response.json()
+            session_token = token_data["oauth_token"]
+            session_secret = token_data["oauth_token_secret"]
+            expiration_time = datetime.now() + timedelta(hours=12)  # 12-hour validity
+            save_session_token(db, session_token, session_secret, expiration_time)
+            return session_token, session_secret
+        else:
+            raise ValueError(f"Error fetching session token: {response.status_code} - {response.text}")
+    except Exception as e:
+        print(f"Error during token fetching: {e}")
+        raise
