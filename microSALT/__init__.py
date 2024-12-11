@@ -150,6 +150,21 @@ if preset_config != "":
             logger.error("Database integrity failed! Lock-state detected!")
             sys.exit(-1)
 
+        # Load pubmlst configuration
+        if "pubmlst" not in preset_config:
+            raise KeyError("Missing 'pubmlst' section in configuration file.")
+        pubmlst_config = preset_config["pubmlst"]
+
+        # Set default for credentials_files_path if missing or empty
+        credentials_files_path = pubmlst_config.get("credentials_files_path")
+        if not credentials_files_path:
+            credentials_files_path = os.getcwd()  # Default to current directory
+        pubmlst_config["credentials_files_path"] = credentials_files_path
+
+        app.config["pubmlst"] = pubmlst_config
+
+        logger.info(f"PubMLST configuration loaded: {app.config['pubmlst']}")
+
     except Exception as e:
         print("Config error: {}".format(str(e)))
         pass
