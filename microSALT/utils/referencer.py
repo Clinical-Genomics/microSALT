@@ -464,9 +464,13 @@ class Referencer:
                     sub_db_name = sub_db["name"]
                     sub_db_desc = sub_db["description"]
 
-                    # Skip non-sequence definition databases
-                    if "seqdef" not in sub_db_name:
-                        self.logger.info(f"Skipping database '{sub_db_name}' as it is not a sequence definition database.")
+                    # Skip databases that are not sequence definitions or do not match known organisms
+                    if "seqdef" not in sub_db_name.lower():
+                        self.logger.debug(f"Skipping {sub_db_desc} (not a sequence definition database).")
+                        continue
+
+                    if sub_db_desc.replace(" ", "_").lower() not in self.organisms and not force:
+                        self.logger.debug(f"Skipping {sub_db_desc}, not in known organisms.")
                         continue
 
                     # Load or fetch a session token for this specific sub-database
@@ -474,62 +478,54 @@ class Referencer:
                     if not db_token or not db_secret:
                         db_token, db_secret = get_new_session_token(sub_db_name)
 
-                    if sub_db_desc.replace(" ", "_").lower() in self.organisms and not force:
-                        self.logger.info(f"Database {sub_db_desc} is already up-to-date.")
-                        continue
-
                     self.logger.info(f"Fetching schemes for {sub_db_desc}...")
                     schemes = fetch_schemes(sub_db_name, db_token, db_secret)
 
                     for scheme in schemes.get("schemes", []):
-                        self.logger.debug(f"Processing scheme: {scheme}")
                         if "scheme" not in scheme:
                             self.logger.warning(f"Scheme does not contain 'scheme' key: {scheme}")
                             continue
 
-                        # Extract the ID from the URL
                         scheme_url = scheme["scheme"]
-                        try:
-                            scheme_id = scheme_url.rstrip("/").split("/")[-1]
-                            if not scheme_id.isdigit():
-                                raise ValueError(f"Invalid scheme ID extracted from URL: {scheme_url}")
-                        except Exception as e:
-                            self.logger.error(f"Failed to extract scheme ID from URL: {scheme_url}. Error: {e}")
+                        scheme_id = scheme_url.rstrip("/").split("/")[-1]
+
+                        if not scheme_id.isdigit():
+                            self.logger.error(f"Invalid scheme ID: {scheme_url}")
                             continue
 
                         if "MLST" in scheme["description"]:
-                            self.logger.info(f"Downloading profiles for {sub_db_desc}...")
+                            self.logger.debug(f"Downloading profiles for {sub_db_desc}...")
                             try:
                                 profiles = download_profiles(sub_db_name, scheme_id, db_token, db_secret)
-                                self.logger.info(f"Profiles fetched for {sub_db_desc}. Total: {len(profiles)}.")
+                                self.logger.debug(f"Profiles fetched for {sub_db_desc}. Total: {len(profiles)}.")
 
                                 # Process loci
                                 for locus in scheme.get("loci", []):
                                     self.logger.info(f"Downloading locus {locus} for {sub_db_desc}...")
                                     locus_data = download_locus(sub_db_name, locus, db_token, db_secret)
                                     locus_file_path = os.path.join(
-                                        self.config["folders"]["references"], sub_db_desc, f"{locus}.tfa"
+                                        self.config["folders"]["references"], sub_db_desc.replace(" ", "_").lower(), f"{locus}.tfa"
                                     )
                                     os.makedirs(os.path.dirname(locus_file_path), exist_ok=True)
                                     with open(locus_file_path, "wb") as locus_file:
                                         locus_file.write(locus_data)
-                                    self.logger.info(f"Locus {locus} downloaded and saved successfully.")
+                                    self.logger.info(f"Locus {locus} downloaded successfully.")
 
-                                # Update metadata
+                                # Check and log metadata
                                 metadata = check_database_metadata(sub_db_name, db_token, db_secret)
                                 last_updated = metadata.get("last_updated", "Unknown")
-                                self.db_access.upd_rec(
-                                    {"name": f"profile_{sub_db_desc.replace(' ', '_').lower()}"},
-                                    "Versions",
-                                    {"version": last_updated},
-                                )
-                                self.logger.info(f"Database metadata for {sub_db_desc}: Last updated {last_updated}.")
-
+                                if last_updated != "Unknown":
+                                    self.db_access.upd_rec(
+                                        {"name": f"profile_{sub_db_desc.replace(' ', '_').lower()}"},
+                                        "Versions",
+                                        {"version": last_updated},
+                                    )
+                                    self.logger.info(f"Database {sub_db_desc} updated to {last_updated}.")
+                                else:
+                                    self.logger.debug(f"No new updates for {sub_db_desc}.")
                             except Exception as e:
-                                self.logger.error(f"Error processing database '{sub_db_desc}': {e}")
-                                continue
+                                self.logger.error(f"Error processing {sub_db_desc}: {e}")
 
-            self.logger.info("PubMLST data fetch and update process completed successfully.")
-
+            self.logger.info("PubMLST fetch and update process completed successfully.")
         except Exception as e:
             self.logger.error(f"Failed to fetch PubMLST data: {e}")
