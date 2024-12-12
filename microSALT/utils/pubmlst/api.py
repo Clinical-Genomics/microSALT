@@ -17,12 +17,13 @@ def query_databases(session_token, session_secret):
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         res = response.json()
-        # Ensure we have a dictionary with 'databases' key
-        if not isinstance(res, dict) or "databases" not in res:
+        # Ensure the response is a list of database entries
+        if not isinstance(res, list):
             raise ValueError(f"Unexpected response format from /db endpoint: {res}")
         return res
     else:
         raise ValueError(f"Failed to query databases: {response.status_code} - {response.text}")
+
 
 def fetch_schemes(database, session_token, session_secret):
     """Fetch available schemes for a database."""
@@ -38,8 +39,12 @@ def fetch_schemes(database, session_token, session_secret):
 def download_profiles(database, scheme_id, session_token, session_secret):
     """Download MLST profiles."""
     validate_session_token(session_token, session_secret)
+    if not scheme_id:
+        raise ValueError("Scheme ID is required to download profiles.")
     url = f"{BASE_API}/db/{database}/schemes/{scheme_id}/profiles"
     return fetch_paginated_data(url, session_token, session_secret)
+
+
 
 def download_locus(database, locus, session_token, session_secret):
     """Download locus sequence files."""
