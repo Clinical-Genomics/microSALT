@@ -9,7 +9,7 @@ from urllib.parse import quote_plus, urlencode
 import requests
 from datetime import datetime, timedelta
 from dateutil import parser
-from microSALT import app
+from microSALT import app, logger
 
 BASE_WEB = {
     "PubMLST": "https://pubmlst.org/bigsdb",
@@ -103,9 +103,8 @@ def fetch_paginated_data(url, session_token, session_secret):
         headers = {"Authorization": generate_oauth_header(url, session_token, session_secret)}
         response = requests.get(url, headers=headers)
 
-        # Log progress
-        print(f"Fetching URL: {url}")
-        print(f"Response Status Code: {response.status_code}")
+        logger.debug(f"Fetching URL: {url}")
+        logger.debug(f"Response Status Code: {response.status_code}")
 
         if response.status_code == 200:
             data = response.json()
