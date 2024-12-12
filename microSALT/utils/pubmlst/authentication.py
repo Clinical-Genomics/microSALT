@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from dateutil import parser
 from rauth import OAuth1Session
-from microSALT import app
+from microSALT import app, logger
 from microSALT.utils.pubmlst.helpers import get_credentials_file_path, BASE_API, load_credentials, generate_oauth_header
 
 SESSION_EXPIRATION_BUFFER = 60  # Seconds before expiration to renew
@@ -44,13 +44,13 @@ def save_session_token(db, token, secret, expiration_date):
     # Save back to file
     with open(SESSION_FILE, "w") as f:
         json.dump(all_sessions, f, indent=4)
-    print(f"Session token for '{db}' saved to {SESSION_FILE}.")
+    logger.info(f"Session token for '{db}' saved to {SESSION_FILE}.")
 
 
 def load_session_token(db):
     """Load session token from file for a specific database if it exists and is valid."""
     if not os.path.exists(SESSION_FILE):
-        print("Session file does not exist.")
+        logger.info("Session file does not exist.")
         return None, None
 
     with open(SESSION_FILE, "r") as f:
@@ -59,21 +59,21 @@ def load_session_token(db):
     # Check if the database entry exists
     db_session_data = all_sessions.get("databases", {}).get(db)
     if not db_session_data:
-        print(f"No session token found for database '{db}'.")
+        logger.info(f"No session token found for database '{db}'.")
         return None, None
 
     expiration = parser.parse(db_session_data["expiration"])
     if datetime.now() < expiration - timedelta(seconds=SESSION_EXPIRATION_BUFFER):
-        print(f"Using existing session token for database '{db}'.")
+        logger.info(f"Using existing session token for database '{db}'.")
         return db_session_data["token"], db_session_data["secret"]
     else:
-        print(f"Session token for database '{db}' has expired.")
+        logger.info(f"Session token for database '{db}' has expired.")
         return None, None
 
 
 def get_new_session_token(db="pubmlst_test_seqdef"):
     """Request a new session token using all credentials for a specific database."""
-    print(f"Fetching a new session token for database '{db}'...")
+    logger.info(f"Fetching a new session token for database '{db}'...")
     client_id, client_secret, access_token, access_secret = load_credentials()
     url = f"{BASE_API}/db/{db}/oauth/get_session_token"
 
@@ -87,8 +87,8 @@ def get_new_session_token(db="pubmlst_test_seqdef"):
 
     try:
         response = session.get(url, headers={"User-Agent": "BIGSdb downloader"})
-        print(f"Response Status Code: {response.status_code}")
-        print(f"Response Text: {response.text}")
+        logger.info(f"Response Status Code: {response.status_code}")
+
 
         if response.status_code == 200:
             token_data = response.json()
@@ -100,5 +100,5 @@ def get_new_session_token(db="pubmlst_test_seqdef"):
         else:
             raise ValueError(f"Error fetching session token: {response.status_code} - {response.text}")
     except Exception as e:
-        print(f"Error during token fetching: {e}")
+        logger.error(f"Error during token fetching: {e}")
         raise
