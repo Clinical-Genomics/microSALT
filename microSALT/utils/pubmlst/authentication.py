@@ -64,7 +64,7 @@ def load_session_token(db):
 
     expiration = parser.parse(db_session_data["expiration"])
     if datetime.now() < expiration - timedelta(seconds=SESSION_EXPIRATION_BUFFER):
-        logger.info(f"Using existing session token for database '{db}'.")
+        logger.debug(f"Using existing session token for database '{db}'.")
         return db_session_data["token"], db_session_data["secret"]
     else:
         logger.info(f"Session token for database '{db}' has expired.")
@@ -73,7 +73,7 @@ def load_session_token(db):
 
 def get_new_session_token(db="pubmlst_test_seqdef"):
     """Request a new session token using all credentials for a specific database."""
-    logger.info(f"Fetching a new session token for database '{db}'...")
+    logger.debug(f"Fetching a new session token for database '{db}'...")
     client_id, client_secret, access_token, access_secret = load_credentials()
     url = f"{BASE_API}/db/{db}/oauth/get_session_token"
 
@@ -87,7 +87,7 @@ def get_new_session_token(db="pubmlst_test_seqdef"):
 
     try:
         response = session.get(url, headers={"User-Agent": "BIGSdb downloader"})
-        logger.info(f"Response Status Code: {response.status_code}")
+        logger.debug(f"Response Status Code: {response.status_code}")
 
 
         if response.status_code == 200:
