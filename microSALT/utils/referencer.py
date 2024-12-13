@@ -35,40 +35,11 @@ def resolve_path(path):
         path = os.path.abspath(path)
     return path
 
-def resolve_config_paths(self, config):
-    # Ensure all paths in 'folders' are resolved
-    if 'folders' in config:
-        for key, value in config['folders'].items():
-            if isinstance(value, str) and '/' in value:
-                config['folders'][key] = resolve_path(value)
-
-    # Resolve pubmlst credentials_files_path if present
-    if 'pubmlst' in config and 'credentials_files_path' in config['pubmlst']:
-        config['pubmlst']['credentials_files_path'] = resolve_path(config['pubmlst']['credentials_files_path'])
-
-    return config
-
-def ensure_directories(self):
-    """Ensure all required directories are created."""
-    required_dirs = [
-        self.config["folders"].get("results"),
-        self.config["folders"].get("reports"),
-        self.config["folders"].get("profiles"),
-        self.config["folders"].get("references"),
-        self.config["folders"].get("resistances"),
-        self.config["folders"].get("genomes"),
-    ]
-    for dir_path in required_dirs:
-        if dir_path:
-            resolved_path = resolve_path(dir_path)
-            os.makedirs(resolved_path, exist_ok=True)
-            self.logger.info(f"Ensured directory exists: {resolved_path}")
-
 
 class Referencer:
     def __init__(self, config, log, sampleinfo={}, force=False):
         self.config = self.resolve_config_paths(config)
-        self.ensure_directories() 
+        self.ensure_directories()
         self.logger = log
         self.db_access = DB_Manipulator(config, log)
         self.updated = list()
@@ -101,17 +72,35 @@ class Referencer:
             self.token, self.secret = get_new_session_token(default_db)
 
     def resolve_config_paths(self, config):
-        # Ensure all paths in 'folders' are resolved
-        if 'folders' in config:
-            for key, value in config['folders'].items():
-                if isinstance(value, str) and '/' in value:
-                    config['folders'][key] = resolve_path(value)
+        """Resolve all paths in 'folders'."""
+        if "folders" in config:
+            for key, value in config["folders"].items():
+                if isinstance(value, str) and "/" in value:
+                    config["folders"][key] = resolve_path(value)
 
         # Resolve pubmlst credentials_files_path if present
-        if 'pubmlst' in config and 'credentials_files_path' in config['pubmlst']:
-            config['pubmlst']['credentials_files_path'] = resolve_path(config['pubmlst']['credentials_files_path'])
+        if "pubmlst" in config and "credentials_files_path" in config["pubmlst"]:
+            config["pubmlst"]["credentials_files_path"] = resolve_path(
+                config["pubmlst"]["credentials_files_path"]
+            )
 
         return config
+
+    def ensure_directories(self):
+        """Ensure all required directories are created."""
+        required_dirs = [
+            self.config["folders"].get("results"),
+            self.config["folders"].get("reports"),
+            self.config["folders"].get("profiles"),
+            self.config["folders"].get("references"),
+            self.config["folders"].get("resistances"),
+            self.config["folders"].get("genomes"),
+        ]
+        for dir_path in required_dirs:
+            if dir_path:
+                resolved_path = resolve_path(dir_path)
+                os.makedirs(resolved_path, exist_ok=True)
+                self.logger.info("Ensured directory exists: {}".format(resolved_path))
 
     def identify_new(self, cg_id="", project=False):
         """Automatically downloads pubMLST & NCBI organisms not already downloaded"""
