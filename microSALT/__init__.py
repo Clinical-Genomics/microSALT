@@ -6,7 +6,6 @@ import pathlib
 import re
 import subprocess
 import sys
-
 from flask import Flask
 from distutils.sysconfig import get_python_lib
 
@@ -17,14 +16,13 @@ app.config.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
 app.config.setdefault("SQLALCHEMY_BINDS", None)
 app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
 
-# Reusable function for resolving paths
+# Function to resolve paths
 def resolve_path(path):
     """Resolve environment variables, user shortcuts, and absolute paths."""
     if path:
         path = os.path.expandvars(path)  # Expand environment variables like $HOME
         path = os.path.expanduser(path)  # Expand user shortcuts like ~
         path = os.path.abspath(path)    # Convert to an absolute path
-        return path
     return path
 
 # Function to create directories if they do not exist
@@ -39,6 +37,24 @@ def ensure_directory(path, logger=None):
         if logger:
             logger.error("Failed to create path {}: {}".format(path, e))
         raise
+
+# Function to ensure required directories exist
+def ensure_required_directories(config, logger):
+    """Ensure all required directories are created."""
+    required_dirs = [
+        config["folders"].get("results"),
+        config["folders"].get("reports"),
+        config["folders"].get("profiles"),
+        config["folders"].get("references"),
+        config["folders"].get("resistances"),
+        config["folders"].get("genomes"),
+    ]
+    for dir_path in required_dirs:
+        resolved_path = resolve_path(dir_path)
+        try:
+            ensure_directory(resolved_path, logger)
+        except Exception as e:
+            logger.error("Failed to ensure directory {}: {}".format(resolved_path, e))
 
 # Initialize logger
 logger = logging.getLogger("main_logger")
@@ -72,10 +88,13 @@ elif os.path.exists(default_config_path):
 # Config dependent section:
 if preset_config:
     try:
-        # Load Flask info
+        # Update Flask app configuration
         app.config.update(preset_config["database"])
 
-        # Add extrapaths to config
+        # Ensure all required directories
+        ensure_required_directories(preset_config, logger)
+
+        # Add extra paths to config
         preset_config["folders"]["expec"] = resolve_path(
             os.path.join(pathlib.Path(__file__).parent.parent, "unique_references/ExPEC.fsa")
         )
@@ -97,17 +116,17 @@ if preset_config:
             raise KeyError("Missing 'pubmlst' section in configuration file.")
         pubmlst_config = preset_config["pubmlst"]
 
-        # Set and resolve credentials file path
+        # Resolve credentials file path
         credentials_files_path = resolve_path(pubmlst_config.get("credentials_files_path", "$HOME/.microSALT"))
         pubmlst_config["credentials_files_path"] = credentials_files_path
 
-        # Ensure the credentials directory exists
+        # Ensure credentials directory exists
         ensure_directory(credentials_files_path, logger)
 
-        # Update the app configuration
+        # Update app configuration
         app.config["pubmlst"] = pubmlst_config
 
-        # Log the resolved credentials file path
+        # Log credentials file path
         logger.info("PubMLST configuration loaded with credentials_files_path: {}".format(credentials_files_path))
 
     except KeyError as e:
