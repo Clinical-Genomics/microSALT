@@ -59,3 +59,16 @@ def download_locus(database, locus, session_token, session_secret):
         return response.content
     except requests.exceptions.RequestException as e:
         raise ValueError("Failed to download locus: {}".format(e))
+
+def check_database_metadata(database, session_token, session_secret):
+    """Check database metadata (last update)."""
+    validate_session_token(session_token, session_secret)
+    url = f"{BASE_API}/db/{database}"
+    headers = {"Authorization": generate_oauth_header(url, session_token, session_secret)}
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise ValueError(
+            f"Failed to check database metadata: {response.status_code} - {response.text}"
+        )
