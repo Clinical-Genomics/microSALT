@@ -34,10 +34,10 @@ def ensure_directory(path, logger=None):
         if path and not pathlib.Path(path).exists():
             os.makedirs(path, exist_ok=True)
             if logger:
-                logger.info(f"Created path {path}")
+                logger.info("Created path {}".format(path))
     except Exception as e:
         if logger:
-            logger.error(f"Failed to create path {path}: {e}")
+            logger.error("Failed to create path {}: {}".format(path, e))
         raise
 
 # Initialize logger
@@ -61,13 +61,13 @@ if "MICROSALT_CONFIG" in os.environ:
         with open(envvar, "r") as conf:
             preset_config = json.load(conf)
     except Exception as e:
-        logger.error(f"Config error: {e}")
+        logger.error("Config error: {}".format(e))
 elif os.path.exists(default_config_path):
     try:
         with open(default_config_path, "r") as conf:
             preset_config = json.load(conf)
     except Exception as e:
-        logger.error(f"Config error: {e}")
+        logger.error("Config error: {}".format(e))
 
 # Config dependent section:
 if preset_config:
@@ -108,11 +108,11 @@ if preset_config:
         app.config["pubmlst"] = pubmlst_config
 
         # Log the resolved credentials file path
-        logger.info(f"PubMLST configuration loaded with credentials_files_path: {credentials_files_path}")
+        logger.info("PubMLST configuration loaded with credentials_files_path: {}".format(credentials_files_path))
 
     except KeyError as e:
-        logger.error(f"Configuration error: {e}")
+        logger.error("Configuration error: {}".format(e))
         sys.exit(1)
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+        logger.error("Unexpected error: {}".format(e))
         sys.exit(1)
