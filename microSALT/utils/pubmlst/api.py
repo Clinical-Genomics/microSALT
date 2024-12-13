@@ -12,70 +12,50 @@ def validate_session_token(session_token, session_secret):
 def query_databases(session_token, session_secret):
     """Query available PubMLST databases."""
     validate_session_token(session_token, session_secret)
-    url = f"{BASE_API}/db"
+    url = "{}/db".format(BASE_API)
     headers = {"Authorization": generate_oauth_header(url, session_token, session_secret)}
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         res = response.json()
-        # Ensure the response is a list of database entries
         if not isinstance(res, list):
-            raise ValueError(f"Unexpected response format from /db endpoint: {res}")
+            raise ValueError("Unexpected response format from /db endpoint: {}".format(res))
         return res
     else:
-        raise ValueError(f"Failed to query databases: {response.status_code} - {response.text}")
+        raise ValueError("Failed to query databases: {} - {}".format(response.status_code, response.text))
 
 def fetch_schemes(database, session_token, session_secret):
     """Fetch available schemes for a database."""
     validate_session_token(session_token, session_secret)
-    url = f"{BASE_API}/db/{database}/schemes"
+    url = "{}/db/{}/schemes".format(BASE_API, database)
     headers = {"Authorization": generate_oauth_header(url, session_token, session_secret)}
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         return response.json()
     else:
-        raise ValueError(f"Failed to fetch schemes: {response.status_code} - {response.text}")
-
-def download_profiles(database, scheme_id, session_token, session_secret):
-    """Download MLST profiles (paginated JSON)."""
-    validate_session_token(session_token, session_secret)
-    if not scheme_id:
-        raise ValueError("Scheme ID is required to download profiles.")
-    url = f"{BASE_API}/db/{database}/schemes/{scheme_id}/profiles"
-    return fetch_paginated_data(url, session_token, session_secret)
+        raise ValueError("Failed to fetch schemes: {} - {}".format(response.status_code, response.text))
 
 def download_profiles_csv(database, scheme_id, session_token, session_secret):
     """Download MLST profiles in CSV format."""
     validate_session_token(session_token, session_secret)
     if not scheme_id:
         raise ValueError("Scheme ID is required to download profiles CSV.")
-    url = f"{BASE_API}/db/{database}/schemes/{scheme_id}/profiles_csv"
+    url = "{}/db/{}/schemes/{}/profiles_csv".format(BASE_API, database, scheme_id)
     headers = {"Authorization": generate_oauth_header(url, session_token, session_secret)}
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.text  # Return CSV content as a string
-    else:
-        raise ValueError(f"Failed to download profiles CSV: {response.status_code} - {response.text}")
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        return response.text
+    except requests.exceptions.RequestException as e:
+        raise ValueError("Failed to download profiles CSV: {}".format(e))
 
 def download_locus(database, locus, session_token, session_secret):
     """Download locus sequence files."""
     validate_session_token(session_token, session_secret)
-    url = f"{BASE_API}/db/{database}/loci/{locus}/alleles_fasta"
+    url = "{}/db/{}/loci/{}/alleles_fasta".format(BASE_API, database, locus)
     headers = {"Authorization": generate_oauth_header(url, session_token, session_secret)}
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.content  # Return raw FASTA content
-    else:
-        raise ValueError(f"Failed to download locus: {response.status_code} - {response.text}")
-
-def check_database_metadata(database, session_token, session_secret):
-    """Check database metadata (last update)."""
-    validate_session_token(session_token, session_secret)
-    url = f"{BASE_API}/db/{database}"
-    headers = {"Authorization": generate_oauth_header(url, session_token, session_secret)}
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise ValueError(
-            f"Failed to check database metadata: {response.status_code} - {response.text}"
-        )
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        return response.content
+    except requests.exceptions.RequestException as e:
+        raise ValueError("Failed to download locus: {}".format(e))
