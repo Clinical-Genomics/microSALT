@@ -27,10 +27,17 @@ from microSALT.utils.pubmlst.authentication import (
     load_session_token,
 )
 
+def resolve_path(path):
+    """Resolve environment variables, user shortcuts, and convert to absolute path."""
+    if path:
+        path = os.path.expandvars(path)
+        path = os.path.expanduser(path)
+        path = os.path.abspath(path)
+    return path
 
 class Referencer:
     def __init__(self, config, log, sampleinfo={}, force=False):
-        self.config = config
+        self.config = self.resolve_config_paths(config)
         self.logger = log
         self.db_access = DB_Manipulator(config, log)
         self.updated = list()
@@ -61,6 +68,19 @@ class Referencer:
         self.token, self.secret = load_session_token(default_db)
         if not self.token or not self.secret:
             self.token, self.secret = get_new_session_token(default_db)
+
+    def resolve_config_paths(self, config):
+        # Resolve all folder paths
+        if 'folders' in config:
+            for key, value in config['folders'].items():
+                if isinstance(value, str) and '/' in value:
+                    config['folders'][key] = resolve_path(value)
+
+        # Resolve pubmlst credentials_files_path if present
+        if 'pubmlst' in config and 'credentials_files_path' in config['pubmlst']:
+            config['pubmlst']['credentials_files_path'] = resolve_path(config['pubmlst']['credentials_files_path'])
+
+        return config
 
     def identify_new(self, cg_id="", project=False):
         """Automatically downloads pubMLST & NCBI organisms not already downloaded"""
