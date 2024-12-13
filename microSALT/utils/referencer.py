@@ -38,9 +38,9 @@ def resolve_path(path):
 
 class Referencer:
     def __init__(self, config, log, sampleinfo={}, force=False):
+        self.logger = log
         self.config = self.resolve_config_paths(config)
         self.ensure_directories()
-        self.logger = log
         self.db_access = DB_Manipulator(config, log)
         self.updated = list()
         # Fetch names of existing refs
