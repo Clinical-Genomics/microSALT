@@ -18,7 +18,7 @@ from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.pubmlst.api import (
     check_database_metadata,
     download_locus,
-    download_profiles,
+    download_profiles_csv,
     fetch_schemes,
     query_databases,
 )
@@ -495,31 +495,42 @@ class Referencer:
 
                         if "MLST" in scheme["description"]:
                             self.logger.debug(f"Downloading profiles for {sub_db_desc}...")
+                            # Use the CSV endpoint to avoid pagination issues
                             try:
-                                profiles = download_profiles(sub_db_name, scheme_id, db_token, db_secret)
-                                self.logger.debug(f"Profiles fetched for {sub_db_desc}. Total: {len(profiles)}.")
+                                profiles_csv = download_profiles_csv(sub_db_name, scheme_id, db_token, db_secret)
+                                org_folder_name = sub_db_desc.replace(" ", "_").lower()
+                                st_target = "{}/{}".format(self.config["folders"]["profiles"], org_folder_name)
+                                with open(st_target, "w") as f:
+                                    f.write(profiles_csv)
 
                                 # Process loci
-                                for locus in scheme.get("loci", []):
-                                    self.logger.info(f"Downloading locus {locus} for {sub_db_desc}...")
-                                    locus_data = download_locus(sub_db_name, locus, db_token, db_secret)
-                                    locus_file_path = os.path.join(
-                                        self.config["folders"]["references"], sub_db_desc.replace(" ", "_").lower(), f"{locus}.tfa"
-                                    )
-                                    os.makedirs(os.path.dirname(locus_file_path), exist_ok=True)
-                                    with open(locus_file_path, "wb") as locus_file:
-                                        locus_file.write(locus_data)
-                                    self.logger.info(f"Locus {locus} downloaded successfully.")
+                                loci = scheme.get("loci", [])
+                                if not loci:
+                                    self.logger.warning(f"No loci found for scheme {scheme_id} in {sub_db_desc}.")
+                                else:
+                                    out = "{}/{}".format(self.config["folders"]["references"], org_folder_name)
+                                    if os.path.isdir(out):
+                                        shutil.rmtree(out)
+                                    os.makedirs(out)
+                                    for locus in loci:
+                                        self.logger.info(f"Downloading locus {locus} for {sub_db_desc}...")
+                                        locus_data = download_locus(sub_db_name, locus, db_token, db_secret)
+                                        locus_file_path = os.path.join(out, f"{locus}.tfa")
+                                        with open(locus_file_path, "wb") as locus_file:
+                                            locus_file.write(locus_data)
+                                        self.logger.info(f"Locus {locus} downloaded successfully.")
+                                    self.index_db(out, ".tfa")
 
                                 # Check and log metadata
                                 metadata = check_database_metadata(sub_db_name, db_token, db_secret)
                                 last_updated = metadata.get("last_updated", "Unknown")
                                 if last_updated != "Unknown":
                                     self.db_access.upd_rec(
-                                        {"name": f"profile_{sub_db_desc.replace(' ', '_').lower()}"},
+                                        {"name": f"profile_{org_folder_name}"},
                                         "Versions",
                                         {"version": last_updated},
                                     )
+                                    self.db_access.reload_profiletable(org_folder_name)
                                     self.logger.info(f"Database {sub_db_desc} updated to {last_updated}.")
                                 else:
                                     self.logger.debug(f"No new updates for {sub_db_desc}.")

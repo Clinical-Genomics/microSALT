@@ -24,7 +24,6 @@ def query_databases(session_token, session_secret):
     else:
         raise ValueError(f"Failed to query databases: {response.status_code} - {response.text}")
 
-
 def fetch_schemes(database, session_token, session_secret):
     """Fetch available schemes for a database."""
     validate_session_token(session_token, session_secret)
@@ -37,14 +36,25 @@ def fetch_schemes(database, session_token, session_secret):
         raise ValueError(f"Failed to fetch schemes: {response.status_code} - {response.text}")
 
 def download_profiles(database, scheme_id, session_token, session_secret):
-    """Download MLST profiles."""
+    """Download MLST profiles (paginated JSON)."""
     validate_session_token(session_token, session_secret)
     if not scheme_id:
         raise ValueError("Scheme ID is required to download profiles.")
     url = f"{BASE_API}/db/{database}/schemes/{scheme_id}/profiles"
     return fetch_paginated_data(url, session_token, session_secret)
 
-
+def download_profiles_csv(database, scheme_id, session_token, session_secret):
+    """Download MLST profiles in CSV format."""
+    validate_session_token(session_token, session_secret)
+    if not scheme_id:
+        raise ValueError("Scheme ID is required to download profiles CSV.")
+    url = f"{BASE_API}/db/{database}/schemes/{scheme_id}/profiles_csv"
+    headers = {"Authorization": generate_oauth_header(url, session_token, session_secret)}
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.text  # Return CSV content as a string
+    else:
+        raise ValueError(f"Failed to download profiles CSV: {response.status_code} - {response.text}")
 
 def download_locus(database, locus, session_token, session_secret):
     """Download locus sequence files."""
