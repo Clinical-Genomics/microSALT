@@ -9,38 +9,17 @@ import re
 import shutil
 import subprocess
 import urllib.request
-import xml.etree.ElementTree as ET
 import zipfile
 
 from Bio import Entrez
-
+import xml.etree.ElementTree as ET
 from microSALT.store.db_manipulator import DB_Manipulator
-from microSALT.utils.pubmlst.api import (
-    check_database_metadata,
-    download_locus,
-    download_profiles_csv,
-    fetch_schemes,
-    query_databases,
-)
-from microSALT.utils.pubmlst.authentication import (
-    get_new_session_token,
-    load_session_token,
-)
-
-def resolve_path(path):
-    """Resolve environment variables, user shortcuts, and convert to absolute path."""
-    if path:
-        path = os.path.expandvars(path)
-        path = os.path.expanduser(path)
-        path = os.path.abspath(path)
-    return path
 
 
 class Referencer:
     def __init__(self, config, log, sampleinfo={}, force=False):
+        self.config = config
         self.logger = log
-        self.config = self.resolve_config_paths(config)
-        self.ensure_directories()
         self.db_access = DB_Manipulator(config, log)
         self.updated = list()
         # Fetch names of existing refs
@@ -65,45 +44,8 @@ class Referencer:
             self.name = self.sampleinfo.get("CG_ID_sample")
             self.sample = self.sampleinfo
 
-        # Use a default database to load or fetch an initial token
-        default_db = "pubmlst_test_seqdef"
-        self.token, self.secret = load_session_token(default_db)
-        if not self.token or not self.secret:
-            self.token, self.secret = get_new_session_token(default_db)
-
-    def resolve_config_paths(self, config):
-        """Resolve all paths in 'folders'."""
-        if "folders" in config:
-            for key, value in config["folders"].items():
-                if isinstance(value, str) and "/" in value:
-                    config["folders"][key] = resolve_path(value)
-
-        # Resolve pubmlst credentials_files_path if present
-        if "pubmlst" in config and "credentials_files_path" in config["pubmlst"]:
-            config["pubmlst"]["credentials_files_path"] = resolve_path(
-                config["pubmlst"]["credentials_files_path"]
-            )
-
-        return config
-
-    def ensure_directories(self):
-        """Ensure all required directories are created."""
-        required_dirs = [
-            self.config["folders"].get("results"),
-            self.config["folders"].get("reports"),
-            self.config["folders"].get("profiles"),
-            self.config["folders"].get("references"),
-            self.config["folders"].get("resistances"),
-            self.config["folders"].get("genomes"),
-        ]
-        for dir_path in required_dirs:
-            if dir_path:
-                resolved_path = resolve_path(dir_path)
-                os.makedirs(resolved_path, exist_ok=True)
-                self.logger.info("Ensured directory exists: {}".format(resolved_path))
-
     def identify_new(self, cg_id="", project=False):
-        """Automatically downloads pubMLST & NCBI organisms not already downloaded"""
+        """ Automatically downloads pubMLST & NCBI organisms not already downloaded """
         neworgs = list()
         newrefs = list()
         try:
@@ -145,9 +87,10 @@ class Referencer:
     def index_db(self, full_dir, suffix):
         """Check for indexation, makeblastdb job if not enough of them."""
         reindexation = False
-        full_dir = resolve_path(full_dir)
         files = os.listdir(full_dir)
-        sufx_files = glob.glob("{}/*{}".format(full_dir, suffix))  # List of source files
+        sufx_files = glob.glob(
+            "{}/*{}".format(full_dir, suffix)
+        )  # List of source files
         for file in sufx_files:
             subsuf = "\{}$".format(suffix)
             base = re.sub(subsuf, "", file)
@@ -159,7 +102,10 @@ class Referencer:
                 if os.path.basename(base) == elem[: elem.rfind(".")]:
                     bases = bases + 1
                     # Number of index files fresher than source (6)
-                    if os.stat(file).st_mtime < os.stat("{}/{}".format(full_dir, elem)).st_mtime:
+                    if (
+                        os.stat(file).st_mtime
+                        < os.stat("{}/{}".format(full_dir, elem)).st_mtime
+                    ):
                         newer = newer + 1
             # 7 for parse_seqids, 4 for not.
             if not (bases == 7 or newer == 6) and not (bases == 4 and newer == 3):
@@ -172,16 +118,18 @@ class Referencer:
                         )
                     # MLST locis
                     else:
-                        bash_cmd = (
-                            "makeblastdb -in {}/{} -dbtype nucl -parse_seqids -out {}".format(
-                                full_dir, os.path.basename(file), os.path.basename(base)
-                            )
+                        bash_cmd = "makeblastdb -in {}/{} -dbtype nucl -parse_seqids -out {}".format(
+                            full_dir, os.path.basename(file), os.path.basename(base)
                         )
-                    proc = subprocess.Popen(bash_cmd.split(), cwd=full_dir, stdout=subprocess.PIPE)
+                    proc = subprocess.Popen(
+                        bash_cmd.split(), cwd=full_dir, stdout=subprocess.PIPE
+                    )
                     proc.communicate()
                 except Exception as e:
                     self.logger.error(
-                        "Unable to index requested target {} in {}".format(file, full_dir)
+                        "Unable to index requested target {} in {}".format(
+                            file, full_dir
+                        )
                     )
         if reindexation:
             self.logger.info("Re-indexed contents of {}".format(full_dir))
@@ -194,7 +142,7 @@ class Referencer:
             for entry in root:
                 # Check organism
                 species = entry.text.strip()
-                organ = species.lower().replace(" ", "_")
+                organ = species.lower().replace(" ", "_") 
                 if "escherichia_coli" in organ and "#1" in organ:
                     organ = organ[:-2]
                 if organ in self.organisms:
@@ -203,11 +151,15 @@ class Referencer:
                     st_link = entry.find("./mlst/database/profiles/url").text
                     profiles_query = urllib.request.urlopen(st_link)
                     profile_no = profiles_query.readlines()[-1].decode("utf-8").split("\t")[0]
-                    if organ.replace("_", " ") not in self.updated and (
-                        int(profile_no.replace("-", "")) > int(currver.replace("-", "")) or force
+                    if (
+                        organ.replace("_", " ") not in self.updated
+                        and (
+                            int(profile_no.replace("-", "")) > int(currver.replace("-", ""))
+                            or force
+                        )
                     ):
                         # Download MLST profiles
-                        self.logger.info("Downloading new MLST profiles for " + species)
+                        self.logger.info("Downloading new MLST profiles for " + species)       
                         output = "{}/{}".format(self.config["folders"]["profiles"], organ)
                         urllib.request.urlretrieve(st_link, output)
                         # Clear existing directory and download allele files
@@ -217,9 +169,7 @@ class Referencer:
                         for locus in entry.findall("./mlst/database/loci/locus"):
                             locus_name = locus.text.strip()
                             locus_link = locus.find("./url").text
-                            urllib.request.urlretrieve(
-                                locus_link, "{}/{}.tfa".format(out, locus_name)
-                            )
+                            urllib.request.urlretrieve(locus_link, "{}/{}.tfa".format(out, locus_name))
                         # Create new indexes
                         self.index_db(out, ".tfa")
                         # Update database
@@ -230,7 +180,9 @@ class Referencer:
                         )
                         self.db_access.reload_profiletable(organ)
         except Exception as e:
-            self.logger.warning("Unable to update pubMLST external data: {}".format(e))
+            self.logger.warning(
+                "Unable to update pubMLST external data: {}".format(e)
+            )
 
     def resync(self, type="", sample="", ignore=False):
         """Manipulates samples that have an internal ST that differs from pubMLST ST"""
@@ -273,7 +225,9 @@ class Referencer:
 
                 for file in os.listdir(hiddensrc):
                     if file not in actual and (".fsa" in file):
-                        self.logger.info("resFinder database files corrupted. Syncing...")
+                        self.logger.info(
+                            "resFinder database files corrupted. Syncing..."
+                        )
                         wipeIndex = True
                         break
 
@@ -301,15 +255,16 @@ class Referencer:
                         self.config["folders"]["resistances"],
                     )
 
+        # Double checks indexation is current.
         self.index_db(self.config["folders"]["resistances"], ".fsa")
 
     def existing_organisms(self):
-        """Returns list of all organisms currently added"""
+        """ Returns list of all organisms currently added """
         return self.organisms
 
     def organism2reference(self, normal_organism_name):
         """Finds which reference contains the same words as the organism
-        and returns it in a format for database calls. Returns empty string if none found"""
+       and returns it in a format for database calls. Returns empty string if none found"""
         orgs = os.listdir(self.config["folders"]["references"])
         organism = re.split(r"\W+", normal_organism_name.lower())
         try:
@@ -338,11 +293,13 @@ class Referencer:
             )
 
     def download_ncbi(self, reference):
-        """Checks available references, downloads from NCBI if not present"""
+        """ Checks available references, downloads from NCBI if not present """
         try:
             DEVNULL = open(os.devnull, "wb")
             Entrez.email = "2@2.com"
-            record = Entrez.efetch(db="nucleotide", id=reference, rettype="fasta", retmod="text")
+            record = Entrez.efetch(
+                db="nucleotide", id=reference, rettype="fasta", retmod="text"
+            )
             sequence = record.read()
             output = "{}/{}.fasta".format(self.config["folders"]["genomes"], reference)
             with open(output, "w") as f:
@@ -365,18 +322,24 @@ class Referencer:
             out, err = proc.communicate()
             self.logger.info("Downloaded reference {}".format(reference))
         except Exception as e:
-            self.logger.warning("Unable to download genome '{}' from NCBI".format(reference))
+            self.logger.warning(
+                "Unable to download genome '{}' from NCBI".format(reference)
+            )
 
     def add_pubmlst(self, organism):
-        """Checks pubmlst for references of given organism and downloads them"""
+        """ Checks pubmlst for references of given organism and downloads them """
+        # Organism must be in binomial format and only resolve to one hit
         errorg = organism
         try:
             organism = organism.lower().replace(".", " ")
             if organism.replace(" ", "_") in self.organisms and not self.force:
-                self.logger.info("Organism {} already stored in microSALT".format(organism))
+                self.logger.info(
+                    "Organism {} already stored in microSALT".format(organism)
+                )
                 return
             db_query = self.query_pubmlst()
 
+            # Doublecheck organism name is correct and unique
             orgparts = organism.split(" ")
             counter = 0.0
             for item in db_query:
@@ -390,10 +353,13 @@ class Referencer:
                             if not part in subtype["description"].lower():
                                 missingPart = True
                     if not missingPart:
+                        # Seqdef always appear after isolates, so this is fine
                         seqdef_url = subtype["href"]
                         desc = subtype["description"]
                         counter += 1.0
-                        self.logger.info("Located pubMLST hit {} for sample".format(desc))
+                        self.logger.info(
+                            "Located pubMLST hit {} for sample".format(desc)
+                        )
             if counter > 2.0:
                 raise Exception(
                     "Reference '{}' resolved to {} organisms. Please be more stringent".format(
@@ -401,20 +367,26 @@ class Referencer:
                     )
                 )
             elif counter < 1.0:
+                # add external
                 raise Exception(
-                    "Unable to find requested organism '{}' in pubMLST database".format(errorg)
+                    "Unable to find requested organism '{}' in pubMLST database".format(
+                        errorg
+                    )
                 )
             else:
                 truename = desc.lower().split(" ")
                 truename = "{}_{}".format(truename[0], truename[1])
                 self.download_pubmlst(truename, seqdef_url)
+                # Update organism list
                 self.refs = self.db_access.profiles
                 self.logger.info("Created table profile_{}".format(truename))
         except Exception as e:
             self.logger.warning(e.args[0])
 
     def query_pubmlst(self):
-        """Returns a json object containing all organisms available via pubmlst.org"""
+        """ Returns a json object containing all organisms available via pubmlst.org """
+        # Example request URI: http://rest.pubmlst.org/db/pubmlst_neisseria_seqdef/schemes/1/profiles_csv
+        seqdef_url = dict()
         databases = "http://rest.pubmlst.org/db"
         db_req = urllib.request.Request(databases)
         with urllib.request.urlopen(db_req) as response:
@@ -422,7 +394,7 @@ class Referencer:
         return db_query
 
     def get_mlst_scheme(self, subtype_href):
-        """Returns the path for the MLST data scheme at pubMLST"""
+        """ Returns the path for the MLST data scheme at pubMLST """
         try:
             mlst = False
             record_req_1 = urllib.request.Request("{}/schemes/1".format(subtype_href))
@@ -440,13 +412,13 @@ class Referencer:
             if mlst:
                 self.logger.debug("Found data at pubMLST: {}".format(mlst))
                 return mlst
-            else:
+            else: 
                 self.logger.warning("Could not find MLST data at {}".format(subtype_href))
         except Exception as e:
             self.logger.warning(e)
 
     def external_version(self, organism, subtype_href):
-        """Returns the version (date) of the data available on pubMLST"""
+        """ Returns the version (date) of the data available on pubMLST """
         mlst_href = self.get_mlst_scheme(subtype_href)
         try:
             with urllib.request.urlopen(mlst_href) as response:
@@ -457,19 +429,27 @@ class Referencer:
             self.logger.warning(e)
 
     def download_pubmlst(self, organism, subtype_href, force=False):
-        """Downloads ST and loci for a given organism stored on pubMLST if it is more recent. Returns update date"""
+        """ Downloads ST and loci for a given organism stored on pubMLST if it is more recent. Returns update date """
         organism = organism.lower().replace(" ", "_")
 
+        # Pull version
         extver = self.external_version(organism, subtype_href)
         currver = self.db_access.get_version("profile_{}".format(organism))
-        if int(extver.replace("-", "")) <= int(currver.replace("-", "")) and not force:
+        if (
+            int(extver.replace("-", ""))
+            <= int(currver.replace("-", ""))
+            and not force
+        ):
+            # self.logger.info("Profile for {} already at latest version".format(organism.replace('_' ,' ').capitalize()))
             return currver
 
+        # Pull ST file
         mlst_href = self.get_mlst_scheme(subtype_href)
         st_target = "{}/{}".format(self.config["folders"]["profiles"], organism)
         st_input = "{}/profiles_csv".format(mlst_href)
         urllib.request.urlretrieve(st_input, st_target)
 
+        # Pull locus files
         loci_input = mlst_href
         loci_req = urllib.request.Request(loci_input)
         with urllib.request.urlopen(loci_req) as response:
@@ -489,95 +469,36 @@ class Referencer:
             urllib.request.urlretrieve(
                 "{}/alleles_fasta".format(locipath), "{}/{}.tfa".format(output, loci)
             )
+        # Create new indexes
         self.index_db(output, ".tfa")
 
     def fetch_pubmlst(self, force=False):
-        """Fetches and updates PubMLST data."""
-        try:
-            self.logger.info("Querying available PubMLST databases...")
-            databases = query_databases(self.token, self.secret)
+        """ Updates reference for data that is stored on pubMLST """
+        seqdef_url = dict()
+        db_query = self.query_pubmlst()
 
-            for db_entry in databases:
-                db_name = db_entry["name"]
-                db_desc = db_entry["description"]
+        # Fetch seqdef locations
+        for item in db_query:
+            for subtype in item["databases"]:
+                for name in self.organisms:
+                    if name.replace("_", " ") in subtype["description"].lower():
+                        # Seqdef always appear after isolates, so this is fine
+                        self.updated.append(name.replace("_", " "))
+                        seqdef_url[name] = subtype["href"]
 
-                for sub_db in db_entry.get("databases", []):
-                    sub_db_name = sub_db["name"]
-                    sub_db_desc = sub_db["description"]
-
-                    # Skip databases that are not sequence definitions or do not match known organisms
-                    if "seqdef" not in sub_db_name.lower():
-                        self.logger.debug(f"Skipping {sub_db_desc} (not a sequence definition database).")
-                        continue
-
-                    if sub_db_desc.replace(" ", "_").lower() not in self.organisms and not force:
-                        self.logger.debug(f"Skipping {sub_db_desc}, not in known organisms.")
-                        continue
-
-                    # Load or fetch a session token for this specific sub-database
-                    db_token, db_secret = load_session_token(sub_db_name)
-                    if not db_token or not db_secret:
-                        db_token, db_secret = get_new_session_token(sub_db_name)
-
-                    self.logger.info(f"Fetching schemes for {sub_db_desc}...")
-                    schemes = fetch_schemes(sub_db_name, db_token, db_secret)
-
-                    for scheme in schemes.get("schemes", []):
-                        if "scheme" not in scheme:
-                            self.logger.warning(f"Scheme does not contain 'scheme' key: {scheme}")
-                            continue
-
-                        scheme_url = scheme["scheme"]
-                        scheme_id = scheme_url.rstrip("/").split("/")[-1]
-
-                        if not scheme_id.isdigit():
-                            self.logger.error(f"Invalid scheme ID: {scheme_url}")
-                            continue
-
-                        if "MLST" in scheme["description"]:
-                            self.logger.debug(f"Downloading profiles for {sub_db_desc}...")
-                            # Use the CSV endpoint to avoid pagination issues
-                            try:
-                                profiles_csv = download_profiles_csv(sub_db_name, scheme_id, db_token, db_secret)
-                                org_folder_name = sub_db_desc.replace(" ", "_").lower()
-                                st_target = "{}/{}".format(self.config["folders"]["profiles"], org_folder_name)
-                                with open(st_target, "w") as f:
-                                    f.write(profiles_csv)
-
-                                # Process loci
-                                loci = scheme.get("loci", [])
-                                if not loci:
-                                    self.logger.warning(f"No loci found for scheme {scheme_id} in {sub_db_desc}.")
-                                else:
-                                    out = "{}/{}".format(self.config["folders"]["references"], org_folder_name)
-                                    if os.path.isdir(out):
-                                        shutil.rmtree(out)
-                                    os.makedirs(out)
-                                    for locus in loci:
-                                        self.logger.info(f"Downloading locus {locus} for {sub_db_desc}...")
-                                        locus_data = download_locus(sub_db_name, locus, db_token, db_secret)
-                                        locus_file_path = os.path.join(out, f"{locus}.tfa")
-                                        with open(locus_file_path, "wb") as locus_file:
-                                            locus_file.write(locus_data)
-                                        self.logger.info(f"Locus {locus} downloaded successfully.")
-                                    self.index_db(out, ".tfa")
-
-                                # Check and log metadata
-                                metadata = check_database_metadata(sub_db_name, db_token, db_secret)
-                                last_updated = metadata.get("last_updated", "Unknown")
-                                if last_updated != "Unknown":
-                                    self.db_access.upd_rec(
-                                        {"name": f"profile_{org_folder_name}"},
-                                        "Versions",
-                                        {"version": last_updated},
-                                    )
-                                    self.db_access.reload_profiletable(org_folder_name)
-                                    self.logger.info(f"Database {sub_db_desc} updated to {last_updated}.")
-                                else:
-                                    self.logger.debug(f"No new updates for {sub_db_desc}.")
-                            except Exception as e:
-                                self.logger.error(f"Error processing {sub_db_desc}: {e}")
-
-            self.logger.info("PubMLST fetch and update process completed successfully.")
-        except Exception as e:
-            self.logger.error(f"Failed to fetch PubMLST data: {e}")
+        for key, val in seqdef_url.items():
+            internal_ver = self.db_access.get_version("profile_{}".format(key))
+            external_ver = self.external_version(key, val)
+            if (internal_ver < external_ver) or force:
+                self.logger.info(
+                    "pubMLST reference for {} updated to {} from {}".format(
+                        key.replace("_", " ").capitalize(), external_ver, internal_ver
+                    )
+                )
+                self.download_pubmlst(key, val, force)
+                self.db_access.upd_rec(
+                    {"name": "profile_{}".format(key)},
+                    "Versions",
+                    {"version": external_ver},
+                )
+                self.db_access.reload_profiletable(key)

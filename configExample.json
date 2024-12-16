@@ -32,7 +32,9 @@
     "_comment": "Resistances. Commonly from resFinder",
     "resistances": "/tmp/MLST/references/resistances",
     "_comment": "Download path for NCBI genomes, for alignment usage",
-    "genomes": "/tmp/MLST/references/genomes"
+    "genomes": "/tmp/MLST/references/genomes",
+    "_comment": "PubMLST credentials",
+    "pubmlst_credentials": "/tmp/MLST/credentials"
   },
   "_comment": "Database/Flask configuration",
   "database": {
@@ -76,7 +78,6 @@
   "_comment": "PubMLST credentials",
   "pubmlst": {
     "client_id": "",
-    "client_secret": "",
-    "credentials_files_path": "$HOME/.microSALT/"
+    "client_secret": ""
   }
 }

@@ -1,86 +1,107 @@
 import os
-import json
 import base64
 import hashlib
+import json
 import hmac
 import time
 from pathlib import Path
 from urllib.parse import quote_plus, urlencode
-import requests
-from datetime import datetime, timedelta
-from dateutil import parser
 from microSALT import app, logger
+from microSALT.utils.pubmlst.exceptions import PUBMLSTError, PathResolutionError, CredentialsFileNotFound, InvalidCredentials, SaveSessionError
+from microSALT.utils.pubmlst.constants import Encoding
 
-BASE_WEB = {
-    "PubMLST": "https://pubmlst.org/bigsdb",
-}
+BASE_WEB = "https://pubmlst.org/bigsdb"
+BASE_API = "https://rest.pubmlst.org" 
+credentials_path_key = "pubmlst_credentials"
+pubmlst_auth_credentials_file_name = "pubmlst_credentials.env"
+pubmlst_session_credentials_file_name = "pubmlst_session_credentials.json"
+pubmlst_config = app.config["pubmlst"]
+folders_config = app.config["folders"]
 
-BASE_API_DICT = {
-    "PubMLST": "https://rest.pubmlst.org",
-}
+def get_path(config, config_key: str):
+    """Get and expand the file path from the configuration."""
+    try:
+        path = config.get(config_key)
+        if not path:
+            raise PathResolutionError(config_key)
 
-BASE_API = "https://rest.pubmlst.org"  # Used by authentication and other modules
+        path = os.path.expandvars(path)
+        path = os.path.expanduser(path)
 
-def get_credentials_file_path(pubmlst_config):
-    """Get and expand the credentials file path from the configuration."""
-    # Retrieve the path from config or use current working directory if not set
-    path = pubmlst_config.get("credentials_files_path", os.getcwd())
-    # Expand environment variables like $HOME
-    path = os.path.expandvars(path)
-    # Expand user shortcuts like ~
-    path = os.path.expanduser(path)
-    return Path(path).resolve()
+        return Path(path).resolve()
 
-def load_credentials():
+    except Exception as e:
+        raise PathResolutionError(config_key) from e
+
+
+def load_auth_credentials():
     """Load client ID, client secret, access token, and access secret from credentials file."""
-    pubmlst_config = app.config["pubmlst"]
-    credentials_files_path = get_credentials_file_path(pubmlst_config)
-    credentials_file = os.path.join(credentials_files_path, "PUBMLST_credentials.py")
-
-    if not os.path.exists(credentials_file):
-        raise FileNotFoundError(
-            f"Credentials file not found: {credentials_file}. "
-            "Please generate it using get_credentials.py."
+    try:
+        credentials_file = os.path.join(
+            get_path(folders_config, credentials_path_key),
+            pubmlst_auth_credentials_file_name
         )
-    credentials = {}
-    with open(credentials_file, "r") as f:
-        exec(f.read(), credentials)
 
-    client_id = credentials.get("CLIENT_ID", "").strip()
-    client_secret = credentials.get("CLIENT_SECRET", "").strip()
-    access_token = credentials.get("ACCESS_TOKEN", "").strip()
-    access_secret = credentials.get("ACCESS_SECRET", "").strip()
+        if not os.path.exists(credentials_file):
+            raise CredentialsFileNotFound(credentials_file)
 
-    if not (client_id and client_secret and access_token and access_secret):
-        raise ValueError(
-            "Invalid credentials: All fields (CLIENT_ID, CLIENT_SECRET, ACCESS_TOKEN, ACCESS_SECRET) must be non-empty. "
-            "Please regenerate the credentials file using get_credentials.py."
-        )
-    return client_id, client_secret, access_token, access_secret
+        credentials = {}
+        with open(credentials_file, "r") as f:
+            exec(f.read(), credentials)
 
-def generate_oauth_header(url, token, token_secret):
+        consumer_key = credentials.get("CLIENT_ID", "").strip()
+        consumer_secret = credentials.get("CLIENT_SECRET", "").strip()
+        access_token = credentials.get("ACCESS_TOKEN", "").strip()
+        access_secret = credentials.get("ACCESS_SECRET", "").strip()
+
+        missing_fields = []
+        if not consumer_key:
+            missing_fields.append("CLIENT_ID")
+        if not consumer_secret:
+            missing_fields.append("CLIENT_SECRET")
+        if not access_token:
+            missing_fields.append("ACCESS_TOKEN")
+        if not access_secret:
+            missing_fields.append("ACCESS_SECRET")
+
+        if missing_fields:
+            raise InvalidCredentials(missing_fields)
+
+        return consumer_key, consumer_secret, access_token, access_secret
+
+    except CredentialsFileNotFound:
+        raise
+    except InvalidCredentials:
+        raise
+    except PUBMLSTError as e:
+        logger.error(f"Unexpected error in load_credentials: {e}")
+        raise
+    except Exception as e:
+        raise PUBMLSTError("An unexpected error occurred while loading credentials: {e}")
+    
+
+def generate_oauth_header(url: str, oauth_consumer_key: str, oauth_consumer_secret: str, oauth_token: str, oauth_token_secret: str):
     """Generate the OAuth1 Authorization header."""
-    client_id, client_secret, _, _ = load_credentials()
     oauth_timestamp = str(int(time.time()))
-    oauth_nonce = base64.urlsafe_b64encode(os.urandom(32)).decode("utf-8").strip("=")
+    oauth_nonce = base64.urlsafe_b64encode(os.urandom(32)).decode(Encoding.UTF8.value).strip("=")
     oauth_signature_method = "HMAC-SHA1"
     oauth_version = "1.0"
 
     oauth_params = {
-        "oauth_consumer_key": client_id,
-        "oauth_token": token,
+        "oauth_consumer_key": oauth_consumer_key,
+        "oauth_token": oauth_token,
         "oauth_signature_method": oauth_signature_method,
         "oauth_timestamp": oauth_timestamp,
         "oauth_nonce": oauth_nonce,
         "oauth_version": oauth_version,
-    }
+    }    
 
     params_encoded = urlencode(sorted(oauth_params.items()))
     base_string = f"GET&{quote_plus(url)}&{quote_plus(params_encoded)}"
-    signing_key = f"{client_secret}&{token_secret}"
+    signing_key = f"{oauth_consumer_secret}&{oauth_token_secret}"
 
-    hashed = hmac.new(signing_key.encode("utf-8"), base_string.encode("utf-8"), hashlib.sha1)
-    oauth_signature = base64.b64encode(hashed.digest()).decode("utf-8")
+    hashed = hmac.new(signing_key.encode(Encoding.UTF8.value), base_string.encode(Encoding.UTF8.value), hashlib.sha1)
+    oauth_signature = base64.b64encode(hashed.digest()).decode(Encoding.UTF8.value)
 
     oauth_params["oauth_signature"] = oauth_signature
 
@@ -89,30 +110,40 @@ def generate_oauth_header(url, token, token_secret):
     )
     return auth_header
 
-def validate_session_token(session_token, session_secret):
-    """Ensure session token and secret are valid."""
-    if not session_token or not session_secret:
-        raise ValueError("Session token or secret is missing. Please authenticate first.")
+def save_session_token(db: str, token: str, secret: str, expiration_date: str):
+    """Save session token, secret, and expiration to a JSON file for the specified database."""
+    try:
+        session_data = {
+            "token": token,
+            "secret": secret,
+            "expiration": expiration_date.isoformat(),
+        }
 
-def fetch_paginated_data(url, session_token, session_secret):
-    """Fetch paginated data using the session token and secret."""
-    validate_session_token(session_token, session_secret)
+        credentials_file = os.path.join(
+            get_path(folders_config, credentials_path_key),
+            pubmlst_session_credentials_file_name
+        )
 
-    results = []
-    while url:
-        headers = {"Authorization": generate_oauth_header(url, session_token, session_secret)}
-        response = requests.get(url, headers=headers)
-
-        logger.debug(f"Fetching URL: {url}")
-        logger.debug(f"Response Status Code: {response.status_code}")
-
-        if response.status_code == 200:
-            data = response.json()
-            results.extend(data.get("profiles", []))
-            url = data.get("paging", {}).get("next", None)  # Get the next page URL if available
+        if os.path.exists(credentials_file):
+            with open(credentials_file, "r") as f:
+                all_sessions = json.load(f)
         else:
-            raise ValueError(
-                f"Failed to fetch data. URL: {url}, Status Code: {response.status_code}, "
-                f"Response: {response.text}"
-            )
-    return results
+            all_sessions = {}
+
+        if "databases" not in all_sessions:
+            all_sessions["databases"] = {}
+
+        all_sessions["databases"][db] = session_data
+
+        with open(credentials_file, "w") as f:
+            json.dump(all_sessions, f, indent=4)
+
+        logger.debug(
+            f"Session token for database '{db}' saved to '{credentials_file}'."
+        )
+    except (IOError, OSError) as e:
+        raise SaveSessionError(db, f"I/O error: {e}")
+    except ValueError as e:
+        raise SaveSessionError(db, f"Invalid data format: {e}")
+    except Exception as e:
+        raise SaveSessionError(db, f"Unexpected error: {e}")
