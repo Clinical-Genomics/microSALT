@@ -6,12 +6,15 @@ import hmac
 import time
 from pathlib import Path
 from urllib.parse import quote_plus, urlencode
+from werkzeug.exceptions import NotFound
 from microSALT import app, logger
-from microSALT.utils.pubmlst.exceptions import PUBMLSTError, PathResolutionError, CredentialsFileNotFound, InvalidCredentials, SaveSessionError
-from microSALT.utils.pubmlst.constants import Encoding
+from microSALT.utils.pubmlst.exceptions import PUBMLSTError, PathResolutionError, CredentialsFileNotFound, InvalidCredentials, SaveSessionError, InvalidURLError
+from microSALT.utils.pubmlst.constants import Encoding, url_map
 
 BASE_WEB = "https://pubmlst.org/bigsdb"
-BASE_API = "https://rest.pubmlst.org" 
+BASE_API = "https://rest.pubmlst.org"
+BASE_API_HOST = "rest.pubmlst.org"
+
 credentials_path_key = "pubmlst_credentials"
 pubmlst_auth_credentials_file_name = "pubmlst_credentials.env"
 pubmlst_session_credentials_file_name = "pubmlst_session_credentials.json"
@@ -147,3 +150,15 @@ def save_session_token(db: str, token: str, secret: str, expiration_date: str):
         raise SaveSessionError(db, f"Invalid data format: {e}")
     except Exception as e:
         raise SaveSessionError(db, f"Unexpected error: {e}")
+
+def parse_pubmlst_url(url: str):
+    """
+    Match a URL against the URL map and return extracted parameters.
+    """
+    adapter = url_map.bind("")
+    parsed_url = url.split(BASE_API_HOST)[-1]
+    try:
+        endpoint, values = adapter.match(parsed_url)
+        return {"endpoint": endpoint, **values}
+    except NotFound:
+        raise InvalidURLError(url)
