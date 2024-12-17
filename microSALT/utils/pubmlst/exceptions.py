@@ -54,3 +54,12 @@ class SessionTokenResponseError(PUBMLSTError):
     def __init__(self, db, reason):
         message = f"Invalid session token response for database '{db}': {reason}"
         super(SessionTokenResponseError, self).__init__(message)
+
+class InvalidURLError(PUBMLSTError):
+    """Raised when the provided URL does not match any known patterns."""
+    def __init__(self, href):
+        message = (
+            f"The provided URL '{href}' does not match any known PUBMLST API patterns. "
+            "Please check the URL for correctness."
+        )
+        super(InvalidURLError, self).__init__(message)
