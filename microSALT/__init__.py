@@ -47,6 +47,15 @@ if preset_config != "":
         # Load flask info
         app.config.update(preset_config["database"])
 
+        # Add `folders` configuration
+        app.config["folders"] = preset_config.get("folders", {})
+
+        # Ensure PubMLST configuration is included
+        app.config["pubmlst"] = preset_config.get("pubmlst", {
+            "client_id": "",
+            "client_secret": ""        
+            })
+
         # Add extrapaths to config
         preset_config["folders"]["expec"] = os.path.abspath(
             os.path.join(
