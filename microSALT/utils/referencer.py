@@ -10,7 +10,6 @@ import shutil
 import subprocess
 import urllib.request
 import zipfile
-from microSALT.utils.pubmlst.client import PubMLSTClient
 
 from Bio import Entrez
 import xml.etree.ElementTree as ET
@@ -44,8 +43,6 @@ class Referencer:
                 self.sampleinfo = self.sampleinfo[0]
             self.name = self.sampleinfo.get("CG_ID_sample")
             self.sample = self.sampleinfo
-        self.client = PubMLSTClient()
-
 
     def identify_new(self, cg_id="", project=False):
         """ Automatically downloads pubMLST & NCBI organisms not already downloaded """
@@ -388,133 +385,92 @@ class Referencer:
 
     def query_pubmlst(self):
         """ Returns a json object containing all organisms available via pubmlst.org """
-        db_query = self.client.query_databases()
+        # Example request URI: http://rest.pubmlst.org/db/pubmlst_neisseria_seqdef/schemes/1/profiles_csv
+        seqdef_url = dict()
+        databases = "http://rest.pubmlst.org/db"
+        db_req = urllib.request.Request(databases)
+        with urllib.request.urlopen(db_req) as response:
+            db_query = json.loads(response.read().decode("utf-8"))
         return db_query
-
 
     def get_mlst_scheme(self, subtype_href):
         """ Returns the path for the MLST data scheme at pubMLST """
         try:
-            parsed_data = self.client.parse_pubmlst_url(subtype_href)
-            db = parsed_data.get('db')
-            if not db:
-                self.logger.warning(f"Could not extract database name from URL: {subtype_href}")
-                return None
-
-            # First, check scheme 1
-            scheme_query_1 = self.client.retrieve_scheme_info(db, 1)
-            mlst = None
-            if "MLST" in scheme_query_1.get("description", ""):
-                mlst = f"{subtype_href}/schemes/1"
-            else:
-                # If scheme 1 isn't MLST, list all schemes and find the one with 'description' == 'MLST'
-                record_query = self.client.list_schemes(db)
-                for scheme in record_query.get("schemes", []):
-                    if scheme.get("description") == "MLST":
-                        mlst = scheme.get("scheme")
-                        break
-
+            mlst = False
+            record_req_1 = urllib.request.Request("{}/schemes/1".format(subtype_href))
+            with urllib.request.urlopen(record_req_1) as response:
+                scheme_query_1 = json.loads(response.read().decode("utf-8"))
+                if "MLST" in scheme_query_1["description"]:
+                    mlst = "{}/schemes/1".format(subtype_href)
+            if not mlst:
+                record_req = urllib.request.Request("{}/schemes".format(subtype_href))
+                with urllib.request.urlopen(record_req) as response:
+                    record_query = json.loads(response.read().decode("utf-8"))
+                    for scheme in record_query["schemes"]:
+                        if scheme["description"] == "MLST":
+                            mlst = scheme["scheme"]
             if mlst:
-                self.logger.debug(f"Found data at pubMLST: {mlst}")
+                self.logger.debug("Found data at pubMLST: {}".format(mlst))
                 return mlst
-            else:
-                self.logger.warning(f"Could not find MLST data at {subtype_href}")
-                return None
+            else: 
+                self.logger.warning("Could not find MLST data at {}".format(subtype_href))
         except Exception as e:
             self.logger.warning(e)
-            return None
-
 
     def external_version(self, organism, subtype_href):
         """ Returns the version (date) of the data available on pubMLST """
+        mlst_href = self.get_mlst_scheme(subtype_href)
         try:
-            mlst_href = self.get_mlst_scheme(subtype_href)
-            if not mlst_href:
-                self.logger.warning(f"MLST scheme not found for URL: {subtype_href}")
-                return None
-
-            parsed_data = self.client.parse_pubmlst_url(mlst_href)
-            db = parsed_data.get('db')
-            scheme_id = parsed_data.get('scheme_id')
-            if not db or not scheme_id:
-                self.logger.warning(f"Could not extract database name or scheme ID from MLST URL: {mlst_href}")
-                return None
-
-            scheme_info = self.client.retrieve_scheme_info(db, scheme_id)
-            last_updated = scheme_info.get("last_updated")
-            if last_updated:
-                self.logger.debug(f"Retrieved last_updated: {last_updated} for organism: {organism}")
-                return last_updated
-            else:
-                self.logger.warning(f"No 'last_updated' field found for db: {db}, scheme_id: {scheme_id}")
-                return None
+            with urllib.request.urlopen(mlst_href) as response:
+                ver_query = json.loads(response.read().decode("utf-8"))
+            return ver_query["last_updated"]
         except Exception as e:
-            self.logger.warning(f"Could not determine pubMLST version for {organism}")
+            self.logger.warning("Could not determine pubMLST version for {}".format(organism))
             self.logger.warning(e)
-            return None
-
 
     def download_pubmlst(self, organism, subtype_href, force=False):
         """ Downloads ST and loci for a given organism stored on pubMLST if it is more recent. Returns update date """
         organism = organism.lower().replace(" ", "_")
+
+        # Pull version
+        extver = self.external_version(organism, subtype_href)
+        currver = self.db_access.get_version("profile_{}".format(organism))
+        if (
+            int(extver.replace("-", ""))
+            <= int(currver.replace("-", ""))
+            and not force
+        ):
+            # self.logger.info("Profile for {} already at latest version".format(organism.replace('_' ,' ').capitalize()))
+            return currver
+
+        # Pull ST file
+        mlst_href = self.get_mlst_scheme(subtype_href)
+        st_target = "{}/{}".format(self.config["folders"]["profiles"], organism)
+        st_input = "{}/profiles_csv".format(mlst_href)
+        urllib.request.urlretrieve(st_input, st_target)
+
+        # Pull locus files
+        loci_input = mlst_href
+        loci_req = urllib.request.Request(loci_input)
+        with urllib.request.urlopen(loci_req) as response:
+            loci_query = json.loads(response.read().decode("utf-8"))
+
+        output = "{}/{}".format(self.config["folders"]["references"], organism)
+
         try:
-            # Pull version
-            extver = self.external_version(organism, subtype_href)
-            currver = self.db_access.get_version(f"profile_{organism}")
-            if (
-                int(extver.replace("-", ""))
-                <= int(currver.replace("-", ""))
-                and not force
-            ):
-                self.logger.info(f"Profile for {organism.replace('_', ' ').capitalize()} already at the latest version.")
-                return currver
-
-            # Retrieve the MLST scheme URL
-            mlst_href = self.get_mlst_scheme(subtype_href)
-            if not mlst_href:
-                self.logger.warning(f"MLST scheme not found for URL: {subtype_href}")
-                return None
-
-            # Parse the database name and scheme ID
-            parsed_data = self.client.parse_pubmlst_url(mlst_href)
-            db = parsed_data.get('db')
-            scheme_id = parsed_data.get('scheme_id')
-            if not db or not scheme_id:
-                self.logger.warning(f"Could not extract database name or scheme ID from MLST URL: {mlst_href}")
-                return None
-
-            # Step 1: Download the profiles CSV
-            st_target = f"{self.config['folders']['profiles']}/{organism}"
-            profiles_csv = self.client.download_profiles_csv(db, scheme_id)
-            with open(st_target, "w") as profile_file:
-                profile_file.write(profiles_csv)
-            self.logger.info(f"Profiles CSV downloaded to {st_target}")
-
-            # Step 2: Fetch scheme information to get loci
-            scheme_info = self.client.retrieve_scheme_info(db, scheme_id)
-            loci_list = scheme_info.get("loci", [])
-
-            # Step 3: Download loci FASTA files
-            output = f"{self.config['folders']['references']}/{organism}"
             if os.path.isdir(output):
                 shutil.rmtree(output)
-            os.makedirs(output)
+        except FileNotFoundError as e:
+            pass
+        os.makedirs(output)
 
-            for locus_uri in loci_list:
-                locus_name = os.path.basename(os.path.normpath(locus_uri))
-                loci_fasta = self.client.download_locus(db, locus_name)
-                with open(f"{output}/{locus_name}.tfa", "w") as fasta_file:
-                    fasta_file.write(loci_fasta)
-                self.logger.info(f"Locus FASTA downloaded: {locus_name}.tfa")
-
-            # Step 4: Create new indexes
-            self.index_db(output, ".tfa")
-
-            return extver
-        except Exception as e:
-            self.logger.error(f"Failed to download data for {organism}: {e}")
-            return None
-
+        for locipath in loci_query["loci"]:
+            loci = os.path.basename(os.path.normpath(locipath))
+            urllib.request.urlretrieve(
+                "{}/alleles_fasta".format(locipath), "{}/{}.tfa".format(output, loci)
+            )
+        # Create new indexes
+        self.index_db(output, ".tfa")
 
     def fetch_pubmlst(self, force=False):
         """ Updates reference for data that is stored on pubMLST """
