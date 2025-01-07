@@ -8,21 +8,24 @@
     "project": "production",
     "type": "core"
   },
-  "regex": {
+
+  "regex":  {
     "mail_recipient": "username@suffix.com",
     "_comment": "File finding patterns. Only single capture group accepted (for reverse/forward identifier)",
     "file_pattern": "\\w{8,12}_\\w{8,10}(?:-\\d+)*_L\\d_(?:R)*(\\d{1}).fastq.gz",
     "_comment": "Organisms recognized enough to be considered stable",
     "verified_organisms": []
   },
+
   "_comment": "Folders",
-  "folders": {
+  "folders":  {
     "_comment": "Root folder for ALL output",
     "results": "/tmp/MLST/results/",
     "_comment": "Report collection folder",
     "reports": "/tmp/MLST/reports/",
     "_comment": "Log file position and name",
     "log_file": "/tmp/microsalt.log",
+    
     "_comment": "Root folder for input fasta sequencing data",
     "seqdata": "/tmp/projects/",
     "_comment": "ST profiles. Each ST profile file under 'profiles' have an identicial folder under references",
@@ -32,18 +35,18 @@
     "_comment": "Resistances. Commonly from resFinder",
     "resistances": "/tmp/MLST/references/resistances",
     "_comment": "Download path for NCBI genomes, for alignment usage",
-    "genomes": "/tmp/MLST/references/genomes",
-    "_comment": "PubMLST credentials",
-    "pubmlst_credentials": "/tmp/MLST/credentials"
+    "genomes": "/tmp/MLST/references/genomes"
   },
+
   "_comment": "Database/Flask configuration",
   "database": {
     "SQLALCHEMY_DATABASE_URI": "sqlite:////tmp/microsalt.db",
     "SQLALCHEMY_TRACK_MODIFICATIONS": "False",
     "DEBUG": "True"
   },
+  
   "_comment": "Thresholds for Displayed results",
-  "threshold": {
+  "threshold":  {
     "_comment": "Typing thresholds",
     "mlst_id": 100,
     "mlst_novel_id": 99.5,
@@ -69,15 +72,11 @@
     "bp_50x_warn": 50,
     "bp_100x_warn": 20
   },
+
   "_comment": "Genologics temporary configuration file",
   "genologics": {
     "baseuri": "https://lims.facility.se/",
     "username": "limsuser",
     "password": "mypassword"
-  },
-  "_comment": "PubMLST credentials",
-  "pubmlst": {
-    "client_id": "",
-    "client_secret": ""
   }
 }
