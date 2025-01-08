@@ -10,7 +10,7 @@ import sys
 from flask import Flask
 from distutils.sysconfig import get_python_lib
 
-__version__ = "4.0.0"
+__version__ = "4.1.0"
 
 app = Flask(__name__, template_folder="server/templates")
 app.config.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
@@ -51,16 +51,18 @@ if preset_config != "":
         app.config["folders"] = preset_config.get("folders", {})
 
         # Ensure PubMLST configuration is included
+
         app.config["pubmlst"] = preset_config.get("pubmlst", {
             "client_id": "",
             "client_secret": ""        
             })
 
+        app.config["pubmlst"] = preset_config.get("pubmlst", {"client_id": "", "client_secret": ""})
+
+
         # Add extrapaths to config
         preset_config["folders"]["expec"] = os.path.abspath(
-            os.path.join(
-                pathlib.Path(__file__).parent.parent, "unique_references/ExPEC.fsa"
-            )
+            os.path.join(pathlib.Path(__file__).parent.parent, "unique_references/ExPEC.fsa")
         )
         # Check if release install exists
         for entry in os.listdir(get_python_lib()):
@@ -113,22 +115,14 @@ if preset_config != "":
                         ):
                             # Special string, mangling
                             if thing == "log_file":
-                                unmade_fldr = os.path.dirname(
-                                    preset_config[entry][thing]
-                                )
-                                bash_cmd = "touch {}".format(
-                                    preset_config[entry][thing]
-                                )
-                                proc = subprocess.Popen(
-                                    bash_cmd.split(), stdout=subprocess.PIPE
-                                )
+                                unmade_fldr = os.path.dirname(preset_config[entry][thing])
+                                bash_cmd = "touch {}".format(preset_config[entry][thing])
+                                proc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
                                 output, error = proc.communicate()
                             elif thing == "SQLALCHEMY_DATABASE_URI":
                                 unmade_fldr = os.path.dirname(db_file)
                                 bash_cmd = "touch {}".format(db_file)
-                                proc = subprocess.Popen(
-                                    bash_cmd.split(), stdout=subprocess.PIPE
-                                )
+                                proc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
                                 output, error = proc.communicate()
                                 if proc.returncode != 0:
                                     logger.error(
@@ -141,12 +135,8 @@ if preset_config != "":
                                 os.makedirs(unmade_fldr)
                                 logger.info("Created path {}".format(unmade_fldr))
 
-        fh = logging.FileHandler(
-            os.path.expanduser(preset_config["folders"]["log_file"])
-        )
-        fh.setFormatter(
-            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        )
+        fh = logging.FileHandler(os.path.expanduser(preset_config["folders"]["log_file"]))
+        fh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
         logger.addHandler(fh)
 
         # Integrity check database
