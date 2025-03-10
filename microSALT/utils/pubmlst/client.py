@@ -9,7 +9,6 @@ from microSALT.utils.pubmlst.constants import HTTPMethod, RequestType, ResponseH
 from microSALT.utils.pubmlst.exceptions import PUBMLSTError, SessionTokenRequestError
 from microSALT.utils.pubmlst.helpers import (
     BASE_API,
-    generate_oauth_header,
     load_auth_credentials,
     parse_pubmlst_url,
 )
