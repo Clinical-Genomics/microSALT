@@ -3,12 +3,14 @@
 
 #!/usr/bin/env python
 
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import *
 from sqlalchemy.orm import relationship
 
-from microSALT import app
+from microSALT.app import _setup_app
 
+app: Flask = _setup_app()
 db = SQLAlchemy(app)
 
 

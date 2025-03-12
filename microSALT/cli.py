@@ -6,12 +6,8 @@
 import click
 import json
 import os
-import re
-import subprocess
 import sys
-import yaml
 
-from pkg_resources import iter_entry_points
 from microSALT import __version__, preset_config, logger, wd
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
@@ -145,7 +141,6 @@ def analyse(
     """Sequence analysis, typing and resistance identification"""
     # Run section
     pool = []
-    trimmed = not untrimmed
     set_cli_config(config)
     ctx.obj["config"]["regex"]["mail_recipient"] = email
     ctx.obj["config"]["dry"] = dry

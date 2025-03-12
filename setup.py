@@ -2,8 +2,6 @@
 from microSALT import __version__
 from setuptools import setup, find_packages
 
-version = __version__
-
 try:
     with open("requirements.txt", "r") as f:
         install_requires = [x.strip() for x in f.readlines()]
@@ -12,7 +10,7 @@ except IOError:
 
 setup(
     name="microSALT",
-    version=version,
+    version=__version__,
     long_description=__doc__,
     url="https://github.com/Clinical-Genomics/microSALT",
     author="Isak Sylvin",
