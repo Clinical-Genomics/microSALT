@@ -16,7 +16,6 @@ from Bio import Entrez
 import xml.etree.ElementTree as ET
 from microSALT.store.db_manipulator import DB_Manipulator
 
-
 class Referencer:
     def __init__(self, config, log, sampleinfo={}, force=False):
         self.config = config
@@ -271,21 +270,20 @@ class Referencer:
         orgs = os.listdir(self.config["folders"]["references"])
         organism = re.split(r"\W+", normal_organism_name.lower())
         try:
-            refs = 0
             for target in orgs:
                 hit = 0
                 for piece in organism:
                     if len(piece) == 1:
                         if target.startswith(piece):
                             hit += 1
+                    elif (
+                        piece in target
+                        or piece == "pneumonsiae"
+                        and "pneumoniae" in target
+                    ):
+                        hit += 1
                     else:
-                        if piece in target:
-                            hit += 1
-                        # For when people misspell the strain in the orderform
-                        elif piece == "pneumonsiae" and "pneumoniae" in target:
-                            hit += 1
-                        else:
-                            break
+                        break
                 if hit == len(organism):
                     return target
         except Exception as e:

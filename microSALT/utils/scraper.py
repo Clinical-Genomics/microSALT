@@ -11,7 +11,8 @@ import sys
 import time
 
 from microSALT.store.db_manipulator import DB_Manipulator
-from microSALT.utils.referencer import Referencer
+from microSALT.utils.referencer.referencer import Referencer
+from microSALT.utils.referencer.utils import get_reference_if_enterobacteriaceae
 from microSALT.utils.job_creator import Job_Creator
 
 # TODO: Rewrite so samples use seperate objects
@@ -202,7 +203,8 @@ class Scraper:
         res_cols = self.db_pusher.get_columns("{}".format(type2db))
 
         try:
-            old_ref = ""
+            # If organism is enterobacteriaceae, the reference in pubMLST now is using the "spp." suffix
+            organism: str = get_reference_if_enterobacteriaceae(organism)
             for file in file_list:
                 filename = os.path.basename(file).rsplit(".", 1)[0]  # Removes suffix
                 if filename == "lactam":
