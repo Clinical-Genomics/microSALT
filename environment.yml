@@ -10,7 +10,7 @@ dependencies:
   - picard=2.20.3
   - pigz>=2.4
   - quast=5.3.0
-  - samtools=1.13
+  - samtools=1.21
   - trimmomatic=0.39
   - openjdk=11.0.9.1
   - pytest=6.2.5
