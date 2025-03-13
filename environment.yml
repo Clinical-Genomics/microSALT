@@ -13,6 +13,4 @@ dependencies:
   - samtools=1.21
   - trimmomatic=0.39
   - openjdk=11.0.9.1
-  - pytest=6.2.5
-  - pytest-cov=2.12.1
   - skesa=2.5.1
