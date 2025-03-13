@@ -29,5 +29,5 @@ setup(
     entry_points={
         'console_scripts': ['microSALT=microSALT.cli:root'],
     },
+    python_requires='>=3.10',
 )
-
