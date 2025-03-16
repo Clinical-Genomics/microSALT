@@ -1,62 +1,18 @@
 #!/usr/bin/env python
 
-import json
-import os
-import pathlib
-import pdb
 import pytest
-import re
-import requests
-import sys
-import time
+from sqlalchemy import inspect
 
-from distutils.sysconfig import get_python_lib
 from unittest.mock import patch
 
-from microSALT.store.db_manipulator import DB_Manipulator
-from microSALT import preset_config, logger
-from microSALT.cli import root
-
-
-def unpack_db_json(filename):
-    testdata = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/{}'.format(filename)))
-    #Check if release install exists
-    for entry in os.listdir(get_python_lib()):
-        if 'microSALT-' in entry:
-            testdata = os.path.abspath(
-                os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/{}'.format(filename)))
-    with open(testdata) as json_file:
-        data = json.load(json_file)
-    return data
-
-
-@pytest.fixture
-def dbm():
-    db_file = re.search('sqlite:///(.+)', preset_config['database']['SQLALCHEMY_DATABASE_URI']).group(1)
-    dbm = DB_Manipulator(config=preset_config, log=logger)
-    dbm.create_tables()
-
-    for antry in unpack_db_json('sampleinfo_projects.json'):
-        dbm.add_rec(antry, 'Projects')
-    for entry in unpack_db_json('sampleinfo_mlst.json'):
-        dbm.add_rec(entry, 'Seq_types')
-    for bentry in unpack_db_json('sampleinfo_resistance.json'):
-        dbm.add_rec(bentry, 'Resistances')
-    for centry in unpack_db_json('sampleinfo_expec.json'):
-        dbm.add_rec(centry, 'Expacs')
-    for dentry in unpack_db_json('sampleinfo_reports.json'):
-        dbm.add_rec(dentry, 'Reports')
-    return dbm
-
-
 def test_create_every_table(dbm):
-    assert dbm.engine.dialect.has_table(dbm.engine, 'samples')
-    assert dbm.engine.dialect.has_table(dbm.engine, 'seq_types')
-    assert dbm.engine.dialect.has_table(dbm.engine, 'resistances')
-    assert dbm.engine.dialect.has_table(dbm.engine, 'expacs')
-    assert dbm.engine.dialect.has_table(dbm.engine, 'projects')
-    assert dbm.engine.dialect.has_table(dbm.engine, 'reports')
-    assert dbm.engine.dialect.has_table(dbm.engine, 'collections')
+    assert inspect(dbm.engine).has_table('samples')
+    assert inspect(dbm.engine).has_table('seq_types')
+    assert inspect(dbm.engine).has_table('resistances')
+    assert inspect(dbm.engine).has_table('expacs')
+    assert inspect(dbm.engine).has_table('projects')
+    assert inspect(dbm.engine).has_table('reports')
+    assert inspect(dbm.engine).has_table('collections')
 
 
 @pytest.mark.xfail(reason="Can no longer fetch from databases without authenticating")

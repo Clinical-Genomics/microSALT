@@ -4,18 +4,15 @@ import json
 import mock
 import os
 import pathlib
-import pdb
 import pytest
-import re
+import logging
 
 from distutils.sysconfig import get_python_lib
 from unittest.mock import patch
 
-from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.job_creator import Job_Creator
-from microSALT import preset_config, logger
-from microSALT.cli import root
 
+logger = logging.getLogger("main_logger")
 
 @pytest.fixture
 def testdata():
@@ -40,14 +37,14 @@ def fake_search(int):
 @patch('os.stat')
 @patch('gzip.open')
 @pytest.mark.xfail(reason="Can no longer fetch from databases without authenticating")
-def test_verify_fastq(gopen, stat, listdir, testdata):
+def test_verify_fastq(gopen, stat, listdir, config, testdata):
     listdir.return_value = ["ACC6438A3_HVMHWDSXX_L1_1.fastq.gz", "ACC6438A3_HVMHWDSXX_L1_2.fastq.gz",
                             "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz", "ACC6438A3_HVMHWDSXX_L2_2.fastq.gz"]
     stata = mock.MagicMock()
     stata.st_size = 2000
     stat.return_value = stata
 
-    jc = Job_Creator(run_settings={'input': '/tmp/'}, config=preset_config, log=logger, sampleinfo=testdata)
+    jc = Job_Creator(run_settings={'input': '/tmp/'}, config=config, log=logger, sampleinfo=testdata)
     t = jc.verify_fastq()
     assert len(t) > 0
 
@@ -56,8 +53,8 @@ def test_verify_fastq(gopen, stat, listdir, testdata):
 @patch('re.search')
 @patch('microSALT.utils.job_creator.glob.glob')
 @pytest.mark.xfail(reason="Can no longer fetch from databases without authenticating")
-def test_blast_subset(glob_search, research, testdata):
-    jc = Job_Creator(run_settings={'input': '/tmp/'}, config=preset_config, log=logger, sampleinfo=testdata)
+def test_blast_subset(glob_search, research, config, testdata):
+    jc = Job_Creator(run_settings={'input': '/tmp/'}, config=config, log=logger, sampleinfo=testdata)
     researcha = mock.MagicMock()
     researcha.group = fake_search
     research.return_value = researcha
@@ -74,7 +71,7 @@ def test_blast_subset(glob_search, research, testdata):
 
 
 @pytest.mark.xfail(reason="Can no longer fetch from databases without authenticating")
-def test_create_snpsection(subproc, testdata):
+def test_create_snpsection(subproc, config, testdata):
     #Sets up subprocess mocking
     process_mock = mock.Mock()
     attrs = {'communicate.return_value': ('output 123456789', 'error')}
@@ -82,7 +79,7 @@ def test_create_snpsection(subproc, testdata):
     subproc.return_value = process_mock
 
     testdata = [testdata[0]]
-    jc = Job_Creator(run_settings={'input': ['AAA1234A1', 'AAA1234A2']}, config=preset_config, log=logger,
+    jc = Job_Creator(run_settings={'input': ['AAA1234A1', 'AAA1234A2']}, config=config, log=logger,
                      sampleinfo=testdata)
     jc.snp_job()
     outfile = open(jc.get_sbatch(), 'r')
@@ -95,14 +92,14 @@ def test_create_snpsection(subproc, testdata):
 
 @pytest.mark.xfail(reason="Can no longer fetch from databases without authenticating")
 @patch('subprocess.Popen')
-def test_project_job(subproc, testdata):
+def test_project_job(subproc, config, testdata):
     #Sets up subprocess mocking
     process_mock = mock.Mock()
     attrs = {'communicate.return_value': ('output 123456789', 'error')}
     process_mock.configure_mock(**attrs)
     subproc.return_value = process_mock
 
-    jc = Job_Creator(config=preset_config, log=logger, sampleinfo=testdata,
+    jc = Job_Creator(config=config, log=logger, sampleinfo=testdata,
                      run_settings={'pool': ["AAA1234A1", "AAA1234A2"], 'input': '/tmp/AAA1234'})
     jc.project_job()
 

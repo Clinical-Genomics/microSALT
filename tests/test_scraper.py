@@ -10,10 +10,8 @@ import pytest
 
 from distutils.sysconfig import get_python_lib
 
-from microSALT import preset_config, logger
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.referencer import Referencer
-
 
 @pytest.fixture
 def testdata_prefix():
@@ -40,14 +38,14 @@ def testdata():
 
 
 @pytest.fixture
-def scraper(testdata):
-    scrape_obj = Scraper(config=preset_config, log=logger, sampleinfo=testdata[0])
+def scraper(config, logger, testdata):
+    scrape_obj = Scraper(config=config, log=logger, sampleinfo=testdata[0])
     return scrape_obj
 
 
 @pytest.fixture
-def init_references(testdata):
-    ref_obj = Referencer(config=preset_config, log=logger, sampleinfo=testdata)
+def init_references(config, logger, testdata):
+    ref_obj = Referencer(config=config, log=logger, sampleinfo=testdata)
     ref_obj.identify_new(testdata[0].get('CG_ID_project'), project=True)
     ref_obj.update_refs()
 
