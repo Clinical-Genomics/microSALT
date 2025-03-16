@@ -53,6 +53,7 @@ def get_path(config, config_key: str):
 
 def load_auth_credentials():
     """Load client ID, client secret, access token, and access secret from credentials file."""
+    folders_config = get_folders_config()
     try:
         credentials_file = os.path.join(
             get_path(folders_config, credentials_path_key), pubmlst_auth_credentials_file_name
@@ -98,6 +99,7 @@ def load_auth_credentials():
 
 def save_session_token(db: str, token: str, secret: str, expiration_date: str):
     """Save session token, secret, and expiration to a JSON file for the specified database."""
+    folders_config = get_folders_config()
     try:
         session_data = {
             "token": token,
