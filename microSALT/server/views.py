@@ -1,60 +1,38 @@
-import math
 import logging
 import subprocess
-
 from datetime import date
-from flask import Flask, render_template
-from io import StringIO, BytesIO
+from flask import Blueprint, render_template, current_app
+from microSALT import __version__
+from microSALT.store.database import get_session
+from microSALT.store.orm_models import Collections, Projects, Reports, Samples, Versions
 
-from sqlalchemy import *
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.sql import *
-from sqlalchemy.sql.expression import case, func
+# Create a Blueprint
+bp = Blueprint('microSALT', __name__)
 
-from microSALT import preset_config, __version__
-from microSALT.store.db_manipulator import app
-from microSALT.store.orm_models import (
-    Collections,
-    Projects,
-    Reports,
-    Samples,
-    Seq_types,
-    Versions,
-)
-
-engine = create_engine(
-    app.config["SQLALCHEMY_DATABASE_URI"], connect_args={"check_same_thread": False,'timeout':15}
-)
-Session = sessionmaker(bind=engine)
-session = Session()
-app.debug = 0
 # Removes server start messages
 log = logging.getLogger("werkzeug")
 log.setLevel(logging.CRITICAL)
 
-
-@app.route("/")
+@bp.route("/")
 def start_page():
+    session = get_session()
     projects = session.query(Projects).all()
-    session.close()
     return render_template("start_page.html", projects=projects)
 
-
-@app.route("/microSALT/")
+@bp.route("/microSALT/")
 def reroute_page():
+    session = get_session()
     projects = session.query(Projects).all()
-    session.close()
     return render_template("start_page.html", projects=projects)
 
-
-@app.route("/microSALT/<project>")
+@bp.route("/microSALT/<project>")
 def project_page(project):
+    session = get_session()
     organism_groups = list()
     organism_groups.append("all")
     distinct_organisms = (
         session.query(Samples).filter_by(CG_ID_project=project).distinct()
     )
-    session.close()
     for one_guy in distinct_organisms:
         if one_guy.organism not in organism_groups and one_guy.organism is not None:
             organism_groups.append(one_guy.organism)
@@ -63,11 +41,10 @@ def project_page(project):
         "project_page.html", organisms=organism_groups, project=project
     )
 
-
-@app.route("/microSALT/<project>/qc")
+@bp.route("/microSALT/<project>/qc")
 def alignment_page(project):
     sample_info = gen_reportdata(project)
-
+    current_app.config["threshold"]
     return render_template(
         "alignment_page.html",
         samples=sample_info["samples"],
@@ -75,13 +52,12 @@ def alignment_page(project):
         date=date.today().isoformat(),
         version=sample_info["versions"],
         user=sample_info["user"],
-        threshold=preset_config["threshold"],
+        threshold=current_app.config["threshold"],
         reports=sample_info["reports"],
         build=__version__,
     )
 
-
-@app.route("/microSALT/<project>/typing/<organism_group>")
+@bp.route("/microSALT/<project>/typing/<organism_group>")
 def typing_page(project, organism_group):
     sample_info = gen_reportdata(project, organism_group)
 
@@ -92,14 +68,13 @@ def typing_page(project, organism_group):
         date=date.today().isoformat(),
         version=sample_info["versions"],
         user=sample_info["user"],
-        threshold=preset_config["threshold"],
-        verified_organisms=preset_config["regex"]["verified_organisms"],
+        threshold=current_app.config["threshold"],
+        verified_organisms=current_app.config["verified_organisms_regex"],
         reports=sample_info["reports"],
         build=__version__,
     )
 
-
-@app.route("/microSALT/STtracker/<customer>")
+@bp.route("/microSALT/STtracker/<customer>")
 def STtracker_page(customer):
     sample_info = gen_reportdata(pid="all", organism_group="all")
     final_samples = list()
@@ -114,9 +89,9 @@ def STtracker_page(customer):
         "STtracker_page.html", date=date.today().isoformat(), internal=final_samples
     )
 
-
 def gen_collectiondata(collect_id=[]):
     """ Queries database using a set of samples"""
+    session = get_session()
     arglist = []
     samples = (
         session.query(Collections).filter(Collections.ID_collection == collect_id).all()
@@ -129,9 +104,9 @@ def gen_collectiondata(collect_id=[]):
     sample_info = gen_add_info(sample_info)
     return sample_info
 
-
 def gen_reportdata(pid="all", organism_group="all"):
     """ Queries database for all necessary information for the reports """
+    session = get_session()
     if pid == "all" and organism_group == "all":
         sample_info = session.query(Samples)
     elif pid == "all":
@@ -153,9 +128,9 @@ def gen_reportdata(pid="all", organism_group="all"):
 
     return sample_info
 
-
 def gen_add_info(sample_info=dict()):
     """ Enhances a sample info struct by adding ST_status, threshold info, versioning and sorting """
+    session = get_session()
     # Set ST status
     output = dict()
     output["samples"] = list()
@@ -206,15 +181,15 @@ def gen_add_info(sample_info=dict()):
                 # Identify single deviating allele
                 if (
                     seq_type.st_predictor
-                    and seq_type.identity >= preset_config["threshold"]["mlst_novel_id"]
-                    and preset_config["threshold"]["mlst_id"] > seq_type.identity
+                    and seq_type.identity >= current_app.config["mlst_novel_id_threshold"]
+                    and current_app.config["mlst_id_threshold"] > seq_type.identity
                     and 1 - abs(1 - seq_type.span)
-                    >= (preset_config["threshold"]["mlst_span"] / 100.0)
+                    >= (current_app.config["mlst_span_threshold"] / 100.0)
                 ):
                     near_hits = near_hits + 1
                 elif (
-                    seq_type.identity < preset_config["threshold"]["mlst_novel_id"]
-                    or seq_type.span < (preset_config["threshold"]["mlst_span"] / 100.0)
+                    seq_type.identity < current_app.config["mlst_novel_id_threshold"]
+                    or seq_type.span < (current_app.config["mlst_span_threshold"] / 100.0)
                 ) and seq_type.st_predictor:
                     s.threshold = "Failed"
 
@@ -234,16 +209,16 @@ def gen_add_info(sample_info=dict()):
         # Resistence filter
         for r in s.resistances:
             if (
-                r.identity >= preset_config["threshold"]["motif_id"]
-                and r.span >= preset_config["threshold"]["motif_span"] / 100.0
+                r.identity >= current_app.config["motif_id_threshold"]
+                and r.span >= current_app.config["motif_span_threshold"] / 100.0
             ):
                 r.threshold = "Passed"
             else:
                 r.threshold = "Failed"
         for v in s.expacs:
             if (
-                v.identity >= preset_config["threshold"]["motif_id"]
-                and v.span >= preset_config["threshold"]["motif_span"] / 100.0
+                v.identity >= current_app.config["motif_id_threshold"]
+                and v.span >= current_app.config["motif_span_threshold"] / 100.0
             ):
                 v.threshold = "Passed"
             else:

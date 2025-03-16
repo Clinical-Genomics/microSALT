@@ -9,17 +9,16 @@ import warnings
 
 from collections import OrderedDict
 from datetime import datetime, timezone
-from sqlalchemy import *
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import MetaData, and_, desc, inspect
+from sqlalchemy.engine.reflection import Inspector
 from dateutil.parser import parse
 
 # maintain the same connection per thread
-from sqlalchemy.pool import SingletonThreadPool
 from typing import Dict, List
 
 from microSALT import __version__
+from microSALT.store.database import get_engine, get_session
 from microSALT.store.orm_models import (
-    app,
     Collections,
     Expacs,
     Projects,
@@ -36,11 +35,8 @@ class DB_Manipulator:
     def __init__(self, config, log):
         self.config = config
         self.logger = log
-        self.engine = create_engine(
-            app.config["SQLALCHEMY_DATABASE_URI"], poolclass=SingletonThreadPool
-        )
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
+        self.engine = get_engine()
+        self.session = get_session()
         self.metadata = MetaData(self.engine)
         self.profiles = Profiles(self.metadata, self.config, self.logger).tables
         self.novel = Novel(self.metadata, self.config, self.logger).tables
@@ -49,44 +45,51 @@ class DB_Manipulator:
             warnings.simplefilter("ignore")
             self.create_tables()
 
+
+    def get_tables(self) -> list[str]:
+        """Returns all tables in the database"""
+        inspector: Inspector = inspect(self.engine)
+        return inspector.get_table_names()
+    
     def create_tables(self):
         """Creates all tables individually. A bit more control than usual"""
-        if not self.engine.dialect.has_table(self.engine, "projects"):
+        table_names = self.get_tables()
+        if "projects" not in table_names:
             Projects.__table__.create(self.engine)
             self.logger.info("Created projects table")
-        if not self.engine.dialect.has_table(self.engine, "samples"):
+        if "samples" not in table_names:
             Samples.__table__.create(self.engine)
             self.logger.info("Created samples table")
-        if not self.engine.dialect.has_table(self.engine, "versions"):
+        if "versions" not in table_names:
             Versions.__table__.create(self.engine)
             self.logger.info("Created versions table")
-        if not self.engine.dialect.has_table(self.engine, "seq_types"):
+        if "seq_types" not in table_names:
             Seq_types.__table__.create(self.engine)
             self.logger.info("Created sequencing types table")
-        if not self.engine.dialect.has_table(self.engine, "resistances"):
+        if "resistances" not in table_names:
             Resistances.__table__.create(self.engine)
             self.logger.info("Created resistance table")
-        if not self.engine.dialect.has_table(self.engine, "reports"):
+        if "reports" not in table_names:
             Reports.__table__.create(self.engine)
             self.logger.info("Created reports table")
-        if not self.engine.dialect.has_table(self.engine, "collections"):
+        if "collections" not in table_names:
             Collections.__table__.create(self.engine)
             self.logger.info("Created collections table")
-        if not self.engine.dialect.has_table(self.engine, "expacs"):
+        if "expacs" not in table_names:
             Expacs.__table__.create(self.engine)
             self.logger.info("Created ExPEC table")
         for k, v in self.profiles.items():
-            if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
+            if "profile_{k}" not in table_names:
                 self.profiles[k].create()
                 self.init_profiletable(k, v)
                 self.add_rec(
-                    {"name": "profile_{}".format(k), "version": "0"},
+                    {"name": f"profile_{k}", "version": "0"},
                     "Versions",
                     force=True,
                 )
-                self.logger.info("Profile table profile_{} initialized".format(k))
+                self.logger.info(f"Profile table profile_{k} initialized")
         for k, v in self.novel.items():
-            if not self.engine.dialect.has_table(self.engine, "novel_{}".format(k)):
+            if f"novel_{k}" in table_names:
                 self.novel[k].create()
                 self.add_rec(
                     {"name": "novel_{}".format(k), "version": "0"},
