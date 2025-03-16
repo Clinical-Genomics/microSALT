@@ -1,9 +1,9 @@
+import logging
 from urllib.parse import urlencode
 
 import requests
 from rauth import OAuth1Session
 
-from microSALT import logger
 from microSALT.utils.pubmlst.authentication import load_session_credentials
 from microSALT.utils.pubmlst.constants import HTTPMethod, RequestType, ResponseHandler
 from microSALT.utils.pubmlst.exceptions import PUBMLSTError, SessionTokenRequestError
@@ -13,6 +13,7 @@ from microSALT.utils.pubmlst.helpers import (
     parse_pubmlst_url,
 )
 
+logger = logging.getLogger(__name__)
 
 class PubMLSTClient:
     """Client for interacting with the PubMLST authenticated API."""

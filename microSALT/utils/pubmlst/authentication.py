@@ -1,3 +1,4 @@
+import logging
 import json
 import os
 from datetime import datetime, timedelta
@@ -5,7 +6,6 @@ from datetime import datetime, timedelta
 from dateutil import parser
 from rauth import OAuth1Session
 
-from microSALT import logger
 from microSALT.utils.pubmlst.exceptions import (
     PUBMLSTError,
     SessionTokenRequestError,
@@ -14,7 +14,7 @@ from microSALT.utils.pubmlst.exceptions import (
 from microSALT.utils.pubmlst.helpers import (
     BASE_API,
     credentials_path_key,
-    folders_config,
+    get_folders_config,
     get_path,
     load_auth_credentials,
     pubmlst_session_credentials_file_name,
@@ -24,6 +24,7 @@ from microSALT.utils.pubmlst.helpers import (
 session_token_validity = 12  # 12-hour validity
 session_expiration_buffer = 60  # 60-second buffer
 
+logger = logging.getLogger(__name__)
 
 def get_new_session_token(db: str):
     """Request a new session token using all credentials for a specific database."""
@@ -78,6 +79,7 @@ def get_new_session_token(db: str):
 def load_session_credentials(db: str):
     """Load session token from file for a specific database."""
     try:
+        folders_config = get_folders_config()
         credentials_file = os.path.join(
             get_path(folders_config, credentials_path_key), pubmlst_session_credentials_file_name
         )

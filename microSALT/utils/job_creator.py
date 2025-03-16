@@ -6,6 +6,7 @@
 import glob
 import gzip
 import json
+from logging import Logger
 import os
 import re
 import shutil
@@ -22,7 +23,7 @@ from microSALT.utils.referencer import Referencer
 
 
 class Job_Creator:
-    def __init__(self, config, log, sampleinfo={}, run_settings={}):
+    def __init__(self, config: dict, dbm: DB_Manipulator,  log: Logger, sampleinfo={}, run_settings={}):
         self.config = config
         self.logger = log
         self.batchfile = "/tmp/batchfile.sbatch"
@@ -82,9 +83,9 @@ class Job_Creator:
 
         if run_settings.get("finishdir") is None:
             self.finishdir = "{}/{}_{}".format(config["folders"]["results"], self.name, self.now)
-        self.db_pusher = DB_Manipulator(config, log)
+        self.db_pusher = dbm
         self.concat_files = dict()
-        self.ref_resolver = Referencer(config, log)
+        self.ref_resolver = Referencer(config=config, dbm=dbm, log=log)
 
     def get_sbatch(self):
         """Returns sbatchfile, slightly superflous"""

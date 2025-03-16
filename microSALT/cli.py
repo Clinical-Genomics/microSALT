@@ -7,8 +7,13 @@ import click
 import json
 import os
 import sys
+import logging
 
-from microSALT import __version__, preset_config, logger, wd
+from microSALT import __version__
+from microSALT.store.database import initialize_database
+from microSALT.store.db_manipulator import DB_Manipulator
+from microSALT.server.app import initialize_app, get_app
+from microSALT.utils.config_loader import load_config
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.reporter import Reporter
@@ -32,31 +37,24 @@ default_sampleinfo = {
 }
 
 
-if preset_config == "":
-    click.echo(
-        "ERROR - No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting."
-    )
-    sys.exit(-1)
+def initialize_logger(config: dict) -> logging.Logger:
+    logger = logging.getLogger("main_logger")
+    logger.setLevel(logging.INFO)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(logging.Formatter("%(levelname)s - %(message)s"))
+    logger.addHandler(ch)
 
+    if "folders" in config and "log_file" in config["folders"]:
+        fh = logging.FileHandler(os.path.expanduser(config["folders"]["log_file"]))
+        fh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+        logger.addHandler(fh)
 
-@click.pass_context
-def set_cli_config(ctx, config):
-    if config != "":
-        if os.path.exists(config):
-            try:
-                t = ctx.obj["config"]
-                with open(os.path.abspath(config), "r") as conf:
-                    ctx.obj["config"] = json.load(conf)
-                ctx.obj["config"]["folders"]["expec"] = t["folders"]["expec"]
-                ctx.obj["config"]["folders"]["adapters"] = t["folders"]["adapters"]
-                ctx.obj["config"]["config_path"] = os.path.abspath(config)
-            except Exception as e:
-                pass
+    return logger
 
 
 def done():
     click.echo("INFO - Execution finished!")
-    logger.debug("INFO - Execution finished!")
 
 
 def review_sampleinfo(pfile):
@@ -91,18 +89,26 @@ def review_sampleinfo(pfile):
 
 @click.group()
 @click.version_option(__version__)
+@click.option("--config", help="microSALT config to override default", default="")
 @click.pass_context
-def root(ctx):
+def root(ctx, config):
     """microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline"""
-    ctx.obj = {}
-    ctx.obj["config"] = preset_config
-    ctx.obj["log"] = logger
+    ctx.ensure_object(dict)
+    config: dict = load_config(config)
+    logger: logging.Logger = initialize_logger(config=config)
+    initialize_database(config=config)
+    initialize_app(config=config)
+    ctx.obj = {
+        "config": config,
+        "log": logger,
+        "app": get_app(),
+        "dbm": DB_Manipulator(config=config, log=logger),
+    }
 
 
 @root.command()
 @click.argument("sampleinfo_file")
 @click.option("--input", help="Full path to input folder", default="")
-@click.option("--config", help="microSALT config to override default", default="")
 @click.option(
     "--dry",
     help="Builds instance without posting to SLURM",
@@ -111,27 +117,22 @@ def root(ctx):
 )
 @click.option(
     "--email",
-    default=preset_config["regex"]["mail_recipient"],
+    default=None,
     help="Forced e-mail recipient",
 )
-@click.option(
-    "--skip_update", default=False, help="Skips downloading of references", is_flag=True
-)
+@click.option("--skip_update", default=False, help="Skips downloading of references", is_flag=True)
 @click.option(
     "--force_update",
     default=False,
     help="Forces downloading of pubMLST references",
     is_flag=True,
 )
-@click.option(
-    "--untrimmed", help="Use untrimmed input data", default=False, is_flag=True
-)
+@click.option("--untrimmed", help="Use untrimmed input data", default=False, is_flag=True)
 @click.pass_context
 def analyse(
     ctx,
     sampleinfo_file,
     input,
-    config,
     dry,
     email,
     skip_update,
@@ -140,9 +141,10 @@ def analyse(
 ):
     """Sequence analysis, typing and resistance identification"""
     # Run section
+    if email:
+        ctx.obj["config"]["regex"]["mail_recipient"] = email
     pool = []
-    set_cli_config(config)
-    ctx.obj["config"]["regex"]["mail_recipient"] = email
+
     ctx.obj["config"]["dry"] = dry
     if not os.path.isdir(input):
         click.echo("ERROR - Sequence data folder {} does not exist.".format(input))
@@ -164,6 +166,7 @@ def analyse(
     sampleinfo = review_sampleinfo(sampleinfo_file)
     run_creator = Job_Creator(
         config=ctx.obj["config"],
+        dbm=ctx.obj["dbm"],
         log=ctx.obj["log"],
         sampleinfo=sampleinfo,
         run_settings=run_settings,
@@ -171,6 +174,7 @@ def analyse(
 
     ext_refs = Referencer(
         config=ctx.obj["config"],
+        dbm=ctx.obj["dbm"],
         log=ctx.obj["log"],
         sampleinfo=sampleinfo,
         force=force_update,
@@ -227,29 +231,23 @@ def refer(ctx):
 )
 @click.option(
     "--email",
-    default=preset_config["regex"]["mail_recipient"],
+    default=None,
     help="Forced e-mail recipient",
 )
-@click.option(
-    "--skip_update", default=False, help="Skips downloading of references", is_flag=True
-)
+@click.option("--skip_update", default=False, help="Skips downloading of references", is_flag=True)
 @click.option(
     "--report",
     default="default",
-    type=click.Choice(
-        ["default", "typing", "motif_overview", "qc", "json_dump", "st_update"]
-    ),
+    type=click.Choice(["default", "typing", "motif_overview", "qc", "json_dump", "st_update"]),
 )
 @click.option("--output", help="Report output folder", default="")
 @click.pass_context
-def finish(
-    ctx, sampleinfo_file, input, track, config, dry, email, skip_update, report, output
-):
+def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, report, output):
     """Sequence analysis, typing and resistance identification"""
     # Run section
     pool = []
-    set_cli_config(config)
-    ctx.obj["config"]["regex"]["mail_recipient"] = email
+    if email:
+        ctx.obj["config"]["regex"]["mail_recipient"] = email
     ctx.obj["config"]["dry"] = dry
     if not os.path.isdir(input):
         click.echo("ERROR - Sequence data folder {} does not exist.".format(input))
@@ -260,18 +258,10 @@ def finish(
         if os.path.isdir("{}/{}".format(input, subfolder)):
             pool.append(subfolder)
 
-    run_settings = {
-        "input": input,
-        "track": track,
-        "dry": dry,
-        "email": email,
-        "skip_update": skip_update,
-    }
-
     # Samples section
     sampleinfo = review_sampleinfo(sampleinfo_file)
-    ext_refs = Referencer(
-        config=ctx.obj["config"], log=ctx.obj["log"], sampleinfo=sampleinfo
+    referencer = Referencer(
+        config=ctx.obj["config"], dbm=ctx.obj["dbm"], log=ctx.obj["log"], sampleinfo=sampleinfo
     )
     click.echo("INFO - Checking versions of references..")
     try:
@@ -289,31 +279,31 @@ def finish(
     )
     if isinstance(sampleinfo, list) and len(sampleinfo) > 1:
         res_scraper.scrape_project()
-        # for subfolder in pool:
-        #  res_scraper.scrape_sample()
     else:
         res_scraper.scrape_sample()
 
-    codemonkey = Reporter(
+    referencer = Reporter(
+        app=ctx.obj["app"],
         config=ctx.obj["config"],
+        dbm=ctx.obj["dbm"],
         log=ctx.obj["log"],
         sampleinfo=sampleinfo,
         output=output,
         collection=True,
     )
-    codemonkey.report(report)
+    referencer.report(report)
     done()
 
 
 @refer.command()
 @click.argument("organism")
-@click.option(
-    "--force", help="Redownloads existing organism", default=False, is_flag=True
-)
+@click.option("--force", help="Redownloads existing organism", default=False, is_flag=True)
 @click.pass_context
 def add(ctx, organism, force):
     """Adds a new internal organism from pubMLST"""
-    referee = Referencer(config=ctx.obj["config"], log=ctx.obj["log"], force=force)
+    referee = Referencer(
+        config=ctx.obj["config"], dbm=ctx.obj["dbm"], log=ctx.obj["log"], force=force
+    )
     try:
         referee.add_pubmlst(organism)
     except Exception as e:
@@ -328,9 +318,9 @@ def add(ctx, organism, force):
 @click.pass_context
 def observe(ctx):
     """Lists all stored organisms"""
-    refe = Referencer(config=ctx.obj["config"], log=ctx.obj["log"])
+    referencer = Referencer(config=ctx.obj["config"], dbm=ctx.obj["dbm"], log=ctx.obj["log"])
     click.echo("INFO - Currently stored organisms:")
-    for org in sorted(refe.existing_organisms()):
+    for org in sorted(referencer.existing_organisms()):
         click.echo(org.replace("_", " ").capitalize())
 
 
@@ -338,31 +328,32 @@ def observe(ctx):
 @click.argument("sampleinfo_file")
 @click.option(
     "--email",
-    default=preset_config["regex"]["mail_recipient"],
+    default=None,
     help="Forced e-mail recipient",
 )
 @click.option(
     "--type",
     default="default",
-    type=click.Choice(
-        ["default", "typing", "motif_overview", "qc", "json_dump", "st_update"]
-    ),
+    type=click.Choice(["default", "typing", "motif_overview", "qc", "json_dump", "st_update"]),
 )
 @click.option("--output", help="Full path to output folder", default="")
 @click.option("--collection", default=False, is_flag=True)
 @click.pass_context
 def report(ctx, sampleinfo_file, email, type, output, collection):
     """Re-generates report for a project"""
-    ctx.obj["config"]["regex"]["mail_recipient"] = email
+    if email:
+        ctx.obj["config"]["regex"]["mail_recipient"] = email
     sampleinfo = review_sampleinfo(sampleinfo_file)
-    codemonkey = Reporter(
+    referencer = Reporter(
+        app=ctx.obj["app"],
         config=ctx.obj["config"],
+        dbm=ctx.obj["dbm"],
         log=ctx.obj["log"],
         sampleinfo=sampleinfo,
         output=output,
         collection=collection,
     )
-    codemonkey.report(type)
+    referencer.report(type)
     done()
 
 
@@ -370,8 +361,10 @@ def report(ctx, sampleinfo_file, email, type, output, collection):
 @click.pass_context
 def view(ctx):
     """Starts an interactive webserver for viewing"""
-    codemonkey = Reporter(config=ctx.obj["config"], log=ctx.obj["log"])
-    codemonkey.start_web()
+    reporter = Reporter(
+        app=ctx.obj["app"], config=ctx.obj["config"], dbm=ctx.obj["dbm"], log=ctx.obj["log"]
+    )
+    reporter.start_web()
 
 
 @utils.command()
@@ -386,9 +379,7 @@ def generate(ctx, input):
 
     pool = []
     if not os.path.isdir(input):
-        click.echo(
-            "ERROR - Sequence data folder {} does not exist.".format(project_name)
-        )
+        click.echo("ERROR - Sequence data folder {} does not exist.".format(project_name))
         ctx.abort()
     elif input != os.getcwd():
         for subfolder in os.listdir(input):
@@ -420,12 +411,10 @@ def resync(ctx):
     help="Output format",
 )
 @click.option("--customer", default="all", help="Customer id filter")
-@click.option(
-    "--skip_update", default=False, help="Skips downloading of references", is_flag=True
-)
+@click.option("--skip_update", default=False, help="Skips downloading of references", is_flag=True)
 @click.option(
     "--email",
-    default=preset_config["regex"]["mail_recipient"],
+    default=None,
     help="Forced e-mail recipient",
 )
 @click.option("--output", help="Full path to output folder", default="")
@@ -433,17 +422,22 @@ def resync(ctx):
 def review(ctx, type, customer, skip_update, email, output):
     """Generates information about novel ST"""
     # Trace exists by some samples having pubMLST_ST filled in. Make trace function later
-    ctx.obj["config"]["regex"]["mail_recipient"] = email
+    if email:
+        ctx.obj["config"]["regex"]["mail_recipient"] = email
     ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"])
     if not skip_update:
         ext_refs.update_refs()
         ext_refs.resync()
     click.echo("INFO - Version check done. Generating output")
     if type == "report":
-        codemonkey = Reporter(
-            config=ctx.obj["config"], log=ctx.obj["log"], output=output
+        reporter = Reporter(
+            app=ctx.obj["app"],
+            config=ctx.obj["config"],
+            dbm=ctx.obj["dbm"],
+            log=ctx.obj["log"],
+            output=output,
         )
-        codemonkey.report(type="st_update", customer=customer)
+        reporter.report(type="st_update", customer=customer)
     elif type == "list":
         ext_refs.resync(type=type)
     done()
@@ -460,6 +454,17 @@ def review(ctx, type, customer, skip_update, email, output):
 @click.pass_context
 def overwrite(ctx, sample_name, force):
     """Flags sample as resolved"""
-    ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"])
+    ext_refs = Referencer(config=ctx.obj["config"], dbm=ctx.obj["dbm"], log=ctx.obj["log"])
     ext_refs.resync(type="overwrite", sample=sample_name, ignore=force)
     done()
+
+
+@root.command()
+def init_db():
+    from microSALT.store.orm_models import db
+
+    app = get_app()
+    db.init_app(app)
+    with app.app_context():
+        db.create_all()
+    click.echo("Initialized the database.")

@@ -1,16 +1,14 @@
-import base64
-import hashlib
-import hmac
+import logging
 import json
 import os
-import time
+
+from flask import Flask
 from pathlib import Path
-from urllib.parse import quote_plus, urlencode
 
 from werkzeug.exceptions import NotFound
 
-from microSALT import app, logger
-from microSALT.utils.pubmlst.constants import Encoding, url_map
+from microSALT.server.app import get_app
+from microSALT.utils.pubmlst.constants import url_map
 from microSALT.utils.pubmlst.exceptions import (
     CredentialsFileNotFound,
     InvalidCredentials,
@@ -27,8 +25,14 @@ BASE_API_HOST = "rest.pubmlst.org"
 credentials_path_key = "pubmlst_credentials"
 pubmlst_auth_credentials_file_name = "pubmlst_credentials.env"
 pubmlst_session_credentials_file_name = "pubmlst_session_credentials.json"
-pubmlst_config = app.config["pubmlst"]
-folders_config = app.config["folders"]
+
+logger = logging.getLogger(__name__)
+
+
+def get_folders_config():
+    """Get the folders configuration from the application."""
+    app: Flask = get_app()
+    return app.config["folders"]
 
 
 def get_path(config, config_key: str):

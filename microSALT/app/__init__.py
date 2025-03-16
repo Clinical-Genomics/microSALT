@@ -1,1 +1,0 @@
-from .app import _setup_app

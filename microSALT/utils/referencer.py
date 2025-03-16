@@ -3,13 +3,11 @@
 
 #!/usr/bin/env python
 import glob
-import json
 import os
 import re
 import shutil
 import subprocess
 import urllib.request
-import zipfile
 from microSALT.utils.pubmlst.client import PubMLSTClient
 
 from Bio import Entrez
@@ -18,10 +16,10 @@ from microSALT.store.db_manipulator import DB_Manipulator
 
 
 class Referencer:
-    def __init__(self, config, log, sampleinfo={}, force=False):
+    def __init__(self, dbm: DB_Manipulator, config, log, sampleinfo={}, force=False):
         self.config = config
         self.logger = log
-        self.db_access = DB_Manipulator(config, log)
+        self.db_access = dbm
         self.updated = list()
         # Fetch names of existing refs
         self.refs = self.db_access.profiles

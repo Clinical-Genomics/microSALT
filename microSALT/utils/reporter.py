@@ -3,6 +3,8 @@
 
 #!/usr/bin/env python
 import json
+from logging import Logger
+from flask import Flask
 import requests
 import os
 import socket
@@ -10,6 +12,7 @@ import sys
 import smtplib
 import time
 import yaml
+import threading
 
 from datetime import datetime
 from shutil import copyfile
@@ -17,18 +20,25 @@ from shutil import copyfile
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 
-from multiprocessing import Process
-
 from microSALT import __version__
-from microSALT.server.views import app, gen_reportdata, gen_collectiondata
+from microSALT.server.views import gen_reportdata, gen_collectiondata
 from microSALT.store.db_manipulator import DB_Manipulator
 
 
 class Reporter:
     def __init__(
-        self, config, log, sampleinfo={}, name="", output="", collection=False
+        self,
+        app: Flask,
+        config: dict,
+        dbm: DB_Manipulator,
+        log: Logger,
+        sampleinfo={},
+        name="",
+        output="",
+        collection=False,
     ):
-        self.db_pusher = DB_Manipulator(config, log)
+        self.app: Flask = app
+        self.db_pusher = dbm
         self.name = name
         self.collection = collection
         if output == "":
@@ -37,9 +47,7 @@ class Reporter:
             self.output = output + "/"
         self.config = config
         self.logger = log
-        for k, v in config.items():
-            app.config[k] = v
-        self.server = Process(target=app.run)
+        self.exit_flag = threading.Event()
         self.attachments = list()
         self.filedict = dict()
         self.error = False
@@ -70,6 +78,7 @@ class Reporter:
                 self.sampleinfo = self.sampleinfo[0]
             self.name = self.sampleinfo.get("CG_ID_project")
             self.sample = self.sampleinfo
+        self.server = None
 
     def create_subfolders(self):
         os.makedirs("{0}/deliverables".format(self.config["folders"]["reports"]), exist_ok=True)
@@ -105,10 +114,10 @@ class Reporter:
         else:
             raise Exception("Report function recieved invalid format")
         self.mail()
-        #If no output dir is specified; Don't store report locally. Rely on e-mail
+        # If no output dir is specified; Don't store report locally. Rely on e-mail
         if not self.output == "" or self.output == os.getcwd():
-            for k,v in self.filedict.items():
-                if v == "": 
+            for k, v in self.filedict.items():
+                if v == "":
                     os.remove(k)
                 else:
                     copyfile(k, v)
@@ -140,25 +149,20 @@ class Reporter:
     def gen_qc(self, silent=False):
         try:
             last_version = self.db_pusher.get_report(self.name).version
-        except Exception as e:
-            self.logger.error("Project {} does not exist".format(self.name))
-            self.kill_flask()
-            sys.exit(-1)
+        except AttributeError as e:
+            self.logger.error(f"Project {self.name} does not exist")
+            raise e
         try:
             q = requests.get(
-                "http://127.0.0.1:5000/microSALT/{}/qc".format(self.name),
+                f"http://127.0.0.1:5000/microSALT/{self.name}/qc",
                 allow_redirects=True,
             )
-            outfile = "{}_QC_{}.html".format(
-                self.sample.get("Customer_ID_project"), last_version
-            )
-            local = "{}/{}".format(self.output, outfile)
-            output = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
+            outfile = f'{self.sample.get("Customer_ID_project")}_QC_{last_version}.html'
+            local = f"{self.output}/{outfile}"
+            output = f'{self.config["folders"]["reports"]}/analysis/{outfile}'
 
-            outfile = open(output, "wb")
-            outfile.write(q.content.decode("iso-8859-1").encode("utf8"))
-            outfile.close()
-
+            with open(output, "wb") as outfile:
+                outfile.write(q.content.decode("iso-8859-1").encode("utf8"))
             if os.path.isfile(output):
                 self.filedict[output] = local
                 if not silent:
@@ -172,10 +176,9 @@ class Reporter:
     def gen_typing(self, silent=False):
         try:
             last_version = self.db_pusher.get_report(self.name).version
-        except Exception as e:
-            self.logger.error("Project {} does not exist".format(self.name))
-            self.kill_flask()
-            sys.exit(-1)
+        except AttributeError as e:
+            self.logger.error(f"Project {self.name} does not exist")
+            raise e
         try:
             r = requests.get(
                 "http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name),
@@ -215,24 +218,15 @@ class Reporter:
         for s in sample_info["samples"]:
             if motif == "resistance":
                 for r in s.resistances:
-                    if (
-                        not (r.resistance in motifdict.keys())
-                        and r.threshold == "Passed"
-                    ):
+                    if not (r.resistance in motifdict.keys()) and r.threshold == "Passed":
                         if r.resistance is None:
                             r.resistance = "None"
                         motifdict[r.resistance] = list()
-                    if (
-                        r.threshold == "Passed"
-                        and not r.gene in motifdict[r.resistance]
-                    ):
+                    if r.threshold == "Passed" and not r.gene in motifdict[r.resistance]:
                         motifdict[r.resistance].append(r.gene)
             elif motif == "expec":
                 for e in s.expacs:
-                    if (
-                        not (e.virulence in motifdict.keys())
-                        and e.threshold == "Passed"
-                    ):
+                    if not (e.virulence in motifdict.keys()) and e.threshold == "Passed":
                         if e.virulence is None:
                             e.virulence = "None"
                         motifdict[e.virulence] = list()
@@ -276,27 +270,15 @@ class Reporter:
                 # Load single sample
                 if motif == "resistance":
                     for r in s.resistances:
-                        if (
-                            not (r.resistance in rowdict.keys())
-                            and r.threshold == "Passed"
-                        ):
+                        if not (r.resistance in rowdict.keys()) and r.threshold == "Passed":
                             rowdict[r.resistance] = dict()
-                        if (
-                            r.threshold == "Passed"
-                            and not r.gene in rowdict[r.resistance]
-                        ):
+                        if r.threshold == "Passed" and not r.gene in rowdict[r.resistance]:
                             rowdict[r.resistance][r.gene] = r.identity
                 elif motif == "expec":
                     for e in s.expacs:
-                        if (
-                            not (e.virulence in rowdict.keys())
-                            and e.threshold == "Passed"
-                        ):
+                        if not (e.virulence in rowdict.keys()) and e.threshold == "Passed":
                             rowdict[e.virulence] = dict()
-                        if (
-                            e.threshold == "Passed"
-                            and not e.gene in rowdict[e.virulence]
-                        ):
+                        if e.threshold == "Passed" and not e.gene in rowdict[e.virulence]:
                             rowdict[e.virulence][e.gene] = e.identity
                 # Compare single sample to all
                 hits = ""
@@ -332,97 +314,217 @@ class Reporter:
 
     def gen_delivery(self):
         deliv = dict()
-        deliv['files'] = list()
+        deliv["files"] = list()
         last_version = self.db_pusher.get_report(self.name).version
-        output = "{}/deliverables/{}_deliverables.yaml".format(self.config["folders"]["reports"], self.sample.get("Customer_ID_project"))
-        local = "{}/{}_deliverables.yaml".format(self.output, self.sample.get("Customer_ID_project"))
+        output = "{}/deliverables/{}_deliverables.yaml".format(
+            self.config["folders"]["reports"], self.sample.get("Customer_ID_project")
+        )
+        local = "{}/{}_deliverables.yaml".format(
+            self.output, self.sample.get("Customer_ID_project")
+        )
 
-        #Project-wide
-        #Sampleinfo
-        deliv['files'].append({'format':'json','id':self.sample.get("Customer_ID_project"),
-                               'path':"{}/sampleinfo.json".format(self.output),
-                               'path_index':'~','step':'analysis','tag':'sampleinfo'})
-        #QC report
-        deliv['files'].append({'format':'html','id':self.sample.get("Customer_ID_project"),
-                               'path':"{}/{}_QC_{}.html".format(self.output, self.sample.get("Customer_ID_project"), last_version),
-                               'path_index':'~','step':'result_aggregation','tag':'microsalt-qc'})
-        #Typing report
-        deliv['files'].append({'format':'html','id':self.sample.get("Customer_ID_project"),
-                               'path':"{}/{}_Typing_{}.html".format(self.output, self.sample.get("Customer_ID_project"), last_version),
-                               'path_index':'~','step':'result_aggregation','tag':'microsalt-type'})
-        #Json (vogue) report
-        deliv['files'].append({'format':'json','id':self.sample.get("Customer_ID_project"),
-                               'path':"{}/{}.json".format(self.output, self.sample.get("CG_ID_project")),
-                               'path_index':'~','step':'result_aggregation','tag':'microsalt-json'})
-        #Settings dump
-        deliv['files'].append({'format':'txt','id':self.sample.get("Customer_ID_project"),
-                               'path':"{}/config.log".format(self.output),
-                               'path_index':'~','step':'analysis','tag':'runtime-settings'})
+        # Project-wide
+        # Sampleinfo
+        deliv["files"].append(
+            {
+                "format": "json",
+                "id": self.sample.get("Customer_ID_project"),
+                "path": "{}/sampleinfo.json".format(self.output),
+                "path_index": "~",
+                "step": "analysis",
+                "tag": "sampleinfo",
+            }
+        )
+        # QC report
+        deliv["files"].append(
+            {
+                "format": "html",
+                "id": self.sample.get("Customer_ID_project"),
+                "path": "{}/{}_QC_{}.html".format(
+                    self.output, self.sample.get("Customer_ID_project"), last_version
+                ),
+                "path_index": "~",
+                "step": "result_aggregation",
+                "tag": "microsalt-qc",
+            }
+        )
+        # Typing report
+        deliv["files"].append(
+            {
+                "format": "html",
+                "id": self.sample.get("Customer_ID_project"),
+                "path": "{}/{}_Typing_{}.html".format(
+                    self.output, self.sample.get("Customer_ID_project"), last_version
+                ),
+                "path_index": "~",
+                "step": "result_aggregation",
+                "tag": "microsalt-type",
+            }
+        )
+        # Json (vogue) report
+        deliv["files"].append(
+            {
+                "format": "json",
+                "id": self.sample.get("Customer_ID_project"),
+                "path": "{}/{}.json".format(self.output, self.sample.get("CG_ID_project")),
+                "path_index": "~",
+                "step": "result_aggregation",
+                "tag": "microsalt-json",
+            }
+        )
+        # Settings dump
+        deliv["files"].append(
+            {
+                "format": "txt",
+                "id": self.sample.get("Customer_ID_project"),
+                "path": "{}/config.log".format(self.output),
+                "path_index": "~",
+                "step": "analysis",
+                "tag": "runtime-settings",
+            }
+        )
 
-        #Sample-wide
-        #Single sample
+        # Sample-wide
+        # Single sample
         if self.sampleinfo == self.sample:
             hklist = list()
             hklist.append(self.sampleinfo)
             resultsdir = self.output
-        #Project
+        # Project
         else:
             hklist = self.sampleinfo
 
         for s in hklist:
             if len(hklist) > 1:
                 resultsdir = os.path.join(self.output, s["CG_ID_sample"])
-            #Contig/Assembly file
-            deliv['files'].append({'format':'fasta','id':s["CG_ID_sample"],
-                                   'path':"{0}/assembly/{1}_trimmed_contigs.fasta".format(resultsdir, s["CG_ID_sample"]),
-                                   'path_index':'~','step':'assembly','tag':'assembly'})
-            #Concat trimmed reads forwards
-            deliv['files'].append({'format':'fastq','id':s["CG_ID_sample"],
-                                   'path':"{0}/trimmed/{1}_trim_front_pair.fastq.gz".format(resultsdir, s["CG_ID_sample"]),
-                                   'path_index':'~','step':'concatination','tag':'trimmed-forward-reads'}) 
-            #Concat trimmed reads reverse
-            deliv['files'].append({'format':'fastq','id':s["CG_ID_sample"],
-                                   'path':"{0}/trimmed/{1}_trim_rev_pair.fastq.gz".format(resultsdir, s["CG_ID_sample"]),
-                                   'path_index':'~','step':'concatination','tag':'trimmed-reverse-reads'})
-            #Concat trimmed reads unpaired
-            deliv['files'].append({'format':'fastq','id':s["CG_ID_sample"],
-                                   'path':"{0}/trimmed/{1}_trim_unpair.fastq.gz".format(resultsdir, s["CG_ID_sample"]),
-                                   'path_index':'~','step':'concatination','tag':'trimmed-unpaired-reads'})            
-            #Slurm dump
-            deliv['files'].append({'format':'txt','id':s["CG_ID_sample"],
-                                   'path':"{0}/slurm_{1}.log".format(resultsdir, s["CG_ID_sample"]),
-                                   'path_index':'~','step':'analysis','tag':'logfile'})
-            #Quast (assembly) qc report
-            deliv['files'].append({'format':'tsv','id':s["CG_ID_sample"],
-                                   'path':"{0}/assembly/quast/{1}_report.tsv".format(resultsdir, s["CG_ID_sample"]),
-                                   'path_index':'~','step':'assembly','tag':'quast-results'})
-            #Alignment (bam, sorted)
-            deliv['files'].append({'format':'bam','id':s["CG_ID_sample"],
-                                   'path':"{0}/alignment/{1}_{2}.bam_sort".format(resultsdir, s["CG_ID_sample"], s["reference"]),
-                                   'path_index':'~','step':'alignment','tag':'reference-alignment-sorted'})
-            #Alignment (bam, sorted, deduplicated)
-            deliv['files'].append({'format':'bam','id':s["CG_ID_sample"],
-                                   'path':"{0}/alignment/{1}_{2}.bam_sort_rmdup".format(resultsdir, s["CG_ID_sample"], s["reference"]),
-                                   'path_index':'~','step':'alignment','tag':'reference-alignment-deduplicated'})
-            #Picard insert size stats
-            deliv['files'].append({'format':'meta','id':s["CG_ID_sample"],
-                                   'path':"{0}/alignment/{1}_{2}.stats.ins".format(resultsdir, s["CG_ID_sample"], s["reference"]),
-                                   'path_index':'~','step':'insertsize_calc','tag':'picard-insertsize'})
+            # Contig/Assembly file
+            deliv["files"].append(
+                {
+                    "format": "fasta",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/assembly/{1}_trimmed_contigs.fasta".format(
+                        resultsdir, s["CG_ID_sample"]
+                    ),
+                    "path_index": "~",
+                    "step": "assembly",
+                    "tag": "assembly",
+                }
+            )
+            # Concat trimmed reads forwards
+            deliv["files"].append(
+                {
+                    "format": "fastq",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/trimmed/{1}_trim_front_pair.fastq.gz".format(
+                        resultsdir, s["CG_ID_sample"]
+                    ),
+                    "path_index": "~",
+                    "step": "concatination",
+                    "tag": "trimmed-forward-reads",
+                }
+            )
+            # Concat trimmed reads reverse
+            deliv["files"].append(
+                {
+                    "format": "fastq",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/trimmed/{1}_trim_rev_pair.fastq.gz".format(
+                        resultsdir, s["CG_ID_sample"]
+                    ),
+                    "path_index": "~",
+                    "step": "concatination",
+                    "tag": "trimmed-reverse-reads",
+                }
+            )
+            # Concat trimmed reads unpaired
+            deliv["files"].append(
+                {
+                    "format": "fastq",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/trimmed/{1}_trim_unpair.fastq.gz".format(
+                        resultsdir, s["CG_ID_sample"]
+                    ),
+                    "path_index": "~",
+                    "step": "concatination",
+                    "tag": "trimmed-unpaired-reads",
+                }
+            )
+            # Slurm dump
+            deliv["files"].append(
+                {
+                    "format": "txt",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/slurm_{1}.log".format(resultsdir, s["CG_ID_sample"]),
+                    "path_index": "~",
+                    "step": "analysis",
+                    "tag": "logfile",
+                }
+            )
+            # Quast (assembly) qc report
+            deliv["files"].append(
+                {
+                    "format": "tsv",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/assembly/quast/{1}_report.tsv".format(
+                        resultsdir, s["CG_ID_sample"]
+                    ),
+                    "path_index": "~",
+                    "step": "assembly",
+                    "tag": "quast-results",
+                }
+            )
+            # Alignment (bam, sorted)
+            deliv["files"].append(
+                {
+                    "format": "bam",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/alignment/{1}_{2}.bam_sort".format(
+                        resultsdir, s["CG_ID_sample"], s["reference"]
+                    ),
+                    "path_index": "~",
+                    "step": "alignment",
+                    "tag": "reference-alignment-sorted",
+                }
+            )
+            # Alignment (bam, sorted, deduplicated)
+            deliv["files"].append(
+                {
+                    "format": "bam",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/alignment/{1}_{2}.bam_sort_rmdup".format(
+                        resultsdir, s["CG_ID_sample"], s["reference"]
+                    ),
+                    "path_index": "~",
+                    "step": "alignment",
+                    "tag": "reference-alignment-deduplicated",
+                }
+            )
+            # Picard insert size stats
+            deliv["files"].append(
+                {
+                    "format": "meta",
+                    "id": s["CG_ID_sample"],
+                    "path": "{0}/alignment/{1}_{2}.stats.ins".format(
+                        resultsdir, s["CG_ID_sample"], s["reference"]
+                    ),
+                    "path_index": "~",
+                    "step": "insertsize_calc",
+                    "tag": "picard-insertsize",
+                }
+            )
 
-
-        with open(output, 'w') as delivfile:
+        with open(output, "w") as delivfile:
             documents = yaml.dump(deliv, delivfile)
 
-        with open(output, 'r') as delivfile:
+        with open(output, "r") as delivfile:
             postfix = delivfile.read()
         postfix = postfix.replace("'~'", "~")
 
-        with open(output, 'w') as delivfile:
+        with open(output, "w") as delivfile:
             delivfile.write(postfix)
 
         if os.path.isfile(output):
             self.filedict[output] = local
-
 
     def gen_json(self, silent=False):
         report = dict()
@@ -441,47 +543,29 @@ class Reporter:
             t = dict()
 
             # Since some apps are too basic to filter irrelevant non-standard values..
-            t["ST_status"] = (
-                "" if s.ST_status is None or s.ST_status != str(s.ST) else s.ST_status
-            )
+            t["ST_status"] = "" if s.ST_status is None or s.ST_status != str(s.ST) else s.ST_status
             t["threshold"] = (
                 ""
                 if s.threshold is None or s.threshold not in ["Passed", "Failed"]
                 else s.threshold
             )
             t["genome_length"] = (
-                ""
-                if s.genome_length is None or s.genome_length < 1
-                else s.genome_length
+                "" if s.genome_length is None or s.genome_length < 1 else s.genome_length
             )
             t["reference_length"] = (
-                ""
-                if s.reference_length is None or s.reference_length < 1
-                else s.reference_length
+                "" if s.reference_length is None or s.reference_length < 1 else s.reference_length
             )
             t["gc_percentage"] = (
-                ""
-                if s.gc_percentage is None or s.gc_percentage < 0.1
-                else str(s.gc_percentage)
+                "" if s.gc_percentage is None or s.gc_percentage < 0.1 else str(s.gc_percentage)
             )
             t["n50"] = "" if s.n50 is None or s.n50 < 1 else s.n50
             t["contigs"] = "" if s.contigs is None or s.contigs < 1 else s.contigs
-            t["insert_size"] = (
-                "" if s.insert_size is None or s.insert_size < 1 else s.insert_size
-            )
-            t["duplication_rate"] = (
-                "" if s.duplication_rate is None else s.duplication_rate
-            )
-            t["total_reads"] = (
-                "" if s.total_reads is None or s.total_reads < 1 else s.total_reads
-            )
-            t["mapped_rate"] = (
-                "" if s.mapped_rate is None or s.mapped_rate < 0.1 else s.mapped_rate
-            )
+            t["insert_size"] = "" if s.insert_size is None or s.insert_size < 1 else s.insert_size
+            t["duplication_rate"] = "" if s.duplication_rate is None else s.duplication_rate
+            t["total_reads"] = "" if s.total_reads is None or s.total_reads < 1 else s.total_reads
+            t["mapped_rate"] = "" if s.mapped_rate is None or s.mapped_rate < 0.1 else s.mapped_rate
             t["average_coverage"] = (
-                ""
-                if s.average_coverage is None or s.average_coverage < 0.1
-                else s.average_coverage
+                "" if s.average_coverage is None or s.average_coverage < 0.1 else s.average_coverage
             )
             t["coverage_10x"] = (
                 "" if s.coverage_10x is None or s.coverage_10x < 0.1 else s.coverage_10x
@@ -493,9 +577,7 @@ class Reporter:
                 "" if s.coverage_50x is None or s.coverage_50x < 0.1 else s.coverage_50x
             )
             t["coverage_100x"] = (
-                ""
-                if s.coverage_100x is None or s.coverage_100x < 0.1
-                else s.coverage_100x
+                "" if s.coverage_100x is None or s.coverage_100x < 0.1 else s.coverage_100x
             )
 
             report[s.CG_ID_sample] = dict()
@@ -555,9 +637,7 @@ class Reporter:
     def mail(self):
         msg = MIMEMultipart()
         if not self.error and self.attachments:
-            msg["Subject"] = "{} ({}) Reports".format(
-                self.name, self.attachments[0].split("_")[0]
-            )
+            msg["Subject"] = "{} ({}) Reports".format(self.name, self.attachments[0].split("_")[0])
         else:
             msg["Subject"] = "{} Failed Generating Report".format(self.name)
 
@@ -580,24 +660,42 @@ class Reporter:
         s.connect()
         s.sendmail(msg["From"], msg["To"], msg.as_string())
         s.quit()
-        self.logger.info(
-            "Mail containing report sent to {} from {}".format(msg["To"], msg["From"])
-        )
+        self.logger.info("Mail containing report sent to {} from {}".format(msg["To"], msg["From"]))
+
+    def run_flask(self):
+        """Target function for running Flask"""
+        self.exit_flag.clear()  # Reset the flag when starting
+        while not self.exit_flag.is_set():
+            try:
+                self.app.run(host="127.0.0.1", port=5001, debug=False, use_reloader=False)
+            except OSError as e:
+                if "Address already in use" in str(e):
+                    self.logger.error("Port 5000 is already in use. Trying to restart...")
+                    time.sleep(1)
+                else:
+                    raise
 
     def start_web(self):
+        """Starts Flask server in a separate thread."""
+        if self.server and self.server.is_alive():
+            self.logger.info("Webserver already running.")
+            return
+
+        self.exit_flag.clear()  # Ensure flag is reset before starting
+        self.server = threading.Thread(target=self.run_flask, daemon=True)
         self.server.start()
         self.logger.info("Started webserver on http://127.0.0.1:5000/")
-        # Hinders requests before server goes up
-        time.sleep(0.15)
+        time.sleep(0.15)  # Allow time for server to initialize
 
     def kill_flask(self):
-        self.server.terminate()
-        self.server.join()
-        self.logger.info("Closed webserver on http://127.0.0.1:5000/")
+        """Stops the Flask web server."""
+        if self.server and self.server.is_alive():
+            self.logger.info("Closing webserver on http://127.0.0.1:5000/")
+            self.exit_flag.set()  # Signal the Flask loop to exit
+            self.server.join(timeout=2)  # Wait for the thread to exit
+            self.server = None
 
     def restart_web(self):
-        try:
-          self.kill_flask()
-        except Exception as e:
-          pass
+        """Restarts the webserver."""
+        self.kill_flask()
         self.start_web()

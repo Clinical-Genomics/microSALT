@@ -2,7 +2,7 @@ import sys
 import os
 from rauth import OAuth1Service
 from microSALT import app
-from microSALT.utils.pubmlst.helpers import get_path, BASE_API, BASE_WEB, folders_config, credentials_path_key, pubmlst_auth_credentials_file_name
+from microSALT.utils.pubmlst.helpers import BASE_API, BASE_WEB
 
 db = "pubmlst_test_seqdef"
 
@@ -72,7 +72,7 @@ def main():
         client_id = pubmlst_config["client_id"]
         client_secret = pubmlst_config["client_secret"]
         validate_credentials(client_id, client_secret)
-        credentials_path = get_path(folders_config, credentials_path_key)
+        credentials_path = get_path(get_folders_config(), credentials_path_key)
         credentials_file = os.path.join(credentials_path, pubmlst_auth_credentials_file_name)
         access_token, access_secret = get_new_access_token(client_id, client_secret)
         print(f"\nAccess Token: {access_token}")
