@@ -9,7 +9,7 @@ import warnings
 
 from collections import OrderedDict
 from datetime import datetime, timezone
-from sqlalchemy import MetaData, and_, desc, inspect
+from sqlalchemy import MetaData, and_, desc, inspect, text
 from sqlalchemy.engine.reflection import Inspector
 from dateutil.parser import parse
 
