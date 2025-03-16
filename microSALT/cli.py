@@ -172,7 +172,7 @@ def analyse(
         run_settings=run_settings,
     )
 
-    ext_refs = Referencer(
+    referencer = Referencer(
         config=ctx.obj["config"],
         dbm=ctx.obj["dbm"],
         log=ctx.obj["log"],
@@ -182,8 +182,8 @@ def analyse(
     click.echo("INFO - Checking versions of references..")
     try:
         if not skip_update:
-            ext_refs.identify_new(project=True)
-            ext_refs.update_refs()
+            referencer.identify_new(project=True)
+            referencer.update_refs()
             click.echo("INFO - Version check done. Creating sbatch jobs")
         else:
             click.echo("INFO - Skipping version check.")
@@ -266,8 +266,8 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
     click.echo("INFO - Checking versions of references..")
     try:
         if not skip_update:
-            ext_refs.identify_new(project=True)
-            ext_refs.update_refs()
+            referencer.identify_new(project=True)
+            referencer.update_refs()
             click.echo("INFO - Version check done. Creating sbatch jobs")
         else:
             click.echo("INFO - Skipping version check.")
@@ -424,10 +424,10 @@ def review(ctx, type, customer, skip_update, email, output):
     # Trace exists by some samples having pubMLST_ST filled in. Make trace function later
     if email:
         ctx.obj["config"]["regex"]["mail_recipient"] = email
-    ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"])
+    referencer = Referencer(config=ctx.obj["config"], log=ctx.obj["log"])
     if not skip_update:
-        ext_refs.update_refs()
-        ext_refs.resync()
+        referencer.update_refs()
+        referencer.resync()
     click.echo("INFO - Version check done. Generating output")
     if type == "report":
         reporter = Reporter(
@@ -439,7 +439,7 @@ def review(ctx, type, customer, skip_update, email, output):
         )
         reporter.report(type="st_update", customer=customer)
     elif type == "list":
-        ext_refs.resync(type=type)
+        referencer.resync(type=type)
     done()
 
 
@@ -454,8 +454,8 @@ def review(ctx, type, customer, skip_update, email, output):
 @click.pass_context
 def overwrite(ctx, sample_name, force):
     """Flags sample as resolved"""
-    ext_refs = Referencer(config=ctx.obj["config"], dbm=ctx.obj["dbm"], log=ctx.obj["log"])
-    ext_refs.resync(type="overwrite", sample=sample_name, ignore=force)
+    referencer = Referencer(config=ctx.obj["config"], dbm=ctx.obj["dbm"], log=ctx.obj["log"])
+    referencer.resync(type="overwrite", sample=sample_name, ignore=force)
     done()
 
 
