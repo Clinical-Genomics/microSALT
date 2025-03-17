@@ -24,7 +24,7 @@
                                             <tbody class=list >
                                             {% for organism in organisms %}
                                             <tr>
-                                            <td><a href={{ url_for('microSALT.typing_page', project=project, organism_group=organism) }}>{{organism.replace('_', ' ').capitalize()}}</a></td>
+                                            <td><a href={{ url_for('microsalt.typing_page', project=project, organism_group=organism) }}>{{organism.replace('_', ' ').capitalize()}}</a></td>
                                             </tr>
                                             {% endfor %}
                                             </tbody>

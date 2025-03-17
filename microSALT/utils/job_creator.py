@@ -18,8 +18,8 @@ from pathlib import Path
 
 import yaml
 
-from microSALT.store.db_manipulator import DB_Manipulator
-from microSALT.utils.referencer import Referencer
+from microsalt.store.db_manipulator import DB_Manipulator
+from microsalt.utils.referencer import Referencer
 
 
 class Job_Creator:

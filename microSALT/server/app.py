@@ -7,8 +7,8 @@ import subprocess
 import sys
 
 from flask import Flask
-from microSALT.server.views import bp
-from microSALT.store.database import initialize_database
+from microsalt.server.views import bp
+from microsalt.store.database import initialize_database
 
 logger = logging.getLogger("main_logger")
 

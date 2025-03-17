@@ -1,8 +1,0 @@
-include LICENSE
-include README.md
-include requirements.txt
-recursive-include microSALT/server/templates *
-recursive-include artwork/ *
-recursive-include unique_references/ *
-recursive-include tests/testdata/ *
-include configExample.json

@@ -1,9 +1,0 @@
-black==21.9b0
-coverage<5
-flake8>=4.0.1,<4.1
-pytest==6.2.5
-pytest-cov
-python-coveralls
-pylint==2.10.2
-mock==4.0.3
-yamllint==1.26.3

@@ -7,9 +7,9 @@ from pathlib import Path
 
 from werkzeug.exceptions import NotFound
 
-from microSALT.server.app import get_app
-from microSALT.utils.pubmlst.constants import url_map
-from microSALT.utils.pubmlst.exceptions import (
+from microsalt.server.app import get_app
+from microsalt.utils.pubmlst.constants import url_map
+from microsalt.utils.pubmlst.exceptions import (
     CredentialsFileNotFound,
     InvalidCredentials,
     InvalidURLError,

@@ -1,4 +1,4 @@
-name: P_microSALT
+name: P_microsalt
 channels:
   - conda-forge
   - bioconda

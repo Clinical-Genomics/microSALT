@@ -8,7 +8,6 @@ from flask import Flask
 import requests
 import os
 import socket
-import sys
 import smtplib
 import time
 import yaml
@@ -20,9 +19,9 @@ from shutil import copyfile
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 
-from microSALT import __version__
-from microSALT.server.views import gen_reportdata, gen_collectiondata
-from microSALT.store.db_manipulator import DB_Manipulator
+from microsalt import __version__
+from microsalt.server.views import gen_reportdata, gen_collectiondata
+from microsalt.store.db_manipulator import DB_Manipulator
 
 
 class Reporter:

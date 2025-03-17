@@ -2,12 +2,12 @@ import logging
 import subprocess
 from datetime import date
 from flask import Blueprint, render_template, current_app
-from microSALT import __version__
-from microSALT.store.database import get_session
-from microSALT.store.orm_models import Collections, Projects, Reports, Samples, Versions
+from microsalt import __version__
+from microsalt.store.database import get_session
+from microsalt.store.orm_models import Collections, Projects, Reports, Samples, Versions
 
 # Create a Blueprint
-bp = Blueprint('microSALT', __name__)
+bp = Blueprint('microsalt', __name__)
 
 # Removes server start messages
 log = logging.getLogger("werkzeug")
@@ -19,13 +19,13 @@ def start_page():
     projects = session.query(Projects).all()
     return render_template("start_page.html", projects=projects)
 
-@bp.route("/microSALT/")
+@bp.route("/microsalt/")
 def reroute_page():
     session = get_session()
     projects = session.query(Projects).all()
     return render_template("start_page.html", projects=projects)
 
-@bp.route("/microSALT/<project>")
+@bp.route("/microsalt/<project>")
 def project_page(project):
     session = get_session()
     organism_groups = list()
@@ -41,7 +41,7 @@ def project_page(project):
         "project_page.html", organisms=organism_groups, project=project
     )
 
-@bp.route("/microSALT/<project>/qc")
+@bp.route("/microsalt/<project>/qc")
 def alignment_page(project):
     sample_info = gen_reportdata(project)
     current_app.config["threshold"]
@@ -57,7 +57,7 @@ def alignment_page(project):
         build=__version__,
     )
 
-@bp.route("/microSALT/<project>/typing/<organism_group>")
+@bp.route("/microsalt/<project>/typing/<organism_group>")
 def typing_page(project, organism_group):
     sample_info = gen_reportdata(project, organism_group)
 
@@ -74,7 +74,7 @@ def typing_page(project, organism_group):
         build=__version__,
     )
 
-@bp.route("/microSALT/STtracker/<customer>")
+@bp.route("/microsalt/STtracker/<customer>")
 def STtracker_page(customer):
     sample_info = gen_reportdata(pid="all", organism_group="all")
     final_samples = list()

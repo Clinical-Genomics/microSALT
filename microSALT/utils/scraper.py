@@ -6,13 +6,10 @@
 import glob
 import os
 import re
-import string
-import sys
-import time
 
-from microSALT.store.db_manipulator import DB_Manipulator
-from microSALT.utils.referencer import Referencer
-from microSALT.utils.job_creator import Job_Creator
+from microsalt.store.db_manipulator import DB_Manipulator
+from microsalt.utils.referencer import Referencer
+from microsalt.utils.job_creator import Job_Creator
 
 # TODO: Rewrite so samples use seperate objects
 class Scraper:

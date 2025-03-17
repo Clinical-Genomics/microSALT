@@ -4,10 +4,10 @@ from urllib.parse import urlencode
 import requests
 from rauth import OAuth1Session
 
-from microSALT.utils.pubmlst.authentication import load_session_credentials
-from microSALT.utils.pubmlst.constants import HTTPMethod, RequestType, ResponseHandler
-from microSALT.utils.pubmlst.exceptions import PUBMLSTError, SessionTokenRequestError
-from microSALT.utils.pubmlst.helpers import (
+from microsalt.utils.pubmlst.authentication import load_session_credentials
+from microsalt.utils.pubmlst.constants import HTTPMethod, RequestType, ResponseHandler
+from microsalt.utils.pubmlst.exceptions import PUBMLSTError, SessionTokenRequestError
+from microsalt.utils.pubmlst.helpers import (
     BASE_API,
     load_auth_credentials,
     parse_pubmlst_url,

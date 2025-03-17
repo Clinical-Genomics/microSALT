@@ -25,8 +25,8 @@
                                             <tbody class=list >
                                             {% for project in projects %}
                                             <tr>
-                                            <td><a href={{ url_for('microSALT.project_page', project=project.CG_ID_project) }}>{{project.CG_ID_project}}</a></td>
-                                            <td><a href={{ url_for('microSALT.project_page', project=project.CG_ID_project) }}>{{project.Customer_ID_project}}</a></td>
+                                            <td><a href={{ url_for('microsalt.project_page', project=project.CG_ID_project) }}>{{project.CG_ID_project}}</a></td>
+                                            <td><a href={{ url_for('microsalt.project_page', project=project.CG_ID_project) }}>{{project.Customer_ID_project}}</a></td>
                                             </tr>
                                             {% endfor %}
                                             </tbody>

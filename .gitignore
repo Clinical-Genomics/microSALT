@@ -1,7 +1,7 @@
 .DS_Store
 
-microSALT/__pycache__
-microSALT.log
+microsalt/__pycache__
+microsalt.log
 instance/sqlalchemy_config.py
 instance/paths.yml
 unique_references/*.n*

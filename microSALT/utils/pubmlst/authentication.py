@@ -6,12 +6,12 @@ from datetime import datetime, timedelta
 from dateutil import parser
 from rauth import OAuth1Session
 
-from microSALT.utils.pubmlst.exceptions import (
+from microsalt.utils.pubmlst.exceptions import (
     PUBMLSTError,
     SessionTokenRequestError,
     SessionTokenResponseError,
 )
-from microSALT.utils.pubmlst.helpers import (
+from microsalt.utils.pubmlst.helpers import (
     BASE_API,
     credentials_path_key,
     get_folders_config,

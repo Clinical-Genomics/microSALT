@@ -8,11 +8,12 @@ import re
 import shutil
 import subprocess
 import urllib.request
-from microSALT.utils.pubmlst.client import PubMLSTClient
 
 from Bio import Entrez
 import xml.etree.ElementTree as ET
-from microSALT.store.db_manipulator import DB_Manipulator
+
+from microsalt.utils.pubmlst.client import PubMLSTClient
+from microsalt.store.db_manipulator import DB_Manipulator
 
 
 class Referencer:
