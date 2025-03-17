@@ -1,17 +1,18 @@
 import json
 import pytest
-import tempfile
+import os
 import shutil
+import tempfile
 
 from flask import Flask
 from pathlib import Path
 from typing import Generator
 
-from microSALT.cli import initialize_logger
-from microSALT.server.app import initialize_app, get_app
-from microSALT.store.database import initialize_database, drop_all_tables
-from microSALT.store.db_manipulator import DB_Manipulator
-from microSALT.utils.reporter import Reporter
+from microsalt.cli import initialize_logger
+from microsalt.server.app import initialize_app, get_app
+from microsalt.store.database import initialize_database, drop_all_tables
+from microsalt.store.db_manipulator import DB_Manipulator
+from microsalt.utils.reporter import Reporter
 
 
 def unpack_db_json(fixture_dir, filename):
@@ -25,6 +26,7 @@ def unpack_db_json(fixture_dir, filename):
 def app(config) -> Generator[Flask, None, None]:
     initialize_app(config)
     yield get_app()
+    
 
 
 @pytest.fixture(scope="session")
@@ -53,6 +55,11 @@ def temp_dirs() -> Generator[dict, None, None]:
         "expec": tempfile.mkdtemp(),
     }
     yield temp_dirs
+    for path in temp_dirs.values():
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        elif os.path.isfile(path):
+            os.remove(path)
 
 
 @pytest.fixture(scope="session")
@@ -253,11 +260,11 @@ def exp_config() -> dict:
     }
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def reporter(
     app: Flask, config, dbm, logger, sampleinfo_sample, temp_dirs
 ) -> Generator[Reporter, None, None]:
-    reporter = Reporter(
+    yield Reporter(
         app=app,
         config=config,
         dbm=dbm,
@@ -265,6 +272,3 @@ def reporter(
         output=temp_dirs["reports"],
         sampleinfo=sampleinfo_sample,
     )
-    reporter.start_web()
-    yield reporter
-    reporter.kill_flask()

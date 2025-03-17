@@ -5,7 +5,10 @@
 
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import *
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, DeclarativeBase
+
+class Base(DeclarativeBase):
+    pass
 
 db = SQLAlchemy()
 
@@ -56,9 +59,7 @@ class Seq_types(db.Model):
     __tablename__ = "seq_types"
     samples = relationship("Samples", back_populates="seq_types")
 
-    CG_ID_sample = db.Column(
-        db.String(15), ForeignKey("samples.CG_ID_sample"), primary_key=True
-    )
+    CG_ID_sample = db.Column(db.String(15), ForeignKey("samples.CG_ID_sample"), primary_key=True)
     loci = db.Column(db.String(10), primary_key=True)
     allele = db.Column(db.SmallInteger)
     contig_name = db.Column(db.String(20), primary_key=True)
@@ -78,9 +79,7 @@ class Resistances(db.Model):
     __tablename__ = "resistances"
     samples = relationship("Samples", back_populates="resistances")
 
-    CG_ID_sample = db.Column(
-        db.String(15), ForeignKey("samples.CG_ID_sample"), primary_key=True
-    )
+    CG_ID_sample = db.Column(db.String(15), ForeignKey("samples.CG_ID_sample"), primary_key=True)
     gene = db.Column(db.String(50), primary_key=True)
     instance = db.Column(db.String(30), primary_key=True)
     contig_name = db.Column(db.String(20), primary_key=True)
@@ -101,9 +100,7 @@ class Expacs(db.Model):
     __tablename__ = "expacs"
     samples = relationship("Samples", back_populates="expacs")
 
-    CG_ID_sample = db.Column(
-        db.String(15), ForeignKey("samples.CG_ID_sample"), primary_key=True
-    )
+    CG_ID_sample = db.Column(db.String(15), ForeignKey("samples.CG_ID_sample"), primary_key=True)
     gene = db.Column(db.String(50), primary_key=True)
     instance = db.Column(db.String(30), primary_key=True)
     contig_name = db.Column(db.String(20), primary_key=True)
@@ -143,9 +140,7 @@ class Reports(db.Model):
     __tablename__ = "reports"
     projects = relationship("Projects", back_populates="reports")
 
-    CG_ID_project = db.Column(
-        db.String(15), ForeignKey("projects.CG_ID_project"), primary_key=True
-    )
+    CG_ID_project = db.Column(db.String(15), ForeignKey("projects.CG_ID_project"), primary_key=True)
     steps_aggregate = db.Column(db.String(100))
     date = db.Column(db.DateTime)
     version = db.Column(db.Integer, default=1, primary_key=True)

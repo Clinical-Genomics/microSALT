@@ -25,10 +25,10 @@ _Test routine to verify the stability of the PR:_
 - _`conda activate S_microSALT`_
 - _(SITUATIONAL) `export MICROSALT_CONFIG=/home/proj/dropbox/microSALT.json`_
 - _Select a relevant subset of the following:_
-- _`microSALT analyse project MIC3109`_
-- _`microSALT analyse project MIC4107`_
-- _`microSALT analyse project MIC4109`_
-- _`microSALT analyse project ACC5551`_
+- _`microsalt analyse project MIC3109`_
+- _`microsalt analyse project MIC4107`_
+- _`microsalt analyse project MIC4109`_
+- _`microsalt analyse project ACC5551`_
 
 _Verify that the results for projects MIC3109, MIC4107, MIC4109 & ACC5551 are consistent with the results attached to AMSystem doc 1490, Microbial_WGS.xlsx_
 

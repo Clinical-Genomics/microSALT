@@ -37,7 +37,7 @@ class DB_Manipulator:
         self.logger = log
         self.engine = get_engine()
         self.session = get_session()
-        self.metadata = MetaData(self.engine)
+        self.metadata = MetaData()
         self.profiles = Profiles(self.metadata, self.config, self.logger).tables
         self.novel = Novel(self.metadata, self.config, self.logger).tables
         # Turns off pymysql deprecation warnings until they can update their code
@@ -139,10 +139,8 @@ class DB_Manipulator:
                         tablename
                     )
                 )
-            pk_values = list()
-            for item in pk_list:
-                pk_values.append(data_dict[item])
-            existing = self.session.query(table).get(pk_values)
+            pk_values = {item: data_dict[item] for item in pk_list}
+            existing = self.session.query(table).filter_by(**pk_values).first()
             # Add record
             if not existing or force:
                 newobj = table()

@@ -4,10 +4,8 @@ import glob
 import logging
 import pytest
 
-from unittest.mock import patch
-
-from microSALT.utils.reporter import Reporter
-from microSALT.store.orm_models import Reports
+from microsalt.utils.reporter import Reporter
+from microsalt.store.orm_models import Reports
 
 logger = logging.getLogger("main_logger")
 

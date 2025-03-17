@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, MetaData
+from sqlalchemy import SingletonThreadPool, create_engine, MetaData
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
@@ -9,7 +9,7 @@ SESSION: scoped_session = None
 def initialize_database(config: dict):
     global ENGINE, SESSION
     ENGINE = create_engine(
-        config["database"]["SQLALCHEMY_DATABASE_URI"], connect_args={"check_same_thread": False, "timeout": 15}
+        config["database"]["SQLALCHEMY_DATABASE_URI"], poolclass=SingletonThreadPool, connect_args={"check_same_thread": False, "timeout": 15}
     )
     session_factory = sessionmaker(bind=ENGINE)
     SESSION = scoped_session(session_factory)

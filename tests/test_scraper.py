@@ -5,33 +5,41 @@ import json
 import logging
 import os
 import pathlib
-import pdb
 import pytest
 
 from distutils.sysconfig import get_python_lib
 
-from microSALT.utils.scraper import Scraper
-from microSALT.utils.referencer import Referencer
+from microsalt.utils.scraper import Scraper
+from microsalt.utils.referencer import Referencer
+
 
 @pytest.fixture
 def testdata_prefix():
-    test_path = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/'))
-    #Check if release install exists
+    test_path = os.path.abspath(
+        os.path.join(pathlib.Path(__file__).parent.parent, "tests/testdata/")
+    )
+    # Check if release install exists
     for entry in os.listdir(get_python_lib()):
-        if 'microSALT-' in entry:
-            test_path = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/'))
+        if "microsalt-" in entry:
+            test_path = os.path.abspath(
+                os.path.join(os.path.expandvars("$CONDA_PREFIX"), "testdata/")
+            )
     return test_path
 
 
 @pytest.fixture
 def testdata():
     testdata = os.path.abspath(
-        os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/sampleinfo_samples.json'))
-    #Check if release install exists
+        os.path.join(pathlib.Path(__file__).parent.parent, "tests/testdata/sampleinfo_samples.json")
+    )
+    # Check if release install exists
     for entry in os.listdir(get_python_lib()):
-        if 'microSALT-' in entry:
+        if "microsalt-" in entry:
             testdata = os.path.abspath(
-                os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/sampleinfo_samples.json'))
+                os.path.join(
+                    os.path.expandvars("$CONDA_PREFIX"), "testdata/sampleinfo_samples.json"
+                )
+            )
     with open(testdata) as json_file:
         data = json.load(json_file)
     return data
@@ -46,7 +54,7 @@ def scraper(config, logger, testdata):
 @pytest.fixture
 def init_references(config, logger, testdata):
     ref_obj = Referencer(config=config, log=logger, sampleinfo=testdata)
-    ref_obj.identify_new(testdata[0].get('CG_ID_project'), project=True)
+    ref_obj.identify_new(testdata[0].get("CG_ID_project"), project=True)
     ref_obj.update_refs()
 
 
@@ -58,11 +66,15 @@ def test_quast_scraping(scraper, testdata_prefix, caplog):
 @pytest.mark.xfail(reason="Can no longer fetch from databases without authenticating")
 def test_blast_scraping(scraper, testdata_prefix, caplog):
     caplog.set_level(logging.DEBUG)
-    scraper.scrape_blast(type='seq_type', file_list=["{}/blast_single_loci.txt".format(testdata_prefix)])
+    scraper.scrape_blast(
+        type="seq_type", file_list=["{}/blast_single_loci.txt".format(testdata_prefix)]
+    )
     assert "candidate" in caplog.text
 
     caplog.clear()
-    hits = scraper.scrape_blast(type='resistance', file_list=["{}/blast_single_resistance.txt".format(testdata_prefix)])
+    hits = scraper.scrape_blast(
+        type="resistance", file_list=["{}/blast_single_resistance.txt".format(testdata_prefix)]
+    )
     genes = [h["gene"] for h in hits]
 
     assert "blaOXA-48" in genes

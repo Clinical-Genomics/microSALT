@@ -13,9 +13,22 @@ bp = Blueprint('microsalt', __name__)
 log = logging.getLogger("werkzeug")
 log.setLevel(logging.CRITICAL)
 
+def inspect_db_schema(session):
+    """Inspect the database schema and log the tables and columns."""
+    
+    from sqlalchemy import inspect
+    inspector = inspect(session.bind)
+    tables = inspector.get_table_names()
+    schema_info = {}
+    for table in tables:
+        columns = inspector.get_columns(table)
+        schema_info[table] = [column['name'] for column in columns]
+    return schema_info
+
 @bp.route("/")
 def start_page():
     session = get_session()
+    schema_info = inspect_db_schema(session)
     projects = session.query(Projects).all()
     return render_template("start_page.html", projects=projects)
 

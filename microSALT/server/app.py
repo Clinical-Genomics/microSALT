@@ -8,8 +8,7 @@ import sys
 
 from flask import Flask
 from microsalt.server.views import bp
-from microsalt.store.database import initialize_database
-
+from microsalt.store.orm_models import db
 logger = logging.getLogger("main_logger")
 
 APP: Flask = None
@@ -18,10 +17,10 @@ def initialize_app(config: dict) -> None:
     global APP
     APP = Flask(__name__, template_folder="templates")
     APP.config.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
-    APP.config.setdefault("SQLALCHEMY_BINDS", None)
+    APP.config.setdefault("SQLALCHEMY_BINDS", {})
     APP.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
-    initialize_database(config)
     _setup_app_from_config(APP, config)
+    db.init_app(APP)
     APP.register_blueprint(bp)
 
 def get_app() -> Flask:
@@ -40,6 +39,8 @@ def create_path(path: str, logger: logging.Logger):
 def handle_config_entry(entry, value, logger):
     
     if isinstance(value, str) and "/" in value and entry not in ["genologics"]:
+        if os.path.abspath(value) == "/path":
+            logger.error(f"Path for {entry} is not set.")
         if not value.startswith("/"):
             sys.exit(-1)
         create_path(os.path.abspath(value), logger)

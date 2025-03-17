@@ -4,11 +4,10 @@
 #!/usr/bin/env python
 
 import os
-from sqlalchemy import *
-
+from sqlalchemy import MetaData
 
 class Profiles:
-    def __init__(self, metadata, config, log):
+    def __init__(self, metadata: MetaData, config: dict, log):
         self.tables = dict()
         self.metadata = metadata
         self.config = config
@@ -24,7 +23,7 @@ class Profiles:
                 )
             )
 
-    def add_table(self, file):
+    def add_table(self, file: str):
         try:
             with open(
                 "{}/{}".format(self.config["folders"]["profiles"], file), "r"
@@ -55,7 +54,7 @@ class Profiles:
 
 
 class Novel:
-    def __init__(self, metadata, config, log):
+    def __init__(self, metadata: MetaData, config: dict, log):
         self.tables = dict()
         self.metadata = metadata
         self.config = config
@@ -71,7 +70,7 @@ class Novel:
                 )
             )
 
-    def add_table(self, file):
+    def add_table(self, file: str):
         try:
             with open(
                 "{}/{}".format(self.config["folders"]["profiles"], file), "r"

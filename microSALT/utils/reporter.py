@@ -663,7 +663,7 @@ class Reporter:
 
     def run_flask(self):
         """Target function for running Flask"""
-        self.exit_flag.clear()  # Reset the flag when starting
+        self.exit_flag.clear()
         while not self.exit_flag.is_set():
             try:
                 self.app.run(host="127.0.0.1", port=5001, debug=False, use_reloader=False)
@@ -680,18 +680,18 @@ class Reporter:
             self.logger.info("Webserver already running.")
             return
 
-        self.exit_flag.clear()  # Ensure flag is reset before starting
+        self.exit_flag.clear()
         self.server = threading.Thread(target=self.run_flask, daemon=True)
         self.server.start()
         self.logger.info("Started webserver on http://127.0.0.1:5000/")
-        time.sleep(0.15)  # Allow time for server to initialize
+        time.sleep(0.15)
 
     def kill_flask(self):
         """Stops the Flask web server."""
         if self.server and self.server.is_alive():
             self.logger.info("Closing webserver on http://127.0.0.1:5000/")
-            self.exit_flag.set()  # Signal the Flask loop to exit
-            self.server.join(timeout=2)  # Wait for the thread to exit
+            self.exit_flag.set()
+            self.server.join(timeout=2)
             self.server = None
 
     def restart_web(self):
