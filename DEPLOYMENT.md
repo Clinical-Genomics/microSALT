@@ -12,7 +12,7 @@ When all tests done and successful and PR is approved by codeowners, follow thes
             ```shell
             sudo -iu hiseq.clinical
             us
-            bash /home/proj/production/servers/resources/hasta.scilifelab.se/install-microSALT-stage.sh master
+            bash /home/proj/production/servers/resources/hasta.scilifelab.se/install-microsalt-stage.sh master
             ```
         2. Otherwise run:
             ```shell
@@ -27,7 +27,7 @@ When all tests done and successful and PR is approved by codeowners, follow thes
             ```shell
             sudo -iu hiseq.clinical
             up
-            bash /home/proj/production/servers/resources/hasta.scilifelab.se/install-microSALT-prod.sh
+            bash /home/proj/production/servers/resources/hasta.scilifelab.se/install-microsalt-prod.sh
             ```
         2. Otherwise run:
             ```shell
