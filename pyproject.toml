@@ -43,6 +43,9 @@ build-backend = "poetry.core.masonry.api"
 [project.scripts]
 microsalt = "microsalt.cli:root"
 
+[tool.package]
+package-mode = false
+
 [tool.poetry.group.dev.dependencies]
 coverage = "^7.7.0"
 flake8 = "^7.1.2"
