@@ -37,7 +37,7 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        poetry env use python
+        micromamba activate P_microsalt
         poetry env info
         poetry install --no-interaction --all-extras
 
