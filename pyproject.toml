@@ -8,6 +8,14 @@ authors = [
 license = {text = "LICENSE"}
 readme = "README.md"
 requires-python = ">=3.10"
+homepage = "https://github.com/Clinical-Genomics/microSALT"
+repository = "https://github.com/Clinical-Genomics/microSALT"
+keywords = ["bioinformatics", "microbial", "sequence analysis", "typing"]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering :: Bio-Informatics"
+]
 dependencies = [
 "pymysql (>=1.1.1,<2.0.0)",
 "click (>=8.1.8,<9.0.0)",
@@ -21,13 +29,12 @@ dependencies = [
 "genologics (==0.4.6)",
 "pyyaml (>=6.0.2,<7.0.0)"
 ]
+
 include = [
   "README.md",
   "microsalt/**/*",
   "tests/**/*"
 ]
-packages = [{ include = "microsalt" }]
-
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
