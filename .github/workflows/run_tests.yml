@@ -4,7 +4,7 @@ on: [push]
 
 
 env:
-  CONDA_PREFIX: /home/runner/work/microSALT/microsalt/tests
+  CONDA_PREFIX: /home/runner/micromamba/envs/P_microsalt
   COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
 
 jobs:
@@ -23,7 +23,12 @@ jobs:
       with:
         environment-file: environment.yml
         cache-downloads: true
-
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.10.13'
+    
     - name: Install and configure Poetry
       uses: snok/install-poetry@v1
       with:
@@ -32,8 +37,8 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        eval "$(micromamba shell hook --shell bash)
-        micromamba activate P_microsalt
+        eval "$(micromamba shell hook -s bash)"
+        micromamba activate {{ env.CONDA_PREFIX }}
         poetry env info
         poetry install --no-interaction --all-extras
 
