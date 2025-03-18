@@ -38,7 +38,7 @@ jobs:
     - name: Install Dependencies
       run: |
         poetry env info
-        poetry install --no-interaction --all-extras
+        poetry install --no-interaction --all-extras --no-root
 
     - name: Lint with flake8
       run: |
