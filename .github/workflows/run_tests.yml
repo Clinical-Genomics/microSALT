@@ -37,8 +37,6 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        eval "$(micromamba shell hook -s bash)"
-        micromamba activate {{ env.CONDA_PREFIX }}
         poetry env info
         poetry install --no-interaction --all-extras
 
