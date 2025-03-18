@@ -4,8 +4,8 @@ import glob
 import logging
 import pytest
 
-from microsalt.utils.reporter import Reporter
-from microsalt.store.orm_models import Reports
+from microSALT.utils.reporter import Reporter
+from microSALT.store.orm_models import Reports
 
 logger = logging.getLogger("main_logger")
 
@@ -76,6 +76,7 @@ def test_report(caplog, reporter):
     with pytest.raises(Exception):
         reporter.report()
         assert "Report function recieved invalid format" in caplog.text
+
 
 def test_restart_web(reporter):
     reporter.restart_web()

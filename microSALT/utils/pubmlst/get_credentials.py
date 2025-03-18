@@ -1,7 +1,7 @@
 import sys
 import os
 from rauth import OAuth1Service
-from microsalt.utils.pubmlst.helpers import BASE_API, BASE_WEB, get_folders_config, get_path
+from microSALT.utils.pubmlst.helpers import BASE_API, BASE_WEB, get_folders_config, get_path
 
 db = "pubmlst_test_seqdef"
 
@@ -67,8 +67,8 @@ def save_to_credentials_py(client_id, client_secret, access_token, access_secret
 
 def main():
     try:
-        from microsalt.utils.pubmlst.helpers import pubmlst_auth_credentials_file_name, credentials_path_key
-        from microsalt.server.app import get_app
+        from microSALT.utils.pubmlst.helpers import pubmlst_auth_credentials_file_name, credentials_path_key
+        from microSALT.server.app import get_app
         app = get_app()
         pubmlst_config = app.config["pubmlst"]
         client_id = pubmlst_config["client_id"]

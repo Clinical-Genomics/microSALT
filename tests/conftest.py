@@ -8,11 +8,11 @@ from flask import Flask
 from pathlib import Path
 from typing import Generator
 
-from microsalt.cli import initialize_logger
-from microsalt.server.app import initialize_app, get_app
-from microsalt.store.database import initialize_database, drop_all_tables
-from microsalt.store.db_manipulator import DB_Manipulator
-from microsalt.utils.reporter import Reporter
+from microSALT.cli import initialize_logger
+from microSALT.server.app import initialize_app, get_app
+from microSALT.store.database import initialize_database, drop_all_tables
+from microSALT.store.db_manipulator import DB_Manipulator
+from microSALT.utils.reporter import Reporter
 
 
 def unpack_db_json(fixture_dir, filename):
@@ -26,7 +26,6 @@ def unpack_db_json(fixture_dir, filename):
 def app(config) -> Generator[Flask, None, None]:
     initialize_app(config)
     yield get_app()
-    
 
 
 @pytest.fixture(scope="session")
@@ -97,7 +96,7 @@ def config(temp_dirs: dict) -> dict:
         },
         "_comment": "Database/Flask configuration",
         "database": {
-            "SQLALCHEMY_DATABASE_URI": "sqlite:////tmp/microsalt.db",
+            "SQLALCHEMY_DATABASE_URI": "sqlite:////tmp/microSALT.db",
             "SQLALCHEMY_TRACK_MODIFICATIONS": "False",
             "DEBUG": "True",
         },

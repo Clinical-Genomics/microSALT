@@ -12,8 +12,8 @@ import urllib.request
 from Bio import Entrez
 import xml.etree.ElementTree as ET
 
-from microsalt.utils.pubmlst.client import PubMLSTClient
-from microsalt.store.db_manipulator import DB_Manipulator
+from microSALT.utils.pubmlst.client import PubMLSTClient
+from microSALT.store.db_manipulator import DB_Manipulator
 
 
 class Referencer:

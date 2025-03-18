@@ -16,9 +16,9 @@ from dateutil.parser import parse
 # maintain the same connection per thread
 from typing import Dict, List
 
-from microsalt import __version__
-from microsalt.store.database import get_engine, get_session
-from microsalt.store.orm_models import (
+from microSALT import __version__
+from microSALT.store.database import get_engine, get_session
+from microSALT.store.orm_models import (
     Collections,
     Expacs,
     Projects,
@@ -28,7 +28,7 @@ from microsalt.store.orm_models import (
     Seq_types,
     Versions,
 )
-from microsalt.store.models import Profiles, Novel
+from microSALT.store.models import Profiles, Novel
 
 
 class DB_Manipulator:

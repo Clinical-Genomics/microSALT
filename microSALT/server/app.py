@@ -1,4 +1,3 @@
-
 import logging
 import os
 from pathlib import Path
@@ -7,11 +6,13 @@ import subprocess
 import sys
 
 from flask import Flask
-from microsalt.server.views import bp
-from microsalt.store.orm_models import db
+from microSALT.server.views import bp
+from microSALT.store.orm_models import db
+
 logger = logging.getLogger("main_logger")
 
 APP: Flask = None
+
 
 def initialize_app(config: dict) -> None:
     global APP
@@ -23,10 +24,12 @@ def initialize_app(config: dict) -> None:
     db.init_app(APP)
     APP.register_blueprint(bp)
 
+
 def get_app() -> Flask:
     if not APP:
         raise ValueError("App not initialized")
     return APP
+
 
 def create_path(path: str, logger: logging.Logger):
     if not Path(path).exists():
@@ -37,7 +40,7 @@ def create_path(path: str, logger: logging.Logger):
 
 
 def handle_config_entry(entry, value, logger):
-    
+
     if isinstance(value, str) and "/" in value and entry not in ["genologics"]:
         if os.path.abspath(value) == "/path":
             logger.error(f"Path for {entry} is not set.")
@@ -76,6 +79,7 @@ def check_database_integrity(db_file, logger):
 
     logger.info("Database integrity check passed.")
 
+
 def _setup_app_from_config(app: Flask, config: dict):
     app.config.update(config["database"])
     app.config["folders"] = config.get("folders", {})
@@ -87,12 +91,10 @@ def _setup_app_from_config(app: Flask, config: dict):
     app.config["mlst_span_threshold"] = config["threshold"]["mlst_span"]
     app.config["motif_id_threshold"] = config["threshold"]["motif_id"]
     app.config["motif_span_threshold"] = config["threshold"]["motif_span"]
-    
-    
-    
+
     # Create paths mentioned in config
     create_paths(app.config["folders"], logger)
-    
+
     # Integrity check database
     db_file = re.search(
         "sqlite:///(.+)",
@@ -100,10 +102,12 @@ def _setup_app_from_config(app: Flask, config: dict):
     )[1]
     check_database_integrity(db_file, logger)
 
+
 if __name__ == "__main__":
-    
+
     from microSALT.utils.config_loader import load_config
-    config = load_config('/Users/karlnyren/github/microSALT/tests/testdata/config.json')
+
+    config = load_config("/Users/karlnyren/github/microSALT/tests/testdata/config.json")
     initialize_app(config)
     app = get_app()
     app.run(host="127.0.0.1", port=5001, debug=True, use_reloader=False)

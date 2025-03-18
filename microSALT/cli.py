@@ -9,15 +9,15 @@ import os
 import sys
 import logging
 
-from microsalt import __version__
-from microsalt.store.database import initialize_database
-from microsalt.store.db_manipulator import DB_Manipulator
-from microsalt.server.app import initialize_app, get_app
-from microsalt.utils.config_loader import load_config
-from microsalt.utils.scraper import Scraper
-from microsalt.utils.job_creator import Job_Creator
-from microsalt.utils.reporter import Reporter
-from microsalt.utils.referencer import Referencer
+from microSALT import __version__
+from microSALT.store.database import initialize_database
+from microSALT.store.db_manipulator import DB_Manipulator
+from microSALT.server.app import initialize_app, get_app
+from microSALT.utils.config_loader import load_config
+from microSALT.utils.scraper import Scraper
+from microSALT.utils.job_creator import Job_Creator
+from microSALT.utils.reporter import Reporter
+from microSALT.utils.referencer import Referencer
 
 default_sampleinfo = {
     "CG_ID_project": "XXX0000",
@@ -461,7 +461,7 @@ def overwrite(ctx, sample_name, force):
 
 @root.command()
 def init_db():
-    from microsalt.store.orm_models import db
+    from microSALT.store.orm_models import db
 
     app = get_app()
     db.init_app(app)

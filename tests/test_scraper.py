@@ -9,8 +9,8 @@ import pytest
 
 from distutils.sysconfig import get_python_lib
 
-from microsalt.utils.scraper import Scraper
-from microsalt.utils.referencer import Referencer
+from microSALT.utils.scraper import Scraper
+from microSALT.utils.referencer import Referencer
 
 
 @pytest.fixture
@@ -20,7 +20,7 @@ def testdata_prefix():
     )
     # Check if release install exists
     for entry in os.listdir(get_python_lib()):
-        if "microsalt-" in entry:
+        if "microSALT-" in entry:
             test_path = os.path.abspath(
                 os.path.join(os.path.expandvars("$CONDA_PREFIX"), "testdata/")
             )
@@ -34,7 +34,7 @@ def testdata():
     )
     # Check if release install exists
     for entry in os.listdir(get_python_lib()):
-        if "microsalt-" in entry:
+        if "microSALT-" in entry:
             testdata = os.path.abspath(
                 os.path.join(
                     os.path.expandvars("$CONDA_PREFIX"), "testdata/sampleinfo_samples.json"

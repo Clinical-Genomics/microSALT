@@ -19,9 +19,9 @@ from shutil import copyfile
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 
-from microsalt import __version__
-from microsalt.server.views import gen_reportdata, gen_collectiondata
-from microsalt.store.db_manipulator import DB_Manipulator
+from microSALT import __version__
+from microSALT.server.views import gen_reportdata, gen_collectiondata
+from microSALT.store.db_manipulator import DB_Manipulator
 
 
 class Reporter:
@@ -344,7 +344,7 @@ class Reporter:
                 ),
                 "path_index": "~",
                 "step": "result_aggregation",
-                "tag": "microsalt-qc",
+                "tag": "microSALT-qc",
             }
         )
         # Typing report
@@ -357,7 +357,7 @@ class Reporter:
                 ),
                 "path_index": "~",
                 "step": "result_aggregation",
-                "tag": "microsalt-type",
+                "tag": "microSALT-type",
             }
         )
         # Json (vogue) report
@@ -368,7 +368,7 @@ class Reporter:
                 "path": "{}/{}.json".format(self.output, self.sample.get("CG_ID_project")),
                 "path_index": "~",
                 "step": "result_aggregation",
-                "tag": "microsalt-json",
+                "tag": "microSALT-json",
             }
         )
         # Settings dump

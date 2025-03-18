@@ -10,7 +10,7 @@ import logging
 from distutils.sysconfig import get_python_lib
 from unittest.mock import patch
 
-from microsalt.utils.job_creator import Job_Creator
+from microSALT.utils.job_creator import Job_Creator
 
 logger = logging.getLogger("main_logger")
 
@@ -22,7 +22,7 @@ def testdata():
     )
     # Check if release install exists
     for entry in os.listdir(get_python_lib()):
-        if "microsalt-" in entry:
+        if "microSALT-" in entry:
             testdata = os.path.abspath(
                 os.path.join(
                     os.path.expandvars("$CONDA_PREFIX"), "testdata/sampleinfo_samples.json"
@@ -60,7 +60,7 @@ def test_verify_fastq(gopen, stat, listdir, config, testdata):
 
 
 @patch("re.search")
-@patch("microsalt.utils.job_creator.glob.glob")
+@patch("microSALT.utils.job_creator.glob.glob")
 @pytest.mark.xfail(reason="Can no longer fetch from databases without authenticating")
 def test_blast_subset(glob_search, research, config, testdata):
     jc = Job_Creator(

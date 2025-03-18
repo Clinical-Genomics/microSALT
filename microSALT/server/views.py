@@ -2,28 +2,31 @@ import logging
 import subprocess
 from datetime import date
 from flask import Blueprint, render_template, current_app
-from microsalt import __version__
-from microsalt.store.database import get_session
-from microsalt.store.orm_models import Collections, Projects, Reports, Samples, Versions
+from microSALT import __version__
+from microSALT.store.database import get_session
+from microSALT.store.orm_models import Collections, Projects, Reports, Samples, Versions
 
 # Create a Blueprint
-bp = Blueprint('microsalt', __name__)
+bp = Blueprint("microSALT", __name__)
 
 # Removes server start messages
 log = logging.getLogger("werkzeug")
 log.setLevel(logging.CRITICAL)
 
+
 def inspect_db_schema(session):
     """Inspect the database schema and log the tables and columns."""
-    
+
     from sqlalchemy import inspect
+
     inspector = inspect(session.bind)
     tables = inspector.get_table_names()
     schema_info = {}
     for table in tables:
         columns = inspector.get_columns(table)
-        schema_info[table] = [column['name'] for column in columns]
+        schema_info[table] = [column["name"] for column in columns]
     return schema_info
+
 
 @bp.route("/")
 def start_page():
@@ -32,29 +35,28 @@ def start_page():
     projects = session.query(Projects).all()
     return render_template("start_page.html", projects=projects)
 
-@bp.route("/microsalt/")
+
+@bp.route("/microSALT/")
 def reroute_page():
     session = get_session()
     projects = session.query(Projects).all()
     return render_template("start_page.html", projects=projects)
 
-@bp.route("/microsalt/<project>")
+
+@bp.route("/microSALT/<project>")
 def project_page(project):
     session = get_session()
     organism_groups = list()
     organism_groups.append("all")
-    distinct_organisms = (
-        session.query(Samples).filter_by(CG_ID_project=project).distinct()
-    )
+    distinct_organisms = session.query(Samples).filter_by(CG_ID_project=project).distinct()
     for one_guy in distinct_organisms:
         if one_guy.organism not in organism_groups and one_guy.organism is not None:
             organism_groups.append(one_guy.organism)
     organism_groups.sort()
-    return render_template(
-        "project_page.html", organisms=organism_groups, project=project
-    )
+    return render_template("project_page.html", organisms=organism_groups, project=project)
 
-@bp.route("/microsalt/<project>/qc")
+
+@bp.route("/microSALT/<project>/qc")
 def alignment_page(project):
     sample_info = gen_reportdata(project)
     current_app.config["threshold"]
@@ -70,7 +72,8 @@ def alignment_page(project):
         build=__version__,
     )
 
-@bp.route("/microsalt/<project>/typing/<organism_group>")
+
+@bp.route("/microSALT/<project>/typing/<organism_group>")
 def typing_page(project, organism_group):
     sample_info = gen_reportdata(project, organism_group)
 
@@ -87,7 +90,8 @@ def typing_page(project, organism_group):
         build=__version__,
     )
 
-@bp.route("/microsalt/STtracker/<customer>")
+
+@bp.route("/microSALT/STtracker/<customer>")
 def STtracker_page(customer):
     sample_info = gen_reportdata(pid="all", organism_group="all")
     final_samples = list()
@@ -102,23 +106,21 @@ def STtracker_page(customer):
         "STtracker_page.html", date=date.today().isoformat(), internal=final_samples
     )
 
+
 def gen_collectiondata(collect_id=[]):
-    """ Queries database using a set of samples"""
+    """Queries database using a set of samples"""
     session = get_session()
     arglist = []
-    samples = (
-        session.query(Collections).filter(Collections.ID_collection == collect_id).all()
-    )
+    samples = session.query(Collections).filter(Collections.ID_collection == collect_id).all()
     for sample in samples:
         arglist.append("Samples.CG_ID_sample=='{}'".format(sample.CG_ID_sample))
-    sample_info = session.query(Samples).filter(
-        eval("or_({})".format(",".join(arglist)))
-    )
+    sample_info = session.query(Samples).filter(eval("or_({})".format(",".join(arglist))))
     sample_info = gen_add_info(sample_info)
     return sample_info
 
+
 def gen_reportdata(pid="all", organism_group="all"):
-    """ Queries database for all necessary information for the reports """
+    """Queries database for all necessary information for the reports"""
     session = get_session()
     if pid == "all" and organism_group == "all":
         sample_info = session.query(Samples)
@@ -135,14 +137,13 @@ def gen_reportdata(pid="all", organism_group="all"):
 
     reports = session.query(Reports).filter(Reports.CG_ID_project == pid).all()
     session.close()
-    sample_info["reports"] = reports = sorted(
-        reports, key=lambda x: x.version, reverse=True
-    )
+    sample_info["reports"] = reports = sorted(reports, key=lambda x: x.version, reverse=True)
 
     return sample_info
 
+
 def gen_add_info(sample_info=dict()):
-    """ Enhances a sample info struct by adding ST_status, threshold info, versioning and sorting """
+    """Enhances a sample info struct by adding ST_status, threshold info, versioning and sorting"""
     session = get_session()
     # Set ST status
     output = dict()
@@ -160,9 +161,7 @@ def gen_add_info(sample_info=dict()):
         try:
             sample_info = sorted(
                 sample_info,
-                key=lambda sample: int(
-                    sample.CG_ID_sample.replace(sample.CG_ID_project, "")[1:]
-                ),
+                key=lambda sample: int(sample.CG_ID_sample.replace(sample.CG_ID_project, "")[1:]),
             )
         except ValueError as e:
             pass

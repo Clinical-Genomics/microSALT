@@ -22,7 +22,7 @@
     "_comment": "Report collection folder",
     "reports": "/tmp/MLST/reports/",
     "_comment": "Log file position and name",
-    "log_file": "/tmp/microsalt.log",
+    "log_file": "/tmp/microSALT.log",
     "_comment": "Root folder for input fasta sequencing data",
     "seqdata": "/tmp/projects/",
     "_comment": "ST profiles. Each ST profile file under 'profiles' have an identicial folder under references",
@@ -38,7 +38,7 @@
   },
   "_comment": "Database/Flask configuration",
   "database": {
-    "SQLALCHEMY_DATABASE_URI": "sqlite:////tmp/microsalt.db",
+    "SQLALCHEMY_DATABASE_URI": "sqlite:////tmp/microSALT.db",
     "SQLALCHEMY_TRACK_MODIFICATIONS": "False",
     "DEBUG": "True"
   },

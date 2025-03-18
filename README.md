@@ -1,17 +1,17 @@
-[![Build status](https://github.com/clinical-genomics/microsalt/actions/workflows/run_tests.yml/badge.svg)](https://github.com/clinical-genomics/microsalt/actions/workflows/run_tests.yml)
+[![Build status](https://github.com/clinical-genomics/microSALT/actions/workflows/run_tests.yml/badge.svg)](https://github.com/clinical-genomics/microSALT/actions/workflows/run_tests.yml)
 [![Coverage Status](https://coveralls.io/repos/github/Clinical-Genomics/microSALT/badge.svg?branch=master)](https://coveralls.io/github/Clinical-Genomics/microSALT?branch=master)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4026043.svg)](https://doi.org/10.5281/zenodo.4026043)
 
 <p align="center">
   <a href="https://github.com/sylvinite/microSALT">
-    <img width="1000" height="250" src="artwork/microsalt.jpg"/>
+    <img width="1000" height="250" src="artwork/microSALT.jpg"/>
   </a>
 </p>
 
-__Microbial Sequence Analysis and Loci-based Typing pipeline__
+**Microbial Sequence Analysis and Loci-based Typing pipeline**
 
 _The microbial sequence analysis and loci-based typing pipeline (microSALT) is
-used to analyse microbial samples.  It produces a quality control of the
+used to analyse microbial samples. It produces a quality control of the
 sample, determines a sample's organism specific sequence type, and its
 resistance pattern. microSALT also provides a database storage solution and
 report generation of these results._
@@ -42,17 +42,17 @@ cp configExample.json /MY/FAV/FOLDER/config.json
 export MICROSALT_CONFIG=/MY/FAV/FOLDER/config.json
 ```
 
-__Then edit the fields to match your environment__.
+**Then edit the fields to match your environment**.
 
 ## Usage
 
-- `microsalt analyse` contains functions to start sbatch job(s) & produce
-  output to `folders['results']`. Afterwards the parsed results  are uploaded
-  to the SQL back-end and produce reports (HTML), which are then automatically
-  e-mailed to the user.
-- `microsalt utils` contains various functionality, including generating the
-  sample description json, manually adding new reference organisms and
-  re-generating reports.
+-   `microSALT analyse` contains functions to start sbatch job(s) & produce
+    output to `folders['results']`. Afterwards the parsed results are uploaded
+    to the SQL back-end and produce reports (HTML), which are then automatically
+    e-mailed to the user.
+-   `microSALT utils` contains various functionality, including generating the
+    sample description json, manually adding new reference organisms and
+    re-generating reports.
 
 ## Databases
 
@@ -71,14 +71,14 @@ Any definitions will work, as long as they retain the same formatting.
 
 ### Hardware
 
-- A [SLURM](https://slurm.schedmd.com) enabled HPC system
-- A (clarity) LIMS server
+-   A [SLURM](https://slurm.schedmd.com) enabled HPC system
+-   A (clarity) LIMS server
 
 ### Software
 
-- [Conda](https://conda.io)
-- Python 3.6
-- [SQLite](https://www.sqlite.org)
+-   [Conda](https://conda.io)
+-   Python 3.6
+-   [SQLite](https://www.sqlite.org)
 
 ## Contributing to this repo
 
@@ -87,7 +87,7 @@ For more information, see https://guides.github.com/introduction/flow/
 
 ## Credits
 
-- Isak Sylvin - Lead developer
-- Emma Sernstad - Accreditation ready reports
-- Tanja Normark - Various issues
-- Maya Brandi - Various issues
+-   Isak Sylvin - Lead developer
+-   Emma Sernstad - Accreditation ready reports
+-   Tanja Normark - Various issues
+-   Maya Brandi - Various issues

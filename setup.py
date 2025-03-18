@@ -22,7 +22,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     data_files=[
-        ("logos", ["artwork/microsalt.jpg", "artwork/swedac.jpg"]),
+        ("logos", ["artwork/microSALT.jpg", "artwork/swedac.jpg"]),
         (
             "testdata",
             [
