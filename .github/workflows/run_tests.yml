@@ -4,7 +4,7 @@ on: [push]
 
 
 env:
-  CONDA_PREFIX: /home/runner/micromamba/envs/P_microsalt
+  CONDA_PREFIX: /home/runner/work/microSALT/microSALT/tests
   COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
 
 jobs:
@@ -14,43 +14,31 @@ jobs:
       max-parallel: 5
 
     steps:
-
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.10.13'
     - name: Create conda/mamba environment using micromamba
       uses: mamba-org/setup-micromamba@v1
       with:
         environment-file: environment.yml
         cache-downloads: true
-    
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
-      with:
-        python-version: '3.10.13'
-    
-    - name: Install and configure Poetry
-      uses: snok/install-poetry@v1
-      with:
-          virtualenvs-create: false
-          version: 2.0.1
-
-    - name: Install Dependencies
+    - name: Install microSALT
       run: |
-        poetry env info
-        poetry install --no-interaction --all-extras --no-root
-
+        mkdir ~/.microSALT && cp configExample.json ~/.microSALT/config.json
+        GITHUB_BRANCH=${GITHUB_REF##*/}
+        pip install -r requirements.txt -r requirements-dev.txt
+        pip install -U .
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    
     - name: Test with pytest
       run: |
-        pytest --cov=microsalt tests
-    
+        pytest --cov=microSALT tests
     - name: Run Coveralls
       run: |
         coveralls

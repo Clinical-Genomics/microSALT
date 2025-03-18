@@ -1,0 +1,11 @@
+pymysql>=1.1.1,<2.0.0
+click>=8.1.8,<9.0.0
+sqlalchemy>=2.0.39,<3.0.0
+python-dateutil>=2.9.0.post0,<3.0.0
+flask-sqlalchemy>=3.1.1,<4.0.0
+biopython>=1.85,<2.0
+rauth>=0.7.3,<0.8.0
+bs4>=0.0.2,<0.0.3
+flask>=3.1.0,<4.0.0
+genologics==0.4.6
+pyyaml>=6.0.2,<7.0.0
