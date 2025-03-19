@@ -43,8 +43,8 @@ def test_is_klebsiella(species_name, expected_result):
 @pytest.mark.parametrize(
     "organism_name, expected_reference",
     [
-        (Escherichia.COLI, ESCHERICHIA_REFERENCE),
-        (Klebsiella.PNEUMONIAE, KLEBSIELLA_REFERENCE),
+        ("escherichia coli", ESCHERICHIA_REFERENCE),
+        ("klebsiella pneumoniae", KLEBSIELLA_REFERENCE),
         ("other species", "other species"),
     ],
 )
