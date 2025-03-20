@@ -35,7 +35,8 @@ class Profiles:
                     # Set ST as PK
                     if head[index] == "ST":
                         header += "Column(head[{}], SmallInteger, primary_key=True),".format(index)
-                    header += "Column(head[{}], SmallInteger),".format(index)
+                    else:
+                        header += "Column(head[{}], SmallInteger),".format(index)
                     index = index + 1
                 header += ")"
                 p = eval(header)
@@ -73,7 +74,8 @@ class Novel:
                     if head[index] == "ST":
                         header += "Column(head[{}], SmallInteger, primary_key=True),".format(index)
                     # Set Clonal complex as string
-                    header += "Column(head[{}], SmallInteger),".format(index)
+                    else:
+                        header += "Column(head[{}], SmallInteger),".format(index)
                     index = index + 1
                 header += ")"
                 p = eval(header)
