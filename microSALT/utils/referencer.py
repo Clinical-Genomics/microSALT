@@ -488,7 +488,7 @@ class Referencer:
             profiles_csv = self.client.download_profiles_csv(db, scheme_id)
             # Only write the first 8 columns, this avoids adding information such as "clonal_complex" and "species"
             profiles_csv = profiles_csv.split("\n")
-            profiles_csv = "\n".join([line.split(",")[:8] for line in profiles_csv])
+            profiles_csv = "\n".join("\t".join([line.split("\t")[:8] for line in profiles_csv]))
             with open(st_target, "w") as profile_file:
                 profile_file.write(profiles_csv)
             self.logger.info(f"Profiles CSV downloaded to {st_target}")
