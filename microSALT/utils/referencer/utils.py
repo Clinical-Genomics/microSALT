@@ -33,10 +33,10 @@ def is_klebsiella(species_name) -> bool:
 
 def get_reference_if_enterobacteriaceae(organism_name: str) -> str:
     """Returns the reference for the organism name if it belongs to Enterobacteriaceae."""
-    GENUS_REFERENCE_MAP = {
+    GENUS_REFERENCE_MAP = [
         (is_escherichia, ESCHERICHIA_REFERENCE),
         (is_klebsiella, KLEBSIELLA_REFERENCE),
-    }
+    ]
 
     species: str = get_species(organism_name)
     if is_enterobacteriaceae(organism_name):
