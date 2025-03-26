@@ -7,13 +7,15 @@ from microSALT.utils.referencer.constants import (
 
 
 def get_species(organism_name: str) -> str:
-    """Returns the species of the organism name."""
-    return organism_name.lower().split()[-1]
+    """Returns the species of the organism name. 
+    Assumes the organism name is in the format 'genus_species'."""
+    return organism_name.lower().split("_")[-1]
 
 
 def get_genus(organism_name: str) -> str:
-    """Returns the genus of the organism name."""
-    return organism_name.lower().split()[0]
+    """Returns the genus of the organism name. 
+    Assumes the organism name is in the format 'genus_species'."""
+    return organism_name.lower().split("_")[0]
 
 
 def is_enterobacteriaceae(organism_name: str) -> bool:

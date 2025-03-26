@@ -624,7 +624,6 @@ class Job_Creator:
                 try:
                     sample_in = "{}/{}".format(self.indir, ldir)
                     sample_out = "{}/{}".format(self.finishdir, ldir)
-                    linkedjson = None
                     local_sampleinfo = [p for p in self.sampleinfo if p["CG_ID_sample"] == ldir]
                     if local_sampleinfo == []:
                         raise Exception("Sample {} has no counterpart in json file".format(ldir))

@@ -5,18 +5,25 @@ from microSALT.utils.referencer.utils import (
     is_klebsiella,
     get_reference_if_enterobacteriaceae,
 )
-from microSALT.utils.referencer.constants import ESCHERICHIA_REFERENCE, KLEBSIELLA_REFERENCE, Escherichia, Klebsiella
+from microSALT.utils.referencer.constants import (
+    ESCHERICHIA_REFERENCE,
+    KLEBSIELLA_REFERENCE,
+    Escherichia,
+    Klebsiella,
+)
+
 
 @pytest.mark.parametrize(
     "organism_name, expected_species",
     [
-        ("Escherichia coli", "coli"),
-        ("Klebsiella pneumoniae", "pneumoniae"),
-        ("Escherichia coli O157:H7", "o157:h7"),
+        ("Escherichia_coli", "coli"),
+        ("Klebsiella_pneumoniae", "pneumoniae"),
+        ("Escherichia_coli_O157:H7", "o157:h7"),
     ],
 )
 def test_get_species(organism_name, expected_species):
     assert get_species(organism_name) == expected_species
+
 
 @pytest.mark.parametrize(
     "species_name, expected_result",
@@ -29,6 +36,7 @@ def test_get_species(organism_name, expected_species):
 def test_is_escherichia(species_name, expected_result):
     assert is_escherichia(species_name) == expected_result
 
+
 @pytest.mark.parametrize(
     "species_name, expected_result",
     [
@@ -40,12 +48,13 @@ def test_is_escherichia(species_name, expected_result):
 def test_is_klebsiella(species_name, expected_result):
     assert is_klebsiella(species_name) == expected_result
 
+
 @pytest.mark.parametrize(
     "organism_name, expected_reference",
     [
-        ("escherichia coli", ESCHERICHIA_REFERENCE),
-        ("klebsiella pneumoniae", KLEBSIELLA_REFERENCE),
-        ("other species", "other species"),
+        ("escherichia_coli", ESCHERICHIA_REFERENCE),
+        ("klebsiella_pneumoniae", KLEBSIELLA_REFERENCE),
+        ("other_species", "other_species"),
     ],
 )
 def test_get_reference_if_enterobacteriaceae(organism_name, expected_reference):
