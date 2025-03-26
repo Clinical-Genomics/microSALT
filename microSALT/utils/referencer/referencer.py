@@ -45,9 +45,8 @@ class Referencer:
             self.sample = self.sampleinfo
         self.client = PubMLSTClient()
 
-
     def identify_new(self, cg_id="", project=False):
-        """ Automatically downloads pubMLST & NCBI organisms not already downloaded """
+        """Automatically downloads pubMLST & NCBI organisms not already downloaded"""
         neworgs = list()
         newrefs = list()
         try:
@@ -90,9 +89,7 @@ class Referencer:
         """Check for indexation, makeblastdb job if not enough of them."""
         reindexation = False
         files = os.listdir(full_dir)
-        sufx_files = glob.glob(
-            "{}/*{}".format(full_dir, suffix)
-        )  # List of source files
+        sufx_files = glob.glob("{}/*{}".format(full_dir, suffix))  # List of source files
         for file in sufx_files:
             subsuf = "\{}$".format(suffix)
             base = re.sub(subsuf, "", file)
@@ -104,10 +101,7 @@ class Referencer:
                 if os.path.basename(base) == elem[: elem.rfind(".")]:
                     bases = bases + 1
                     # Number of index files fresher than source (6)
-                    if (
-                        os.stat(file).st_mtime
-                        < os.stat("{}/{}".format(full_dir, elem)).st_mtime
-                    ):
+                    if os.stat(file).st_mtime < os.stat("{}/{}".format(full_dir, elem)).st_mtime:
                         newer = newer + 1
             # 7 for parse_seqids, 4 for not.
             if not (bases == 7 or newer == 6) and not (bases == 4 and newer == 3):
@@ -120,18 +114,16 @@ class Referencer:
                         )
                     # MLST locis
                     else:
-                        bash_cmd = "makeblastdb -in {}/{} -dbtype nucl -parse_seqids -out {}".format(
-                            full_dir, os.path.basename(file), os.path.basename(base)
+                        bash_cmd = (
+                            "makeblastdb -in {}/{} -dbtype nucl -parse_seqids -out {}".format(
+                                full_dir, os.path.basename(file), os.path.basename(base)
+                            )
                         )
-                    proc = subprocess.Popen(
-                        bash_cmd.split(), cwd=full_dir, stdout=subprocess.PIPE
-                    )
+                    proc = subprocess.Popen(bash_cmd.split(), cwd=full_dir, stdout=subprocess.PIPE)
                     proc.communicate()
                 except Exception as e:
                     self.logger.error(
-                        "Unable to index requested target {} in {}".format(
-                            file, full_dir
-                        )
+                        "Unable to index requested target {} in {}".format(file, full_dir)
                     )
         if reindexation:
             self.logger.info("Re-indexed contents of {}".format(full_dir))
@@ -144,7 +136,7 @@ class Referencer:
             for entry in root:
                 # Check organism
                 species = entry.text.strip()
-                organ = species.lower().replace(" ", "_") 
+                organ = species.lower().replace(" ", "_")
                 if "escherichia_coli" in organ and "#1" in organ:
                     organ = organ[:-2]
                 if organ in self.organisms:
@@ -153,15 +145,11 @@ class Referencer:
                     st_link = entry.find("./mlst/database/profiles/url").text
                     profiles_query = urllib.request.urlopen(st_link)
                     profile_no = profiles_query.readlines()[-1].decode("utf-8").split("\t")[0]
-                    if (
-                        organ.replace("_", " ") not in self.updated
-                        and (
-                            int(profile_no.replace("-", "")) > int(currver.replace("-", ""))
-                            or force
-                        )
+                    if organ.replace("_", " ") not in self.updated and (
+                        int(profile_no.replace("-", "")) > int(currver.replace("-", "")) or force
                     ):
                         # Download MLST profiles
-                        self.logger.info("Downloading new MLST profiles for " + species)       
+                        self.logger.info("Downloading new MLST profiles for " + species)
                         output = "{}/{}".format(self.config["folders"]["profiles"], organ)
                         urllib.request.urlretrieve(st_link, output)
                         # Clear existing directory and download allele files
@@ -171,7 +159,9 @@ class Referencer:
                         for locus in entry.findall("./mlst/database/loci/locus"):
                             locus_name = locus.text.strip()
                             locus_link = locus.find("./url").text
-                            urllib.request.urlretrieve(locus_link, "{}/{}.tfa".format(out, locus_name))
+                            urllib.request.urlretrieve(
+                                locus_link, "{}/{}.tfa".format(out, locus_name)
+                            )
                         # Create new indexes
                         self.index_db(out, ".tfa")
                         # Update database
@@ -182,9 +172,7 @@ class Referencer:
                         )
                         self.db_access.reload_profiletable(organ)
         except Exception as e:
-            self.logger.warning(
-                "Unable to update pubMLST external data: {}".format(e)
-            )
+            self.logger.warning("Unable to update pubMLST external data: {}".format(e))
 
     def resync(self, type="", sample="", ignore=False):
         """Manipulates samples that have an internal ST that differs from pubMLST ST"""
@@ -227,9 +215,7 @@ class Referencer:
 
                 for file in os.listdir(hiddensrc):
                     if file not in actual and (".fsa" in file):
-                        self.logger.info(
-                            "resFinder database files corrupted. Syncing..."
-                        )
+                        self.logger.info("resFinder database files corrupted. Syncing...")
                         wipeIndex = True
                         break
 
@@ -261,12 +247,12 @@ class Referencer:
         self.index_db(self.config["folders"]["resistances"], ".fsa")
 
     def existing_organisms(self):
-        """ Returns list of all organisms currently added """
+        """Returns list of all organisms currently added"""
         return self.organisms
 
     def organism2reference(self, normal_organism_name):
         """Finds which reference contains the same words as the organism
-       and returns it in a format for database calls. Returns empty string if none found"""
+        and returns it in a format for database calls. Returns empty string if none found"""
         orgs = os.listdir(self.config["folders"]["references"])
         organism = re.split(r"\W+", normal_organism_name.lower())
         try:
@@ -294,13 +280,11 @@ class Referencer:
             )
 
     def download_ncbi(self, reference):
-        """ Checks available references, downloads from NCBI if not present """
+        """Checks available references, downloads from NCBI if not present"""
         try:
             DEVNULL = open(os.devnull, "wb")
             Entrez.email = "2@2.com"
-            record = Entrez.efetch(
-                db="nucleotide", id=reference, rettype="fasta", retmod="text"
-            )
+            record = Entrez.efetch(db="nucleotide", id=reference, rettype="fasta", retmod="text")
             sequence = record.read()
             output = "{}/{}.fasta".format(self.config["folders"]["genomes"], reference)
             with open(output, "w") as f:
@@ -323,20 +307,16 @@ class Referencer:
             out, err = proc.communicate()
             self.logger.info("Downloaded reference {}".format(reference))
         except Exception as e:
-            self.logger.warning(
-                "Unable to download genome '{}' from NCBI".format(reference)
-            )
+            self.logger.warning("Unable to download genome '{}' from NCBI".format(reference))
 
     def add_pubmlst(self, organism):
-        """ Checks pubmlst for references of given organism and downloads them """
+        """Checks pubmlst for references of given organism and downloads them"""
         # Organism must be in binomial format and only resolve to one hit
         errorg = organism
         try:
             organism = organism.lower().replace(".", " ")
             if organism.replace(" ", "_") in self.organisms and not self.force:
-                self.logger.info(
-                    "Organism {} already stored in microSALT".format(organism)
-                )
+                self.logger.info("Organism {} already stored in microSALT".format(organism))
                 return
             db_query = self.query_pubmlst()
 
@@ -358,9 +338,7 @@ class Referencer:
                         seqdef_url = subtype["href"]
                         desc = subtype["description"]
                         counter += 1.0
-                        self.logger.info(
-                            "Located pubMLST hit {} for sample".format(desc)
-                        )
+                        self.logger.info("Located pubMLST hit {} for sample".format(desc))
             if counter > 2.0:
                 raise Exception(
                     "Reference '{}' resolved to {} organisms. Please be more stringent".format(
@@ -370,9 +348,7 @@ class Referencer:
             elif counter < 1.0:
                 # add external
                 raise Exception(
-                    "Unable to find requested organism '{}' in pubMLST database".format(
-                        errorg
-                    )
+                    "Unable to find requested organism '{}' in pubMLST database".format(errorg)
                 )
             else:
                 truename = desc.lower().split(" ")
@@ -385,16 +361,15 @@ class Referencer:
             self.logger.warning(e.args[0])
 
     def query_pubmlst(self):
-        """ Returns a json object containing all organisms available via pubmlst.org """
+        """Returns a json object containing all organisms available via pubmlst.org"""
         db_query = self.client.query_databases()
         return db_query
 
-
     def get_mlst_scheme(self, subtype_href):
-        """ Returns the path for the MLST data scheme at pubMLST """
+        """Returns the path for the MLST data scheme at pubMLST"""
         try:
             parsed_data = self.client.parse_pubmlst_url(subtype_href)
-            db = parsed_data.get('db')
+            db = parsed_data.get("db")
             if not db:
                 self.logger.warning(f"Could not extract database name from URL: {subtype_href}")
                 return None
@@ -422,9 +397,8 @@ class Referencer:
             self.logger.warning(e)
             return None
 
-
     def external_version(self, organism, subtype_href):
-        """ Returns the version (date) of the data available on pubMLST """
+        """Returns the version (date) of the data available on pubMLST"""
         try:
             mlst_href = self.get_mlst_scheme(subtype_href)
             if not mlst_href:
@@ -432,39 +406,42 @@ class Referencer:
                 return None
 
             parsed_data = self.client.parse_pubmlst_url(mlst_href)
-            db = parsed_data.get('db')
-            scheme_id = parsed_data.get('scheme_id')
+            db = parsed_data.get("db")
+            scheme_id = parsed_data.get("scheme_id")
             if not db or not scheme_id:
-                self.logger.warning(f"Could not extract database name or scheme ID from MLST URL: {mlst_href}")
+                self.logger.warning(
+                    f"Could not extract database name or scheme ID from MLST URL: {mlst_href}"
+                )
                 return None
 
             scheme_info = self.client.retrieve_scheme_info(db, scheme_id)
             last_updated = scheme_info.get("last_updated")
             if last_updated:
-                self.logger.debug(f"Retrieved last_updated: {last_updated} for organism: {organism}")
+                self.logger.debug(
+                    f"Retrieved last_updated: {last_updated} for organism: {organism}"
+                )
                 return last_updated
             else:
-                self.logger.warning(f"No 'last_updated' field found for db: {db}, scheme_id: {scheme_id}")
+                self.logger.warning(
+                    f"No 'last_updated' field found for db: {db}, scheme_id: {scheme_id}"
+                )
                 return None
         except Exception as e:
             self.logger.warning(f"Could not determine pubMLST version for {organism}")
             self.logger.warning(e)
             return None
 
-
     def download_pubmlst(self, organism, subtype_href, force=False):
-        """ Downloads ST and loci for a given organism stored on pubMLST if it is more recent. Returns update date """
+        """Downloads ST and loci for a given organism stored on pubMLST if it is more recent. Returns update date"""
         organism = organism.lower().replace(" ", "_")
         try:
             # Pull version
             extver = self.external_version(organism, subtype_href)
             currver = self.db_access.get_version(f"profile_{organism}")
-            if (
-                int(extver.replace("-", ""))
-                <= int(currver.replace("-", ""))
-                and not force
-            ):
-                self.logger.info(f"Profile for {organism.replace('_', ' ').capitalize()} already at the latest version.")
+            if int(extver.replace("-", "")) <= int(currver.replace("-", "")) and not force:
+                self.logger.info(
+                    f"Profile for {organism.replace('_', ' ').capitalize()} already at the latest version."
+                )
                 return currver
 
             # Retrieve the MLST scheme URL
@@ -475,15 +452,25 @@ class Referencer:
 
             # Parse the database name and scheme ID
             parsed_data = self.client.parse_pubmlst_url(mlst_href)
-            db = parsed_data.get('db')
-            scheme_id = parsed_data.get('scheme_id')
+            db = parsed_data.get("db")
+            scheme_id = parsed_data.get("scheme_id")
             if not db or not scheme_id:
-                self.logger.warning(f"Could not extract database name or scheme ID from MLST URL: {mlst_href}")
+                self.logger.warning(
+                    f"Could not extract database name or scheme ID from MLST URL: {mlst_href}"
+                )
                 return None
 
             # Step 1: Download the profiles CSV
             st_target = f"{self.config['folders']['profiles']}/{organism}"
             profiles_csv = self.client.download_profiles_csv(db, scheme_id)
+            # Only write the first 8 columns, this avoids adding information such as "clonal_complex" and "species"
+            profiles_csv = profiles_csv.split("\n")
+            trimmed_profiles = []
+            for line in profiles_csv:
+                trimmed_profiles.append("\t".join(line.split("\t")[:8]))
+
+            profiles_csv = "\n".join(trimmed_profiles)
+
             with open(st_target, "w") as profile_file:
                 profile_file.write(profiles_csv)
             self.logger.info(f"Profiles CSV downloaded to {st_target}")
@@ -513,9 +500,8 @@ class Referencer:
             self.logger.error(f"Failed to download data for {organism}: {e}")
             return None
 
-
     def fetch_pubmlst(self, force=False):
-        """ Updates reference for data that is stored on pubMLST """
+        """Updates reference for data that is stored on pubMLST"""
         seqdef_url = dict()
         db_query = self.query_pubmlst()
 
