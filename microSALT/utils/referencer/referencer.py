@@ -3,14 +3,13 @@
 
 #!/usr/bin/env python
 import glob
-import json
 import os
 import re
 import shutil
 import subprocess
 import urllib.request
-import zipfile
 from microSALT.utils.pubmlst.client import PubMLSTClient
+from microSALT.utils.referencer.utils import get_reference_if_enterobacteriaceae
 
 from Bio import Entrez
 import xml.etree.ElementTree as ET
@@ -150,6 +149,7 @@ class Referencer:
                     ):
                         # Download MLST profiles
                         self.logger.info("Downloading new MLST profiles for " + species)
+                        organ = get_reference_if_enterobacteriaceae(organ)
                         output = "{}/{}".format(self.config["folders"]["profiles"], organ)
                         urllib.request.urlretrieve(st_link, output)
                         # Clear existing directory and download allele files
