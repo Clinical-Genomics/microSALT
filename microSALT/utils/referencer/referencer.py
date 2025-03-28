@@ -158,6 +158,7 @@ class Referencer:
                     st_target = f"{self.config['folders']['profiles']}/{organ}"
                     profiles_csv = self.client.download_profiles_csv(db, scheme_id)
                     # Only write the first 8 columns, this avoids adding information such as "clonal_complex" and "species"
+                    print(profiles_csv)
                     profiles_csv = profiles_csv.split("\n")
                     trimmed_profiles = []
                     for line in profiles_csv:
@@ -172,6 +173,7 @@ class Referencer:
 
                     # Step 2: Fetch scheme information to get loci
                     scheme_info = self.client.retrieve_scheme_info(db, scheme_id)
+                    print(scheme_info)
                     loci_list = scheme_info.get("loci", [])
 
                     # Step 3: Download loci FASTA files
@@ -218,7 +220,7 @@ class Referencer:
                     self.db_access.upd_rec(
                         {"name": "profile_{}".format(organ)},
                         "Versions",
-                        {"version": self.external_version(organ, st_link)},
+                        {"version": profile_no},
                     )
                     self.db_access.reload_profiletable(organ)
         except Exception as e:
