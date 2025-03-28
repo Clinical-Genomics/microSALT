@@ -8,6 +8,9 @@ import re
 import shutil
 import subprocess
 import urllib.request
+
+from collections import Mapping
+
 from microSALT.utils.pubmlst.client import PubMLSTClient
 
 from Bio import Entrez
@@ -376,16 +379,16 @@ class Referencer:
 
             # First, check scheme 1
             scheme_query_1 = self.client.retrieve_scheme_info(db, 1)
-            print(scheme_query_1)
+            print(f"Schema query: {scheme_query_1}")
             mlst = None
             if "MLST" in scheme_query_1.get("description", ""):
                 mlst = f"{subtype_href}/schemes/1"
             else:
                 # If scheme 1 isn't MLST, list all schemes and find the one with 'description' == 'MLST'
                 record_query = self.client.list_schemes(db)
-                print(record_query)
+                print(f"Record query: {record_query}")
                 for scheme in record_query.get("schemes", []):
-                    print(scheme)
+                    print(f"Schema in records: {scheme}")
                     if scheme.get("description") == "MLST":
                         mlst = scheme.get("scheme")
                         break
