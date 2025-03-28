@@ -173,7 +173,7 @@ class Referencer:
 
                     # Step 2: Fetch scheme information to get loci
                     scheme_info = self.client.retrieve_scheme_info(db, scheme_id)
-                    print(scheme_info)
+                    last_updated = scheme_info.get("last_updated")
                     loci_list = scheme_info.get("loci", [])
 
                     # Step 3: Download loci FASTA files
@@ -220,7 +220,7 @@ class Referencer:
                     self.db_access.upd_rec(
                         {"name": "profile_{}".format(organ)},
                         "Versions",
-                        {"version": profile_no},
+                        {"version": last_updated},
                     )
                     self.db_access.reload_profiletable(organ)
         except Exception as e:
