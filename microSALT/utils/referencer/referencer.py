@@ -14,6 +14,7 @@ from microSALT.utils.pubmlst.client import PubMLSTClient
 from Bio import Entrez
 import xml.etree.ElementTree as ET
 from microSALT.store.db_manipulator import DB_Manipulator
+from microSALT.utils.pubmlst.exceptions import InvalidURLError
 
 
 class Referencer:
@@ -145,7 +146,12 @@ class Referencer:
                     st_link = entry.find("./mlst/database/profiles/url").text
 
                     # Parse the database name and scheme ID
-                    parsed_data = self.client.parse_pubmlst_url(url=st_link)
+                    try:
+                        parsed_data = self.client.parse_pubmlst_url(url=st_link)
+                    except InvalidURLError as e:
+                        self.logger.warning(f"Invalid URL: {st_link} - {e}")
+                        continue
+                    
                     scheme_id = parsed_data.get("scheme_id")  # Extract scheme ID
                     db = parsed_data.get("db")  # Extract database name
 
