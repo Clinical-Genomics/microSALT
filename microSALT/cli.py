@@ -118,18 +118,14 @@ def root(ctx):
     default=preset_config["regex"]["mail_recipient"],
     help="Forced e-mail recipient",
 )
-@click.option(
-    "--skip_update", default=False, help="Skips downloading of references", is_flag=True
-)
+@click.option("--skip_update", default=False, help="Skips downloading of references", is_flag=True)
 @click.option(
     "--force_update",
     default=False,
     help="Forces downloading of pubMLST references",
     is_flag=True,
 )
-@click.option(
-    "--untrimmed", help="Use untrimmed input data", default=False, is_flag=True
-)
+@click.option("--untrimmed", help="Use untrimmed input data", default=False, is_flag=True)
 @click.pass_context
 def analyse(
     ctx,
@@ -235,21 +231,15 @@ def refer(ctx):
     default=preset_config["regex"]["mail_recipient"],
     help="Forced e-mail recipient",
 )
-@click.option(
-    "--skip_update", default=False, help="Skips downloading of references", is_flag=True
-)
+@click.option("--skip_update", default=False, help="Skips downloading of references", is_flag=True)
 @click.option(
     "--report",
     default="default",
-    type=click.Choice(
-        ["default", "typing", "motif_overview", "qc", "json_dump", "st_update"]
-    ),
+    type=click.Choice(["default", "typing", "motif_overview", "qc", "json_dump", "st_update"]),
 )
 @click.option("--output", help="Report output folder", default="")
 @click.pass_context
-def finish(
-    ctx, sampleinfo_file, input, track, config, dry, email, skip_update, report, output
-):
+def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, report, output):
     """Sequence analysis, typing and resistance identification"""
     # Run section
     pool = []
@@ -275,9 +265,7 @@ def finish(
 
     # Samples section
     sampleinfo = review_sampleinfo(sampleinfo_file)
-    ext_refs = Referencer(
-        config=ctx.obj["config"], log=ctx.obj["log"], sampleinfo=sampleinfo
-    )
+    ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"], sampleinfo=sampleinfo)
     click.echo("INFO - Checking versions of references..")
     try:
         if not skip_update:
@@ -312,9 +300,7 @@ def finish(
 
 @refer.command()
 @click.argument("organism")
-@click.option(
-    "--force", help="Redownloads existing organism", default=False, is_flag=True
-)
+@click.option("--force", help="Redownloads existing organism", default=False, is_flag=True)
 @click.pass_context
 def add(ctx, organism, force):
     """Adds a new internal organism from pubMLST"""
@@ -349,9 +335,7 @@ def observe(ctx):
 @click.option(
     "--type",
     default="default",
-    type=click.Choice(
-        ["default", "typing", "motif_overview", "qc", "json_dump", "st_update"]
-    ),
+    type=click.Choice(["default", "typing", "motif_overview", "qc", "json_dump", "st_update"]),
 )
 @click.option("--output", help="Full path to output folder", default="")
 @click.option("--collection", default=False, is_flag=True)
@@ -391,9 +375,7 @@ def generate(ctx, input):
 
     pool = []
     if not os.path.isdir(input):
-        click.echo(
-            "ERROR - Sequence data folder {} does not exist.".format(project_name)
-        )
+        click.echo("ERROR - Sequence data folder {} does not exist.".format(project_name))
         ctx.abort()
     elif input != os.getcwd():
         for subfolder in os.listdir(input):
@@ -425,9 +407,7 @@ def resync(ctx):
     help="Output format",
 )
 @click.option("--customer", default="all", help="Customer id filter")
-@click.option(
-    "--skip_update", default=False, help="Skips downloading of references", is_flag=True
-)
+@click.option("--skip_update", default=False, help="Skips downloading of references", is_flag=True)
 @click.option(
     "--email",
     default=preset_config["regex"]["mail_recipient"],
@@ -445,9 +425,7 @@ def review(ctx, type, customer, skip_update, email, output):
         ext_refs.resync()
     click.echo("INFO - Version check done. Generating output")
     if type == "report":
-        codemonkey = Reporter(
-            config=ctx.obj["config"], log=ctx.obj["log"], output=output
-        )
+        codemonkey = Reporter(config=ctx.obj["config"], log=ctx.obj["log"], output=output)
         codemonkey.report(type="st_update", customer=customer)
     elif type == "list":
         ext_refs.resync(type=type)
@@ -459,9 +437,20 @@ def review(ctx, type, customer, skip_update, email, output):
 @click.pass_context
 def update_refs(ctx, force_update: bool):
     """Updates all references"""
-    ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"],force=force_update)
+    ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"], force=force_update)
     ext_refs.update_refs()
     done()
+
+
+@resync.command()
+@click.option("--force-update", default=False, is_flag=True, help="Forces update")
+@click.pass_context
+def update_from_static(ctx, force_update: bool):
+    """Updates a specific organism"""
+    ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"])
+    ext_refs.fetch_external(force=force_update)
+    done()
+
 
 @resync.command()
 @click.argument("sample_name")

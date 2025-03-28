@@ -9,8 +9,6 @@ import shutil
 import subprocess
 import urllib.request
 
-from collections import Mapping
-
 from microSALT.utils.pubmlst.client import PubMLSTClient
 
 from Bio import Entrez
@@ -145,7 +143,7 @@ class Referencer:
                     # Check for newer version
                     currver = self.db_access.get_version("profile_{}".format(organ))
                     st_link = entry.find("./mlst/database/profiles/url").text
-                    profiles_csv = self.client.parse_pubmlst_url(db=organ, url=st_link)
+                    profiles_csv = self.client.parse_pubmlst_url(url=st_link)
                     profile_no = profiles_csv.readlines()[-1].decode("utf-8").split("\t")[0]
                     if organ.replace("_", " ") not in self.updated and (
                         int(profile_no.replace("-", "")) > int(currver.replace("-", "")) or force
@@ -153,7 +151,7 @@ class Referencer:
                         # Download MLST profiles
                         self.logger.info("Downloading new MLST profiles for " + species)
                         output = "{}/{}".format(self.config["folders"]["profiles"], organ)
-                        profiles_csv = self.client.parse_pubmlst_url(db=organ, url=st_link)
+                        profiles_csv = self.client.parse_pubmlst_url(url=st_link)
                         print(profiles_csv)
                         with open(output, "w") as f:
                             f.write(profiles_csv.read().decode("utf-8"))
@@ -379,19 +377,13 @@ class Referencer:
 
             # First, check scheme 1
             scheme_query_1 = self.client.retrieve_scheme_info(db, 1)
-            print(f"Schema query: {scheme_query_1}")
-            print(f"Schema query type: {type(scheme_query_1)}")
             mlst = None
             if "MLST" in scheme_query_1.get("description", ""):
                 mlst = f"{subtype_href}/schemes/1"
             else:
                 # If scheme 1 isn't MLST, list all schemes and find the one with 'description' == 'MLST'
                 record_query = self.client.list_schemes(db)
-                print(f"Record query: {record_query}")
-                print(f"Record query type: {type(record_query)}")
                 for scheme in record_query.get("schemes", []):
-                    print(f"Schema in records: {scheme}")
-                    print(f"Schema in records type: {type(scheme)}")
                     if scheme.get("description") == "MLST":
                         mlst = scheme.get("scheme")
                         break
