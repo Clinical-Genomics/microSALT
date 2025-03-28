@@ -455,10 +455,11 @@ def review(ctx, type, customer, skip_update, email, output):
 
 
 @resync.command()
+@click.option("--force-update", default=False, is_flag=True, help="Forces update")
 @click.pass_context
-def update_refs(ctx):
+def update_refs(ctx, force_update: bool):
     """Updates all references"""
-    ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"])
+    ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"],force=force_update)
     ext_refs.update_refs()
     done()
 
