@@ -19,7 +19,6 @@ import yaml
 
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.referencer.referencer import Referencer
-from microSALT.utils.referencer.utils import get_reference_if_enterobacteriaceae
 
 
 class Job_Creator:
@@ -814,7 +813,6 @@ class Job_Creator:
 
     def create_blast_search(self):
         reforganism = self.ref_resolver.organism2reference(self.sample.get("organism"))
-        reforganism = get_reference_if_enterobacteriaceae(reforganism)
         self.batchfile = "{}/runfile.sbatch".format(self.finishdir)
         batchfile = open(self.batchfile, "a+")
         batchfile.write("mkdir -p {}/blast_search\n".format(self.finishdir))

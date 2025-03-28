@@ -42,7 +42,9 @@ def get_reference_if_enterobacteriaceae(organism_name: str) -> str:
 
     species: str = get_species(organism_name)
     if is_enterobacteriaceae(organism_name):
+        print("is_enterobacteriaceae")
         for is_species, reference in GENUS_REFERENCE_MAP:
             if is_species(species):
+                print(f"is species, reference: {reference}")
                 return reference
     return organism_name

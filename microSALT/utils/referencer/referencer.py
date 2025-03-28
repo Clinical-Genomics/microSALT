@@ -9,7 +9,6 @@ import shutil
 import subprocess
 import urllib.request
 from microSALT.utils.pubmlst.client import PubMLSTClient
-from microSALT.utils.referencer.utils import get_reference_if_enterobacteriaceae
 
 from Bio import Entrez
 import xml.etree.ElementTree as ET
@@ -128,11 +127,9 @@ class Referencer:
             self.logger.info("Re-indexed contents of {}".format(full_dir))
 
     def fetch_external(self, force=False):
-        """Fetches external references from pubMLST or other sources with authentication."""
         url = "https://pubmlst.org/static/data/dbases.xml"
         try:
-            # Use the PubMLSTClient to fetch the XML data with authentication
-            query = self.client.authenticated_request(url)
+            query = urllib.request.urlopen(url).read()
             root = ET.fromstring(query)
             for entry in root:
                 # Check organism
@@ -144,17 +141,17 @@ class Referencer:
                     # Check for newer version
                     currver = self.db_access.get_version("profile_{}".format(organ))
                     st_link = entry.find("./mlst/database/profiles/url").text
-                    profiles_query = self.client.authenticated_request(st_link)
-                    profile_no = profiles_query.splitlines()[-1].split("\t")[0]
+                    profiles_csv = self.client.parse_pubmlst_url(db=organ, url=st_link)
+                    profile_no = profiles_csv.readlines()[-1].decode("utf-8").split("\t")[0]
                     if organ.replace("_", " ") not in self.updated and (
                         int(profile_no.replace("-", "")) > int(currver.replace("-", "")) or force
                     ):
                         # Download MLST profiles
                         self.logger.info("Downloading new MLST profiles for " + species)
-                        organ = get_reference_if_enterobacteriaceae(organ)
                         output = "{}/{}".format(self.config["folders"]["profiles"], organ)
-                        with open(output, "w") as profile_file:
-                            profile_file.write(profiles_query)
+                        profiles_csv = self.client.parse_pubmlst_url(db=organ, url=st_link)
+                        with open(output, "w") as f:
+                            f.write(profiles_csv.read().decode("utf-8"))
                         # Clear existing directory and download allele files
                         out = "{}/{}".format(self.config["folders"]["references"], organ)
                         shutil.rmtree(out)
@@ -162,9 +159,10 @@ class Referencer:
                         for locus in entry.findall("./mlst/database/loci/locus"):
                             locus_name = locus.text.strip()
                             locus_link = locus.find("./url").text
-                            loci_fasta = self.client.authenticated_request(locus_link)
-                            with open(f"{out}/{locus_name}.tfa", "w") as fasta_file:
-                                fasta_file.write(loci_fasta)
+                            self.client.parse_pubmlst_url(locus_link)
+                            urllib.request.urlretrieve(
+                                locus_link, "{}/{}.tfa".format(out, locus_name)
+                            )
                         # Create new indexes
                         self.index_db(out, ".tfa")
                         # Update database
@@ -441,7 +439,6 @@ class Referencer:
         organism = organism.lower().replace(" ", "_")
         try:
             # Pull version
-            organism = get_reference_if_enterobacteriaceae(organism)
             extver = self.external_version(organism, subtype_href)
             currver = self.db_access.get_version(f"profile_{organism}")
             if int(extver.replace("-", "")) <= int(currver.replace("-", "")) and not force:
@@ -468,7 +465,6 @@ class Referencer:
 
             # Step 1: Download the profiles CSV
             st_target = f"{self.config['folders']['profiles']}/{organism}"
-            organism = get_reference_if_enterobacteriaceae(organism)
             profiles_csv = self.client.download_profiles_csv(db, scheme_id)
             # Only write the first 8 columns, this avoids adding information such as "clonal_complex" and "species"
             profiles_csv = profiles_csv.split("\n")
