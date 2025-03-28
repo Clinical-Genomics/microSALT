@@ -130,7 +130,7 @@ class PubMLSTClient:
         """Retrieve information about a specific MLST scheme."""
         url = f"{BASE_API}/db/{db}/schemes/{scheme_id}"
         return self._make_request(
-            RequestType.DB, HTTPMethod.GET, url, db=db, response_handler=ResponseHandler.TEXT
+            RequestType.DB, HTTPMethod.GET, url, db=db, response_handler=ResponseHandler.JSON
         )
 
     def list_schemes(self, db: str):
