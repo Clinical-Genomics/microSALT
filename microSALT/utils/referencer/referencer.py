@@ -369,7 +369,6 @@ class Referencer:
         """Returns the path for the MLST data scheme at pubMLST"""
         try:
             parsed_data = self.client.parse_pubmlst_url(subtype_href)
-            self.logger.debug(parsed_data)
             db = parsed_data.get("db")
             if not db:
                 self.logger.warning(f"Could not extract database name from URL: {subtype_href}")
@@ -377,13 +376,16 @@ class Referencer:
 
             # First, check scheme 1
             scheme_query_1 = self.client.retrieve_scheme_info(db, 1)
+            print(scheme_query_1)
             mlst = None
             if "MLST" in scheme_query_1.get("description", ""):
                 mlst = f"{subtype_href}/schemes/1"
             else:
                 # If scheme 1 isn't MLST, list all schemes and find the one with 'description' == 'MLST'
                 record_query = self.client.list_schemes(db)
+                print(record_query)
                 for scheme in record_query.get("schemes", []):
+                    print(scheme)
                     if scheme.get("description") == "MLST":
                         mlst = scheme.get("scheme")
                         break
@@ -400,7 +402,6 @@ class Referencer:
 
     def external_version(self, organism, subtype_href):
         """Returns the version (date) of the data available on pubMLST"""
-        # organism is escherichia_coli
         try:
             mlst_href = self.get_mlst_scheme(subtype_href)
             if not mlst_href:
@@ -519,6 +520,7 @@ class Referencer:
         for key, val in seqdef_url.items():
             internal_ver = self.db_access.get_version("profile_{}".format(key))
             external_ver = self.external_version(key, val)
+
             if (internal_ver < external_ver) or force:
                 self.logger.info(
                     "pubMLST reference for {} updated to {} from {}".format(
