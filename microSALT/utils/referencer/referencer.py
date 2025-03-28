@@ -143,8 +143,18 @@ class Referencer:
                     # Check for newer version
                     currver = self.db_access.get_version("profile_{}".format(organ))
                     st_link = entry.find("./mlst/database/profiles/url").text
+
+                    # Parse the database name and scheme ID
                     parsed_data = self.client.parse_pubmlst_url(url=st_link)
                     scheme_id = parsed_data.get("scheme_id")  # Extract scheme ID
+                    db = parsed_data.get("db")  # Extract database name
+
+                    if not db or not scheme_id:
+                        self.logger.warning(
+                            f"Could not extract database name or scheme ID from MLST URL: {st_link}"
+                        )
+                        return None
+
                     scheme_info = self.client.retrieve_scheme_info(
                         db, scheme_id
                     )  # Retrieve scheme info
@@ -160,13 +170,6 @@ class Referencer:
                     self.logger.info(
                         f"pubMLST reference for {organ.replace('_', ' ').capitalize()} updated to {last_updated} from {currver}"
                     )
-
-                    db = parsed_data.get("db")  # Extract database name
-                    if not db or not scheme_id:
-                        self.logger.warning(
-                            f"Could not extract database name or scheme ID from MLST URL: {st_link}"
-                        )
-                        return None
 
                     # Step 1: Download the profiles CSV
                     st_target = f"{self.config['folders']['profiles']}/{organ}"
