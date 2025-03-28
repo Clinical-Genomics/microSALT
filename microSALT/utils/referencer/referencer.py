@@ -218,7 +218,7 @@ class Referencer:
                     self.db_access.upd_rec(
                         {"name": "profile_{}".format(organ)},
                         "Versions",
-                        {"version": profile_no},
+                        {"version": self.external_version(organ, st_link)},
                     )
                     self.db_access.reload_profiletable(organ)
         except Exception as e:
