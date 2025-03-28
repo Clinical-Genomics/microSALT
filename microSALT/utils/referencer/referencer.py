@@ -143,39 +143,84 @@ class Referencer:
                     # Check for newer version
                     currver = self.db_access.get_version("profile_{}".format(organ))
                     st_link = entry.find("./mlst/database/profiles/url").text
-                    profiles_csv = self.client.parse_pubmlst_url(url=st_link)
-                    profile_no = profiles_csv.readlines()[-1].decode("utf-8").split("\t")[0]
-                    if organ.replace("_", " ") not in self.updated and (
-                        int(profile_no.replace("-", "")) > int(currver.replace("-", "")) or force
-                    ):
-                        # Download MLST profiles
-                        self.logger.info("Downloading new MLST profiles for " + species)
-                        output = "{}/{}".format(self.config["folders"]["profiles"], organ)
-                        profiles_csv = self.client.parse_pubmlst_url(url=st_link)
-                        print(profiles_csv)
-                        with open(output, "w") as f:
-                            f.write(profiles_csv.read().decode("utf-8"))
-                        # Clear existing directory and download allele files
-                        out = "{}/{}".format(self.config["folders"]["references"], organ)
-                        shutil.rmtree(out)
-                        os.makedirs(out)
-                        for locus in entry.findall("./mlst/database/loci/locus"):
-                            locus_name = locus.text.strip()
-                            locus_link = locus.find("./url").text
-                            fasta_file = self.client.parse_pubmlst_url(locus_link)
-                            print(fasta_file)
-                            urllib.request.urlretrieve(
-                                locus_link, "{}/{}.tfa".format(out, locus_name)
-                            )
-                        # Create new indexes
-                        self.index_db(out, ".tfa")
-                        # Update database
-                        self.db_access.upd_rec(
-                            {"name": "profile_{}".format(organ)},
-                            "Versions",
-                            {"version": profile_no},
+                    parsed_data = self.client.parse_pubmlst_url(url=st_link)
+                    
+                    print(parsed_data)
+                    db = parsed_data.get("db")
+                    scheme_id = parsed_data.get("scheme_id")
+                    if not db or not scheme_id:
+                        self.logger.warning(
+                            f"Could not extract database name or scheme ID from MLST URL: {st_link}"
                         )
-                        self.db_access.reload_profiletable(organ)
+                        return None
+
+                    # Step 1: Download the profiles CSV
+                    st_target = f"{self.config['folders']['profiles']}/{organ}"
+                    profiles_csv = self.client.download_profiles_csv(db, scheme_id)
+                    # Only write the first 8 columns, this avoids adding information such as "clonal_complex" and "species"
+                    profiles_csv = profiles_csv.split("\n")
+                    trimmed_profiles = []
+                    for line in profiles_csv:
+                        trimmed_profiles.append("\t".join(line.split("\t")[:8]))
+
+                    profiles_csv = "\n".join(trimmed_profiles)
+
+                    with open(st_target, "w") as profile_file:
+                        profile_file.write(profiles_csv)
+                        
+                    self.logger.info(f"Profiles CSV downloaded to {st_target}")
+
+                    # Step 2: Fetch scheme information to get loci
+                    scheme_info = self.client.retrieve_scheme_info(db, scheme_id)
+                    loci_list = scheme_info.get("loci", [])
+
+                    # Step 3: Download loci FASTA files
+                    output = f"{self.config['folders']['references']}/{organ}"
+                    if os.path.isdir(output):
+                        shutil.rmtree(output)
+                    os.makedirs(output)
+
+                    for locus_uri in loci_list:
+                        locus_name = os.path.basename(os.path.normpath(locus_uri))
+                        loci_fasta = self.client.download_locus(db, locus_name)
+                        with open(f"{output}/{locus_name}.tfa", "w") as fasta_file:
+                            fasta_file.write(loci_fasta)
+                        self.logger.info(f"Locus FASTA downloaded: {locus_name}.tfa")
+
+                    # Step 4: Create new indexes
+                    self.index_db(output, ".tfa")
+                    # profile_no = profiles_csv.readlines()[-1].decode("utf-8").split("\t")[0]
+                    # if organ.replace("_", " ") not in self.updated and (
+                    #     int(profile_no.replace("-", "")) > int(currver.replace("-", "")) or force
+                    # ):
+                    #     # Download MLST profiles
+                    #     self.logger.info("Downloading new MLST profiles for " + species)
+                    #     output = "{}/{}".format(self.config["folders"]["profiles"], organ)
+                    #     profiles_csv = self.client.parse_pubmlst_url(url=st_link)
+                    #     print(profiles_csv)
+                    #     with open(output, "w") as f:
+                    #         f.write(profiles_csv.read().decode("utf-8"))
+                    #     # Clear existing directory and download allele files
+                    #     out = "{}/{}".format(self.config["folders"]["references"], organ)
+                    #     shutil.rmtree(out)
+                    #     os.makedirs(out)
+                    #     for locus in entry.findall("./mlst/database/loci/locus"):
+                    #         locus_name = locus.text.strip()
+                    #         locus_link = locus.find("./url").text
+                    #         fasta_file = self.client.parse_pubmlst_url(locus_link)
+                    #         print(fasta_file)
+                    #         urllib.request.urlretrieve(
+                    #             locus_link, "{}/{}.tfa".format(out, locus_name)
+                    #         )
+                    #     # Create new indexes
+                    #     self.index_db(out, ".tfa")
+                    # Update database
+                    self.db_access.upd_rec(
+                        {"name": "profile_{}".format(organ)},
+                        "Versions",
+                        {"version": profile_no},
+                    )
+                    self.db_access.reload_profiletable(organ)
         except Exception as e:
             self.logger.warning("Unable to update pubMLST external data: {}".format(e))
 
