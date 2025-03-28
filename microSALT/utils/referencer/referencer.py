@@ -14,6 +14,7 @@ from Bio import Entrez
 import xml.etree.ElementTree as ET
 from microSALT.store.db_manipulator import DB_Manipulator
 
+
 class Referencer:
     def __init__(self, config, log, sampleinfo={}, force=False):
         self.config = config
@@ -150,6 +151,7 @@ class Referencer:
                         self.logger.info("Downloading new MLST profiles for " + species)
                         output = "{}/{}".format(self.config["folders"]["profiles"], organ)
                         profiles_csv = self.client.parse_pubmlst_url(db=organ, url=st_link)
+                        print(profiles_csv)
                         with open(output, "w") as f:
                             f.write(profiles_csv.read().decode("utf-8"))
                         # Clear existing directory and download allele files
@@ -159,7 +161,8 @@ class Referencer:
                         for locus in entry.findall("./mlst/database/loci/locus"):
                             locus_name = locus.text.strip()
                             locus_link = locus.find("./url").text
-                            self.client.parse_pubmlst_url(locus_link)
+                            fasta_file = self.client.parse_pubmlst_url(locus_link)
+                            print(fasta_file)
                             urllib.request.urlretrieve(
                                 locus_link, "{}/{}.tfa".format(out, locus_name)
                             )
@@ -263,11 +266,7 @@ class Referencer:
                     if len(piece) == 1:
                         if target.startswith(piece):
                             hit += 1
-                    elif (
-                        piece in target
-                        or piece == "pneumonsiae"
-                        and "pneumoniae" in target
-                    ):
+                    elif piece in target or piece == "pneumonsiae" and "pneumoniae" in target:
                         hit += 1
                     else:
                         break
