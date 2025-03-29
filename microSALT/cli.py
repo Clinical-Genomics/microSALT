@@ -16,7 +16,7 @@ from microSALT import __version__, preset_config, logger, wd
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.reporter import Reporter
-from microSALT.utils.referencer.referencer import Referencer
+from microSALT.utils.referencer import Referencer
 
 default_sampleinfo = {
     "CG_ID_project": "XXX0000",

@@ -12,7 +12,7 @@ from distutils.sysconfig import get_python_lib
 
 from microSALT import preset_config, logger
 from microSALT.utils.scraper import Scraper
-from microSALT.utils.referencer.referencer import Referencer
+from microSALT.utils.referencer import Referencer
 
 
 @pytest.fixture
