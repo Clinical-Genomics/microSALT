@@ -159,7 +159,7 @@ class Referencer:
                         self.logger.warning(
                             f"Could not extract database name or scheme ID from MLST URL: {st_link}"
                         )
-                        return None
+                        return
 
                     scheme_info = self.client.retrieve_scheme_info(
                         db, scheme_id
