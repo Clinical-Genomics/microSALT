@@ -120,6 +120,12 @@ class PubMLSTClient:
             RequestType.DB, HTTPMethod.GET, url, db=db, response_handler=ResponseHandler.TEXT
         )
 
+    def download_profiles_csv_by_url_and_db(self, db: str, url: str):
+        """Download MLST profiles in CSV format using a custom URL."""
+        return self._make_request(
+            RequestType.DB, HTTPMethod.GET, url, response_handler=ResponseHandler.TEXT
+        )
+
     def retrieve_scheme_info(self, db: str, scheme_id: int):
         """Retrieve information about a specific MLST scheme."""
         url = f"{BASE_API}/db/{db}/schemes/{scheme_id}"

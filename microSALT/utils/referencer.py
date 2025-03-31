@@ -3,18 +3,18 @@
 
 #!/usr/bin/env python
 import glob
-import json
 import os
 import re
 import shutil
 import subprocess
 import urllib.request
-import zipfile
+
 from microSALT.utils.pubmlst.client import PubMLSTClient
 
 from Bio import Entrez
 import xml.etree.ElementTree as ET
 from microSALT.store.db_manipulator import DB_Manipulator
+from microSALT.utils.pubmlst.exceptions import InvalidURLError
 
 
 class Referencer:
@@ -144,34 +144,82 @@ class Referencer:
                     # Check for newer version
                     currver = self.db_access.get_version("profile_{}".format(organ))
                     st_link = entry.find("./mlst/database/profiles/url").text
-                    profiles_query = urllib.request.urlopen(st_link)
-                    profile_no = profiles_query.readlines()[-1].decode("utf-8").split("\t")[0]
-                    if organ.replace("_", " ") not in self.updated and (
-                        int(profile_no.replace("-", "")) > int(currver.replace("-", "")) or force
-                    ):
-                        # Download MLST profiles
-                        self.logger.info("Downloading new MLST profiles for " + species)
-                        output = "{}/{}".format(self.config["folders"]["profiles"], organ)
-                        urllib.request.urlretrieve(st_link, output)
-                        # Clear existing directory and download allele files
-                        out = "{}/{}".format(self.config["folders"]["references"], organ)
-                        shutil.rmtree(out)
-                        os.makedirs(out)
-                        for locus in entry.findall("./mlst/database/loci/locus"):
-                            locus_name = locus.text.strip()
-                            locus_link = locus.find("./url").text
-                            urllib.request.urlretrieve(
-                                locus_link, "{}/{}.tfa".format(out, locus_name)
-                            )
-                        # Create new indexes
-                        self.index_db(out, ".tfa")
-                        # Update database
-                        self.db_access.upd_rec(
-                            {"name": "profile_{}".format(organ)},
-                            "Versions",
-                            {"version": profile_no},
+
+                    # Parse the database name and scheme ID
+                    try:
+                        parsed_data = self.client.parse_pubmlst_url(url=st_link)
+                    except InvalidURLError as e:
+                        self.logger.warning(f"Invalid URL: {st_link} - {e}")
+                        continue
+                    
+                    scheme_id = parsed_data.get("scheme_id")  # Extract scheme ID
+                    db = parsed_data.get("db")  # Extract database name
+
+                    if not db or not scheme_id:
+                        self.logger.warning(
+                            f"Could not extract database name or scheme ID from MLST URL: {st_link}"
                         )
-                        self.db_access.reload_profiletable(organ)
+                        return
+
+                    scheme_info = self.client.retrieve_scheme_info(
+                        db, scheme_id
+                    )  # Retrieve scheme info
+                    last_updated = scheme_info.get("last_updated")  # Extract last updated date
+                    if (
+                        int(last_updated.replace("-", "")) <= int(currver.replace("-", ""))
+                        and not force
+                    ):
+                        self.logger.info(
+                            f"Profile for {organ.replace('_', ' ').capitalize()} already at the latest version."
+                        )
+                        continue
+                    self.logger.info(
+                        f"pubMLST reference for {organ.replace('_', ' ').capitalize()} updated to {last_updated} from {currver}"
+                    )
+
+                    # Step 1: Download the profiles CSV
+                    st_target = f"{self.config['folders']['profiles']}/{organ}"
+                    profiles_csv = self.client.download_profiles_csv(db, scheme_id)
+
+                    # Only write the first 8 columns, this avoids adding information such as "clonal_complex" and "species"
+                    profiles_csv = profiles_csv.split("\n")
+                    trimmed_profiles = []
+                    for line in profiles_csv:
+                        trimmed_profiles.append("\t".join(line.split("\t")[:8]))
+
+                    profiles_csv = "\n".join(trimmed_profiles)
+
+                    with open(st_target, "w") as profile_file:
+                        profile_file.write(profiles_csv)
+
+                    self.logger.info(f"Profiles CSV downloaded to {st_target}")
+
+                    # Step 2: Fetch scheme information to get loci
+
+                    loci_list = scheme_info.get("loci", [])
+
+                    # Step 3: Download loci FASTA files
+                    output = f"{self.config['folders']['references']}/{organ}"
+                    if os.path.isdir(output):
+                        shutil.rmtree(output)
+                    os.makedirs(output)
+
+                    for locus_uri in loci_list:
+                        locus_name = os.path.basename(os.path.normpath(locus_uri))
+                        loci_fasta = self.client.download_locus(db, locus_name)
+                        with open(f"{output}/{locus_name}.tfa", "w") as fasta_file:
+                            fasta_file.write(loci_fasta)
+                        self.logger.info(f"Locus FASTA downloaded: {locus_name}.tfa")
+
+                    # Step 4: Create new indexes
+                    self.index_db(output, ".tfa")
+
+                    self.db_access.upd_rec(
+                        {"name": "profile_{}".format(organ)},
+                        "Versions",
+                        {"version": last_updated},
+                    )
+                    self.db_access.reload_profiletable(organ)
         except Exception as e:
             self.logger.warning("Unable to update pubMLST external data: {}".format(e))
 
@@ -257,21 +305,16 @@ class Referencer:
         orgs = os.listdir(self.config["folders"]["references"])
         organism = re.split(r"\W+", normal_organism_name.lower())
         try:
-            refs = 0
             for target in orgs:
                 hit = 0
                 for piece in organism:
                     if len(piece) == 1:
                         if target.startswith(piece):
                             hit += 1
+                    elif piece in target or piece == "pneumonsiae" and "pneumoniae" in target:
+                        hit += 1
                     else:
-                        if piece in target:
-                            hit += 1
-                        # For when people misspell the strain in the orderform
-                        elif piece == "pneumonsiae" and "pneumoniae" in target:
-                            hit += 1
-                        else:
-                            break
+                        break
                 if hit == len(organism):
                     return target
         except Exception as e:
@@ -519,6 +562,7 @@ class Referencer:
         for key, val in seqdef_url.items():
             internal_ver = self.db_access.get_version("profile_{}".format(key))
             external_ver = self.external_version(key, val)
+
             if (internal_ver < external_ver) or force:
                 self.logger.info(
                     "pubMLST reference for {} updated to {} from {}".format(

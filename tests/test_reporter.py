@@ -16,7 +16,6 @@ from unittest.mock import patch
 
 from microSALT import preset_config, logger
 from microSALT.utils.reporter import Reporter
-from microSALT.utils.referencer import Referencer
 from microSALT.store.db_manipulator import DB_Manipulator
 
 def unpack_db_json(filename):
