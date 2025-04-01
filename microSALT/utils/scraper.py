@@ -202,7 +202,6 @@ class Scraper:
         res_cols = self.db_pusher.get_columns("{}".format(type2db))
 
         try:
-            # If organism is enterobacteriaceae, the reference in pubMLST now is using the "spp." suffix
             for file in file_list:
                 filename = os.path.basename(file).rsplit(".", 1)[0]  # Removes suffix
                 if filename == "lactam":
