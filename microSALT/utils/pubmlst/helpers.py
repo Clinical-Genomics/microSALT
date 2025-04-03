@@ -1,4 +1,5 @@
 import os
+import requests
 import base64
 import hashlib
 import json
@@ -162,3 +163,37 @@ def parse_pubmlst_url(url: str):
         return {"endpoint": endpoint, **values}
     except NotFound:
         raise InvalidURLError(url)
+
+def get_db_type_capabilities(db_name: str) -> dict:
+    """
+    Determine whether the database is of type 'isolate' or 'sequence definition (seqdef)'.
+    This is inferred by inspecting metadata for known capabilities.
+    """
+    url = f"{BASE_API}/db/{db_name}"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        metadata = response.json()
+        capabilities = {
+            "has_isolates": metadata.get("has_isolates", False),
+            "has_projects": metadata.get("has_projects", False),
+            "has_fields": metadata.get("has_fields", False),
+        }
+        return capabilities
+    except Exception as e:
+        raise PUBMLSTError(f"Failed to get DB type capabilities for {db_name}: {e}") from e
+
+
+def should_skip_endpoint(endpoint: str, capabilities: dict) -> bool:
+    """
+    Return True if the endpoint call should be skipped due to being incompatible
+    with the database's declared capabilities.
+    """
+    # Handle isolate-related endpoints
+    if "/isolates" in endpoint and not capabilities.get("has_isolates", False):
+        return True
+    if "/projects" in endpoint and not capabilities.get("has_projects", False):
+        return True
+    if "/fields" in endpoint and not capabilities.get("has_fields", False):
+        return True
+    return False

@@ -4,7 +4,9 @@ from microSALT.utils.pubmlst.helpers import (
     BASE_API,
     generate_oauth_header,
     load_auth_credentials,
-    parse_pubmlst_url
+    parse_pubmlst_url,
+    should_skip_endpoint,
+    get_db_type_capabilities
 )
 from microSALT.utils.pubmlst.constants import RequestType, HTTPMethod, ResponseHandler
 from microSALT.utils.pubmlst.exceptions import PUBMLSTError, SessionTokenRequestError
@@ -41,10 +43,20 @@ class PubMLSTClient:
     url: str,
     db: str = None,
     response_handler: ResponseHandler = ResponseHandler.JSON,
-    retry_on_401: bool = True
+    retry_on_401: bool = True,
+    skip_submissions: bool = True
 ):
         """Handle API requests, support retry on 401, and robust error handling."""
         try:
+            if skip_submissions and "/submissions" in url:
+                logger.debug(f"[SKIP] Skipping submission-related URL: {url}")
+                return None
+            
+            if db and should_skip_endpoint(url, get_db_type_capabilities(db)):
+                logger.debug(f"[SKIP] Skipping incompatible URL for {db}: {url}")
+                return None
+
+
             if db:
                 session_token, session_secret = load_session_credentials(db)
             else:
