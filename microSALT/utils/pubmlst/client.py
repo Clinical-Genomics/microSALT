@@ -9,6 +9,7 @@ from microSALT.utils.pubmlst.helpers import (
 from microSALT.utils.pubmlst.constants import RequestType, HTTPMethod, ResponseHandler
 from microSALT.utils.pubmlst.exceptions import PUBMLSTError, SessionTokenRequestError
 from microSALT.utils.pubmlst.authentication import load_session_credentials
+from microSALT.utils.pubmlst.authentication import get_new_session_token
 from microSALT import logger
 
 class PubMLSTClient:
@@ -33,36 +34,66 @@ class PubMLSTClient:
         return parse_pubmlst_url(url)
 
 
-    def _make_request(self, request_type: RequestType, method: HTTPMethod, url: str, db: str = None, response_handler: ResponseHandler = ResponseHandler.JSON):
-        """ Handle API requests."""     
+    def _make_request(
+    self,
+    request_type: RequestType,
+    method: HTTPMethod,
+    url: str,
+    db: str = None,
+    response_handler: ResponseHandler = ResponseHandler.JSON,
+    retry_on_401: bool = True
+):
+        """Handle API requests, support retry on 401, and robust error handling."""
         try:
             if db:
                 session_token, session_secret = load_session_credentials(db)
             else:
                 session_token, session_secret = self.session_token, self.session_secret
-            
+
             if request_type == RequestType.AUTH:
                 headers = {
-                    "Authorization": generate_oauth_header(url, self.consumer_key, self.consumer_secret, self.access_token, self.access_secret)
+                    "Authorization": generate_oauth_header(
+                        url,
+                        self.consumer_key,
+                        self.consumer_secret,
+                        self.access_token,
+                        self.access_secret,
+                    )
                 }
             elif request_type == RequestType.DB:
                 headers = {
-                    "Authorization": generate_oauth_header(url, self.consumer_key, self.consumer_secret, session_token, session_secret)
+                    "Authorization": generate_oauth_header(
+                        url,
+                        self.consumer_key,
+                        self.consumer_secret,
+                        session_token,
+                        session_secret,
+                    )
                 }
             else:
                 raise ValueError(f"Unsupported request type: {request_type}")
 
-            if method == HTTPMethod.GET:
-                response = requests.get(url, headers=headers)
-            elif method == HTTPMethod.POST:
-                response = requests.post(url, headers=headers)
-            elif method == HTTPMethod.PUT:
-                response = requests.put(url, headers=headers)
-            else:
-                raise ValueError(f"Unsupported HTTP method: {method}")
-            
+
+            response = requests.request(method.value, url, headers=headers)
+
+            if response.status_code == 401 and retry_on_401 and db:
+                logger.debug(f"[DEBUG] Got 401 Unauthorized. Refreshing session token and retrying for {url}")
+                get_new_session_token(db)
+                return self._make_request(
+                    request_type=request_type,
+                    method=method,
+                    url=url,
+                    db=db,
+                    response_handler=response_handler,
+                    retry_on_401=False 
+                )
+
+            if response.status_code == 404:
+                logger.debug(f"[DEBUG] 404 Not Found for {url}")
+                return None
+
             response.raise_for_status()
-            
+
             if response_handler == ResponseHandler.CONTENT:
                 return response.content
             elif response_handler == ResponseHandler.TEXT:
