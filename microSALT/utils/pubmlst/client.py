@@ -56,7 +56,6 @@ class PubMLSTClient:
                 logger.debug(f"[SKIP] Skipping incompatible URL for {db}: {url}")
                 return None
 
-
             if db:
                 session_token, session_secret = load_session_credentials(db)
             else:
