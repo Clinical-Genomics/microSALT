@@ -2,24 +2,15 @@ import os
 import requests
 import base64
 import hashlib
-import hmac
 import json
+import hmac
 import time
 from pathlib import Path
 from urllib.parse import quote_plus, urlencode
-
 from werkzeug.exceptions import NotFound
-
 from microSALT import app, logger
+from microSALT.utils.pubmlst.exceptions import PUBMLSTError, PathResolutionError, CredentialsFileNotFound, InvalidCredentials, SaveSessionError, InvalidURLError
 from microSALT.utils.pubmlst.constants import Encoding, url_map
-from microSALT.utils.pubmlst.exceptions import (
-    CredentialsFileNotFound,
-    InvalidCredentials,
-    InvalidURLError,
-    PathResolutionError,
-    PUBMLSTError,
-    SaveSessionError,
-)
 
 BASE_WEB = "https://pubmlst.org/bigsdb"
 BASE_API = "https://rest.pubmlst.org"
@@ -30,7 +21,6 @@ pubmlst_auth_credentials_file_name = "pubmlst_credentials.env"
 pubmlst_session_credentials_file_name = "pubmlst_session_credentials.json"
 pubmlst_config = app.config["pubmlst"]
 folders_config = app.config["folders"]
-
 
 def get_path(config, config_key: str):
     """Get and expand the file path from the configuration."""
@@ -52,7 +42,8 @@ def load_auth_credentials():
     """Load client ID, client secret, access token, and access secret from credentials file."""
     try:
         credentials_file = os.path.join(
-            get_path(folders_config, credentials_path_key), pubmlst_auth_credentials_file_name
+            get_path(folders_config, credentials_path_key),
+            pubmlst_auth_credentials_file_name
         )
 
         if not os.path.exists(credentials_file):
@@ -91,7 +82,37 @@ def load_auth_credentials():
         raise
     except Exception as e:
         raise PUBMLSTError("An unexpected error occurred while loading credentials: {e}")
+    
 
+def generate_oauth_header(url: str, oauth_consumer_key: str, oauth_consumer_secret: str, oauth_token: str, oauth_token_secret: str):
+    """Generate the OAuth1 Authorization header."""
+    oauth_timestamp = str(int(time.time()))
+    oauth_nonce = base64.urlsafe_b64encode(os.urandom(32)).decode(Encoding.UTF8.value).strip("=")
+    oauth_signature_method = "HMAC-SHA1"
+    oauth_version = "1.0"
+
+    oauth_params = {
+        "oauth_consumer_key": oauth_consumer_key,
+        "oauth_token": oauth_token,
+        "oauth_signature_method": oauth_signature_method,
+        "oauth_timestamp": oauth_timestamp,
+        "oauth_nonce": oauth_nonce,
+        "oauth_version": oauth_version,
+    }    
+
+    params_encoded = urlencode(sorted(oauth_params.items()))
+    base_string = f"GET&{quote_plus(url)}&{quote_plus(params_encoded)}"
+    signing_key = f"{oauth_consumer_secret}&{oauth_token_secret}"
+
+    hashed = hmac.new(signing_key.encode(Encoding.UTF8.value), base_string.encode(Encoding.UTF8.value), hashlib.sha1)
+    oauth_signature = base64.b64encode(hashed.digest()).decode(Encoding.UTF8.value)
+
+    oauth_params["oauth_signature"] = oauth_signature
+
+    auth_header = "OAuth " + ", ".join(
+        [f'{quote_plus(k)}="{quote_plus(v)}"' for k, v in oauth_params.items()]
+    )
+    return auth_header
 
 def save_session_token(db: str, token: str, secret: str, expiration_date: str):
     """Save session token, secret, and expiration to a JSON file for the specified database."""
@@ -103,7 +124,8 @@ def save_session_token(db: str, token: str, secret: str, expiration_date: str):
         }
 
         credentials_file = os.path.join(
-            get_path(folders_config, credentials_path_key), pubmlst_session_credentials_file_name
+            get_path(folders_config, credentials_path_key),
+            pubmlst_session_credentials_file_name
         )
 
         if os.path.exists(credentials_file):
@@ -120,14 +142,15 @@ def save_session_token(db: str, token: str, secret: str, expiration_date: str):
         with open(credentials_file, "w") as f:
             json.dump(all_sessions, f, indent=4)
 
-        logger.debug(f"Session token for database '{db}' saved to '{credentials_file}'.")
+        logger.debug(
+            f"Session token for database '{db}' saved to '{credentials_file}'."
+        )
     except (IOError, OSError) as e:
         raise SaveSessionError(db, f"I/O error: {e}")
     except ValueError as e:
         raise SaveSessionError(db, f"Invalid data format: {e}")
     except Exception as e:
         raise SaveSessionError(db, f"Unexpected error: {e}")
-
 
 def parse_pubmlst_url(url: str):
     """
