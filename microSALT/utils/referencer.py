@@ -9,12 +9,14 @@ import shutil
 import subprocess
 import urllib.request
 
-from microSALT.utils.pubmlst.client import PubMLSTClient
+from microSALT.utils.pubmlst.client import BaseClient, PubMLSTClient, get_client
+from microSALT.utils.pubmlst.authentication import ClientAuthentication
 
 from Bio import Entrez
 import xml.etree.ElementTree as ET
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.pubmlst.exceptions import InvalidURLError
+from microSALT.utils.pubmlst.helpers import get_service_by_url
 
 
 class Referencer:
@@ -44,7 +46,12 @@ class Referencer:
                 self.sampleinfo = self.sampleinfo[0]
             self.name = self.sampleinfo.get("CG_ID_sample")
             self.sample = self.sampleinfo
-        self.client = PubMLSTClient()
+        self.client = None
+
+
+    def set_client(self, service: str):
+        """Set the client for PubMLST API interactions."""
+        self.client: BaseClient = get_client(service)
 
     def identify_new(self, cg_id="", project=False):
         """Automatically downloads pubMLST & NCBI organisms not already downloaded"""
@@ -144,10 +151,11 @@ class Referencer:
                     # Check for newer version
                     currver = self.db_access.get_version("profile_{}".format(organ))
                     st_link = entry.find("./mlst/database/profiles/url").text
-
+                    service: str = get_service_by_url(st_link)
+                    self.set_client(service)
                     # Parse the database name and scheme ID
                     try:
-                        parsed_data = self.client.parse_pubmlst_url(url=st_link)
+                        parsed_data = self.client.parse_url(url=st_link)
                     except InvalidURLError as e:
                         self.logger.warning(f"Invalid URL: {st_link} - {e}")
                         continue

@@ -1,41 +1,38 @@
 from urllib.parse import urlencode
-
 import requests
 from rauth import OAuth1Session
 
 from microSALT import logger
-from microSALT.utils.pubmlst.authentication import load_session_credentials
+from microSALT.utils.pubmlst.authentication import ClientAuthentication
 from microSALT.utils.pubmlst.constants import HTTPMethod, RequestType, ResponseHandler
 from microSALT.utils.pubmlst.exceptions import PUBMLSTError, SessionTokenRequestError
-from microSALT.utils.pubmlst.helpers import (
-    BASE_API,
-    load_auth_credentials,
-    parse_pubmlst_url,
-)
+from microSALT.utils.pubmlst.helpers import load_auth_credentials, parse_url, get_service_config
 
 
-class PubMLSTClient:
-    """Client for interacting with the PubMLST authenticated API."""
+class BaseClient:
+    """Base client for interacting with authenticated APIs."""
 
-    def __init__(self):
-        """Initialize the PubMLST client."""
+    def __init__(self, service: str):
+        """Initialize the client with the specified service."""
         try:
+            self.service = service
             self.consumer_key, self.consumer_secret, self.access_token, self.access_secret = (
-                load_auth_credentials()
+                load_auth_credentials(service)
             )
-            self.database = "pubmlst_test_seqdef"
-            self.session_token, self.session_secret = load_session_credentials(self.database)
+            self.client_auth = ClientAuthentication(service)
+            service_config = get_service_config(service)
+            self.base_api = service_config["base_api"]
+            self.database = service_config["database"]
+            self.session_token, self.session_secret = self.client_auth.load_session_credentials(self.database)
         except PUBMLSTError as e:
-            logger.error(f"Failed to initialize PubMLST client: {e}")
+            logger.error(f"Failed to initialize {service} client: {e}")
             raise
 
     @staticmethod
-    def parse_pubmlst_url(url: str):
-        """
-        Wrapper for the parse_pubmlst_url function.
-        """
-        return parse_pubmlst_url(url)
-
+    def parse_url(url: str):
+        """Wrapper for URL parsing."""
+        return parse_url(url)
+    
     def _make_request(
         self,
         request_type: RequestType,
@@ -51,7 +48,7 @@ class PubMLSTClient:
                 access_secret = self.access_secret
                 log_database = "authentication"
             elif request_type == RequestType.DB:
-                access_token, access_secret = load_session_credentials(db or self.database)
+                access_token, access_secret = self.client_auth.load_session_credentials(db or self.database)
                 log_database = db or self.database
             else:
                 raise ValueError(f"Unsupported request type: {request_type}")
@@ -96,15 +93,15 @@ class PubMLSTClient:
             raise PUBMLSTError(f"An unexpected error occurred: {e}") from e
 
     def query_databases(self):
-        """Query available PubMLST databases."""
-        url = f"{BASE_API}/db"
+        """Query available databases."""
+        url = f"{self.base_api}/db"
         return self._make_request(
             RequestType.DB, HTTPMethod.GET, url, response_handler=ResponseHandler.JSON
         )
 
     def download_locus(self, db: str, locus: str, **kwargs):
         """Download locus sequence files."""
-        base_url = f"{BASE_API}/db/{db}/loci/{locus}/alleles_fasta"
+        base_url = f"{self.base_api}/db/{db}/loci/{locus}/alleles_fasta"
         query_string = urlencode(kwargs)
         url = f"{base_url}?{query_string}" if query_string else base_url
         return self._make_request(
@@ -115,12 +112,12 @@ class PubMLSTClient:
         """Download MLST profiles in CSV format."""
         if not scheme_id:
             raise ValueError("Scheme ID is required to download profiles CSV.")
-        url = f"{BASE_API}/db/{db}/schemes/{scheme_id}/profiles_csv"
+        url = f"{self.base_api}/db/{db}/schemes/{scheme_id}/profiles_csv"
         return self._make_request(
             RequestType.DB, HTTPMethod.GET, url, db=db, response_handler=ResponseHandler.TEXT
         )
 
-    def download_profiles_csv_by_url_and_db(self, db: str, url: str):
+    def download_profiles_csv_by_url_and_db(self, url: str):
         """Download MLST profiles in CSV format using a custom URL."""
         return self._make_request(
             RequestType.DB, HTTPMethod.GET, url, response_handler=ResponseHandler.TEXT
@@ -128,14 +125,40 @@ class PubMLSTClient:
 
     def retrieve_scheme_info(self, db: str, scheme_id: int):
         """Retrieve information about a specific MLST scheme."""
-        url = f"{BASE_API}/db/{db}/schemes/{scheme_id}"
+        url = f"{self.base_api}/db/{db}/schemes/{scheme_id}"
         return self._make_request(
             RequestType.DB, HTTPMethod.GET, url, db=db, response_handler=ResponseHandler.JSON
         )
 
     def list_schemes(self, db: str):
         """List available MLST schemes for a specific database."""
-        url = f"{BASE_API}/db/{db}/schemes"
+        url = f"{self.base_api}/db/{db}/schemes"
         return self._make_request(
             RequestType.DB, HTTPMethod.GET, url, db=db, response_handler=ResponseHandler.JSON
         )
+
+
+class PubMLSTClient(BaseClient):
+    """Client for interacting with the PubMLST authenticated API."""
+
+    def __init__(self):
+        """Initialize the PubMLST client."""
+        super().__init__(service="pubmlst")
+
+
+class PasteurClient(BaseClient):
+    """Client for interacting with the Pasteur authenticated API."""
+
+    def __init__(self):
+        """Initialize the Pasteur client."""
+        super().__init__(service="pasteur")
+
+
+def get_client(service: str):
+    """Get the appropriate client for the specified service."""
+    if service == "pubmlst":
+        return PubMLSTClient()
+    elif service == "pasteur":
+        return PasteurClient()
+    else:
+        raise ValueError(f"Unknown service: {service}")
