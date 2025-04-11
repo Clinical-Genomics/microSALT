@@ -415,6 +415,7 @@ class Referencer:
 
     def query_pubmlst(self):
         """Returns a json object containing all organisms available via pubmlst.org"""
+        self.set_client("pubmlst")
         db_query = self.client.query_databases()
         return db_query
 
