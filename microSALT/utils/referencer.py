@@ -422,7 +422,7 @@ class Referencer:
     def get_mlst_scheme(self, subtype_href):
         """Returns the path for the MLST data scheme at pubMLST"""
         try:
-            parsed_data = self.client.parse_pubmlst_url(subtype_href)
+            parsed_data = self.client.parse_url(subtype_href)
             db = parsed_data.get("db")
             if not db:
                 self.logger.warning(f"Could not extract database name from URL: {subtype_href}")
@@ -459,7 +459,7 @@ class Referencer:
                 self.logger.warning(f"MLST scheme not found for URL: {subtype_href}")
                 return None
 
-            parsed_data = self.client.parse_pubmlst_url(mlst_href)
+            parsed_data = self.client.parse_url(mlst_href)
             db = parsed_data.get("db")
             scheme_id = parsed_data.get("scheme_id")
             if not db or not scheme_id:
@@ -505,7 +505,7 @@ class Referencer:
                 return None
 
             # Parse the database name and scheme ID
-            parsed_data = self.client.parse_pubmlst_url(mlst_href)
+            parsed_data = self.client.parse_url(mlst_href)
             db = parsed_data.get("db")
             scheme_id = parsed_data.get("scheme_id")
             if not db or not scheme_id:
