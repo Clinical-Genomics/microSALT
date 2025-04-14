@@ -45,6 +45,8 @@ def get_service_config(service: str):
     :param service: The name of the service ('pubmlst' or 'pasteur').
     :return: A dictionary containing the configuration for the service.
     """
+    logger.debug(f"Getting configuration for service: {service}")
+    logger.debug(f"Service config: {app.config[service]}")
     services = {
         "pubmlst": {
             "base_web": "https://pubmlst.org/bigsdb",
