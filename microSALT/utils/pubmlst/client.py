@@ -1,12 +1,17 @@
 from urllib.parse import urlencode
 import requests
 from rauth import OAuth1Session
+from werkzeug.exceptions import NotFound
 
 from microSALT import logger
 from microSALT.utils.pubmlst.authentication import ClientAuthentication
-from microSALT.utils.pubmlst.constants import HTTPMethod, RequestType, ResponseHandler
-from microSALT.utils.pubmlst.exceptions import PUBMLSTError, SessionTokenRequestError
-from microSALT.utils.pubmlst.helpers import load_auth_credentials, parse_url, get_service_config
+from microSALT.utils.pubmlst.constants import HTTPMethod, RequestType, ResponseHandler, url_map
+from microSALT.utils.pubmlst.exceptions import (
+    InvalidURLError,
+    PUBMLSTError,
+    SessionTokenRequestError,
+)
+from microSALT.utils.pubmlst.helpers import load_auth_credentials, get_service_config
 
 
 class BaseClient:
@@ -23,16 +28,30 @@ class BaseClient:
             service_config = get_service_config(service)
             self.base_api = service_config["base_api"]
             self.database = service_config["database"]
-            self.session_token, self.session_secret = self.client_auth.load_session_credentials(self.database)
+            self.base_api_host = service_config["base_api_host"]
+            self.session_token, self.session_secret = self.client_auth.load_session_credentials(
+                self.database
+            )
         except PUBMLSTError as e:
             logger.error(f"Failed to initialize {service} client: {e}")
             raise
 
-    @staticmethod
-    def parse_url(url: str):
-        """Wrapper for URL parsing."""
-        return parse_url(url)
-    
+    def parse_url(self, url: str):
+        """
+        Match a URL against the URL map for the specified service and return extracted parameters.
+
+        :param service: The name of the service ('pubmlst' or 'pasteur').
+        :param url: The URL to parse.
+        :return: A dictionary containing the extracted parameters.
+        """
+        adapter = url_map.bind("")
+        parsed_url = url.split(self.base_api_host)[-1]
+        try:
+            endpoint, values = adapter.match(parsed_url)
+            return {"endpoint": endpoint, **values}
+        except NotFound:
+            raise InvalidURLError(url)
+
     def _make_request(
         self,
         request_type: RequestType,
@@ -49,7 +68,9 @@ class BaseClient:
                 access_secret = self.access_secret
                 log_database = "authentication"
             elif request_type == RequestType.DB:
-                access_token, access_secret = self.client_auth.load_session_credentials(db or self.database)
+                access_token, access_secret = self.client_auth.load_session_credentials(
+                    db or self.database
+                )
                 log_database = db or self.database
             else:
                 raise ValueError(f"Unsupported request type: {request_type}")

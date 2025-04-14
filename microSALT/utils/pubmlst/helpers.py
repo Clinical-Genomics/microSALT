@@ -1,20 +1,14 @@
-import base64
-import hashlib
-import hmac
 import json
 import os
-import time
 from pathlib import Path
-from urllib.parse import quote_plus, urlencode
 
-from werkzeug.exceptions import NotFound
+
 
 from microSALT import app, logger
-from microSALT.utils.pubmlst.constants import Encoding, url_map
+
 from microSALT.utils.pubmlst.exceptions import (
     CredentialsFileNotFound,
     InvalidCredentials,
-    InvalidURLError,
     PathResolutionError,
     PUBMLSTError,
     SaveSessionError,
@@ -185,20 +179,3 @@ def save_session_token(service: str, db: str, token: str, secret: str, expiratio
     except Exception as e:
         raise SaveSessionError(db, f"Unexpected error: {e}")
 
-
-def parse_url(service: str, url: str):
-    """
-    Match a URL against the URL map for the specified service and return extracted parameters.
-
-    :param service: The name of the service ('pubmlst' or 'pasteur').
-    :param url: The URL to parse.
-    :return: A dictionary containing the extracted parameters.
-    """
-    service_config = get_service_config(service)
-    adapter = url_map.bind("")
-    parsed_url = url.split(service_config["base_api_host"])[-1]
-    try:
-        endpoint, values = adapter.match(parsed_url)
-        return {"endpoint": endpoint, **values}
-    except NotFound:
-        raise InvalidURLError(url)

@@ -48,7 +48,6 @@ class Referencer:
             self.sample = self.sampleinfo
         self.client = None
 
-
     def set_client(self, service: str):
         """Set the client for PubMLST API interactions."""
         self.client: BaseClient = get_client(service)
@@ -159,7 +158,7 @@ class Referencer:
                     except InvalidURLError as e:
                         self.logger.warning(f"Invalid URL: {st_link} - {e}")
                         continue
-                    
+
                     scheme_id = parsed_data.get("scheme_id")  # Extract scheme ID
                     db = parsed_data.get("db")  # Extract database name
 
@@ -422,7 +421,7 @@ class Referencer:
     def get_mlst_scheme(self, subtype_href):
         """Returns the path for the MLST data scheme at pubMLST"""
         try:
-            parsed_data = self.client.parse_url(subtype_href)
+            parsed_data = self.client.parse_url(url=subtype_href)
             db = parsed_data.get("db")
             if not db:
                 self.logger.warning(f"Could not extract database name from URL: {subtype_href}")
@@ -458,8 +457,7 @@ class Referencer:
             if not mlst_href:
                 self.logger.warning(f"MLST scheme not found for URL: {subtype_href}")
                 return None
-
-            parsed_data = self.client.parse_url(mlst_href)
+            parsed_data = self.client.parse_url(url=mlst_href)
             db = parsed_data.get("db")
             scheme_id = parsed_data.get("scheme_id")
             if not db or not scheme_id:
@@ -505,7 +503,7 @@ class Referencer:
                 return None
 
             # Parse the database name and scheme ID
-            parsed_data = self.client.parse_url(mlst_href)
+            parsed_data = self.client.parse_url(url=mlst_href)
             db = parsed_data.get("db")
             scheme_id = parsed_data.get("scheme_id")
             if not db or not scheme_id:
