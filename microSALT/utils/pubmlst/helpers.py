@@ -47,6 +47,7 @@ def get_service_config(service: str):
     """
     logger.debug(f"Getting configuration for service: {service}")
     logger.debug(f"Service config: {app.config[service]}")
+    logger.debug(f"Service config: {app.config}")
     services = {
         "pubmlst": {
             "base_web": "https://pubmlst.org/bigsdb",
