@@ -95,7 +95,10 @@ def load_auth_credentials(service: str):
     :return: A tuple containing the credentials (consumer_key, consumer_secret, access_token, access_secret).
     """
     try:
+        logger.debug(f"Loading credentials for service: {service}")
         service_config = get_service_config(service)
+        logger.debug(f"Service config: {service_config}")
+        logger.debug(f"Getting the path to the credentials file...")
         credentials_file = os.path.join(
             get_path(folders_config, service_config["credentials_path_key"]),
             service_config["auth_credentials_file_name"],

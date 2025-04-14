@@ -42,12 +42,15 @@ class BaseClient:
         response_handler: ResponseHandler = ResponseHandler.JSON,
     ):
         """Handle API requests."""
+        logger.debug(f"Making {method.value} request to {url} for database '{db}'...")
         try:
             if request_type == RequestType.AUTH:
+                logger.debug("Using authentication credentials.")
                 access_token = self.access_token
                 access_secret = self.access_secret
                 log_database = "authentication"
             elif request_type == RequestType.DB:
+                logger.debug("Using database credentials.")
                 access_token, access_secret = self.client_auth.load_session_credentials(db or self.database)
                 log_database = db or self.database
             else:

@@ -36,6 +36,7 @@ class ClientAuthentication:
         logger.debug(f"Fetching a new session token for database '{db}'...")
 
         try:
+            logger.debug("Loading authentication credentials...")
             consumer_key, consumer_secret, access_token, access_secret = load_auth_credentials(
                 self.service
             )
