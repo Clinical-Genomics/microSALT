@@ -29,7 +29,9 @@ if "MICROSALT_CONFIG" in os.environ:
     try:
         envvar = os.environ["MICROSALT_CONFIG"]
         with open(envvar, "r") as conf:
+            print(f"Loading config from {envvar}")
             preset_config = json.load(conf)
+            print(preset_config)
     except Exception as e:
         print("Config error: {}".format(str(e)))
         pass
