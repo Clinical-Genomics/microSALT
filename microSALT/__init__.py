@@ -29,9 +29,7 @@ if "MICROSALT_CONFIG" in os.environ:
     try:
         envvar = os.environ["MICROSALT_CONFIG"]
         with open(envvar, "r") as conf:
-            print(f"Loading config from {envvar}")
             preset_config = json.load(conf)
-            print(preset_config)
     except Exception as e:
         print("Config error: {}".format(str(e)))
         pass
@@ -54,13 +52,15 @@ if preset_config != "":
 
         # Ensure PubMLST configuration is included
 
-        app.config["pubmlst"] = preset_config.get("pubmlst", {
-            "client_id": "",
-            "client_secret": ""        
-            })
-
         app.config["pubmlst"] = preset_config.get("pubmlst", {"client_id": "", "client_secret": ""})
 
+        app.config["pasteur"] = preset_config.get(
+            "pasteur",
+            {
+                "client_id": "",
+                "client_secret": "",
+            },
+        )
 
         # Add extrapaths to config
         preset_config["folders"]["expec"] = os.path.abspath(

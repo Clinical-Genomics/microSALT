@@ -38,6 +38,7 @@ def get_path(config, config_key: str):
     except Exception as e:
         raise PathResolutionError(config_key) from e
 
+
 def get_service_config(service: str):
     """
     Get the configuration for the specified service (e.g., 'pubmlst' or 'pasteur').
@@ -45,9 +46,6 @@ def get_service_config(service: str):
     :param service: The name of the service ('pubmlst' or 'pasteur').
     :return: A dictionary containing the configuration for the service.
     """
-    logger.debug(f"Getting configuration for service: {service}")
-    logger.debug(f"Service config: {app.config[service]}")
-    logger.debug(f"Service config: {app.config}")
     services = {
         "pubmlst": {
             "base_web": "https://pubmlst.org/bigsdb",
@@ -76,6 +74,7 @@ def get_service_config(service: str):
 
     return services[service]
 
+
 def get_service_by_url(url: str):
     """
     Get the client name based on the provided URL.
@@ -88,6 +87,7 @@ def get_service_by_url(url: str):
             return service
     raise ValueError(f"Unknown client for URL: {url}")
 
+
 def load_auth_credentials(service: str):
     """
     Load client ID, client secret, access token, and access secret from the credentials file for the specified service.
@@ -96,10 +96,7 @@ def load_auth_credentials(service: str):
     :return: A tuple containing the credentials (consumer_key, consumer_secret, access_token, access_secret).
     """
     try:
-        logger.debug(f"Loading credentials for service: {service}")
         service_config = get_service_config(service)
-        logger.debug(f"Service config: {service_config}")
-        logger.debug(f"Getting the path to the credentials file...")
         credentials_file = os.path.join(
             get_path(folders_config, service_config["credentials_path_key"]),
             service_config["auth_credentials_file_name"],
@@ -140,9 +137,7 @@ def load_auth_credentials(service: str):
         logger.error(f"Unexpected error in load_{service}_credentials: {e}")
         raise
     except Exception as e:
-        raise PUBMLSTError(
-            f"An unexpected error occurred while loading {service} credentials: {e}"
-        )
+        raise PUBMLSTError(f"An unexpected error occurred while loading {service} credentials: {e}")
 
 
 def save_session_token(service: str, db: str, token: str, secret: str, expiration_date: str):
