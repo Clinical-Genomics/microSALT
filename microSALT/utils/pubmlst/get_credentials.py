@@ -85,7 +85,7 @@ def main(service, species=None):
         elif service == "pasteur":
             if not species:
                 raise ValueError("For the 'pasteur' service, you must provide a species.")
-            db = f"pasteur_{species}_seqdef"
+            db = f"pubmlst_{species}_seqdef"
         else:
             raise ValueError(f"Unknown service: {service}")
 
