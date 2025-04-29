@@ -153,7 +153,7 @@ class Referencer:
                         st_link = entry.find("./mlst/database/profiles/url").text
                         service: str = get_service_by_url(st_link)
                         if service == "pasteur":
-                            database: str = organ.split("_")[0]
+                            database: str = f"pubmlst_{organ.split("_")[0]}_seqdef"
                             self.set_client(service, database=database)
                         else:
                             self.set_client(service)
