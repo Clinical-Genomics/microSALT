@@ -7,9 +7,6 @@ from microSALT import app
 from microSALT.utils.pubmlst.helpers import get_path, get_service_config, folders_config
 from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
 
-db = "pubmlst_test_seqdef"
-
-
 def validate_credentials(client_id, client_secret):
     """Ensure client_id and client_secret are not empty."""
     if not client_id or not client_id.strip():

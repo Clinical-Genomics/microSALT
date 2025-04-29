@@ -52,7 +52,7 @@ def get_service_config(service: str):
             "config": app.config["pubmlst"],
         },
         "pasteur": {
-            "base_web": "https://bigsdb.pasteur.fr",
+            "base_web": "https://bigsdb.pasteur.fr/bigsdb",
             "base_api": "https://bigsdb.pasteur.fr/api",
             "base_api_host": "bigsdb.pasteur.fr",
             "database": "pasteur_test_seqdef",
