@@ -71,27 +71,40 @@ def save_to_credentials_py(
     print(f"Tokens saved to {credentials_file}")
 
 
-def main(service):
-
+def main(service, species=None):
     try:
         service_config = get_service_config(service)
         bigsd_config = service_config["config"]
         client_id = bigsd_config["client_id"]
         client_secret = bigsd_config["client_secret"]
         validate_credentials(client_id, client_secret)
+
+        # Determine the database
+        if service == "pubmlst":
+            db = service_config["database"]
+        elif service == "pasteur":
+            if not species:
+                raise ValueError("For the 'pasteur' service, you must provide a species.")
+            db = f"{species}_seqdef"
+        else:
+            raise ValueError(f"Unknown service: {service}")
+
         credentials_path = get_path(folders_config, CREDENTIALS_KEY)
         credentials_file = os.path.join(
             credentials_path, service_config.get("auth_credentials_file_name")
         )
+
         access_token, access_secret = get_new_access_token(
             client_id=client_id,
             client_secret=client_secret,
-            db=service_config["database"],
+            db=db,
             base_api=service_config["base_api"],
             base_web=service_config["base_web"],
         )
+
         print(f"\nAccess Token: {access_token}")
         print(f"Access Token Secret: {access_secret}")
+
         save_to_credentials_py(
             client_id,
             client_secret,
@@ -107,7 +120,7 @@ def main(service):
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser(description="Get PUBMLST credentials.")
+    parser = ArgumentParser(description="Get PUBMLST or Pasteur credentials.")
     parser.add_argument(
         "-s",
         "--service",
@@ -115,5 +128,11 @@ if __name__ == "__main__":
         default="pubmlst",
         help="Service name (default: pubmlst)",
     )
+    parser.add_argument(
+        "-sp",
+        "--species",
+        type=str,
+        help="Species name (required for the 'pasteur' service)",
+    )
     args = parser.parse_args()
-    main(args.service)
+    main(args.service, args.species)
