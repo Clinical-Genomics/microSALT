@@ -153,11 +153,11 @@ class Referencer:
                         st_link = entry.find("./mlst/database/profiles/url").text
                         service: str = get_service_by_url(st_link)
                         if service == "pasteur":
-                            database: str = f"pubmlst_{organ.split("_")[0]}_seqdef"
+                            database: str = f"pubmlst_{organ.split('_')[0]}_seqdef"
                             self.set_client(service, database=database)
                         else:
                             self.set_client(service)
-                            
+
                         # Parse the database name and scheme ID
                         try:
                             parsed_data = self.client.parse_url(url=st_link)
