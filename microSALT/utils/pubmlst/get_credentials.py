@@ -77,8 +77,10 @@ def main(service):
         client_id = bigsd_config["client_id"]
         client_secret = bigsd_config["client_secret"]
         validate_credentials(client_id, client_secret)
-        credentials_path = get_path(folders_config, credentials_path_key)
-        credentials_file = os.path.join(credentials_path, pubmlst_auth_credentials_file_name)
+        credentials_path = get_path(folders_config, service_config.get("credentials_path_key"))
+        credentials_file = os.path.join(
+            credentials_path, service_config.get("auth_credentials_file_name")
+        )
         access_token, access_secret = get_new_access_token(
             client_id, client_secret, service_config["base_api"], service_config["base_web"]
         )

@@ -15,7 +15,7 @@ from microSALT.utils.pubmlst.authentication import ClientAuthentication
 from Bio import Entrez
 import xml.etree.ElementTree as ET
 from microSALT.store.db_manipulator import DB_Manipulator
-from microSALT.utils.pubmlst.exceptions import InvalidURLError
+from microSALT.utils.pubmlst.exceptions import InvalidURLError, PUBMLSTError
 from microSALT.utils.pubmlst.helpers import get_service_by_url
 
 
@@ -140,93 +140,96 @@ class Referencer:
         try:
             query = urllib.request.urlopen(url).read()
             root = ET.fromstring(query)
-            for entry in root:
-                # Check organism
-                species = entry.text.strip()
-                organ = species.lower().replace(" ", "_")
-                if "escherichia_coli" in organ and "#1" in organ:
-                    organ = organ[:-2]
-                if organ in self.organisms:
-                    # Check for newer version
-                    currver = self.db_access.get_version("profile_{}".format(organ))
-                    st_link = entry.find("./mlst/database/profiles/url").text
-                    service: str = get_service_by_url(st_link)
-                    self.set_client(service)
-                    # Parse the database name and scheme ID
-                    try:
-                        parsed_data = self.client.parse_url(url=st_link)
-                    except InvalidURLError as e:
-                        self.logger.warning(f"Invalid URL: {st_link} - {e}")
-                        continue
+            try:
+                for entry in root:
+                    # Check organism
+                    species = entry.text.strip()
+                    organ = species.lower().replace(" ", "_")
+                    if "escherichia_coli" in organ and "#1" in organ:
+                        organ = organ[:-2]
+                    if organ in self.organisms:
+                        # Check for newer version
+                        currver = self.db_access.get_version("profile_{}".format(organ))
+                        st_link = entry.find("./mlst/database/profiles/url").text
+                        service: str = get_service_by_url(st_link)
+                        self.set_client(service)
+                        # Parse the database name and scheme ID
+                        try:
+                            parsed_data = self.client.parse_url(url=st_link)
+                        except InvalidURLError as e:
+                            self.logger.warning(f"Invalid URL: {st_link} - {e}")
+                            continue
 
-                    scheme_id = parsed_data.get("scheme_id")  # Extract scheme ID
-                    db = parsed_data.get("db")  # Extract database name
+                        scheme_id = parsed_data.get("scheme_id")  # Extract scheme ID
+                        db = parsed_data.get("db")  # Extract database name
 
-                    if not db or not scheme_id:
-                        self.logger.warning(
-                            f"Could not extract database name or scheme ID from MLST URL: {st_link}"
-                        )
-                        return
+                        if not db or not scheme_id:
+                            self.logger.warning(
+                                f"Could not extract database name or scheme ID from MLST URL: {st_link}"
+                            )
+                            return
 
-                    scheme_info = self.client.retrieve_scheme_info(
-                        db, scheme_id
-                    )  # Retrieve scheme info
-                    last_updated = scheme_info.get("last_updated")  # Extract last updated date
-                    if (
-                        int(last_updated.replace("-", "")) <= int(currver.replace("-", ""))
-                        and not force
-                    ):
+                        scheme_info = self.client.retrieve_scheme_info(
+                            db, scheme_id
+                        )  # Retrieve scheme info
+                        last_updated = scheme_info.get("last_updated")  # Extract last updated date
+                        if (
+                            int(last_updated.replace("-", "")) <= int(currver.replace("-", ""))
+                            and not force
+                        ):
+                            self.logger.info(
+                                f"Profile for {organ.replace('_', ' ').capitalize()} already at the latest version."
+                            )
+                            continue
                         self.logger.info(
-                            f"Profile for {organ.replace('_', ' ').capitalize()} already at the latest version."
+                            f"pubMLST reference for {organ.replace('_', ' ').capitalize()} updated to {last_updated} from {currver}"
                         )
-                        continue
-                    self.logger.info(
-                        f"pubMLST reference for {organ.replace('_', ' ').capitalize()} updated to {last_updated} from {currver}"
-                    )
 
-                    # Step 1: Download the profiles CSV
-                    st_target = f"{self.config['folders']['profiles']}/{organ}"
-                    profiles_csv = self.client.download_profiles_csv(db, scheme_id)
+                        # Step 1: Download the profiles CSV
+                        st_target = f"{self.config['folders']['profiles']}/{organ}"
+                        profiles_csv = self.client.download_profiles_csv(db, scheme_id)
 
-                    # Only write the first 8 columns, this avoids adding information such as "clonal_complex" and "species"
-                    profiles_csv = profiles_csv.split("\n")
-                    trimmed_profiles = []
-                    for line in profiles_csv:
-                        trimmed_profiles.append("\t".join(line.split("\t")[:8]))
+                        # Only write the first 8 columns, this avoids adding information such as "clonal_complex" and "species"
+                        profiles_csv = profiles_csv.split("\n")
+                        trimmed_profiles = []
+                        for line in profiles_csv:
+                            trimmed_profiles.append("\t".join(line.split("\t")[:8]))
 
-                    profiles_csv = "\n".join(trimmed_profiles)
+                        profiles_csv = "\n".join(trimmed_profiles)
 
-                    with open(st_target, "w") as profile_file:
-                        profile_file.write(profiles_csv)
+                        with open(st_target, "w") as profile_file:
+                            profile_file.write(profiles_csv)
 
-                    self.logger.info(f"Profiles CSV downloaded to {st_target}")
+                        self.logger.info(f"Profiles CSV downloaded to {st_target}")
 
-                    # Step 2: Fetch scheme information to get loci
+                        # Step 2: Fetch scheme information to get loci
 
-                    loci_list = scheme_info.get("loci", [])
+                        loci_list = scheme_info.get("loci", [])
 
-                    # Step 3: Download loci FASTA files
-                    output = f"{self.config['folders']['references']}/{organ}"
-                    if os.path.isdir(output):
-                        shutil.rmtree(output)
-                    os.makedirs(output)
+                        # Step 3: Download loci FASTA files
+                        output = f"{self.config['folders']['references']}/{organ}"
+                        if os.path.isdir(output):
+                            shutil.rmtree(output)
+                        os.makedirs(output)
 
-                    for locus_uri in loci_list:
-                        locus_name = os.path.basename(os.path.normpath(locus_uri))
-                        loci_fasta = self.client.download_locus(db, locus_name)
-                        with open(f"{output}/{locus_name}.tfa", "w") as fasta_file:
-                            fasta_file.write(loci_fasta)
-                        self.logger.info(f"Locus FASTA downloaded: {locus_name}.tfa")
+                        for locus_uri in loci_list:
+                            locus_name = os.path.basename(os.path.normpath(locus_uri))
+                            loci_fasta = self.client.download_locus(db, locus_name)
+                            with open(f"{output}/{locus_name}.tfa", "w") as fasta_file:
+                                fasta_file.write(loci_fasta)
+                            self.logger.info(f"Locus FASTA downloaded: {locus_name}.tfa")
 
-                    # Step 4: Create new indexes
-                    self.index_db(output, ".tfa")
+                        # Step 4: Create new indexes
+                        self.index_db(output, ".tfa")
 
-                    self.db_access.upd_rec(
-                        {"name": "profile_{}".format(organ)},
-                        "Versions",
-                        {"version": last_updated},
-                    )
-                    self.db_access.reload_profiletable(organ)
+                        self.db_access.upd_rec(
+                            {"name": "profile_{}".format(organ)},
+                            "Versions",
+                            {"version": last_updated},
+                        )
+                        self.db_access.reload_profiletable(organ)
+            except PUBMLSTError as e:
+                self.logger.warning(f"Unable to update pubMLST external data: {e}")
         except Exception as e:
             self.logger.warning("Unable to update pubMLST external data: {}".format(e))
 
