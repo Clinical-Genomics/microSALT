@@ -132,7 +132,7 @@ pubmlst_urls = Map(
     ]
 )
 
-pasteur_urls = add_prefix_to_rules(url_map, "/api")
+pasteur_urls = add_prefix_to_rules(pubmlst_urls, "/api")
 
 URL_MAPS = {
     "pubmlst": pubmlst_urls,
