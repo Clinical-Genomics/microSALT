@@ -39,8 +39,14 @@ class ClientAuthentication:
             consumer_key, consumer_secret, access_token, access_secret = load_auth_credentials(
                 self.service
             )
+            logger.debug(f"Consumer Key: {consumer_key}")
+            logger.debug(f"Consumer Secret: {consumer_secret}")
+            logger.debug(f"Access Token: {access_token}")
+            logger.debug(f"Access Secret: {access_secret}")
 
             url = f"{self.base_api}/db/{db}/oauth/get_session_token"
+
+            logger.debug(f"Requesting session token from URL: {url}")
 
             session = OAuth1Session(
                 consumer_key=consumer_key,
@@ -50,6 +56,7 @@ class ClientAuthentication:
             )
 
             response = session.get(url, headers={"User-Agent": "BIGSdb API downloader"})
+            logger.debug(f"Response Content: {response.content}")
             logger.debug(f"Response Status Code: {response.status_code}")
 
             if response.ok:

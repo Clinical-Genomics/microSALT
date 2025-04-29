@@ -17,7 +17,7 @@ from microSALT.utils.pubmlst.helpers import load_auth_credentials, get_service_c
 class BaseClient:
     """Base client for interacting with authenticated APIs."""
 
-    def __init__(self, service: str):
+    def __init__(self, service: str, database: str = None):
         """Initialize the client with the specified service."""
         try:
             self.service = service
@@ -27,7 +27,7 @@ class BaseClient:
             self.client_auth = ClientAuthentication(service)
             service_config = get_service_config(service)
             self.base_api = service_config["base_api"]
-            self.database = service_config["database"]
+            self.database = database or service_config["database"]
             self.base_api_host = service_config["base_api_host"]
             self.session_token, self.session_secret = self.client_auth.load_session_credentials(
                 self.database
@@ -171,16 +171,16 @@ class PubMLSTClient(BaseClient):
 class PasteurClient(BaseClient):
     """Client for interacting with the Pasteur authenticated API."""
 
-    def __init__(self):
+    def __init__(self, database: str):
         """Initialize the Pasteur client."""
-        super().__init__(service="pasteur")
+        super().__init__(service="pasteur", database=database)
 
 
-def get_client(service: str):
+def get_client(service: str, database: str = None):
     """Get the appropriate client for the specified service."""
     if service == "pubmlst":
         return PubMLSTClient()
     elif service == "pasteur":
-        return PasteurClient()
+        return PasteurClient(database=database)
     else:
         raise ValueError(f"Unknown service: {service}")

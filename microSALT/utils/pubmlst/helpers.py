@@ -55,7 +55,6 @@ def get_service_config(service: str):
             "base_web": "https://bigsdb.pasteur.fr/cgi-bin/bigsdb/bigsdb.pl",
             "base_api": "https://bigsdb.pasteur.fr/api",
             "base_api_host": "bigsdb.pasteur.fr",
-            "database": "pasteur_test_seqdef",
             "auth_credentials_file_name": "pasteur_credentials.env",
             "session_credentials_file_name": "pasteur_session_credentials.json",
             "config": app.config["pasteur"],

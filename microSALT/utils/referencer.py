@@ -48,9 +48,9 @@ class Referencer:
             self.sample = self.sampleinfo
         self.client = None
 
-    def set_client(self, service: str):
+    def set_client(self, service: str, database: str = None):
         """Set the client for PubMLST API interactions."""
-        self.client: BaseClient = get_client(service)
+        self.client: BaseClient = get_client(service, database)
 
     def identify_new(self, cg_id="", project=False):
         """Automatically downloads pubMLST & NCBI organisms not already downloaded"""
@@ -152,7 +152,7 @@ class Referencer:
                         currver = self.db_access.get_version("profile_{}".format(organ))
                         st_link = entry.find("./mlst/database/profiles/url").text
                         service: str = get_service_by_url(st_link)
-                        self.set_client(service)
+                        self.set_client(service, database=organ)
                         # Parse the database name and scheme ID
                         try:
                             parsed_data = self.client.parse_url(url=st_link)
