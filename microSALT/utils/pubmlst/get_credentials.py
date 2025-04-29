@@ -77,7 +77,7 @@ def main(service):
         client_id = bigsd_config["client_id"]
         client_secret = bigsd_config["client_secret"]
         validate_credentials(client_id, client_secret)
-        credentials_path = get_path(folders_config, service_config.get("credentials_path_key"))
+        credentials_path = get_path(folders_config, app.config["folders"]["credentials"])
         credentials_file = os.path.join(
             credentials_path, service_config.get("auth_credentials_file_name")
         )

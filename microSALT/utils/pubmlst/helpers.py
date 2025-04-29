@@ -45,7 +45,6 @@ def get_service_config(service: str):
             "base_web": "https://pubmlst.org/bigsdb",
             "base_api": "https://rest.pubmlst.org",
             "base_api_host": "rest.pubmlst.org",
-            "credentials_path_key": "pubmlst_credentials",
             "database": "pubmlst_test_seqdef",
             "auth_credentials_file_name": "pubmlst_credentials.env",
             "session_credentials_file_name": "pubmlst_session_credentials.json",
@@ -55,7 +54,6 @@ def get_service_config(service: str):
             "base_web": "https://bigsdb.pasteur.fr",
             "base_api": "https://bigsdb.pasteur.fr/api",
             "base_api_host": "bigsdb.pasteur.fr",
-            "credentials_path_key": "pasteur_credentials",
             "database": "pasteur_test_seqdef",
             "auth_credentials_file_name": "pasteur_credentials.env",
             "session_credentials_file_name": "pasteur_session_credentials.json",
@@ -92,7 +90,7 @@ def load_auth_credentials(service: str):
     try:
         service_config = get_service_config(service)
         credentials_file = os.path.join(
-            get_path(folders_config, service_config["credentials_path_key"]),
+            get_path(folders_config, app.config["folders"]["credentials"]),
             service_config["auth_credentials_file_name"],
         )
 
@@ -147,7 +145,7 @@ def save_session_token(service: str, db: str, token: str, secret: str, expiratio
     try:
         service_config = get_service_config(service)
         session_file = os.path.join(
-            get_path(folders_config, service_config["credentials_path_key"]),
+            get_path(folders_config, app.config["folders"]["credentials"]),
             service_config["session_credentials_file_name"],
         )
 

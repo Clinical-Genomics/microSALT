@@ -33,8 +33,8 @@
     "resistances": "/tmp/MLST/references/resistances",
     "_comment": "Download path for NCBI genomes, for alignment usage",
     "genomes": "/tmp/MLST/references/genomes",
-    "_comment": "PubMLST credentials",
-    "pubmlst_credentials": "/tmp/MLST/credentials"
+    "_comment": "Credentials",
+    "credentials": "/tmp/MLST/credentials"
   },
   "_comment": "Database/Flask configuration",
   "database": {
@@ -75,7 +75,7 @@
     "username": "limsuser",
     "password": "mypassword"
   },
-  "_comment": "PubMLST credentials",
+  "_comment": "Credentials",
   "pubmlst": {
     "client_id": "",
     "client_secret": ""

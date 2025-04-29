@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from dateutil import parser
 from rauth import OAuth1Session
 
-from microSALT import logger
+from microSALT import app, logger
 from microSALT.utils.pubmlst.exceptions import (
     PUBMLSTError,
     SessionTokenRequestError,
@@ -94,7 +94,7 @@ class ClientAuthentication:
         """Load session token from file for a specific database."""
         try:
             credentials_file = os.path.join(
-                get_path(folders_config, self.service_config["credentials_path_key"]),
+                get_path(folders_config, app.config["folders"]["credentials"]),
                 self.service_config["session_credentials_file_name"],
             )
 
