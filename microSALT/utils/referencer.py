@@ -152,7 +152,12 @@ class Referencer:
                         currver = self.db_access.get_version("profile_{}".format(organ))
                         st_link = entry.find("./mlst/database/profiles/url").text
                         service: str = get_service_by_url(st_link)
-                        self.set_client(service, database=organ)
+                        if service == "pasteur":
+                            database: str = organ.split("_")[0]
+                            self.set_client(service, database=database)
+                        else:
+                            self.set_client(service)
+                            
                         # Parse the database name and scheme ID
                         try:
                             parsed_data = self.client.parse_url(url=st_link)
