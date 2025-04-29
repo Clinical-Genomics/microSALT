@@ -5,13 +5,18 @@ from werkzeug.exceptions import NotFound
 
 from microSALT import logger
 from microSALT.utils.pubmlst.authentication import ClientAuthentication
-from microSALT.utils.pubmlst.constants import HTTPMethod, RequestType, ResponseHandler, url_map
+from microSALT.utils.pubmlst.constants import HTTPMethod, RequestType, ResponseHandler
 from microSALT.utils.pubmlst.exceptions import (
     InvalidURLError,
     PUBMLSTError,
     SessionTokenRequestError,
 )
-from microSALT.utils.pubmlst.helpers import load_auth_credentials, get_service_config
+from microSALT.utils.pubmlst.helpers import (
+    load_auth_credentials,
+    get_service_config,
+    get_url_map,
+    get_service_by_url,
+)
 
 
 class BaseClient:
@@ -44,6 +49,8 @@ class BaseClient:
         :param url: The URL to parse.
         :return: A dictionary containing the extracted parameters.
         """
+        service: str = get_service_by_url(url)
+        url_map = get_url_map(service)
         adapter = url_map.bind("")
         parsed_url = url.split(self.base_api_host)[-1]
         try:

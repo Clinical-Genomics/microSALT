@@ -2,7 +2,7 @@ import json
 import os
 from pathlib import Path
 
-
+from werkzeug.routing import Map, Rule
 
 from microSALT import app, logger
 
@@ -13,7 +13,7 @@ from microSALT.utils.pubmlst.exceptions import (
     PUBMLSTError,
     SaveSessionError,
 )
-from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
+from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY, URL_MAPS
 
 folders_config = app.config["folders"]
 
@@ -78,6 +78,19 @@ def get_service_by_url(url: str):
         if url.startswith(get_service_config(service)["base_api"]):
             return service
     raise ValueError(f"Unknown client for URL: {url}")
+
+
+def get_url_map(service: str):
+    """
+    Get the URL map for the specified service.
+
+    :param service: The name of the service ('pubmlst' or 'pasteur').
+    :return: The URL map for the service.
+    """
+    url_map = URL_MAPS.get(service, None)
+    if url_map is None:
+        raise ValueError(f"Unknown service: {service}")
+    return url_map
 
 
 def load_auth_credentials(service: str):
@@ -177,3 +190,22 @@ def save_session_token(service: str, db: str, token: str, secret: str, expiratio
     except Exception as e:
         raise SaveSessionError(db, f"Unexpected error: {e}")
 
+
+def add_prefix_to_rules(url_map: Map, prefix: str):
+    """
+    Add a prefix to all rules in the given URL map.
+
+    :param url_map: The original URL map.
+    :param prefix: The prefix to add (e.g., '/api').
+    :return: A new URL map with the prefix applied.
+    """
+    new_rules = []
+    new_rules.extend(
+        Rule(
+            f"{prefix}{rule.rule}",
+            endpoint=rule.endpoint,
+            methods=rule.methods,
+        )
+        for rule in url_map.iter_rules()
+    )
+    return Map(new_rules)
