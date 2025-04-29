@@ -13,6 +13,7 @@ from microSALT.utils.pubmlst.exceptions import (
     PUBMLSTError,
     SaveSessionError,
 )
+from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
 
 folders_config = app.config["folders"]
 
@@ -90,7 +91,7 @@ def load_auth_credentials(service: str):
     try:
         service_config = get_service_config(service)
         credentials_file = os.path.join(
-            get_path(folders_config, app.config["folders"]["credentials"]),
+            get_path(folders_config, CREDENTIALS_KEY),
             service_config["auth_credentials_file_name"],
         )
 
@@ -145,7 +146,7 @@ def save_session_token(service: str, db: str, token: str, secret: str, expiratio
     try:
         service_config = get_service_config(service)
         session_file = os.path.join(
-            get_path(folders_config, app.config["folders"]["credentials"]),
+            get_path(folders_config, CREDENTIALS_KEY),
             service_config["session_credentials_file_name"],
         )
 

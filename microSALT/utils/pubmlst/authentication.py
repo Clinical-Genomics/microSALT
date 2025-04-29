@@ -18,6 +18,7 @@ from microSALT.utils.pubmlst.helpers import (
     load_auth_credentials,
     save_session_token,
 )
+from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
 
 session_token_validity = 12  # 12-hour validity
 session_expiration_buffer = 60  # 60-second buffer
@@ -94,7 +95,7 @@ class ClientAuthentication:
         """Load session token from file for a specific database."""
         try:
             credentials_file = os.path.join(
-                get_path(folders_config, app.config["folders"]["credentials"]),
+                get_path(folders_config, CREDENTIALS_KEY),
                 self.service_config["session_credentials_file_name"],
             )
 

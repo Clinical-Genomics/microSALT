@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 from rauth import OAuth1Service
 from microSALT import app
 from microSALT.utils.pubmlst.helpers import get_path, get_service_config, folders_config
+from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
 
 db = "pubmlst_test_seqdef"
 
@@ -27,7 +28,7 @@ def get_request_token(service):
     return data["oauth_token"], data["oauth_token_secret"]
 
 
-def get_new_access_token(client_id, client_secret, base_api: str, base_web: str):
+def get_new_access_token(client_id, client_secret, db: str, base_api: str, base_web: str):
     """Obtain a new access token and secret."""
     service = OAuth1Service(
         name="BIGSdb_downloader",
@@ -71,18 +72,23 @@ def save_to_credentials_py(
 
 
 def main(service):
+
     try:
         service_config = get_service_config(service)
         bigsd_config = service_config["config"]
         client_id = bigsd_config["client_id"]
         client_secret = bigsd_config["client_secret"]
         validate_credentials(client_id, client_secret)
-        credentials_path = get_path(folders_config, app.config["folders"]["credentials"])
+        credentials_path = get_path(folders_config, CREDENTIALS_KEY)
         credentials_file = os.path.join(
             credentials_path, service_config.get("auth_credentials_file_name")
         )
         access_token, access_secret = get_new_access_token(
-            client_id, client_secret, service_config["base_api"], service_config["base_web"]
+            client_id=client_id,
+            client_secret=client_secret,
+            db=service_config["database"],
+            base_api=service_config["base_api"],
+            base_web=service_config["base_web"],
         )
         print(f"\nAccess Token: {access_token}")
         print(f"Access Token Secret: {access_secret}")

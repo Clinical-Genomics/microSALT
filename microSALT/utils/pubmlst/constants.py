@@ -1,6 +1,8 @@
 from enum import Enum
 from werkzeug.routing import Map, Rule
 
+CREDENTIALS_KEY: str = "credentials"
+
 class RequestType(Enum):
     AUTH = "auth"
     DB = "db"
