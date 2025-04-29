@@ -189,23 +189,3 @@ def save_session_token(service: str, db: str, token: str, secret: str, expiratio
         raise SaveSessionError(db, f"Invalid data format: {e}")
     except Exception as e:
         raise SaveSessionError(db, f"Unexpected error: {e}")
-
-
-def add_prefix_to_rules(url_map: Map, prefix: str):
-    """
-    Add a prefix to all rules in the given URL map.
-
-    :param url_map: The original URL map.
-    :param prefix: The prefix to add (e.g., '/api').
-    :return: A new URL map with the prefix applied.
-    """
-    new_rules = []
-    new_rules.extend(
-        Rule(
-            f"{prefix}{rule.rule}",
-            endpoint=rule.endpoint,
-            methods=rule.methods,
-        )
-        for rule in url_map.iter_rules()
-    )
-    return Map(new_rules)
