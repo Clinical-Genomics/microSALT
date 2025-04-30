@@ -79,5 +79,9 @@
   "pubmlst": {
     "client_id": "",
     "client_secret": ""
+  },
+  "pasteur": {
+    "client_id": "",
+    "client_secret": ""
   }
 }
