@@ -20,6 +20,7 @@ def exp_config():
     'database': {'SQLALCHEMY_DATABASE_URI', 'SQLALCHEMY_TRACK_MODIFICATIONS', 'DEBUG'},
     'genologics': {'baseuri', 'username', 'password'},
     'pubmlst': {'client_id', 'client_secret'},
+    'pasteur': {'client_id', 'client_secret'},
     'dry': True,
   }
   return precon
