@@ -126,7 +126,6 @@ if __name__ == "__main__":
         help="Service name (default: pubmlst)",
     )
     parser.add_argument(
-        "-sp",
         "--species",
         type=str,
         help="Species name (required for the 'pasteur' service)",

@@ -9,8 +9,7 @@ def add_prefix_to_rules(url_map: Map, prefix: str):
     :param prefix: The prefix to add (e.g., '/api').
     :return: A new URL map with the prefix applied.
     """
-    new_rules = []
-    new_rules.extend(
+    new_rules = [
         Rule(
             f"{prefix}{rule.rule}",
             endpoint=rule.endpoint,
@@ -18,6 +17,7 @@ def add_prefix_to_rules(url_map: Map, prefix: str):
         )
         for rule in url_map.iter_rules()
     )
+    ]
     return Map(new_rules)
 
 CREDENTIALS_KEY: str = "credentials"

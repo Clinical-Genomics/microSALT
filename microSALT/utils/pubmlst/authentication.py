@@ -137,7 +137,7 @@ class ClientAuthentication:
             return self.get_new_session_token(db)
 
         except PUBMLSTError as e:
-            logger.error(f"PUBMLST-specific error occurred: {e}")
+            logger.error(f"PuBMLST-specific error occurred: {e}")
             raise
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
