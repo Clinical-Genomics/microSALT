@@ -1,10 +1,11 @@
 import sys
 import os
+
+from argparse import ArgumentParser
 from rauth import OAuth1Service
 from microSALT import app
-from microSALT.utils.pubmlst.helpers import get_path, BASE_API, BASE_WEB, folders_config, credentials_path_key, pubmlst_auth_credentials_file_name
-
-db = "pubmlst_test_seqdef"
+from microSALT.utils.pubmlst.helpers import get_path, get_service_config, folders_config
+from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
 
 
 def validate_credentials(client_id, client_secret):
@@ -25,20 +26,20 @@ def get_request_token(service):
     return data["oauth_token"], data["oauth_token_secret"]
 
 
-def get_new_access_token(client_id, client_secret):
+def get_new_access_token(client_id, client_secret, db: str, base_api: str, base_web: str):
     """Obtain a new access token and secret."""
     service = OAuth1Service(
         name="BIGSdb_downloader",
         consumer_key=client_id,
         consumer_secret=client_secret,
-        request_token_url=f"{BASE_API}/db/{db}/oauth/get_request_token",
-        access_token_url=f"{BASE_API}/db/{db}/oauth/get_access_token",
-        base_url=BASE_API,
+        request_token_url=f"{base_api}/db/{db}/oauth/get_request_token",
+        access_token_url=f"{base_api}/db/{db}/oauth/get_access_token",
+        base_url=base_api,
     )
     request_token, request_secret = get_request_token(service)
     print(
         "Please log in using your user account at "
-        f"{BASE_WEB}?db={db}&page=authorizeClient&oauth_token={request_token} "
+        f"{base_web}?db={db}&page=authorizeClient&oauth_token={request_token} "
         "using a web browser to obtain a verification code."
     )
     verifier = input("Please enter verification code: ")
@@ -54,7 +55,9 @@ def get_new_access_token(client_id, client_secret):
     return access_data["oauth_token"], access_data["oauth_token_secret"]
 
 
-def save_to_credentials_py(client_id, client_secret, access_token, access_secret, credentials_path, credentials_file):
+def save_to_credentials_py(
+    client_id, client_secret, access_token, access_secret, credentials_path, credentials_file
+):
     """Save tokens in the credentials.py file."""
     credentials_path.mkdir(parents=True, exist_ok=True)
 
@@ -66,18 +69,48 @@ def save_to_credentials_py(client_id, client_secret, access_token, access_secret
     print(f"Tokens saved to {credentials_file}")
 
 
-def main():
+def main(service, species=None):
     try:
-        pubmlst_config = app.config["pubmlst"]
-        client_id = pubmlst_config["client_id"]
-        client_secret = pubmlst_config["client_secret"]
+        service_config = get_service_config(service)
+        bigsd_config = service_config["config"]
+        client_id = bigsd_config["client_id"]
+        client_secret = bigsd_config["client_secret"]
         validate_credentials(client_id, client_secret)
-        credentials_path = get_path(folders_config, credentials_path_key)
-        credentials_file = os.path.join(credentials_path, pubmlst_auth_credentials_file_name)
-        access_token, access_secret = get_new_access_token(client_id, client_secret)
+
+        # Determine the database
+        if service == "pubmlst":
+            db = service_config["database"]
+        elif service == "pasteur":
+            if not species:
+                raise ValueError("For the 'pasteur' service, you must provide a species.")
+            db = f"pubmlst_{species}_seqdef"
+        else:
+            raise ValueError(f"Unknown service: {service}")
+
+        credentials_path = get_path(folders_config, CREDENTIALS_KEY)
+        credentials_file = os.path.join(
+            credentials_path, service_config.get("auth_credentials_file_name")
+        )
+
+        access_token, access_secret = get_new_access_token(
+            client_id=client_id,
+            client_secret=client_secret,
+            db=db,
+            base_api=service_config["base_api"],
+            base_web=service_config["base_web"],
+        )
+
         print(f"\nAccess Token: {access_token}")
         print(f"Access Token Secret: {access_secret}")
-        save_to_credentials_py(client_id, client_secret, access_token, access_secret, credentials_path, credentials_file)
+
+        save_to_credentials_py(
+            client_id,
+            client_secret,
+            access_token,
+            access_secret,
+            credentials_path,
+            credentials_file,
+        )
 
     except Exception as e:
         print(f"Error: {e}")
@@ -85,4 +118,18 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = ArgumentParser(description="Get PubMLST or Pasteur credentials.")
+    parser.add_argument(
+        "-s",
+        "--service",
+        type=str,
+        default="pubmlst",
+        help="Service name (default: pubmlst)",
+    )
+    parser.add_argument(
+        "--species",
+        type=str,
+        help="Species name (required for the 'pasteur' service)",
+    )
+    args = parser.parse_args()
+    main(args.service, args.species)
