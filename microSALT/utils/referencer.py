@@ -15,7 +15,7 @@ from microSALT.utils.pubmlst.authentication import ClientAuthentication
 from Bio import Entrez
 import xml.etree.ElementTree as ET
 from microSALT.store.db_manipulator import DB_Manipulator
-from microSALT.utils.pubmlst.exceptions import InvalidURLError, PUBMLSTError
+from microSALT.utils.pubmlst.exceptions import InvalidURLError, PubMLSTError
 from microSALT.utils.pubmlst.helpers import get_service_by_url
 
 
@@ -233,7 +233,7 @@ class Referencer:
                             {"version": last_updated},
                         )
                         self.db_access.reload_profiletable(organ)
-            except PUBMLSTError as e:
+            except PubMLSTError as e:
                 self.logger.warning(f"Unable to update pubMLST external data: {e}")
         except Exception as e:
             self.logger.warning("Unable to update pubMLST external data: {}".format(e))

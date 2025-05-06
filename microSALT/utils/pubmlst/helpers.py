@@ -10,7 +10,7 @@ from microSALT.utils.pubmlst.exceptions import (
     CredentialsFileNotFound,
     InvalidCredentials,
     PathResolutionError,
-    PUBMLSTError,
+    PubMLSTError,
     SaveSessionError,
 )
 from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY, URL_MAPS
@@ -138,11 +138,11 @@ def load_auth_credentials(service: str):
         raise
     except InvalidCredentials:
         raise
-    except PUBMLSTError as e:
+    except PubMLSTError as e:
         logger.error(f"Unexpected error in load_{service}_credentials: {e}")
         raise
     except Exception as e:
-        raise PUBMLSTError(f"An unexpected error occurred while loading {service} credentials: {e}")
+        raise PubMLSTError(f"An unexpected error occurred while loading {service} credentials: {e}")
 
 
 def save_session_token(service: str, db: str, token: str, secret: str, expiration_date: str):

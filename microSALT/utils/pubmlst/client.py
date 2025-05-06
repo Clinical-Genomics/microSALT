@@ -8,7 +8,7 @@ from microSALT.utils.pubmlst.authentication import ClientAuthentication
 from microSALT.utils.pubmlst.constants import HTTPMethod, RequestType, ResponseHandler
 from microSALT.utils.pubmlst.exceptions import (
     InvalidURLError,
-    PUBMLSTError,
+    PubMLSTError,
     SessionTokenRequestError,
 )
 from microSALT.utils.pubmlst.helpers import (
@@ -37,7 +37,7 @@ class BaseClient:
             self.session_token, self.session_secret = self.client_auth.load_session_credentials(
                 self.database
             )
-        except PUBMLSTError as e:
+        except PubMLSTError as e:
             logger.error(f"Failed to initialize {service} client: {e}")
             raise
 
@@ -116,10 +116,10 @@ class BaseClient:
             ) from e
         except requests.exceptions.RequestException as e:
             logger.error(f"Request failed: {e}")
-            raise PUBMLSTError(f"Request failed: {e}") from e
+            raise PubMLSTError(f"Request failed: {e}") from e
         except Exception as e:
             logger.error(f"Unexpected error during request: {e}")
-            raise PUBMLSTError(f"An unexpected error occurred: {e}") from e
+            raise PubMLSTError(f"An unexpected error occurred: {e}") from e
 
     def query_databases(self):
         """Query available databases."""

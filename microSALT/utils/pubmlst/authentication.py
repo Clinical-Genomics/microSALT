@@ -7,7 +7,7 @@ from rauth import OAuth1Session
 
 from microSALT import app, logger
 from microSALT.utils.pubmlst.exceptions import (
-    PUBMLSTError,
+    PubMLSTError,
     SessionTokenRequestError,
     SessionTokenResponseError,
 )
@@ -86,12 +86,12 @@ class ClientAuthentication:
             else:
                 raise SessionTokenRequestError(db, response.status_code, response.text)
 
-        except PUBMLSTError as e:
+        except PubMLSTError as e:
             logger.error(f"Error during token fetching: {e}")
             raise
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
-            raise PUBMLSTError(
+            raise PubMLSTError(
                 f"Unexpected error while fetching session token for database '{db}': {e}"
             )
 
@@ -136,11 +136,11 @@ class ClientAuthentication:
             )
             return self.get_new_session_token(db)
 
-        except PUBMLSTError as e:
+        except PubMLSTError as e:
             logger.error(f"PuBMLST-specific error occurred: {e}")
             raise
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
-            raise PUBMLSTError(
+            raise PubMLSTError(
                 f"Unexpected error while loading session token for database '{db}': {e}"
             )
