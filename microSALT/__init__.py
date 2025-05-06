@@ -52,13 +52,9 @@ if preset_config != "":
 
         # Ensure PubMLST configuration is included
 
-        app.config["pubmlst"] = preset_config.get("pubmlst", {
-            "client_id": "",
-            "client_secret": ""        
-            })
-
         app.config["pubmlst"] = preset_config.get("pubmlst", {"client_id": "", "client_secret": ""})
 
+        app.config["pasteur"] = preset_config.get("pasteur", {"client_id": "", "client_secret": ""})
 
         # Add extrapaths to config
         preset_config["folders"]["expec"] = os.path.abspath(
