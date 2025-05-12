@@ -26,6 +26,7 @@ from microSALT.utils.pubmlst.authentication import load_session_credentials
 from microSALT.utils.pubmlst.authentication import get_new_session_token
 from microSALT import logger
 
+
 class BaseClient:
     """Base client for interacting with authenticated APIs."""
 
@@ -66,17 +67,16 @@ class BaseClient:
         except NotFound:
             raise InvalidURLError(url)
 
-
     def _make_request(
-    self,
-    request_type: RequestType,
-    method: HTTPMethod,
-    url: str,
-    db: str = None,
-    response_handler: ResponseHandler = ResponseHandler.JSON,
-    retry_on_401: bool = True,
-    skip_submissions: bool = True
-):
+        self,
+        request_type: RequestType,
+        method: HTTPMethod,
+        url: str,
+        db: str = None,
+        response_handler: ResponseHandler = ResponseHandler.JSON,
+        retry_on_401: bool = True,
+        skip_submissions: bool = True,
+    ):
         """Handle API requests, support retry on 401, and robust error handling."""
         """Handle API requests."""
         logger.debug(f"Making {method.value} request to {url} for database '{db}'...")
@@ -84,8 +84,10 @@ class BaseClient:
             if skip_submissions and "/submissions" in url:
                 logger.debug(f"[SKIP] Skipping submission-related URL: {url}")
                 return None
-            
-            if db and should_skip_endpoint(url, get_db_type_capabilities(db)):
+
+            if db and should_skip_endpoint(
+                url, get_db_type_capabilities(base_api=self.base_api, db_name=db)
+            ):
                 logger.debug(f"[SKIP] Skipping incompatible URL for {db}: {url}")
                 return None
 
@@ -117,11 +119,12 @@ class BaseClient:
             else:
                 raise ValueError(f"Unsupported request type: {request_type}")
 
-
             response = requests.request(method.value, url, headers=headers)
 
             if response.status_code == 401 and retry_on_401 and db:
-                logger.debug(f"[DEBUG] Got 401 Unauthorized. Refreshing session token and retrying for {url}")
+                logger.debug(
+                    f"[DEBUG] Got 401 Unauthorized. Refreshing session token and retrying for {url}"
+                )
                 get_new_session_token(db)
                 return self._make_request(
                     request_type=request_type,
@@ -129,7 +132,7 @@ class BaseClient:
                     url=url,
                     db=db,
                     response_handler=response_handler,
-                    retry_on_401=False 
+                    retry_on_401=False,
                 )
 
             if response.status_code == 404:
@@ -148,14 +151,15 @@ class BaseClient:
                 raise ValueError(f"Unsupported response handler: {response_handler}")
 
         except requests.exceptions.HTTPError as e:
-            raise SessionTokenRequestError(db or self.database, e.response.status_code, e.response.text) from e
+            raise SessionTokenRequestError(
+                db or self.database, e.response.status_code, e.response.text
+            ) from e
         except requests.exceptions.RequestException as e:
             logger.error(f"Request failed: {e}")
             raise PubMLSTError(f"Request failed: {e}") from e
         except Exception as e:
             logger.error(f"Unexpected error during request: {e}")
             raise PubMLSTError(f"An unexpected error occurred: {e}") from e
-
 
     def query_databases(self):
         """Query available databases."""
@@ -164,14 +168,14 @@ class BaseClient:
             RequestType.DB, HTTPMethod.GET, url, response_handler=ResponseHandler.JSON
         )
 
-      
     def download_locus(self, db: str, locus: str, **kwargs):
         """Download locus sequence files."""
         base_url = f"{self.base_api}/db/{db}/loci/{locus}/alleles_fasta"
         query_string = urlencode(kwargs)
         url = f"{base_url}?{query_string}" if query_string else base_url
-        return self._make_request(RequestType.DB, HTTPMethod.GET, url, db=db, response_handler=ResponseHandler.TEXT)
-
+        return self._make_request(
+            RequestType.DB, HTTPMethod.GET, url, db=db, response_handler=ResponseHandler.TEXT
+        )
 
     def download_profiles_csv(self, db: str, scheme_id: int):
         """Download MLST profiles in CSV format."""

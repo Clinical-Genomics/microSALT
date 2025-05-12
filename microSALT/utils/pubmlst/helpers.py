@@ -218,12 +218,12 @@ def save_session_token(service: str, db: str, token: str, secret: str, expiratio
         raise SaveSessionError(db, f"Unexpected error: {e}")
 
 
-def get_db_type_capabilities(db_name: str) -> dict:
+def get_db_type_capabilities(base_api: str, db_name: str) -> dict:
     """
     Determine whether the database is of type 'isolate' or 'sequence definition (seqdef)'.
     This is inferred by inspecting metadata for known capabilities.
     """
-    url = f"{BASE_API}/db/{db_name}"
+    url = f"{base_api}/db/{db_name}"
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -235,7 +235,7 @@ def get_db_type_capabilities(db_name: str) -> dict:
         }
         return capabilities
     except Exception as e:
-        raise PUBMLSTError(f"Failed to get DB type capabilities for {db_name}: {e}") from e
+        raise PubMLSTError(f"Failed to get DB type capabilities for {db_name}: {e}") from e
 
 
 def should_skip_endpoint(endpoint: str, capabilities: dict) -> bool:
