@@ -1,6 +1,5 @@
 from urllib.parse import urlencode
 import requests
-from rauth import OAuth1Session
 from werkzeug.exceptions import NotFound
 
 from microSALT import logger
@@ -22,8 +21,6 @@ from microSALT.utils.pubmlst.helpers import (
 )
 from microSALT.utils.pubmlst.constants import RequestType, HTTPMethod, ResponseHandler
 from microSALT.utils.pubmlst.exceptions import PubMLSTError, SessionTokenRequestError
-from microSALT.utils.pubmlst.authentication import load_session_credentials
-from microSALT.utils.pubmlst.authentication import get_new_session_token
 from microSALT import logger
 
 
@@ -92,7 +89,7 @@ class BaseClient:
                 return None
 
             if db:
-                session_token, session_secret = load_session_credentials(db)
+                session_token, session_secret = self.client_auth.load_session_credentials(db)
             else:
                 session_token, session_secret = self.session_token, self.session_secret
 
@@ -125,7 +122,7 @@ class BaseClient:
                 logger.debug(
                     f"[DEBUG] Got 401 Unauthorized. Refreshing session token and retrying for {url}"
                 )
-                get_new_session_token(db)
+                self.client_auth.get_new_session_token(db)
                 return self._make_request(
                     request_type=request_type,
                     method=method,
