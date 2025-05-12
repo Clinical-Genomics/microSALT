@@ -580,7 +580,7 @@ class Referencer:
 
             if (internal_ver < external_ver) or force:
                 self.logger.info(
-                    f"pubMLST reference for {key.replace("_", " ").capitalize()} updated to {external_ver} from {internal_ver}"
+                    f"pubMLST reference for {key.replace('_', ' ').capitalize()} updated to {external_ver} from {internal_ver}"
                 )
                 self.download_pubmlst(key, val, force)
                 self.db_access.upd_rec(
