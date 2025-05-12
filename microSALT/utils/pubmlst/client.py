@@ -1,6 +1,5 @@
 from urllib.parse import urlencode
 import requests
-from rauth import OAuth1Session
 from werkzeug.exceptions import NotFound
 
 from microSALT import logger
@@ -13,10 +12,16 @@ from microSALT.utils.pubmlst.exceptions import (
 )
 from microSALT.utils.pubmlst.helpers import (
     load_auth_credentials,
+    generate_oauth_header,
     get_service_config,
     get_url_map,
     get_service_by_url,
+    get_db_type_capabilities,
+    should_skip_endpoint,
 )
+from microSALT.utils.pubmlst.constants import RequestType, HTTPMethod, ResponseHandler
+from microSALT.utils.pubmlst.exceptions import PubMLSTError, SessionTokenRequestError
+from microSALT import logger
 
 
 class BaseClient:
@@ -66,41 +71,73 @@ class BaseClient:
         url: str,
         db: str = None,
         response_handler: ResponseHandler = ResponseHandler.JSON,
+        retry_on_401: bool = True,
+        skip_submissions: bool = True,
     ):
+        """Handle API requests, support retry on 401, and robust error handling."""
         """Handle API requests."""
         logger.debug(f"Making {method.value} request to {url} for database '{db}'...")
         try:
+            if skip_submissions and "/submissions" in url:
+                logger.debug(f"[SKIP] Skipping submission-related URL: {url}")
+                return None
+
+            if db and should_skip_endpoint(
+                url, get_db_type_capabilities(base_api=self.base_api, db_name=db)
+            ):
+                logger.debug(f"[SKIP] Skipping incompatible URL for {db}: {url}")
+                return None
+
+            if db:
+                session_token, session_secret = self.client_auth.load_session_credentials(db)
+            else:
+                session_token, session_secret = self.session_token, self.session_secret
+
             if request_type == RequestType.AUTH:
-                access_token = self.access_token
-                access_secret = self.access_secret
-                log_database = "authentication"
+                headers = {
+                    "Authorization": generate_oauth_header(
+                        url,
+                        self.consumer_key,
+                        self.consumer_secret,
+                        self.access_token,
+                        self.access_secret,
+                    )
+                }
             elif request_type == RequestType.DB:
-                access_token, access_secret = self.client_auth.load_session_credentials(
-                    db or self.database
-                )
-                log_database = db or self.database
+                headers = {
+                    "Authorization": generate_oauth_header(
+                        url,
+                        self.consumer_key,
+                        self.consumer_secret,
+                        session_token,
+                        session_secret,
+                    )
+                }
             else:
                 raise ValueError(f"Unsupported request type: {request_type}")
 
-            logger.info(f"Making request to {url} for database {log_database}")
-            logger.info(f"Using session token: {access_token[:6]}****")
+            response = requests.request(method.value, url, headers=headers)
 
-            session = OAuth1Session(
-                consumer_key=self.consumer_key,
-                consumer_secret=self.consumer_secret,
-                access_token=access_token,
-                access_token_secret=access_secret,
-            )
+            if response.status_code == 401 and retry_on_401 and db:
+                logger.debug(
+                    f"[DEBUG] Got 401 Unauthorized. Refreshing session token and retrying for {url}"
+                )
+                self.client_auth.get_new_session_token(db)
+                return self._make_request(
+                    request_type=request_type,
+                    method=method,
+                    url=url,
+                    db=db,
+                    response_handler=response_handler,
+                    retry_on_401=False,
+                )
 
-            headers = {"User-Agent": "BIGSdb API Client"}
-            response = session.request(method.value, url, headers=headers)
-
-            if response.status_code == 401:
-                logger.error(f"401 Unauthorized: {response.text}")
+            if response.status_code == 404:
+                logger.debug(f"[DEBUG] 404 Not Found for {url}")
+                return None
 
             response.raise_for_status()
 
-            # Process the response based on the requested handler type
             if response_handler == ResponseHandler.CONTENT:
                 return response.content
             elif response_handler == ResponseHandler.TEXT:

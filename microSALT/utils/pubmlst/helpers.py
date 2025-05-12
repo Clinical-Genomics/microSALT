@@ -1,22 +1,17 @@
-import json
 import os
+import requests
+import base64
+import hashlib
+import json
+import hmac
+import time
 from pathlib import Path
-
-from werkzeug.routing import Map, Rule
-
+from urllib.parse import quote_plus, urlencode
 from microSALT import app, logger
-
-from microSALT.utils.pubmlst.exceptions import (
-    CredentialsFileNotFound,
-    InvalidCredentials,
-    PathResolutionError,
-    PubMLSTError,
-    SaveSessionError,
-)
-from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY, URL_MAPS
+from microSALT.utils.pubmlst.exceptions import PathResolutionError, CredentialsFileNotFound, InvalidCredentials, PubMLSTError, SaveSessionError, InvalidURLError
+from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY, Encoding, URL_MAPS
 
 folders_config = app.config["folders"]
-
 
 def get_path(config, config_key: str):
     """Get and expand the file path from the configuration."""
@@ -143,6 +138,37 @@ def load_auth_credentials(service: str):
         raise
     except Exception as e:
         raise PubMLSTError(f"An unexpected error occurred while loading {service} credentials: {e}")
+    
+
+def generate_oauth_header(url: str, oauth_consumer_key: str, oauth_consumer_secret: str, oauth_token: str, oauth_token_secret: str):
+    """Generate the OAuth1 Authorization header."""
+    oauth_timestamp = str(int(time.time()))
+    oauth_nonce = base64.urlsafe_b64encode(os.urandom(32)).decode(Encoding.UTF8.value).strip("=")
+    oauth_signature_method = "HMAC-SHA1"
+    oauth_version = "1.0"
+
+    oauth_params = {
+        "oauth_consumer_key": oauth_consumer_key,
+        "oauth_token": oauth_token,
+        "oauth_signature_method": oauth_signature_method,
+        "oauth_timestamp": oauth_timestamp,
+        "oauth_nonce": oauth_nonce,
+        "oauth_version": oauth_version,
+    }    
+
+    params_encoded = urlencode(sorted(oauth_params.items()))
+    base_string = f"GET&{quote_plus(url)}&{quote_plus(params_encoded)}"
+    signing_key = f"{oauth_consumer_secret}&{oauth_token_secret}"
+
+    hashed = hmac.new(signing_key.encode(Encoding.UTF8.value), base_string.encode(Encoding.UTF8.value), hashlib.sha1)
+    oauth_signature = base64.b64encode(hashed.digest()).decode(Encoding.UTF8.value)
+
+    oauth_params["oauth_signature"] = oauth_signature
+
+    auth_header = "OAuth " + ", ".join(
+        [f'{quote_plus(k)}="{quote_plus(v)}"' for k, v in oauth_params.items()]
+    )
+    return auth_header
 
 
 def save_session_token(service: str, db: str, token: str, secret: str, expiration_date: str):
@@ -183,9 +209,45 @@ def save_session_token(service: str, db: str, token: str, secret: str, expiratio
             json.dump(all_sessions, f, indent=4)
 
         logger.debug(f"Session token for {service} database '{db}' saved to '{session_file}'.")
+
     except (IOError, OSError) as e:
         raise SaveSessionError(db, f"I/O error: {e}")
     except ValueError as e:
         raise SaveSessionError(db, f"Invalid data format: {e}")
     except Exception as e:
         raise SaveSessionError(db, f"Unexpected error: {e}")
+
+
+def get_db_type_capabilities(base_api: str, db_name: str) -> dict:
+    """
+    Determine whether the database is of type 'isolate' or 'sequence definition (seqdef)'.
+    This is inferred by inspecting metadata for known capabilities.
+    """
+    url = f"{base_api}/db/{db_name}"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        metadata = response.json()
+        capabilities = {
+            "has_isolates": metadata.get("has_isolates", False),
+            "has_projects": metadata.get("has_projects", False),
+            "has_fields": metadata.get("has_fields", False),
+        }
+        return capabilities
+    except Exception as e:
+        raise PubMLSTError(f"Failed to get DB type capabilities for {db_name}: {e}") from e
+
+
+def should_skip_endpoint(endpoint: str, capabilities: dict) -> bool:
+    """
+    Return True if the endpoint call should be skipped due to being incompatible
+    with the database's declared capabilities.
+    """
+    # Handle isolate-related endpoints
+    if "/isolates" in endpoint and not capabilities.get("has_isolates", False):
+        return True
+    if "/projects" in endpoint and not capabilities.get("has_projects", False):
+        return True
+    if "/fields" in endpoint and not capabilities.get("has_fields", False):
+        return True
+    return False

@@ -187,7 +187,7 @@ class Referencer:
                             )
                             continue
                         self.logger.info(
-                            f"pubMLST reference for {organ.replace('_', ' ').capitalize()} updated to {last_updated} from {currver}"
+                            f"{service} reference for {organ.replace('_', ' ').capitalize()} updated to {last_updated} from {currver}"
                         )
 
                         # Step 1: Download the profiles CSV
@@ -580,9 +580,7 @@ class Referencer:
 
             if (internal_ver < external_ver) or force:
                 self.logger.info(
-                    "pubMLST reference for {} updated to {} from {}".format(
-                        key.replace("_", " ").capitalize(), external_ver, internal_ver
-                    )
+                    f"pubMLST reference for {key.replace('_', ' ').capitalize()} updated to {external_ver} from {internal_ver}"
                 )
                 self.download_pubmlst(key, val, force)
                 self.db_access.upd_rec(
