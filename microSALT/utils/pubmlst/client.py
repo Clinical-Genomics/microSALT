@@ -21,7 +21,7 @@ from microSALT.utils.pubmlst.helpers import (
     should_skip_endpoint,
 )
 from microSALT.utils.pubmlst.constants import RequestType, HTTPMethod, ResponseHandler
-from microSALT.utils.pubmlst.exceptions import PUBMLSTError, SessionTokenRequestError
+from microSALT.utils.pubmlst.exceptions import PubMLSTError, SessionTokenRequestError
 from microSALT.utils.pubmlst.authentication import load_session_credentials
 from microSALT.utils.pubmlst.authentication import get_new_session_token
 from microSALT import logger
