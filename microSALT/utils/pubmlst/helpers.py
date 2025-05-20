@@ -1,4 +1,5 @@
 import os
+import requests
 import base64
 import hashlib
 import json
@@ -6,19 +7,10 @@ import hmac
 import time
 from pathlib import Path
 from urllib.parse import quote_plus, urlencode
-from werkzeug.exceptions import NotFound
 from microSALT import app, logger
-from microSALT.utils.pubmlst.exceptions import PUBMLSTError, PathResolutionError, CredentialsFileNotFound, InvalidCredentials, SaveSessionError, InvalidURLError
-from microSALT.utils.pubmlst.constants import Encoding, url_map
+from microSALT.utils.pubmlst.exceptions import PathResolutionError, CredentialsFileNotFound, InvalidCredentials, PubMLSTError, SaveSessionError, InvalidURLError
+from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY, Encoding, URL_MAPS
 
-BASE_WEB = "https://pubmlst.org/bigsdb"
-BASE_API = "https://rest.pubmlst.org"
-BASE_API_HOST = "rest.pubmlst.org"
-
-credentials_path_key = "pubmlst_credentials"
-pubmlst_auth_credentials_file_name = "pubmlst_credentials.env"
-pubmlst_session_credentials_file_name = "pubmlst_session_credentials.json"
-pubmlst_config = app.config["pubmlst"]
 folders_config = app.config["folders"]
 
 def get_path(config, config_key: str):
@@ -37,12 +29,77 @@ def get_path(config, config_key: str):
         raise PathResolutionError(config_key) from e
 
 
-def load_auth_credentials():
-    """Load client ID, client secret, access token, and access secret from credentials file."""
+def get_service_config(service: str):
+    """
+    Get the configuration for the specified service (e.g., 'pubmlst' or 'pasteur').
+
+    :param service: The name of the service ('pubmlst' or 'pasteur').
+    :return: A dictionary containing the configuration for the service.
+    """
+    services = {
+        "pubmlst": {
+            "base_web": "https://pubmlst.org/bigsdb",
+            "base_api": "https://rest.pubmlst.org",
+            "base_api_host": "rest.pubmlst.org",
+            "database": "pubmlst_test_seqdef",
+            "auth_credentials_file_name": "pubmlst_credentials.env",
+            "session_credentials_file_name": "pubmlst_session_credentials.json",
+            "config": app.config["pubmlst"],
+        },
+        "pasteur": {
+            "base_web": "https://bigsdb.pasteur.fr/cgi-bin/bigsdb/bigsdb.pl",
+            "base_api": "https://bigsdb.pasteur.fr/api",
+            "base_api_host": "bigsdb.pasteur.fr",
+            "auth_credentials_file_name": "pasteur_credentials.env",
+            "session_credentials_file_name": "pasteur_session_credentials.json",
+            "config": app.config["pasteur"],
+        },
+    }
+
+    if service not in services:
+        raise ValueError(f"Unknown service: {service}")
+
+    return services[service]
+
+
+def get_service_by_url(url: str):
+    """
+    Get the client name based on the provided URL.
+
+    :param url: The URL to check.
+    :return: The name of the client ('pubmlst' or 'pasteur').
+    """
+    for service in ["pubmlst", "pasteur"]:
+        if url.startswith(get_service_config(service)["base_api"]):
+            return service
+    raise ValueError(f"Unknown client for URL: {url}")
+
+
+def get_url_map(service: str):
+    """
+    Get the URL map for the specified service.
+
+    :param service: The name of the service ('pubmlst' or 'pasteur').
+    :return: The URL map for the service.
+    """
+    url_map = URL_MAPS.get(service, None)
+    if url_map is None:
+        raise ValueError(f"Unknown service: {service}")
+    return url_map
+
+
+def load_auth_credentials(service: str):
+    """
+    Load client ID, client secret, access token, and access secret from the credentials file for the specified service.
+
+    :param service: The name of the service ('pubmlst' or 'pasteur').
+    :return: A tuple containing the credentials (consumer_key, consumer_secret, access_token, access_secret).
+    """
     try:
+        service_config = get_service_config(service)
         credentials_file = os.path.join(
-            get_path(folders_config, credentials_path_key),
-            pubmlst_auth_credentials_file_name
+            get_path(folders_config, CREDENTIALS_KEY),
+            service_config["auth_credentials_file_name"],
         )
 
         if not os.path.exists(credentials_file):
@@ -76,11 +133,11 @@ def load_auth_credentials():
         raise
     except InvalidCredentials:
         raise
-    except PUBMLSTError as e:
-        logger.error(f"Unexpected error in load_credentials: {e}")
+    except PubMLSTError as e:
+        logger.error(f"Unexpected error in load_{service}_credentials: {e}")
         raise
     except Exception as e:
-        raise PUBMLSTError("An unexpected error occurred while loading credentials: {e}")
+        raise PubMLSTError(f"An unexpected error occurred while loading {service} credentials: {e}")
     
 
 def generate_oauth_header(url: str, oauth_consumer_key: str, oauth_consumer_secret: str, oauth_token: str, oauth_token_secret: str):
@@ -113,22 +170,32 @@ def generate_oauth_header(url: str, oauth_consumer_key: str, oauth_consumer_secr
     )
     return auth_header
 
-def save_session_token(db: str, token: str, secret: str, expiration_date: str):
-    """Save session token, secret, and expiration to a JSON file for the specified database."""
+
+def save_session_token(service: str, db: str, token: str, secret: str, expiration_date: str):
+    """
+    Save session token, secret, and expiration to a JSON file for the specified service and database.
+
+    :param service: The name of the service ('pubmlst' or 'pasteur').
+    :param db: The database name.
+    :param token: The session token.
+    :param secret: The session secret.
+    :param expiration_date: The expiration date of the session token.
+    """
     try:
+        service_config = get_service_config(service)
+        session_file = os.path.join(
+            get_path(folders_config, CREDENTIALS_KEY),
+            service_config["session_credentials_file_name"],
+        )
+
         session_data = {
             "token": token,
             "secret": secret,
             "expiration": expiration_date.isoformat(),
         }
 
-        credentials_file = os.path.join(
-            get_path(folders_config, credentials_path_key),
-            pubmlst_session_credentials_file_name
-        )
-
-        if os.path.exists(credentials_file):
-            with open(credentials_file, "r") as f:
+        if os.path.exists(session_file):
+            with open(session_file, "r") as f:
                 all_sessions = json.load(f)
         else:
             all_sessions = {}
@@ -138,12 +205,11 @@ def save_session_token(db: str, token: str, secret: str, expiration_date: str):
 
         all_sessions["databases"][db] = session_data
 
-        with open(credentials_file, "w") as f:
+        with open(session_file, "w") as f:
             json.dump(all_sessions, f, indent=4)
 
-        logger.debug(
-            f"Session token for database '{db}' saved to '{credentials_file}'."
-        )
+        logger.debug(f"Session token for {service} database '{db}' saved to '{session_file}'.")
+
     except (IOError, OSError) as e:
         raise SaveSessionError(db, f"I/O error: {e}")
     except ValueError as e:
@@ -151,14 +217,37 @@ def save_session_token(db: str, token: str, secret: str, expiration_date: str):
     except Exception as e:
         raise SaveSessionError(db, f"Unexpected error: {e}")
 
-def parse_pubmlst_url(url: str):
+
+def get_db_type_capabilities(base_api: str, db_name: str) -> dict:
     """
-    Match a URL against the URL map and return extracted parameters.
+    Determine whether the database is of type 'isolate' or 'sequence definition (seqdef)'.
+    This is inferred by inspecting metadata for known capabilities.
     """
-    adapter = url_map.bind("")
-    parsed_url = url.split(BASE_API_HOST)[-1]
+    url = f"{base_api}/db/{db_name}"
     try:
-        endpoint, values = adapter.match(parsed_url)
-        return {"endpoint": endpoint, **values}
-    except NotFound:
-        raise InvalidURLError(url)
+        response = requests.get(url)
+        response.raise_for_status()
+        metadata = response.json()
+        capabilities = {
+            "has_isolates": metadata.get("has_isolates", False),
+            "has_projects": metadata.get("has_projects", False),
+            "has_fields": metadata.get("has_fields", False),
+        }
+        return capabilities
+    except Exception as e:
+        raise PubMLSTError(f"Failed to get DB type capabilities for {db_name}: {e}") from e
+
+
+def should_skip_endpoint(endpoint: str, capabilities: dict) -> bool:
+    """
+    Return True if the endpoint call should be skipped due to being incompatible
+    with the database's declared capabilities.
+    """
+    # Handle isolate-related endpoints
+    if "/isolates" in endpoint and not capabilities.get("has_isolates", False):
+        return True
+    if "/projects" in endpoint and not capabilities.get("has_projects", False):
+        return True
+    if "/fields" in endpoint and not capabilities.get("has_fields", False):
+        return True
+    return False
