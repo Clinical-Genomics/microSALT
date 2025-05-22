@@ -199,7 +199,7 @@ class Referencer:
                         trimmed_profiles = []
                         for line in profiles_csv:
                             trimmed_profiles.append("\t".join(line.split("\t")[:8]))
-
+                        print(trimmed_profiles[:-1])
                         profiles_csv = "\n".join(trimmed_profiles)
 
                         with open(st_target, "w") as profile_file:
