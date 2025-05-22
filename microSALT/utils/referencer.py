@@ -238,6 +238,10 @@ class Referencer:
         except Exception as e:
             self.logger.warning("Unable to update pubMLST external data: {}".format(e))
 
+    def update_organism(self, organism: str):
+        """Fetches the latest information of an organism organism from database"""
+        self.add_pubmlst(organism)
+
     def resync(self, type="", sample="", ignore=False):
         """Manipulates samples that have an internal ST that differs from pubMLST ST"""
         if type == "list":
@@ -369,7 +373,7 @@ class Referencer:
         except Exception as e:
             self.logger.warning("Unable to download genome '{}' from NCBI".format(reference))
 
-    def add_pubmlst(self, organism):
+    def add_pubmlst(self, organism: str):
         """Checks pubmlst for references of given organism and downloads them"""
         # Organism must be in binomial format and only resolve to one hit
         errorg = organism
@@ -413,7 +417,7 @@ class Referencer:
             else:
                 truename = desc.lower().split(" ")
                 truename = "{}_{}".format(truename[0], truename[1])
-                self.download_pubmlst(truename, seqdef_url)
+                self.download_pubmlst(truename, seqdef_url, force=self.force)
                 # Update organism list
                 self.refs = self.db_access.profiles
                 self.logger.info("Created table profile_{}".format(truename))
