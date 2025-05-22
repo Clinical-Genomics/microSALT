@@ -117,7 +117,7 @@ class BaseClient:
                 raise ValueError(f"Unsupported request type: {request_type}")
 
             response = requests.request(method.value, url, headers=headers)
-
+            print(f"Response: {response}")
             if response.status_code == 401 and retry_on_401 and db:
                 logger.debug(
                     f"[DEBUG] Got 401 Unauthorized. Refreshing session token and retrying for {url}"
@@ -179,6 +179,7 @@ class BaseClient:
         if not scheme_id:
             raise ValueError("Scheme ID is required to download profiles CSV.")
         url = f"{self.base_api}/db/{db}/schemes/{scheme_id}/profiles_csv"
+        print(f"URL: {url}")
         return self._make_request(
             RequestType.DB, HTTPMethod.GET, url, db=db, response_handler=ResponseHandler.TEXT
         )
