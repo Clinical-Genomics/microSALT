@@ -24,7 +24,7 @@ wd = os.path.dirname(os.path.realpath(__file__))
 # Load configuration
 preset_config = ""
 
-logger: Logger | None = None
+logger = None
 
 logging_levels = {
     "DEBUG": logging.DEBUG,
