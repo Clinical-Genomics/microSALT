@@ -98,7 +98,7 @@ if preset_config != "":
         )
 
         # Initialize logger
-        setup_logger(logging_level=logging_levels["INFO"])
+        setup_logger(logging_level="INFO")
 
         # Create paths mentioned in config
         db_file = re.search(
