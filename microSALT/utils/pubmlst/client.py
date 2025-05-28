@@ -1,6 +1,7 @@
 from urllib.parse import urlencode
 import requests
 from werkzeug.exceptions import NotFound
+from rauth import OAuth1Session
 
 from microSALT import logger
 from microSALT.utils.pubmlst.authentication import ClientAuthentication
@@ -12,16 +13,12 @@ from microSALT.utils.pubmlst.exceptions import (
 )
 from microSALT.utils.pubmlst.helpers import (
     load_auth_credentials,
-    generate_oauth_header,
     get_service_config,
     get_url_map,
     get_service_by_url,
     get_db_type_capabilities,
     should_skip_endpoint,
 )
-from microSALT.utils.pubmlst.constants import RequestType, HTTPMethod, ResponseHandler
-from microSALT.utils.pubmlst.exceptions import PubMLSTError, SessionTokenRequestError
-from microSALT import logger
 
 
 class BaseClient:
@@ -49,10 +46,6 @@ class BaseClient:
     def parse_url(self, url: str):
         """
         Match a URL against the URL map for the specified service and return extracted parameters.
-
-        :param service: The name of the service ('pubmlst' or 'pasteur').
-        :param url: The URL to parse.
-        :return: A dictionary containing the extracted parameters.
         """
         service: str = get_service_by_url(url)
         url_map = get_url_map(service)
@@ -74,9 +67,9 @@ class BaseClient:
         retry_on_401: bool = True,
         skip_submissions: bool = True,
     ):
-        """Handle API requests, support retry on 401, and robust error handling."""
-        """Handle API requests."""
+        """Handle API requests with OAuth1 authentication and robust error handling."""
         logger.debug(f"Making {method.value} request to {url} for database '{db}'...")
+
         try:
             if skip_submissions and "/submissions" in url:
                 logger.debug(f"[SKIP] Skipping submission-related URL: {url}")
@@ -88,35 +81,27 @@ class BaseClient:
                 logger.debug(f"[SKIP] Skipping incompatible URL for {db}: {url}")
                 return None
 
-            if db:
-                session_token, session_secret = self.client_auth.load_session_credentials(db)
-            else:
-                session_token, session_secret = self.session_token, self.session_secret
-
-            if request_type == RequestType.AUTH:
-                headers = {
-                    "Authorization": generate_oauth_header(
-                        url,
-                        self.consumer_key,
-                        self.consumer_secret,
-                        self.access_token,
-                        self.access_secret,
-                    )
-                }
-            elif request_type == RequestType.DB:
-                headers = {
-                    "Authorization": generate_oauth_header(
-                        url,
-                        self.consumer_key,
-                        self.consumer_secret,
-                        session_token,
-                        session_secret,
-                    )
-                }
+            # Select token/secret pair
+            if request_type == RequestType.DB:
+                token, secret = (
+                    self.client_auth.load_session_credentials(db)
+                    if db else (self.session_token, self.session_secret)
+                )
+            elif request_type == RequestType.AUTH:
+                token, secret = self.access_token, self.access_secret
             else:
                 raise ValueError(f"Unsupported request type: {request_type}")
 
-            response = requests.request(method.value, url, headers=headers)
+            # Create session with OAuth1
+            session = OAuth1Session(
+                self.consumer_key,
+                self.consumer_secret,
+                access_token=token,
+                access_token_secret=secret,
+            )
+
+            response = session.request(method.value, url)
+            logger.debug(f"Response status: {response.status_code}")
 
             if response.status_code == 401 and retry_on_401 and db:
                 logger.debug(
@@ -178,7 +163,12 @@ class BaseClient:
         """Download MLST profiles in CSV format."""
         if not scheme_id:
             raise ValueError("Scheme ID is required to download profiles CSV.")
+
+        # Force a fresh token before downloading
+        self.client_auth.get_new_session_token(db)
+
         url = f"{self.base_api}/db/{db}/schemes/{scheme_id}/profiles_csv"
+        logger.debug(f"URL: {url}")
         return self._make_request(
             RequestType.DB, HTTPMethod.GET, url, db=db, response_handler=ResponseHandler.TEXT
         )

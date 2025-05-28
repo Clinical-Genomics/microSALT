@@ -199,7 +199,7 @@ class Referencer:
                         trimmed_profiles = []
                         for line in profiles_csv:
                             trimmed_profiles.append("\t".join(line.split("\t")[:8]))
-
+                        
                         profiles_csv = "\n".join(trimmed_profiles)
 
                         with open(st_target, "w") as profile_file:
@@ -237,6 +237,10 @@ class Referencer:
                 self.logger.warning(f"Unable to update pubMLST external data: {e}")
         except Exception as e:
             self.logger.warning("Unable to update pubMLST external data: {}".format(e))
+
+    def update_organism(self, organism: str):
+        """Fetches the latest information of an organism from the database"""
+        self.add_pubmlst(organism)
 
     def resync(self, type="", sample="", ignore=False):
         """Manipulates samples that have an internal ST that differs from pubMLST ST"""
@@ -369,7 +373,7 @@ class Referencer:
         except Exception as e:
             self.logger.warning("Unable to download genome '{}' from NCBI".format(reference))
 
-    def add_pubmlst(self, organism):
+    def add_pubmlst(self, organism: str):
         """Checks pubmlst for references of given organism and downloads them"""
         # Organism must be in binomial format and only resolve to one hit
         errorg = organism
@@ -413,7 +417,7 @@ class Referencer:
             else:
                 truename = desc.lower().split(" ")
                 truename = "{}_{}".format(truename[0], truename[1])
-                self.download_pubmlst(truename, seqdef_url)
+                self.download_pubmlst(truename, seqdef_url, force=self.force)
                 # Update organism list
                 self.refs = self.db_access.profiles
                 self.logger.info("Created table profile_{}".format(truename))
@@ -528,7 +532,7 @@ class Referencer:
             trimmed_profiles = []
             for line in profiles_csv:
                 trimmed_profiles.append("\t".join(line.split("\t")[:8]))
-
+           
             profiles_csv = "\n".join(trimmed_profiles)
 
             with open(st_target, "w") as profile_file:

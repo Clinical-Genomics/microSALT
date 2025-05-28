@@ -140,37 +140,6 @@ def load_auth_credentials(service: str):
         raise PubMLSTError(f"An unexpected error occurred while loading {service} credentials: {e}")
     
 
-def generate_oauth_header(url: str, oauth_consumer_key: str, oauth_consumer_secret: str, oauth_token: str, oauth_token_secret: str):
-    """Generate the OAuth1 Authorization header."""
-    oauth_timestamp = str(int(time.time()))
-    oauth_nonce = base64.urlsafe_b64encode(os.urandom(32)).decode(Encoding.UTF8.value).strip("=")
-    oauth_signature_method = "HMAC-SHA1"
-    oauth_version = "1.0"
-
-    oauth_params = {
-        "oauth_consumer_key": oauth_consumer_key,
-        "oauth_token": oauth_token,
-        "oauth_signature_method": oauth_signature_method,
-        "oauth_timestamp": oauth_timestamp,
-        "oauth_nonce": oauth_nonce,
-        "oauth_version": oauth_version,
-    }    
-
-    params_encoded = urlencode(sorted(oauth_params.items()))
-    base_string = f"GET&{quote_plus(url)}&{quote_plus(params_encoded)}"
-    signing_key = f"{oauth_consumer_secret}&{oauth_token_secret}"
-
-    hashed = hmac.new(signing_key.encode(Encoding.UTF8.value), base_string.encode(Encoding.UTF8.value), hashlib.sha1)
-    oauth_signature = base64.b64encode(hashed.digest()).decode(Encoding.UTF8.value)
-
-    oauth_params["oauth_signature"] = oauth_signature
-
-    auth_header = "OAuth " + ", ".join(
-        [f'{quote_plus(k)}="{quote_plus(v)}"' for k, v in oauth_params.items()]
-    )
-    return auth_header
-
-
 def save_session_token(service: str, db: str, token: str, secret: str, expiration_date: str):
     """
     Save session token, secret, and expiration to a JSON file for the specified service and database.

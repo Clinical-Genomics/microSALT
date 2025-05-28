@@ -24,7 +24,7 @@ wd = os.path.dirname(os.path.realpath(__file__))
 # Load configuration
 preset_config = ""
 
-logger: Logger | None = None
+logger = None
 
 logging_levels = {
     "DEBUG": logging.DEBUG,
@@ -98,7 +98,7 @@ if preset_config != "":
         )
 
         # Initialize logger
-        setup_logger(logging_level=logging_levels["INFO"])
+        setup_logger(logging_level="INFO")
 
         # Create paths mentioned in config
         db_file = re.search(
