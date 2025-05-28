@@ -168,7 +168,7 @@ class BaseClient:
         self.client_auth.get_new_session_token(db)
 
         url = f"{self.base_api}/db/{db}/schemes/{scheme_id}/profiles_csv"
-        print(f"URL: {url}")
+        logger.debug(f"URL: {url}")
         return self._make_request(
             RequestType.DB, HTTPMethod.GET, url, db=db, response_handler=ResponseHandler.TEXT
         )

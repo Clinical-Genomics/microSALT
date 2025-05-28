@@ -239,7 +239,7 @@ class Referencer:
             self.logger.warning("Unable to update pubMLST external data: {}".format(e))
 
     def update_organism(self, organism: str):
-        """Fetches the latest information of an organism organism from database"""
+        """Fetches the latest information of an organism from the database"""
         self.add_pubmlst(organism)
 
     def resync(self, type="", sample="", ignore=False):
