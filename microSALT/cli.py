@@ -12,7 +12,7 @@ import sys
 import yaml
 
 from pkg_resources import iter_entry_points
-from microSALT import __version__, preset_config, logger, wd
+from microSALT import __version__, preset_config, logger, wd, logging_levels
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.reporter import Reporter
@@ -95,12 +95,19 @@ def review_sampleinfo(pfile):
 
 @click.group()
 @click.version_option(__version__)
+@click.option(
+    "--logging-level",
+    default=logging_levels["INFO"],
+    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
+    help="Set the logging level for the CLI",
+)
 @click.pass_context
-def root(ctx):
+def root(ctx, logging_level):
     """microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline"""
     ctx.obj = {}
     ctx.obj["config"] = preset_config
     ctx.obj["log"] = logger
+    logger.setLevel(logging_levels[logging_level])
 
 
 @root.command()
