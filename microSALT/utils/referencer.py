@@ -149,11 +149,14 @@ class Referencer:
                         organ = organ[:-2]
                     if organ in self.organisms:
                         # Check for newer version
-                        currver = self.db_access.get_version("profile_{}".format(organ))
+                        currver = self.db_access.get_version(f"profile_{organ}")
                         st_link = entry.find("./mlst/database/profiles/url").text
                         service: str = get_service_by_url(st_link)
                         if service == "pasteur":
-                            database: str = f"pubmlst_{organ.split('_')[0]}_seqdef"
+                            database_url = entry.find(".//mlst/database/url").text.strip()
+                            if database_url is not None:
+                                database: str = database_url.split("/")[-2]
+                            database: str = f"pubmlst_{database}_seqdef"
                             self.set_client(service, database=database)
                         else:
                             self.set_client(service)
@@ -199,7 +202,7 @@ class Referencer:
                         trimmed_profiles = []
                         for line in profiles_csv:
                             trimmed_profiles.append("\t".join(line.split("\t")[:8]))
-                        
+
                         profiles_csv = "\n".join(trimmed_profiles)
 
                         with open(st_target, "w") as profile_file:
@@ -532,7 +535,7 @@ class Referencer:
             trimmed_profiles = []
             for line in profiles_csv:
                 trimmed_profiles.append("\t".join(line.split("\t")[:8]))
-           
+
             profiles_csv = "\n".join(trimmed_profiles)
 
             with open(st_target, "w") as profile_file:
