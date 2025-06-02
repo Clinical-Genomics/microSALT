@@ -97,7 +97,7 @@ def review_sampleinfo(pfile):
 @click.version_option(__version__)
 @click.option(
     "--logging-level",
-    default=logging_levels["INFO"],
+    default="INFO",
     type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
     help="Set the logging level for the CLI",
 )
