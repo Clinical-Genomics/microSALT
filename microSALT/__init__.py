@@ -11,7 +11,7 @@ from logging import Logger
 from flask import Flask
 from distutils.sysconfig import get_python_lib
 
-__version__ = "4.2.0"
+__version__ = "4.2.1"
 
 app = Flask(__name__, template_folder="server/templates")
 app.config.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
