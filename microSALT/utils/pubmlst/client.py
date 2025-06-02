@@ -212,9 +212,9 @@ class PasteurClient(BaseClient):
 
 def get_client(service: str, database: str = None):
     """Get the appropriate client for the specified service."""
-    if service == "pubmlst":
-        return PubMLSTClient()
-    elif service == "pasteur":
+    if service == "pasteur":
         return PasteurClient(database=database)
+    elif service == "pubmlst":
+        return PubMLSTClient()
     else:
         raise ValueError(f"Unknown service: {service}")
