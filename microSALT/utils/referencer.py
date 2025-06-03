@@ -162,9 +162,7 @@ class Referencer:
                 return entry, organ
         return None, None
 
-    def _should_update_external(
-        self, organ: str, entry: ET.Element
-    ) -> Union[dict, bool]:
+    def _should_update_external(self, organ: str, entry: ET.Element) -> Union[dict, bool]:
         """Determine if the external data for an organism should be updated."""
         currver = self.db_access.get_version(f"profile_{organ}")
         st_link = entry.find("./mlst/database/profiles/url").text
@@ -226,13 +224,11 @@ class Referencer:
         )
 
         # Step 1: Download the profiles CSV
-        st_target = f"{self.config["folders"]["profiles"]}/{organ}"
+        st_target = f"{self.config['folders']['profiles']}/{organ}"
         profiles_csv = self.client.download_profiles_csv(db, scheme_id)
         profiles_csv = profiles_csv.split("\n")
         trimmed_profiles = []
-        trimmed_profiles.extend(
-            "\t".join(line.split("\t")[:8]) for line in profiles_csv
-        )
+        trimmed_profiles.extend("\t".join(line.split("\t")[:8]) for line in profiles_csv)
         profiles_csv = "\n".join(trimmed_profiles)
         with open(st_target, "w") as profile_file:
             profile_file.write(profiles_csv)
@@ -242,7 +238,7 @@ class Referencer:
         loci_list = scheme_info.get("loci", [])
 
         # Step 3: Download loci FASTA files
-        output = f"{self.config["folders"]["references"]}/{organ}"
+        output = f"{self.config['folders']['references']}/{organ}"
         if os.path.isdir(output):
             shutil.rmtree(output)
         os.makedirs(output)
@@ -293,8 +289,7 @@ class Referencer:
             if update_info:
                 self._update_external_organism(update_info)
         else:
-            self.logger.warning(
-                f"Organism '{organism_name}' not found in external sources.")
+            self.logger.warning(f"Organism '{organism_name}' not found in external sources.")
 
     def update_organism(self, external: bool, organism: str):
         """Fetches the latest information of an organism from the database"""
@@ -302,7 +297,7 @@ class Referencer:
             self.fetch_external_for_organism(organism)
         else:
             self.add_pubmlst(organism)
-            
+
     def resync(self, type="", sample="", ignore=False):
         """Manipulates samples that have an internal ST that differs from pubMLST ST"""
         if type == "list":
