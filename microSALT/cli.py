@@ -462,11 +462,12 @@ def update_from_static(ctx, force_update: bool):
 @resync.command()
 @click.option("--force-update", default=False, is_flag=True, help="Forces update")
 @click.option("--organism", required=True, help="Organism to update")
+@click.option("--external", is_flag=True, default=False, help="Updates from external sources")
 @click.pass_context
-def update_organism(ctx, force_update: bool, organism: str):
+def update_organism(ctx, external: bool, force_update: bool, organism: str):
     """Updates a specific organism"""
     ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"], force=force_update)
-    ext_refs.update_organism(organism)
+    ext_refs.update_organism(external=external, organism=organism)
     done()
 
 
