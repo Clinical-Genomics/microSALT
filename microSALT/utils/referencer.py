@@ -222,7 +222,7 @@ class Referencer:
         service = update_info["service"]
 
         self.logger.info(
-            f"{service} reference for {organ.replace("_", " ").capitalize()} updated to {last_updated}"
+            f"{service} reference for {organ.replace('_', ' ').capitalize()} updated to {last_updated}"
         )
 
         # Step 1: Download the profiles CSV
@@ -294,8 +294,7 @@ class Referencer:
                 self._update_external_organism(update_info)
         else:
             self.logger.warning(
-                "Organism '{}' not found in external sources.".format(organism_name)
-            )
+                f"Organism '{organism_name}' not found in external sources.")
 
     def update_organism(self, external: bool, organism: str):
         """Fetches the latest information of an organism from the database"""
@@ -641,7 +640,7 @@ class Referencer:
                         seqdef_url[name] = subtype["href"]
 
         for key, val in seqdef_url.items():
-            internal_ver = self.db_access.get_version("profile_{}".format(key))
+            internal_ver = self.db_access.get_version(f"profile_{key}")
             external_ver = self.external_version(key, val)
 
             if (internal_ver < external_ver) or force:
