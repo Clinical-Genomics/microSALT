@@ -7,6 +7,7 @@ import re
 import subprocess
 import sys
 
+from enum import Enum
 from logging import Logger
 from flask import Flask
 from distutils.sysconfig import get_python_lib
@@ -37,6 +38,10 @@ logging_levels = {
 
 def setup_logger(logging_level: str) -> None:
     global logger
+    if logging_level not in logging_levels:
+        raise ValueError(
+            f"Invalid logging level: {logging_level}. Choose from {list(logging_levels.keys())}."
+        )
     logger = logging.getLogger("main_logger")
     logger.setLevel(logging_levels[logging_level])
     ch = logging.StreamHandler()
