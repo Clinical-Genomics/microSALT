@@ -288,6 +288,7 @@ class Referencer:
             update_info = self._should_update_external(organ, entry)
             if update_info:
                 self._update_external_organism(update_info)
+                logger.debug(f"Updated external data for {organism_name}")
         else:
             self.logger.warning(f"Organism '{organism_name}' not found in external sources.")
 

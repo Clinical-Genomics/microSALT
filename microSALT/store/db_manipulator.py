@@ -183,7 +183,7 @@ class DB_Manipulator:
         else:
             eval(megastring + ".update(upd_dict)")
             self.session.commit()
-        self.logger.debug("Updated table {tablename} with {upd_dict} for {req_dict}")
+        self.logger.debug(f"Updated table {tablename} with {upd_dict} for {req_dict}")
 
     def purge_rec(self, name: str, type: str):
         """Removes seq_data, resistances, sample(s) and possibly project"""
@@ -288,6 +288,7 @@ class DB_Manipulator:
         self.profiles[organism].create()
         self.logger.debug(f"Recreated profile table for {organism}")
         self.init_profiletable(organism, table)
+        self.logger.debug(f"Initialized profile table for {organism}")
 
     def init_profiletable(self, filename: str, table):
         """Creates profile tables by looping, since a lot of infiles exist"""
