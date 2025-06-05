@@ -109,6 +109,8 @@ def root(ctx, logging_level):
     ctx.obj = {}
     ctx.obj["config"] = preset_config
     logger.setLevel(logging_levels[logging_level])
+    for handler in logger.handlers:
+        handler.setLevel(logging_levels[logging_level])
     logger.debug(f"Setting logging level to {logging_levels[logging_level]}")
 
 
@@ -286,9 +288,7 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
     except Exception as e:
         click.echo("{}".format(e))
 
-    res_scraper = Scraper(
-        config=ctx.obj["config"], log=logger, sampleinfo=sampleinfo, input=input
-    )
+    res_scraper = Scraper(config=ctx.obj["config"], log=logger, sampleinfo=sampleinfo, input=input)
     if isinstance(sampleinfo, list) and len(sampleinfo) > 1:
         res_scraper.scrape_project()
         # for subfolder in pool:
