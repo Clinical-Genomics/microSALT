@@ -31,7 +31,6 @@ from microSALT.store.orm_models import (
 )
 from microSALT.store.models import Profiles, Novel
 
-
 class DB_Manipulator:
     def __init__(self, config, log):
         self.config = config
@@ -279,7 +278,7 @@ class DB_Manipulator:
         entry = (
             self.session.query(table)
             .filter(eval(filter))
-            .order_by(desc(eval("{}.{}".format(table_str, column))))
+            .order_by(desc(eval("{}.{}".format(table_str, column))))ssh
             .limit(1)
             .all()
         )
@@ -291,8 +290,11 @@ class DB_Manipulator:
     def reload_profiletable(self, organism: str):
         """Drop the named non-orm table, then load it with fresh data"""
         table = self.profiles[organism]
+        self.logger.debug(f"Reloading profile table for {organism}")
         self.profiles[organism].drop()
+        self.logger.debug(f"Dropped profile table for {organism}")
         self.profiles[organism].create()
+        self.logger.debug(f"Recreated profile table for {organism}")
         self.init_profiletable(organism, table)
 
     def init_profiletable(self, filename: str, table):
@@ -310,6 +312,8 @@ class DB_Manipulator:
                     linedict[head[index]] = line[index]
                     index = index + 1
                 data.execute(linedict)
+        self.logger.debug(
+            "Initialized profile table for {filename} with {len(linedict)} entries")
 
     def get_columns(self, tablename: str):
         """ Returns all records for a given ORM table"""
