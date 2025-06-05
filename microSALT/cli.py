@@ -10,9 +10,10 @@ import re
 import subprocess
 import sys
 import yaml
+import logging
 
 from pkg_resources import iter_entry_points
-from microSALT import __version__, preset_config, logger, wd, logging_levels
+from microSALT import __version__, preset_config, wd, logging_levels
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.reporter import Reporter
@@ -35,6 +36,7 @@ default_sampleinfo = {
     "reference": "None",
 }
 
+logger = logging.getLogger("main_logger")
 
 if preset_config == "":
     click.echo(
