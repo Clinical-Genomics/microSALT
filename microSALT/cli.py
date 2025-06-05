@@ -460,7 +460,7 @@ def update_from_static(ctx, force_update: bool):
 
 
 @resync.command()
-@click.argument("organism", help="Organism to update")
+@click.argument("organism")
 @click.option("--force-update", default=False, is_flag=True, help="Forces update")
 @click.option("--external", is_flag=True, default=False, help="Updates from external sources")
 @click.pass_context
