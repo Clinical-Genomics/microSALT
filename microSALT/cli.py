@@ -106,8 +106,9 @@ def root(ctx, logging_level):
     """microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline"""
     ctx.obj = {}
     ctx.obj["config"] = preset_config
-    ctx.obj["log"] = logger
     logger.setLevel(logging_levels[logging_level])
+    logger.debug(f"Setting logging level to {logging_levels[logging_level]}")
+    ctx.obj["log"] = logger
 
 
 @root.command()
