@@ -31,6 +31,7 @@ from microSALT.store.orm_models import (
 )
 from microSALT.store.models import Profiles, Novel
 
+
 class DB_Manipulator:
     def __init__(self, config, log):
         self.config = config
@@ -110,17 +111,19 @@ class DB_Manipulator:
             # Add record
             if len(exist) == 0:
                 data = table.insert()
-                #Loads any dates as datetime objects
+                # Loads any dates as datetime objects
                 for k, v in data_dict.items():
-                  if isinstance(v, str):
-                    try:
-                      parse(v, fuzzy=False)
-                      data_dict[k] = datetime.strptime(v, '%Y-%m-%d %H:%M:%S')
-                    except ValueError as ve:
-                      if len(ve.args) > 0 and ve.args[0].startswith('unconverted data remains: '):
-                        data_dict[k] = datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f')
-                      else:
-                        pass
+                    if isinstance(v, str):
+                        try:
+                            parse(v, fuzzy=False)
+                            data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
+                        except ValueError as ve:
+                            if len(ve.args) > 0 and ve.args[0].startswith(
+                                "unconverted data remains: "
+                            ):
+                                data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
+                            else:
+                                pass
                 data.execute(data_dict)
                 self.logger.info("Added entry to table {}".format(tablename.fullname))
         # ORM
@@ -131,9 +134,7 @@ class DB_Manipulator:
                 pk_list = table.__table__.primary_key.columns.keys()
             except Exception as e:
                 self.logger.error(
-                    "Attempted to access table {} which has not been created".format(
-                        tablename
-                    )
+                    "Attempted to access table {} which has not been created".format(tablename)
                 )
             pk_values = list()
             for item in pk_list:
@@ -142,17 +143,19 @@ class DB_Manipulator:
             # Add record
             if not existing or force:
                 newobj = table()
-                #Loads any dates as datetime objects
+                # Loads any dates as datetime objects
                 for k, v in data_dict.items():
-                  if isinstance(v, str):
-                    try:
-                      parse(v, fuzzy=False)
-                      data_dict[k] = datetime.strptime(v, '%Y-%m-%d %H:%M:%S')
-                    except ValueError as ve:
-                      if len(ve.args) > 0 and ve.args[0].startswith('unconverted data remains: '):
-                        data_dict[k] = datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f')
-                      else:
-                        pass
+                    if isinstance(v, str):
+                        try:
+                            parse(v, fuzzy=False)
+                            data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
+                        except ValueError as ve:
+                            if len(ve.args) > 0 and ve.args[0].startswith(
+                                "unconverted data remains: "
+                            ):
+                                data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
+                            else:
+                                pass
                 for k, v in data_dict.items():
                     setattr(newobj, k, v)
                 self.session.add(newobj)
@@ -163,11 +166,11 @@ class DB_Manipulator:
                         ", ".join(pk_list), ", ".join(pk_values), tablename
                     )
                 )
-    def upd_rec(
-        self, req_dict: Dict[str, str], tablename: str, upd_dict: Dict[str, str]
-    ):
+
+    def upd_rec(self, req_dict: Dict[str, str], tablename: str, upd_dict: Dict[str, str]):
         """Updates a record to the specified table through a dict with columns as keys."""
         table = eval(tablename)
+        self.logger.debug(f"Updating table {tablename} with {upd_dict}")
         argy = list()
         for k, v in req_dict.items():
             if v != None:
@@ -180,6 +183,7 @@ class DB_Manipulator:
         else:
             eval(megastring + ".update(upd_dict)")
             self.session.commit()
+        self.logger.debug("Updated table {tablename} with {upd_dict} for {req_dict}")
 
     def purge_rec(self, name: str, type: str):
         """Removes seq_data, resistances, sample(s) and possibly project"""
@@ -207,33 +211,21 @@ class DB_Manipulator:
             )
             # entries.append(self.session.query(Projects).filter(Projects.CG_ID_project==name).all())
         elif type == "Samples":
+            entries.append(self.session.query(Expacs).filter(Expacs.CG_ID_sample == name).all())
             entries.append(
-                self.session.query(Expacs).filter(Expacs.CG_ID_sample == name).all()
+                self.session.query(Seq_types).filter(Seq_types.CG_ID_sample == name).all()
             )
             entries.append(
-                self.session.query(Seq_types)
-                .filter(Seq_types.CG_ID_sample == name)
-                .all()
+                self.session.query(Resistances).filter(Resistances.CG_ID_sample == name).all()
             )
-            entries.append(
-                self.session.query(Resistances)
-                .filter(Resistances.CG_ID_sample == name)
-                .all()
-            )
-            entries.append(
-                self.session.query(Samples).filter(Samples.CG_ID_sample == name).all()
-            )
+            entries.append(self.session.query(Samples).filter(Samples.CG_ID_sample == name).all())
         elif type == "Collections":
             entries.append(
-                self.session.query(Collections)
-                .filter(Collections.ID_collection == name)
-                .all()
+                self.session.query(Collections).filter(Collections.ID_collection == name).all()
             )
         else:
             self.logger.error(
-                "Incorrect type {} specified for removal of {}. Check code".format(
-                    type, name
-                )
+                "Incorrect type {} specified for removal of {}. Check code".format(type, name)
             )
             sys.exit()
         for entry in entries:
@@ -244,7 +236,7 @@ class DB_Manipulator:
 
     def query_rec(self, tablename: str, filters: Dict[str, str]):
         """Fetches records table, using a primary-key dict with columns as keys.
-       Non-PK are ignored"""
+        Non-PK are ignored"""
         # Non-orm
         if not isinstance(tablename, str):
             # check for existence
@@ -312,16 +304,15 @@ class DB_Manipulator:
                     linedict[head[index]] = line[index]
                     index = index + 1
                 data.execute(linedict)
-        self.logger.debug(
-            "Initialized profile table for {filename} with {len(linedict)} entries")
+        self.logger.debug("Initialized profile table for {filename} with {len(linedict)} entries")
 
     def get_columns(self, tablename: str):
-        """ Returns all records for a given ORM table"""
+        """Returns all records for a given ORM table"""
         table = eval(tablename)
         return dict.fromkeys(table.__table__.columns.keys())
 
     def exists(self, table, item: Dict[str, str]):
-        """ Takes a k-v pair and checks for the entrys existence in the given table """
+        """Takes a k-v pair and checks for the entrys existence in the given table"""
         filterstring = ""
         for k, v in item.items():
             filterstring += "{}.{}=='{}',".format(table, k, v)
@@ -334,7 +325,7 @@ class DB_Manipulator:
             return True
 
     def get_version(self, name: str):
-        """ Gets the version from a given name. Should be generalized to return any value for any input"""
+        """Gets the version from a given name. Should be generalized to return any value for any input"""
         version = self.session.query(Versions).filter(Versions.name == name).scalar()
         if version is None:
             return "0"
@@ -368,11 +359,7 @@ class DB_Manipulator:
         for sample in samples:
             if sample.date_libprep:
                 totalstring.append(
-                    str(
-                        datetime.timestamp(
-                            sample.date_libprep.replace(tzinfo=timezone.utc)
-                        )
-                    )
+                    str(datetime.timestamp(sample.date_libprep.replace(tzinfo=timezone.utc)))
                 )
             else:
                 totalstring.append(
@@ -386,11 +373,7 @@ class DB_Manipulator:
 
             if sample.date_sequencing:
                 totalstring.append(
-                    str(
-                        datetime.timestamp(
-                            sample.date_sequencing.replace(tzinfo=timezone.utc)
-                        )
-                    )
+                    str(datetime.timestamp(sample.date_sequencing.replace(tzinfo=timezone.utc)))
                 )
             else:
                 totalstring.append(
@@ -409,10 +392,7 @@ class DB_Manipulator:
         prev_report = self.get_report(name)
         # Compare
         if prev_report:
-            if (
-                "steps_aggregate" in dir(prev_report)
-                and prev_report.steps_aggregate != hashstring
-            ):
+            if "steps_aggregate" in dir(prev_report) and prev_report.steps_aggregate != hashstring:
                 self.add_rec(
                     {
                         "CG_ID_project": name,
@@ -435,7 +415,7 @@ class DB_Manipulator:
 
     def sync_novel(self, overwrite=False, sample=""):
         """Looks at each novel table. See if any record has a profile match in the profile table.
-       Updates these based on parameters"""
+        Updates these based on parameters"""
         prequery = self.session.query(Samples)
 
         for org, novel_table in self.novel.items():
@@ -448,9 +428,7 @@ class DB_Manipulator:
                 for key in org_keys:
                     if key != "ST" and key != "clonal_complex" and key != "species":
                         args.append(
-                            "self.profiles[org].c.{}=={}".format(
-                                key, eval("novel.{}".format(key))
-                            )
+                            "self.profiles[org].c.{}=={}".format(key, eval("novel.{}".format(key)))
                         )
                 args = "and_(" + ",".join(args) + ")"
                 exist = self.session.query(self.profiles[org]).filter(eval(args)).all()
@@ -509,13 +487,9 @@ class DB_Manipulator:
                     query[0].CG_ID_sample, query[0].organism, query[0].ST
                 )
             )
-            self.upd_rec(
-                {"CG_ID_sample": query[0].CG_ID_sample}, "Samples", {"pubmlst_ST": 0}
-            )
+            self.upd_rec({"CG_ID_sample": query[0].CG_ID_sample}, "Samples", {"pubmlst_ST": 0})
         else:
-            self.logger.error(
-                "Sample {} not found in database. Verify name".format(sample)
-            )
+            self.logger.error("Sample {} not found in database. Verify name".format(sample))
 
     def list_unresolved(self):
         """Lists all novel samples that current havent been flagged as resolved"""
@@ -538,11 +512,7 @@ class DB_Manipulator:
         novelbkt2 = OrderedDict()
         postquery = (
             self.session.query(Samples)
-            .filter(
-                and_(
-                    Samples.ST <= -10, Samples.pubmlst_ST != -1, Samples.pubmlst_ST != 0
-                )
-            )
+            .filter(and_(Samples.ST <= -10, Samples.pubmlst_ST != -1, Samples.pubmlst_ST != 0))
             .all()
         )
         for entry in postquery:
@@ -565,9 +535,7 @@ class DB_Manipulator:
             if not entry.organism in novelbkt3[entry.ST]:
                 novelbkt3[entry.ST][entry.organism] = list()
             novelbkt3[entry.ST][entry.organism].append(entry.CG_ID_sample)
-        novelbkt3 = OrderedDict(
-            sorted(novelbkt3.items(), key=lambda t: t[0], reverse=True)
-        )
+        novelbkt3 = OrderedDict(sorted(novelbkt3.items(), key=lambda t: t[0], reverse=True))
 
         codetrans = {
             -1: "Invalid pubMLST reference",
@@ -582,7 +550,13 @@ class DB_Manipulator:
             for x, y in v.items():
                 if x is not None:
                     x = x.replace("_", " ").capitalize()
-                print("{} ({} samples):\n{}".format(x, len(y), sorted(y),))
+                print(
+                    "{} ({} samples):\n{}".format(
+                        x,
+                        len(y),
+                        sorted(y),
+                    )
+                )
         if len(novelbkt3) == 0:
             print("None!")
 
@@ -607,8 +581,9 @@ class DB_Manipulator:
             print("None!")
 
     def setPredictor(self, cg_sid: str, pks=dict()):
-        """ Helper function. Flags a set of seq_types as part of the final prediction.
-    Uses optional pks[PK_NAME] = VALUE dictionary to distinguish in scenarios where an allele number has multiple hits"""
+        """Helper function. Flags a set of seq_types as part of the final prediction.
+        Uses optional pks[PK_NAME] = VALUE dictionary to distinguish in scenarios where an allele number has multiple hits
+        """
         sample = self.session.query(Seq_types).filter(Seq_types.CG_ID_sample == cg_sid)
 
         if pks == dict():
@@ -626,12 +601,10 @@ class DB_Manipulator:
         self.session.commit()
 
     def alleles2st(self, cg_sid: str):
-        """ Takes a CG_ID_sample and predicts the correct ST """
+        """Takes a CG_ID_sample and predicts the correct ST"""
         threshold = True
         organism = (
-            self.session.query(Samples.organism)
-            .filter(Samples.CG_ID_sample == cg_sid)
-            .scalar()
+            self.session.query(Samples.organism).filter(Samples.CG_ID_sample == cg_sid).scalar()
         )
         if organism is None:
             self.logger.warning(
@@ -747,15 +720,13 @@ class DB_Manipulator:
 
     def bestST(self, cg_sid: str, st_list: List, type="profile"):
         """Takes in a list of ST and a sample.
-       Establishes which ST is most likely by criteria id*span -> eval -> contig coverage
-       & flags involved alleles"""
+        Establishes which ST is most likely by criteria id*span -> eval -> contig coverage
+        & flags involved alleles"""
         profiles = list()
         scores = dict()
         bestalleles = dict()
         organism = (
-            self.session.query(Samples.organism)
-            .filter(Samples.CG_ID_sample == cg_sid)
-            .scalar()
+            self.session.query(Samples.organism).filter(Samples.CG_ID_sample == cg_sid).scalar()
         )
         for st in st_list:
             scores[st] = dict()
@@ -798,9 +769,7 @@ class DB_Manipulator:
             alleleconditions = "or_({})".format(",".join(alleleconditions))
             allconditions.append(alleleconditions)
             allconditions = "and_({})".format(",".join(allconditions))
-            all_alleles = (
-                self.session.query(Seq_types).filter(eval(allconditions)).all()
-            )
+            all_alleles = self.session.query(Seq_types).filter(eval(allconditions)).all()
 
             # Keep only best hit each loci
             for allele in all_alleles:
@@ -810,10 +779,7 @@ class DB_Manipulator:
                     old_al = alleledict[allele.loci]
 
                     if allele.span * allele.identity >= old_al.span * old_al.identity:
-                        if (
-                            allele.span * allele.identity
-                            > old_al.span * old_al.identity
-                        ):
+                        if allele.span * allele.identity > old_al.span * old_al.identity:
                             alleledict[allele.loci] = allele
                         elif float(allele.evalue) <= float(old_al.evalue):
                             if float(allele.evalue) < float(old_al.evalue):
@@ -829,9 +795,7 @@ class DB_Manipulator:
                 if not allele.loci in bestalleles[prof.ST].keys():
                     bestalleles[prof.ST][allele.loci] = dict()
                 if not "contig_name" in bestalleles[prof.ST][allele.loci].keys():
-                    bestalleles[prof.ST][allele.loci]["contig_name"] = str(
-                        allele.contig_name
-                    )
+                    bestalleles[prof.ST][allele.loci]["contig_name"] = str(allele.contig_name)
 
         # Establish best ST
         topST = ""
@@ -862,7 +826,7 @@ class DB_Manipulator:
         return topST
 
     def bestAlleles(self, cg_sid: str):
-        """ Establishes which allele set (for bad samples) is most likely by criteria span* id -> eval -> contig coverage"""
+        """Establishes which allele set (for bad samples) is most likely by criteria span* id -> eval -> contig coverage"""
         hits = (
             self.session.query(
                 Seq_types.contig_name,
@@ -917,7 +881,7 @@ class DB_Manipulator:
         return bestHits
 
     def get_unique_alleles(self, cg_sid: str, organism: str, threshold=True):
-        """ Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
+        """Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
         tid = float(self.config["threshold"]["mlst_id"])
         tspan = (self.config["threshold"]["mlst_span"]) / 100.0
         if threshold:
