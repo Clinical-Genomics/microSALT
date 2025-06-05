@@ -294,18 +294,29 @@ class DB_Manipulator:
         """Creates profile tables by looping, since a lot of infiles exist"""
         data = table.insert()
         linedict = dict.fromkeys(table.c.keys())
-        with open("{}/{}".format(self.config["folders"]["profiles"], filename), "r") as fh:
+        file_path = f"{self.config['folders']['profiles']}/{filename}"
+        self.logger.debug(f"Opening profile file: {file_path}")
+        with open(file_path, "r") as fh:
             # Skips header
             head = fh.readline()
             head = head.rstrip().split("\t")
+            self.logger.debug(f"Header columns: {head}")
+            line_num = 0
             for line in fh:
+                line_num += 1
                 line = line.rstrip().split("\t")
+                self.logger.debug(f"Processing line {line_num}: {line}")
                 index = 0
                 while index < len(line):
                     linedict[head[index]] = line[index]
                     index = index + 1
-                data.execute(linedict)
-        self.logger.debug("Initialized profile table for {filename} with {len(linedict)} entries")
+                self.logger.debug(f"Linedict before insert: {linedict}")
+                try:
+                    data.execute(linedict)
+                    self.logger.debug(f"Inserted line {line_num} into table")
+                except Exception as e:
+                    self.logger.error(f"Failed to insert line {line_num}: {e}")
+        self.logger.debug(f"Initialized profile table for {filename} with {line_num} entries")
 
     def get_columns(self, tablename: str):
         """Returns all records for a given ORM table"""
