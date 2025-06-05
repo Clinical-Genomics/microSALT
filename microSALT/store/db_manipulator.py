@@ -278,7 +278,7 @@ class DB_Manipulator:
         entry = (
             self.session.query(table)
             .filter(eval(filter))
-            .order_by(desc(eval("{}.{}".format(table_str, column))))ssh
+            .order_by(desc(eval("{}.{}".format(table_str, column))))
             .limit(1)
             .all()
         )
