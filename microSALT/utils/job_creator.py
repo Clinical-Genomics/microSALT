@@ -21,6 +21,7 @@ from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.referencer import Referencer
 from microSALT import __version__
 
+
 class Job_Creator:
     def __init__(self, config, log, sampleinfo={}, run_settings={}):
         self.config = config
@@ -178,14 +179,13 @@ class Job_Creator:
                 self.logger.warning("Input fastq {} does not seem to end properly".format(vfile))
         return sorted(verified_files)
 
-
-    def create_version_section(self):
+    @staticmethod
+    def create_version_file(finishdir):
         """Creates a section in the batchfile with the version of microSALT"""
-        version_file_path = f"{self.finishdir}/version.txt"
-        batchfile = open(self.batchfile, "a+")
-        batchfile.write(f"echo {__version__} > {version_file_path}\n\n")
-        batchfile.close()
-        
+        version_file_path = f"{finishdir}/version.txt"
+        with open(version_file_path, "w") as version_file:
+            version_file.write(__version__)
+
     def create_assemblysection(self):
         assembly_dir = f"{self.finishdir}/assembly"
         contigs_file_raw = f"{assembly_dir}/{self.name}_contigs_raw.fasta"
@@ -217,16 +217,14 @@ class Job_Creator:
         #    b. Print out the sequence line.
         # Note: The match function requires GNU awk (gawk) to be able to capture groups in regexes.
         batchfile.write(
-            "gawk " +
-            "'/^>/ { match($0, /Contig_([0-9]+)_([0-9\.]+)/, m) } " +
-            "!/^>/ { seqlen=length($0); print \">NODE_\" m[1] \"_length_\" seqlen \"_cov_\" m[2]; print $0; }' " +
-            f"{contigs_file_raw} > {contigs_file}\n"
+            "gawk "
+            + "'/^>/ { match($0, /Contig_([0-9]+)_([0-9\.]+)/, m) } "
+            + '!/^>/ { seqlen=length($0); print ">NODE_" m[1] "_length_" seqlen "_cov_" m[2]; print $0; }\' '
+            + f"{contigs_file_raw} > {contigs_file}\n"
         )
 
         # Keep only the 999(?) top contigs to avoid really low-quality contigs
-        batchfile.write(
-            f"sed -n '/NODE_1000_/q;p' {contigs_file} > {contigs_trimmed_file}\n"
-        )
+        batchfile.write(f"sed -n '/NODE_1000_/q;p' {contigs_file} > {contigs_trimmed_file}\n")
         # batchfile.write("##Input cleanup\n")
         # batchfile.write("rm -r {}/trimmed\n".format(self.finishdir))
         batchfile.write("\n\n")
@@ -597,6 +595,7 @@ class Job_Creator:
         jobarray = list()
         if not os.path.exists(self.finishdir):
             os.makedirs(self.finishdir)
+        self.create_version_file(finishdir=self.finishdir)
         # Loads project level info.
         try:
             if single_sample:
@@ -794,7 +793,6 @@ class Job_Creator:
                 batchfile.write("#!/bin/sh\n\n")
                 batchfile.write("mkdir -p {}\n".format(self.finishdir))
                 batchfile.close()
-                self.create_version_section()
                 self.create_preprocsection()
                 self.create_variantsection()
                 if not self.qc_only:
