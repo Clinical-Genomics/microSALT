@@ -456,8 +456,8 @@ def update_refs(ctx, force_update: bool):
 @click.pass_context
 def update_from_static(ctx, force_update: bool):
     """Updates a specific organism"""
-    ext_refs = Referencer(config=ctx.obj["config"], log=logger)
-    ext_refs.fetch_external(force=force_update)
+    ext_refs = Referencer(config=ctx.obj["config"], force=force_update, log=logger)
+    ext_refs.fetch_external()
     done()
 
 
