@@ -86,7 +86,7 @@ class Referencer:
         """Updates all references. Order is important, since no object is updated twice"""
         # Updates
         self.fetch_pubmlst(self.force)
-        self.fetch_external(self.force)
+        self.fetch_external()
         self.fetch_resistances(self.force)
 
         # Reindexes
