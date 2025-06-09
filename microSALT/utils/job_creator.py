@@ -19,7 +19,7 @@ import yaml
 
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.referencer import Referencer
-
+from microSALT import __version__
 
 class Job_Creator:
     def __init__(self, config, log, sampleinfo={}, run_settings={}):
@@ -178,6 +178,14 @@ class Job_Creator:
                 self.logger.warning("Input fastq {} does not seem to end properly".format(vfile))
         return sorted(verified_files)
 
+
+    def create_version_section(self):
+        """Creates a section in the batchfile with the version of microSALT"""
+        version_file_path = f"{self.finishdir}/version.txt"
+        batchfile = open(self.batchfile, "a+")
+        batchfile.write(f"echo {__version__} > {version_file_path}\n\n")
+        batchfile.close()
+        
     def create_assemblysection(self):
         assembly_dir = f"{self.finishdir}/assembly"
         contigs_file_raw = f"{assembly_dir}/{self.name}_contigs_raw.fasta"
@@ -786,6 +794,7 @@ class Job_Creator:
                 batchfile.write("#!/bin/sh\n\n")
                 batchfile.write("mkdir -p {}\n".format(self.finishdir))
                 batchfile.close()
+                self.create_version_section()
                 self.create_preprocsection()
                 self.create_variantsection()
                 if not self.qc_only:
