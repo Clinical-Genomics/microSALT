@@ -384,7 +384,7 @@ class Reporter:
                 "id": str(self.sample.get("Customer_ID_project")),
                 "path": "{}/version.txt".format(self.output),
                 "path_index": "~",
-                "step": "analysis",
+                "step": "result_aggregation",
                 "tag": "microsalt-version",
             }
         )
