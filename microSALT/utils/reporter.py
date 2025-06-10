@@ -321,7 +321,7 @@ class Reporter:
         deliv["files"].append(
             {
                 "format": "json",
-                "id": self.sample.get("Customer_ID_project"),
+                "id": str(self.sample.get("Customer_ID_project")),
                 "path": "{}/sampleinfo.json".format(self.output),
                 "path_index": "~",
                 "step": "analysis",
@@ -332,7 +332,7 @@ class Reporter:
         deliv["files"].append(
             {
                 "format": "html",
-                "id": self.sample.get("Customer_ID_project"),
+                "id": str(self.sample.get("Customer_ID_project")),
                 "path": "{}/{}_QC_{}.html".format(
                     self.output, self.sample.get("Customer_ID_project"), last_version
                 ),
@@ -345,7 +345,7 @@ class Reporter:
         deliv["files"].append(
             {
                 "format": "html",
-                "id": self.sample.get("Customer_ID_project"),
+                "id": str(self.sample.get("Customer_ID_project")),
                 "path": "{}/{}_Typing_{}.html".format(
                     self.output, self.sample.get("Customer_ID_project"), last_version
                 ),
@@ -358,7 +358,7 @@ class Reporter:
         deliv["files"].append(
             {
                 "format": "json",
-                "id": self.sample.get("Customer_ID_project"),
+                "id": str(self.sample.get("Customer_ID_project")),
                 "path": "{}/{}.json".format(self.output, self.sample.get("CG_ID_project")),
                 "path_index": "~",
                 "step": "result_aggregation",
@@ -369,7 +369,7 @@ class Reporter:
         deliv["files"].append(
             {
                 "format": "txt",
-                "id": self.sample.get("Customer_ID_project"),
+                "id": str(self.sample.get("Customer_ID_project")),
                 "path": "{}/config.log".format(self.output),
                 "path_index": "~",
                 "step": "analysis",
@@ -381,7 +381,7 @@ class Reporter:
         deliv["files"].append(
             {
                 "format": "txt",
-                "id": self.sample.get("Customer_ID_project"),
+                "id": str(self.sample.get("Customer_ID_project")),
                 "path": "{}/version.txt".format(self.output),
                 "path_index": "~",
                 "step": "analysis",
