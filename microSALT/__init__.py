@@ -7,10 +7,12 @@ import re
 import subprocess
 import sys
 
+from enum import Enum
+from logging import Logger
 from flask import Flask
 from distutils.sysconfig import get_python_lib
 
-__version__ = "4.2.0"
+__version__ = "4.2.1"
 
 app = Flask(__name__, template_folder="server/templates")
 app.config.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
@@ -22,7 +24,33 @@ wd = os.path.dirname(os.path.realpath(__file__))
 
 # Load configuration
 preset_config = ""
-logger = ""
+
+logger = None
+
+logging_levels = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
+}
+
+
+def setup_logger(logging_level: str) -> None:
+    global logger
+    if logging_level not in logging_levels:
+        raise ValueError(
+            f"Invalid logging level: {logging_level}. Choose from {list(logging_levels.keys())}."
+        )
+    logger = logging.getLogger("main_logger")
+    logger.setLevel(logging_levels[logging_level])
+    ch = logging.StreamHandler()
+    ch.setLevel(logging_levels[logging_level])
+    formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s", "%Y-%m %H:%M:%S")
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+
+
 default = os.path.join(os.environ["HOME"], ".microSALT/config.json")
 
 if "MICROSALT_CONFIG" in os.environ:
@@ -75,12 +103,7 @@ if preset_config != "":
         )
 
         # Initialize logger
-        logger = logging.getLogger("main_logger")
-        logger.setLevel(logging.INFO)
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)
-        ch.setFormatter(logging.Formatter("%(levelname)s - %(message)s"))
-        logger.addHandler(ch)
+        setup_logger(logging_level="INFO")
 
         # Create paths mentioned in config
         db_file = re.search(

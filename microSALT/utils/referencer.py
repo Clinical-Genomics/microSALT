@@ -8,12 +8,12 @@ import re
 import shutil
 import subprocess
 import urllib.request
+from Bio import Entrez
+from typing import Tuple, Union, Optional
+import xml.etree.ElementTree as ET
 
 from microSALT.utils.pubmlst.client import BaseClient, PubMLSTClient, get_client
 from microSALT.utils.pubmlst.authentication import ClientAuthentication
-
-from Bio import Entrez
-import xml.etree.ElementTree as ET
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.pubmlst.exceptions import InvalidURLError, PubMLSTError
 from microSALT.utils.pubmlst.helpers import get_service_by_url
@@ -86,7 +86,7 @@ class Referencer:
         """Updates all references. Order is important, since no object is updated twice"""
         # Updates
         self.fetch_pubmlst(self.force)
-        self.fetch_external(self.force)
+        self.fetch_external()
         self.fetch_resistances(self.force)
 
         # Reindexes
@@ -135,108 +135,169 @@ class Referencer:
         if reindexation:
             self.logger.info("Re-indexed contents of {}".format(full_dir))
 
-    def fetch_external(self, force=False):
-        url = "https://pubmlst.org/static/data/dbases.xml"
+    def _parse_external_xml(
+        self, url: str = "https://pubmlst.org/static/data/dbases.xml"
+    ) -> Optional[ET.Element]:
+        """Fetch and parse the external XML, returning the root element."""
         try:
             query = urllib.request.urlopen(url).read()
-            root = ET.fromstring(query)
-            try:
-                for entry in root:
-                    # Check organism
-                    species = entry.text.strip()
-                    organ = species.lower().replace(" ", "_")
-                    if "escherichia_coli" in organ and "#1" in organ:
-                        organ = organ[:-2]
-                    if organ in self.organisms:
-                        # Check for newer version
-                        currver = self.db_access.get_version("profile_{}".format(organ))
-                        st_link = entry.find("./mlst/database/profiles/url").text
-                        service: str = get_service_by_url(st_link)
-                        if service == "pasteur":
-                            database: str = f"pubmlst_{organ.split('_')[0]}_seqdef"
-                            self.set_client(service, database=database)
-                        else:
-                            self.set_client(service)
-
-                        # Parse the database name and scheme ID
-                        try:
-                            parsed_data = self.client.parse_url(url=st_link)
-                        except InvalidURLError as e:
-                            self.logger.warning(f"Invalid URL: {st_link} - {e}")
-                            continue
-
-                        scheme_id = parsed_data.get("scheme_id")  # Extract scheme ID
-                        db = parsed_data.get("db")  # Extract database name
-
-                        if not db or not scheme_id:
-                            self.logger.warning(
-                                f"Could not extract database name or scheme ID from MLST URL: {st_link}"
-                            )
-                            return
-
-                        scheme_info = self.client.retrieve_scheme_info(
-                            db, scheme_id
-                        )  # Retrieve scheme info
-                        last_updated = scheme_info.get("last_updated")  # Extract last updated date
-                        if (
-                            int(last_updated.replace("-", "")) <= int(currver.replace("-", ""))
-                            and not force
-                        ):
-                            self.logger.info(
-                                f"Profile for {organ.replace('_', ' ').capitalize()} already at the latest version."
-                            )
-                            continue
-                        self.logger.info(
-                            f"{service} reference for {organ.replace('_', ' ').capitalize()} updated to {last_updated} from {currver}"
-                        )
-
-                        # Step 1: Download the profiles CSV
-                        st_target = f"{self.config['folders']['profiles']}/{organ}"
-                        profiles_csv = self.client.download_profiles_csv(db, scheme_id)
-
-                        # Only write the first 8 columns, this avoids adding information such as "clonal_complex" and "species"
-                        profiles_csv = profiles_csv.split("\n")
-                        trimmed_profiles = []
-                        for line in profiles_csv:
-                            trimmed_profiles.append("\t".join(line.split("\t")[:8]))
-
-                        profiles_csv = "\n".join(trimmed_profiles)
-
-                        with open(st_target, "w") as profile_file:
-                            profile_file.write(profiles_csv)
-
-                        self.logger.info(f"Profiles CSV downloaded to {st_target}")
-
-                        # Step 2: Fetch scheme information to get loci
-
-                        loci_list = scheme_info.get("loci", [])
-
-                        # Step 3: Download loci FASTA files
-                        output = f"{self.config['folders']['references']}/{organ}"
-                        if os.path.isdir(output):
-                            shutil.rmtree(output)
-                        os.makedirs(output)
-
-                        for locus_uri in loci_list:
-                            locus_name = os.path.basename(os.path.normpath(locus_uri))
-                            loci_fasta = self.client.download_locus(db, locus_name)
-                            with open(f"{output}/{locus_name}.tfa", "w") as fasta_file:
-                                fasta_file.write(loci_fasta)
-                            self.logger.info(f"Locus FASTA downloaded: {locus_name}.tfa")
-
-                        # Step 4: Create new indexes
-                        self.index_db(output, ".tfa")
-
-                        self.db_access.upd_rec(
-                            {"name": "profile_{}".format(organ)},
-                            "Versions",
-                            {"version": last_updated},
-                        )
-                        self.db_access.reload_profiletable(organ)
-            except PubMLSTError as e:
-                self.logger.warning(f"Unable to update pubMLST external data: {e}")
+            return ET.fromstring(query)
         except Exception as e:
-            self.logger.warning("Unable to update pubMLST external data: {}".format(e))
+            self.logger.warning(f"Unable to fetch or parse external XML: {e}")
+            return None
+
+    def _find_entry_for_organism(
+        self, root: ET.Element, organism_name: str
+    ) -> Tuple[Optional[ET.Element], Optional[str]]:
+        """Find the XML entry for a given organism name."""
+        organism_name = organism_name.lower().replace(" ", "_")
+        for entry in root:
+            species = entry.text.strip()
+            organ: str = species.lower().replace(" ", "_")
+            if "escherichia_coli" in organ and "#1" in organ:
+                organ: str = organ[:-2]
+                if organism_name.split("_")[0] == "escherichia":
+                    return entry, organ
+            if organ == organism_name:
+                return entry, organ
+        return None, None
+
+    def _should_update_external(self, organ: str, entry: ET.Element) -> Union[dict, bool]:
+        """Determine if the external data for an organism should be updated."""
+        currver = self.db_access.get_version(f"profile_{organ}")
+        st_link = entry.find("./mlst/database/profiles/url").text
+        service = get_service_by_url(st_link)
+        if service == "pasteur":
+            database_url = entry.find(".//mlst/database/url").text.strip()
+            if database_url is not None:
+                database = database_url.split("/")[-2]
+            database = f"pubmlst_{database}_seqdef"
+            self.set_client(service, database=database)
+        else:
+            self.set_client(service)
+
+        # Parse the database name and scheme ID
+        try:
+            parsed_data = self.client.parse_url(url=st_link)
+        except InvalidURLError as e:
+            self.logger.warning(f"Invalid URL: {st_link} - {e}")
+            return False
+
+        scheme_id = parsed_data.get("scheme_id")
+        db = parsed_data.get("db")
+        if not db or not scheme_id:
+            self.logger.warning(
+                f"Could not extract database name or scheme ID from MLST URL: {st_link}"
+            )
+            return False
+
+        scheme_info = self.client.retrieve_scheme_info(db, scheme_id)
+        last_updated = scheme_info.get("last_updated")
+        if int(last_updated.replace("-", "")) <= int(currver.replace("-", "")) and not self.force:
+            self.logger.info(
+                f"Profile for {organ.replace('_', ' ').capitalize()} already at the latest version."
+            )
+            return False
+
+        return {
+            "organ": organ,
+            "db": db,
+            "scheme_id": scheme_id,
+            "last_updated": last_updated,
+            "scheme_info": scheme_info,
+            "entry": entry,
+            "service": service,
+        }
+
+    def _update_external_organism(self, update_info: dict) -> None:
+        """Update the external data for a single organism."""
+        organ = update_info["organ"]
+        db = update_info["db"]
+        scheme_id = update_info["scheme_id"]
+        last_updated = update_info["last_updated"]
+        scheme_info = update_info["scheme_info"]
+        entry = update_info["entry"]
+        service = update_info["service"]
+
+        self.logger.info(
+            f"{service} reference for {organ.replace('_', ' ').capitalize()} updated to {last_updated}"
+        )
+
+        # Step 1: Download the profiles CSV
+        st_target = f"{self.config['folders']['profiles']}/{organ}"
+        profiles_csv = self.client.download_profiles_csv(db, scheme_id)
+        profiles_csv = profiles_csv.split("\n")
+        trimmed_profiles = []
+        trimmed_profiles.extend("\t".join(line.split("\t")[:8]) for line in profiles_csv)
+        profiles_csv = "\n".join(trimmed_profiles)
+        with open(st_target, "w") as profile_file:
+            profile_file.write(profiles_csv)
+        self.logger.info(f"Profiles CSV downloaded to {st_target}")
+
+        # Step 2: Fetch scheme information to get loci
+        loci_list = scheme_info.get("loci", [])
+
+        # Step 3: Download loci FASTA files
+        output = f"{self.config['folders']['references']}/{organ}"
+        if os.path.isdir(output):
+            shutil.rmtree(output)
+        os.makedirs(output)
+
+        for locus_uri in loci_list:
+            locus_name = os.path.basename(os.path.normpath(locus_uri))
+            loci_fasta = self.client.download_locus(db, locus_name)
+            with open(f"{output}/{locus_name}.tfa", "w") as fasta_file:
+                fasta_file.write(loci_fasta)
+            self.logger.info(f"Locus FASTA downloaded: {locus_name}.tfa")
+
+        # Step 4: Create new indexes
+        self.index_db(output, ".tfa")
+
+        self.db_access.upd_rec(
+            {"name": f"profile_{organ}"},
+            "Versions",
+            {"version": last_updated},
+        )
+        self.db_access.reload_profiletable(organ)
+
+    def fetch_external(self) -> None:
+        """Fetch and update all external organisms as needed."""
+        root = self._parse_external_xml()
+        if root is None:
+            return
+        try:
+            for entry in root:
+                species = entry.text.strip()
+                organ = species.lower().replace(" ", "_")
+                if "escherichia_coli" in organ and "#1" in organ:
+                    organ = organ[:-2]
+                if organ in self.organisms:
+                    update_info = self._should_update_external(organ, entry)
+                    if update_info:
+                        self._update_external_organism(update_info)
+        except PubMLSTError as e:
+            self.logger.warning(f"Unable to update pubMLST external data: {e}")
+
+    def fetch_external_for_organism(self, organism_name: str) -> None:
+        """Fetch and update a specific organism from external sources."""
+        root = self._parse_external_xml()
+        if root is None:
+            return
+        entry, organ = self._find_entry_for_organism(root, organism_name)
+        if entry and organ:
+            update_info = self._should_update_external(organ, entry)
+            if update_info:
+                self._update_external_organism(update_info)
+                self.logger.debug(f"Updated external data for {organism_name}")
+        else:
+            self.logger.warning(f"Organism '{organism_name}' not found in external sources.")
+
+    def update_organism(self, external: bool, organism: str):
+        """Fetches the latest information of an organism from the database"""
+        if external:
+            self.fetch_external_for_organism(organism)
+        else:
+            self.add_pubmlst(organism)
 
     def resync(self, type="", sample="", ignore=False):
         """Manipulates samples that have an internal ST that differs from pubMLST ST"""
@@ -369,7 +430,7 @@ class Referencer:
         except Exception as e:
             self.logger.warning("Unable to download genome '{}' from NCBI".format(reference))
 
-    def add_pubmlst(self, organism):
+    def add_pubmlst(self, organism: str):
         """Checks pubmlst for references of given organism and downloads them"""
         # Organism must be in binomial format and only resolve to one hit
         errorg = organism
@@ -413,7 +474,7 @@ class Referencer:
             else:
                 truename = desc.lower().split(" ")
                 truename = "{}_{}".format(truename[0], truename[1])
-                self.download_pubmlst(truename, seqdef_url)
+                self.download_pubmlst(truename, seqdef_url, force=self.force)
                 # Update organism list
                 self.refs = self.db_access.profiles
                 self.logger.info("Created table profile_{}".format(truename))
@@ -575,7 +636,7 @@ class Referencer:
                         seqdef_url[name] = subtype["href"]
 
         for key, val in seqdef_url.items():
-            internal_ver = self.db_access.get_version("profile_{}".format(key))
+            internal_ver = self.db_access.get_version(f"profile_{key}")
             external_ver = self.external_version(key, val)
 
             if (internal_ver < external_ver) or force:

@@ -10,9 +10,10 @@ import re
 import subprocess
 import sys
 import yaml
+import logging
 
 from pkg_resources import iter_entry_points
-from microSALT import __version__, preset_config, logger, wd
+from microSALT import __version__, preset_config, wd, logging_levels
 from microSALT.utils.scraper import Scraper
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.reporter import Reporter
@@ -35,6 +36,7 @@ default_sampleinfo = {
     "reference": "None",
 }
 
+logger = logging.getLogger("main_logger")
 
 if preset_config == "":
     click.echo(
@@ -95,12 +97,21 @@ def review_sampleinfo(pfile):
 
 @click.group()
 @click.version_option(__version__)
+@click.option(
+    "--logging-level",
+    default="INFO",
+    type=click.Choice(list(logging_levels.keys())),
+    help="Set the logging level for the CLI",
+)
 @click.pass_context
-def root(ctx):
+def root(ctx, logging_level):
     """microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline"""
     ctx.obj = {}
     ctx.obj["config"] = preset_config
-    ctx.obj["log"] = logger
+    logger.setLevel(logging_levels[logging_level])
+    for handler in logger.handlers:
+        handler.setLevel(logging_levels[logging_level])
+    logger.debug(f"Setting logging level to {logging_levels[logging_level]}")
 
 
 @root.command()
@@ -165,14 +176,14 @@ def analyse(
     sampleinfo = review_sampleinfo(sampleinfo_file)
     run_creator = Job_Creator(
         config=ctx.obj["config"],
-        log=ctx.obj["log"],
+        log=logger,
         sampleinfo=sampleinfo,
         run_settings=run_settings,
     )
 
     ext_refs = Referencer(
         config=ctx.obj["config"],
-        log=ctx.obj["log"],
+        log=logger,
         sampleinfo=sampleinfo,
         force=force_update,
     )
@@ -265,7 +276,7 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
 
     # Samples section
     sampleinfo = review_sampleinfo(sampleinfo_file)
-    ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"], sampleinfo=sampleinfo)
+    ext_refs = Referencer(config=ctx.obj["config"], log=logger, sampleinfo=sampleinfo)
     click.echo("INFO - Checking versions of references..")
     try:
         if not skip_update:
@@ -277,9 +288,7 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
     except Exception as e:
         click.echo("{}".format(e))
 
-    res_scraper = Scraper(
-        config=ctx.obj["config"], log=ctx.obj["log"], sampleinfo=sampleinfo, input=input
-    )
+    res_scraper = Scraper(config=ctx.obj["config"], log=logger, sampleinfo=sampleinfo, input=input)
     if isinstance(sampleinfo, list) and len(sampleinfo) > 1:
         res_scraper.scrape_project()
         # for subfolder in pool:
@@ -289,7 +298,7 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
 
     codemonkey = Reporter(
         config=ctx.obj["config"],
-        log=ctx.obj["log"],
+        log=logger,
         sampleinfo=sampleinfo,
         output=output,
         collection=True,
@@ -304,14 +313,14 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
 @click.pass_context
 def add(ctx, organism, force):
     """Adds a new internal organism from pubMLST"""
-    referee = Referencer(config=ctx.obj["config"], log=ctx.obj["log"], force=force)
+    referee = Referencer(config=ctx.obj["config"], log=logger, force=force)
     try:
         referee.add_pubmlst(organism)
     except Exception as e:
         click.echo(e.args[0])
         ctx.abort()
     click.echo("INFO - Checking versions of all references..")
-    referee = Referencer(config=ctx.obj["config"], log=ctx.obj["log"], force=force)
+    referee = Referencer(config=ctx.obj["config"], log=logger, force=force)
     referee.update_refs()
 
 
@@ -319,7 +328,7 @@ def add(ctx, organism, force):
 @click.pass_context
 def observe(ctx):
     """Lists all stored organisms"""
-    refe = Referencer(config=ctx.obj["config"], log=ctx.obj["log"])
+    refe = Referencer(config=ctx.obj["config"], log=logger)
     click.echo("INFO - Currently stored organisms:")
     for org in sorted(refe.existing_organisms()):
         click.echo(org.replace("_", " ").capitalize())
@@ -346,7 +355,7 @@ def report(ctx, sampleinfo_file, email, type, output, collection):
     sampleinfo = review_sampleinfo(sampleinfo_file)
     codemonkey = Reporter(
         config=ctx.obj["config"],
-        log=ctx.obj["log"],
+        log=logger,
         sampleinfo=sampleinfo,
         output=output,
         collection=collection,
@@ -359,7 +368,7 @@ def report(ctx, sampleinfo_file, email, type, output, collection):
 @click.pass_context
 def view(ctx):
     """Starts an interactive webserver for viewing"""
-    codemonkey = Reporter(config=ctx.obj["config"], log=ctx.obj["log"])
+    codemonkey = Reporter(config=ctx.obj["config"], log=logger)
     codemonkey.start_web()
 
 
@@ -419,13 +428,13 @@ def review(ctx, type, customer, skip_update, email, output):
     """Generates information about novel ST"""
     # Trace exists by some samples having pubMLST_ST filled in. Make trace function later
     ctx.obj["config"]["regex"]["mail_recipient"] = email
-    ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"])
+    ext_refs = Referencer(config=ctx.obj["config"], log=logger)
     if not skip_update:
         ext_refs.update_refs()
         ext_refs.resync()
     click.echo("INFO - Version check done. Generating output")
     if type == "report":
-        codemonkey = Reporter(config=ctx.obj["config"], log=ctx.obj["log"], output=output)
+        codemonkey = Reporter(config=ctx.obj["config"], log=logger, output=output)
         codemonkey.report(type="st_update", customer=customer)
     elif type == "list":
         ext_refs.resync(type=type)
@@ -437,7 +446,7 @@ def review(ctx, type, customer, skip_update, email, output):
 @click.pass_context
 def update_refs(ctx, force_update: bool):
     """Updates all references"""
-    ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"], force=force_update)
+    ext_refs = Referencer(config=ctx.obj["config"], log=logger, force=force_update)
     ext_refs.update_refs()
     done()
 
@@ -447,8 +456,20 @@ def update_refs(ctx, force_update: bool):
 @click.pass_context
 def update_from_static(ctx, force_update: bool):
     """Updates a specific organism"""
-    ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"])
-    ext_refs.fetch_external(force=force_update)
+    ext_refs = Referencer(config=ctx.obj["config"], force=force_update, log=logger)
+    ext_refs.fetch_external()
+    done()
+
+
+@resync.command()
+@click.argument("organism")
+@click.option("--force-update", default=False, is_flag=True, help="Forces update")
+@click.option("--external", is_flag=True, default=False, help="Updates from external sources")
+@click.pass_context
+def update_organism(ctx, external: bool, force_update: bool, organism: str):
+    """Updates a specific organism"""
+    ext_refs = Referencer(config=ctx.obj["config"], log=logger, force=force_update)
+    ext_refs.update_organism(external=external, organism=organism)
     done()
 
 
@@ -463,6 +484,6 @@ def update_from_static(ctx, force_update: bool):
 @click.pass_context
 def overwrite(ctx, sample_name, force):
     """Flags sample as resolved"""
-    ext_refs = Referencer(config=ctx.obj["config"], log=ctx.obj["log"])
+    ext_refs = Referencer(config=ctx.obj["config"], log=logger)
     ext_refs.resync(type="overwrite", sample=sample_name, ignore=force)
     done()

@@ -39,10 +39,10 @@ class ClientAuthentication:
             consumer_key, consumer_secret, access_token, access_secret = load_auth_credentials(
                 self.service
             )
-            logger.debug(f"Consumer Key: {consumer_key}")
-            logger.debug(f"Consumer Secret: {consumer_secret}")
-            logger.debug(f"Access Token: {access_token}")
-            logger.debug(f"Access Secret: {access_secret}")
+            logger.debug(f"Consumer Key: {consumer_key[:5]}***")
+            logger.debug(f"Consumer Secret: {consumer_secret[:5]}***")
+            logger.debug(f"Access Token: {access_token[:5]}***")
+            logger.debug(f"Access Secret: {access_secret[:5]}***")
 
             url = f"{self.base_api}/db/{db}/oauth/get_session_token"
 
