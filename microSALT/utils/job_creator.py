@@ -762,21 +762,31 @@ class Job_Creator:
 
         try:
             # Generates file with all slurm ids
-            slurmname = "{}_slurm_ids.yaml".format(self.name)
+            slurmname = "{}_slurm_ids.yaml".format(self.batchfilename)
+            self.logger.debug(f"name of slurm report file: {slurmname}")
             slurmreport_storedir = Path(self.config["folders"]["reports"], "trailblazer", slurmname)
+            self.logger.debug(f"slurm report storedir: {slurmreport_storedir}")
             slurmreport_workdir = Path(self.finishdir, slurmname)
+            self.logger.debug(f"slurm report workdir: {slurmreport_workdir}")
+            self.logger.debug(
+                f"slurmreport_storedir exists: {slurmreport_storedir.exists()}\ndumping jobs"
+            )
             yaml.safe_dump(
                 data={"jobs": [str(job) for job in joblist]},
                 stream=open(slurmreport_workdir, "w"),
             )
+            self.logger.debug(f"Dump to {slurmreport_workdir} successful")
+
+            self.logger.debug(f"Copying slurm report file to {slurmreport_storedir}")
             shutil.copyfile(slurmreport_workdir, slurmreport_storedir)
             self.logger.info(
                 "Saved Trailblazer slurm report file to %s and %s",
                 slurmreport_storedir,
                 slurmreport_workdir,
             )
-        except Exception:
+        except Exception as e:
             self.logger.info("Unable to generate Trailblazer slurm report file")
+            self.logger.error(f"Erroor while generating Trailblazer slurm report file: {e}")
 
     def sample_job(self):
         """Writes necessary sbatch job for each individual sample"""
