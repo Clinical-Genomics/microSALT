@@ -762,7 +762,7 @@ class Job_Creator:
 
         try:
             # Generates file with all slurm ids
-            slurmname = "{}_slurm_ids.yaml".format(self.batchfilename)
+            slurmname = "{}_slurm_ids.yaml".format(self.name)
             self.logger.debug(f"name of slurm report file: {slurmname}")
             slurmreport_storedir = Path(self.config["folders"]["reports"], "trailblazer", slurmname)
             self.logger.debug(f"slurm report storedir: {slurmreport_storedir}")
