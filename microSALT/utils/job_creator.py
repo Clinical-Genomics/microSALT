@@ -700,7 +700,7 @@ class Job_Creator:
         mb.write("#Uploading of results to database and production of report\n")
         if "MICROSALT_CONFIG" in os.environ:
             mb.write("export MICROSALT_CONFIG={}\n".format(os.environ["MICROSALT_CONFIG"]))
-        mb.write(f"conda activate ${os.environ['CONDA_PREFIX']}\n")
+        mb.write(f"conda activate {os.environ['CONDA_PREFIX']}\n")
 
         mb.write(
             "microSALT utils finish {0}/sampleinfo.json --input {0} --email {1} --report {2} {3}\n".format(
@@ -763,21 +763,21 @@ class Job_Creator:
         try:
             # Generates file with all slurm ids
             slurmname = "{}_slurm_ids.yaml".format(self.name)
-            self.logger.debug(f"name of slurm report file: {slurmname}")
+            self.logger.info(f"name of slurm report file: {slurmname}")
             slurmreport_storedir = Path(self.config["folders"]["reports"], "trailblazer", slurmname)
-            self.logger.debug(f"slurm report storedir: {slurmreport_storedir}")
+            self.logger.info(f"slurm report storedir: {slurmreport_storedir}")
             slurmreport_workdir = Path(self.finishdir, slurmname)
-            self.logger.debug(f"slurm report workdir: {slurmreport_workdir}")
-            self.logger.debug(
+            self.logger.info(f"slurm report workdir: {slurmreport_workdir}")
+            self.logger.info(
                 f"slurmreport_storedir exists: {slurmreport_storedir.exists()}\ndumping jobs"
             )
             yaml.safe_dump(
                 data={"jobs": [str(job) for job in joblist]},
                 stream=open(slurmreport_workdir, "w"),
             )
-            self.logger.debug(f"Dump to {slurmreport_workdir} successful")
+            self.logger.info(f"Dump to {slurmreport_workdir} successful")
 
-            self.logger.debug(f"Copying slurm report file to {slurmreport_storedir}")
+            self.logger.info(f"Copying slurm report file to {slurmreport_storedir}")
             shutil.copyfile(slurmreport_workdir, slurmreport_storedir)
             self.logger.info(
                 "Saved Trailblazer slurm report file to %s and %s",
