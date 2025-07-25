@@ -1,18 +1,18 @@
 import collections
-import logging
 import json
+import logging
 import os
 import pathlib
 import re
 import subprocess
 import sys
-
+from distutils.sysconfig import get_python_lib
 from enum import Enum
 from logging import Logger
-from flask import Flask
-from distutils.sysconfig import get_python_lib
 
-__version__ = "4.2.1"
+from flask import Flask
+
+__version__ = "4.2.2"
 
 app = Flask(__name__, template_folder="server/templates")
 app.config.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
@@ -164,7 +164,7 @@ if preset_config != "":
         cmd.append("pragma integrity_check;")
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output, error = proc.communicate()
-        if not "ok" in str(output):
+        if "ok" not in str(output):
             logger.error("Database integrity failed! Lock-state detected!")
             sys.exit(-1)
 
