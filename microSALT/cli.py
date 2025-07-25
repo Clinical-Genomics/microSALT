@@ -1,23 +1,20 @@
 """This is the main entry point of microSALT.
-   By: Isak Sylvin, @sylvinite"""
+By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 
-import click
 import json
-import os
-import re
-import subprocess
-import sys
-import yaml
 import logging
+import os
+import sys
 
-from pkg_resources import iter_entry_points
-from microSALT import __version__, preset_config, wd, logging_levels
-from microSALT.utils.scraper import Scraper
+import click
+
+from microSALT import __version__, logging_levels, preset_config
 from microSALT.utils.job_creator import Job_Creator
-from microSALT.utils.reporter import Reporter
 from microSALT.utils.referencer import Referencer
+from microSALT.utils.reporter import Reporter
+from microSALT.utils.scraper import Scraper
 
 default_sampleinfo = {
     "CG_ID_project": "XXX0000",
@@ -56,7 +53,7 @@ def set_cli_config(ctx, config):
                 ctx.obj["config"]["folders"]["expec"] = t["folders"]["expec"]
                 ctx.obj["config"]["folders"]["adapters"] = t["folders"]["adapters"]
                 ctx.obj["config"]["config_path"] = os.path.abspath(config)
-            except Exception as e:
+            except Exception:
                 pass
 
 
@@ -71,14 +68,14 @@ def review_sampleinfo(pfile):
     try:
         with open(pfile) as json_file:
             data = json.load(json_file)
-    except Exception as e:
+    except Exception:
         click.echo("Unable to read provided sample info file as json. Exiting..")
         sys.exit(-1)
 
     if isinstance(data, list):
         for entry in data:
             for k, v in default_sampleinfo.items():
-                if not k in entry:
+                if k not in entry:
                     click.echo(
                         "WARNING - Parameter {} needs to be provided in sample json. Formatting example: ({})".format(
                             k, v
@@ -86,7 +83,7 @@ def review_sampleinfo(pfile):
                     )
     else:
         for k, v in default_sampleinfo.items():
-            if not k in data:
+            if k not in data:
                 click.echo(
                     "WARNING - Parameter {} needs to be provided in sample json. Formatting example: ({})".format(
                         k, v
