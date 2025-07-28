@@ -706,7 +706,7 @@ class Job_Creator:
                     custom_conf,
                 )
             )
-            mb.write("touch {}/run_complete.out".format(self.finishdir))
+            mb.write("touch {}/run_complete.out\n".format(self.finishdir))
 
         massagedJobs = list()
         final = ":".join(joblist)
