@@ -8,10 +8,10 @@
   </a>
 </p>
 
-__Microbial Sequence Analysis and Loci-based Typing pipeline__
+**Microbial Sequence Analysis and Loci-based Typing pipeline**
 
 _The microbial sequence analysis and loci-based typing pipeline (microSALT) is
-used to analyse microbial samples.  It produces a quality control of the
+used to analyse microbial samples. It produces a quality control of the
 sample, determines a sample's organism specific sequence type, and its
 resistance pattern. microSALT also provides a database storage solution and
 report generation of these results._
@@ -42,12 +42,12 @@ cp configExample.json /MY/FAV/FOLDER/config.json
 export MICROSALT_CONFIG=/MY/FAV/FOLDER/config.json
 ```
 
-__Then edit the fields to match your environment__.
+**Then edit the fields to match your environment**.
 
 ## Usage
 
 - `microSALT analyse` contains functions to start sbatch job(s) & produce
-  output to `folders['results']`. Afterwards the parsed results  are uploaded
+  output to `folders['results']`. Afterwards the parsed results are uploaded
   to the SQL back-end and produce reports (HTML), which are then automatically
   e-mailed to the user.
 - `microSALT utils` contains various functionality, including generating the
@@ -76,7 +76,7 @@ Any definitions will work, as long as they retain the same formatting.
 
 ### Software
 
-- [Conda](https://conda.io)
+- [Conda](https://conda.io) >= 3.6
 - Python 3.6
 - [SQLite](https://www.sqlite.org)
 
