@@ -696,20 +696,20 @@ class Job_Creator:
             mb.write("#!/usr/bin/env bash\n\n")
             mb.write("#Uploading of results to database and production of report\n")
             if "MICROSALT_CONFIG" in os.environ:
-                mb.write("export MICROSALT_CONFIG={}\n".format(os.environ["MICROSALT_CONFIG"]))
-            mb.write(f"conda activate {os.environ['CONDA_PREFIX']}\n")
-            mb.write(
-                "microSALT utils finish {0}/sampleinfo.json --input {0} --email {1} --report {2} {3}\n".format(
-                    self.finishdir,
-                    self.config["regex"]["mail_recipient"],
-                    report,
-                    custom_conf,
-                )
+                mb.write(f"export MICROSALT_CONFIG={os.environ['MICROSALT_CONFIG']}\n")
+            conda_cmd = (
+                f"conda run -p {os.environ['CONDA_PREFIX']} "
+                f"microSALT utils finish {self.finishdir}/sampleinfo.json "
+                f"-input {self.finishdir} "
+                f"--email {self.config['regex']['mail_recipient']} "
+                f"--report {report} "
+                f"{custom_conf}\n"
             )
-            mb.write("touch {}/run_complete.out\n".format(self.finishdir))
+            mb.write(conda_cmd)
+            mb.write(f"touch {self.finishdir}/run_complete.out\n")
 
         massagedJobs = list()
-        final = ":".join(joblist)
+        final = "".join(joblist)
         # Create subtracker if more than 50 samples
         maxlen = 50
         if len(joblist) > maxlen:
