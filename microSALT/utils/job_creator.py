@@ -709,7 +709,7 @@ class Job_Creator:
             mb.write(f"touch {self.finishdir}/run_complete.out\n")
 
         massagedJobs = list()
-        final = "".join(joblist)
+        final = ":".join(joblist)
         # Create subtracker if more than 50 samples
         maxlen = 50
         if len(joblist) > maxlen:
