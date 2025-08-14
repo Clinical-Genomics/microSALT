@@ -216,7 +216,7 @@
               <div class="panel"><div class="panel-body">
               <h3>Teknisk beskrivning av analysen: {{topsample.application_tag}}<br></h3>
               <p>
-              {% if topsample.application_tag == "MWRNXTR003" %}
+              {% if topsample.application_tag in ["MWRNXTR003", "MWXNXTR003", "VWGNXTR001", "MWSDPTR003"] %}
               Mikrobiell helgenomssekvensering av rutinprov, med krav p&aring; minst 3 miljoner l&auml;spar.
               Nextera library preparation.
               {% elif topsample.application_tag in ["MWGNXTR003", "MWMNXTR003", "MWLNXTR003"] %}
@@ -228,6 +228,9 @@
               {% elif topsample.application_tag in ["VWGNXTR001", "VWLNXTR001"] %}
               Virologisk helgenomssekvensering, med krav p&aring; minst 1 miljon l&auml;spar.
               Nextera library preparation.
+              {% elif topsample.application_tag == "MWSDPTR003" %}
+              Mikrobiell helgenomssekvensering av rutinprov, med krav p&aring; minst 3 miljoner l&auml;spar.
+              COVIDSeq library preparation.
               {% endif %}
               </p>
               <h3>Analysbegr&auml;nsningar f&ouml;r: {{topsample.application_tag}}<br></h3>
