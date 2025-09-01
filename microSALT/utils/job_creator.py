@@ -1,5 +1,5 @@
 """Creates sbatch jobs for MLST instances
-   By: Isak Sylvin, @sylvinite"""
+By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 
@@ -11,15 +11,14 @@ import re
 import shutil
 import subprocess
 import time
-
 from datetime import datetime
 from pathlib import Path
 
 import yaml
 
+from microSALT import __version__
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.referencer import Referencer
-from microSALT import __version__
 
 
 class Job_Creator:
@@ -166,7 +165,7 @@ class Job_Creator:
                 bsize = bsize >> 20
                 if bsize > 1000:
                     self.logger.warning("Input fastq {} exceeds 1000MB".format(vfile))
-            except Exception as e:
+            except Exception:
                 self.logger.warning(
                     "Unable to verify size of input file {}/{}".format(self.indir, vfile)
                 )
@@ -175,7 +174,7 @@ class Job_Creator:
         for vfile in verified_files:
             f = gzip.open("{}/{}".format(self.indir, vfile), "r")
             lines = f.read().splitlines()
-            if len(lines) < 2 or not "+" in str(lines[-2]):
+            if len(lines) < 2 or "+" not in str(lines[-2]):
                 self.logger.warning("Input fastq {} does not seem to end properly".format(vfile))
         return sorted(verified_files)
 
@@ -370,7 +369,7 @@ class Job_Creator:
         forward = list()
         reverse = list()
         for root, dirs, files in os.walk(self.config["folders"]["adapters"]):
-            if not "NexteraPE-PE.fa" in files:
+            if "NexteraPE-PE.fa" not in files:
                 self.logger.error(
                     "Adapters folder at {} does not contain NexteraPE-PE.fa. Review paths.yml"
                 )
@@ -584,7 +583,7 @@ class Job_Creator:
             sample_col["method_sequencing"] = self.sample.get("method_sequencing")
             # self.db_pusher.purge_rec(sample_col['CG_ID_sample'], 'sample')
             self.db_pusher.add_rec(sample_col, "Samples")
-        except Exception as e:
+        except Exception:
             self.logger.error("Unable to add sample {} to database".format(self.name))
 
     def project_job(self, single_sample=False):
@@ -604,7 +603,7 @@ class Job_Creator:
                 self.create_collection()
             else:
                 self.create_project(self.name)
-        except Exception as e:
+        except Exception:
             self.logger.error(
                 "LIMS interaction failed. Unable to read/write project {}".format(self.name)
             )
@@ -622,7 +621,7 @@ class Job_Creator:
                     jobarray.append(jobno)
                 else:
                     self.logger.info("Suppressed command: {}".format(bash_cmd))
-            except Exception as e:
+            except Exception:
                 self.logger.error("Unable to analyze single sample {}".format(self.name))
         else:
             for ldir in glob.glob("{}/*/".format(self.indir)):
@@ -658,7 +657,7 @@ class Job_Creator:
                         jobarray.append(jobno)
                     else:
                         self.logger.info("Suppressed command: {}".format(bash_cmd))
-                except Exception as e:
+                except Exception:
                     pass
         if not dry:
             self.finish_job(jobarray, single_sample)
@@ -684,35 +683,30 @@ class Job_Creator:
         samplefile = "{}/sampleinfo.json".format(self.finishdir)
         with open(samplefile, "w+") as outfile:
             json.dump(self.sampleinfo, outfile)
+        with open(startfile, "w+") as sb:
+            sb.write("#!/usr/bin/env bash\n")
+        with open(configfile, "w+") as cb:
+            configout = self.config.copy()
+            if "genologics" in configout:
+                del configout["genologics"]
+            cb.write("ANALYSIS STARTED BY: {}\n".format(user))
+            cb.write(json.dumps(configout, indent=2, separators=(",", ":")))
 
-        sb = open(startfile, "w+")
-        cb = open(configfile, "w+")
-        mb = open(mailfile, "w+")
-
-        sb.write("#!/usr/bin/env bash\n")
-        sb.close()
-        configout = self.config.copy()
-        if "genologics" in configout:
-            del configout["genologics"]
-        cb.write("ANALYSIS STARTED BY: {}\n".format(user))
-        cb.write(json.dumps(configout, indent=2, separators=(",", ":")))
-        cb.close()
-        mb.write("#!/usr/bin/env bash\n\n")
-        mb.write("#Uploading of results to database and production of report\n")
-        if "MICROSALT_CONFIG" in os.environ:
-            mb.write("export MICROSALT_CONFIG={}\n".format(os.environ["MICROSALT_CONFIG"]))
-        mb.write("source activate $CONDA_DEFAULT_ENV\n")
-
-        mb.write(
-            "microSALT utils finish {0}/sampleinfo.json --input {0} --email {1} --report {2} {3}\n".format(
-                self.finishdir,
-                self.config["regex"]["mail_recipient"],
-                report,
-                custom_conf,
+        with open(mailfile, "w+") as mb:
+            mb.write("#!/usr/bin/env bash\n\n")
+            mb.write("#Uploading of results to database and production of report\n")
+            if "MICROSALT_CONFIG" in os.environ:
+                mb.write(f"export MICROSALT_CONFIG={os.environ['MICROSALT_CONFIG']}\n")
+            conda_cmd = (
+                f"conda run -p {os.environ['CONDA_PREFIX']} "
+                f"microSALT utils finish {self.finishdir}/sampleinfo.json "
+                f"-input {self.finishdir} "
+                f"--email {self.config['regex']['mail_recipient']} "
+                f"--report {report} "
+                f"{custom_conf}\n"
             )
-        )
-        mb.write("touch {}/run_complete.out".format(self.finishdir))
-        mb.close()
+            mb.write(conda_cmd)
+            mb.write(f"touch {self.finishdir}/run_complete.out\n")
 
         massagedJobs = list()
         final = ":".join(joblist)
@@ -744,14 +738,12 @@ class Job_Creator:
                     final = entry
                     break
 
-        head = "-A {} -p core -n 1 -t 6:00:00 -J {}_{}_MAILJOB --qos {} --open-mode append --dependency=afterany:{} --output {}".format(
-            self.config["slurm_header"]["project"],
-            self.config["slurm_header"]["job_prefix"],
-            self.name,
-            self.config["slurm_header"]["qos"],
-            final,
-            self.config["folders"]["log_file"],
-            self.config["regex"]["mail_recipient"],
+        head = (
+            f"-A {self.config['slurm_header']['project']} -p core -n 1 -t 6:00:00 "
+            f"-J {self.config['slurm_header']['job_prefix']}_{self.name}_MAILJOB "
+            f"--qos {self.config['slurm_header']['qos']} --open-mode append "
+            f"--dependency=afterany:{final} --output {self.config['folders']['log_file']}"
+            f"{self.config['regex']['mail_recipient']}"
         )
         bash_cmd = "sbatch {} {}".format(head, mailfile)
         mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
@@ -760,7 +752,7 @@ class Job_Creator:
         try:
             jobno = str(re.search(r"(\d+)", str(output)).group(0))
             joblist.append(jobno)
-        except Exception as e:
+        except Exception:
             self.logger.info("Unable to grab SLURMID for {0}".format(self.name))
 
         try:
@@ -768,18 +760,19 @@ class Job_Creator:
             slurmname = "{}_slurm_ids.yaml".format(self.name)
             slurmreport_storedir = Path(self.config["folders"]["reports"], "trailblazer", slurmname)
             slurmreport_workdir = Path(self.finishdir, slurmname)
-            yaml.safe_dump(
-                data={"jobs": [str(job) for job in joblist]},
-                stream=open(slurmreport_workdir, "w"),
-            )
+            with slurmreport_workdir.open("w") as slurmreport_file:
+                yaml.safe_dump(
+                    data={"jobs": [str(job) for job in joblist]},
+                    stream=slurmreport_file,
+                )
+            self.logger.info(f"Dump to {slurmreport_workdir} successful")
+
+            self.logger.info(f"Copying slurm report file to {slurmreport_storedir}")
             shutil.copyfile(slurmreport_workdir, slurmreport_storedir)
-            self.logger.info(
-                "Saved Trailblazer slurm report file to %s and %s",
-                slurmreport_storedir,
-                slurmreport_workdir,
-            )
+            self.logger.info("Copy successful.")
         except Exception as e:
             self.logger.info("Unable to generate Trailblazer slurm report file")
+            self.logger.error(f"Error while generating Trailblazer slurm report file:\n {e}")
 
     def sample_job(self):
         """Writes necessary sbatch job for each individual sample"""
@@ -805,11 +798,11 @@ class Job_Creator:
                 self.logger.info(
                     "Created runfile for sample {} in folder {}".format(self.name, self.finishdir)
                 )
-            except Exception as e:
+            except Exception:
                 raise
             try:
                 self.create_sample(self.name)
-            except Exception as e:
+            except Exception:
                 self.logger.error("Unable to access LIMS info for sample {}".format(self.name))
         except Exception as e:
             self.logger.error(

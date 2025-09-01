@@ -184,7 +184,6 @@
             </div>
 
             <div class="panel"><div class="panel-body">
-              {% if topsample.application_tag == "MWRNXTR003" %}
               <h3>Teknisk beskrivning av analysen: {{topsample.application_tag}}<br></h3>
               <p>
               {% if topsample.application_tag == "MWRNXTR003" %}
@@ -199,6 +198,9 @@
               {% elif topsample.application_tag in ["VWGNXTR001", "VWLNXTR001"] %}
               Virologisk helgenomssekvensering, med krav p&aring; minst 1 miljon l&auml;spar.
               Nextera library preparation.
+              {% elif topsample.application_tag == "MWSDPTR003" %}
+              Mikrobiell helgenomssekvensering av rutinprov, med krav p&aring; minst 3 miljoner l&auml;spar.
+              COVIDSeq library preparation.
               {% endif %}
               <br></p>
 
@@ -229,7 +231,6 @@
                 Valtteri Wirta<br>
                 Head of unit, Clinical Genomics
               </p>
-              {% endif %}
 
             </div>
             </div>
