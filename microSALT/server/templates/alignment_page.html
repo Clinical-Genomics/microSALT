@@ -228,9 +228,12 @@
               {% elif topsample.application_tag in ["VWGNXTR001", "VWLNXTR001"] %}
               Virologisk helgenomssekvensering, med krav p&aring; minst 1 miljon l&auml;spar.
               Nextera library preparation.
-              {% elif topsample.application_tag == "MWSDPTR003" %}
-              Mikrobiell helgenomssekvensering av rutinprov, med krav p&aring; minst 3 miljoner l&auml;spar.
-              COVIDSeq library preparation.
+              {% elif topsample.application_tag == "VWSMCTR001" %}
+              Virologisk helgenomssekvensering, med krav p&aring; minst 1 miljon l&auml;spar.
+              MiniCovid kit tagmentation preparation.
+              {% elif topsample.application_tag == "MWSMCTR003" %}
+              Mikrobiell helgenomssekvensering, med krav p&aring; minst 3 miljoner l&auml;spar.
+              MiniCovid kit tagmentation preparation.
               {% endif %}
               </p>
               <h3>Analysbegr&auml;nsningar f&ouml;r: {{topsample.application_tag}}<br></h3>
