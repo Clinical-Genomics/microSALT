@@ -12,7 +12,7 @@ from logging import Logger
 
 from flask import Flask
 
-__version__ = "4.2.5"
+__version__ = "4.2.7"
 
 app = Flask(__name__, template_folder="server/templates")
 app.config.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
