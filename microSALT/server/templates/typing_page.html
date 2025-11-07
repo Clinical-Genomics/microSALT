@@ -213,6 +213,11 @@
               Laboratoriet har inte haft ansvar f&ouml;r provtagningsstadiet och extraktion, resultaten g&auml;ller f&ouml;r provet s&aring;som det har mottagits.
               Typningen begr&auml;nsas av den information som vid analys &aring;terfinns i de publikt tillg&auml;ngliga databaserna pubMLST och resFinder.
               Tillf&ouml;rlitligheten hos resultaten f&ouml;ruts&auml;tter dels att informationen som bifogats fr&aring;n kund &auml;r korrekt. Dels att proverna uppn&aring;r de f&ouml;rdefinierade tr&ouml;skelv&auml;rdena; och dels att de organismerna som analyseras har tidigare manuellt verifierats tidigare av personal p&aring; Clinical Genomics.
+              Clinical Genomics har verifierat och validerat resultaten f&ouml;r f&ouml;ljande organismer:
+
+              {% for org in verified_organisms %}
+                <li>{{org}}</li>
+              {% endfor %}.
               </p>
 
               <h3>Avvikelser fr&aring;n metoden<br></h3>
