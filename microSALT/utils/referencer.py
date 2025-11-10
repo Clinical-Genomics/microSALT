@@ -152,12 +152,12 @@ class Referencer:
         """Find the XML entry for a given organism name."""
         organism_name = organism_name.lower().replace(" ", "_")
         for entry in root:
-            species = entry.text.strip()
-            organ: str = species.lower().replace(" ", "_")
+            species = entry.text.strip().lower().split(" ")[:2]
+            organ: str = "_".join(species)
             if "escherichia_coli" in organ and "#1" in organ:
-                organ: str = organ[:-2]
-                if organism_name.split("_")[0] == "escherichia":
-                    return entry, organ
+                if organism_name.startswith("escherichia"):
+                    organ_no_suffix: str = organ[:-2]
+                    return entry, organ_no_suffix
             if organ == organism_name:
                 return entry, organ
         return None, None
