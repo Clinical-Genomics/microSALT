@@ -1,5 +1,5 @@
 """Compares existing organism references with available and updates as needed
-   By: Isak Sylvin, @sylvinite"""
+By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 import glob
@@ -8,13 +8,13 @@ import re
 import shutil
 import subprocess
 import urllib.request
-from Bio import Entrez
-from typing import Tuple, Union, Optional
 import xml.etree.ElementTree as ET
+from typing import Optional, Tuple, Union
 
-from microSALT.utils.pubmlst.client import BaseClient, PubMLSTClient, get_client
-from microSALT.utils.pubmlst.authentication import ClientAuthentication
+from Bio import Entrez
+
 from microSALT.store.db_manipulator import DB_Manipulator
+from microSALT.utils.pubmlst.client import BaseClient, get_client
 from microSALT.utils.pubmlst.exceptions import InvalidURLError, PubMLSTError
 from microSALT.utils.pubmlst.helpers import get_service_by_url
 
@@ -68,16 +68,16 @@ class Referencer:
                 if ref not in self.organisms and org not in neworgs:
                     neworgs.append(org)
                 if (
-                    not "{}.fasta".format(entry.get("reference"))
-                    in os.listdir(self.config["folders"]["genomes"])
-                    and not entry.get("reference") in newrefs
+                    "{}.fasta".format(entry.get("reference"))
+                    not in os.listdir(self.config["folders"]["genomes"])
+                    and entry.get("reference") not in newrefs
                 ):
                     newrefs.append(entry.get("reference"))
             for org in neworgs:
                 self.add_pubmlst(org)
             for org in newrefs:
                 self.download_ncbi(org)
-        except Exception as e:
+        except Exception:
             self.logger.error(
                 "Unable to retrieve reference! Analysis using said reference will fail!"
             )
@@ -128,7 +128,7 @@ class Referencer:
                         )
                     proc = subprocess.Popen(bash_cmd.split(), cwd=full_dir, stdout=subprocess.PIPE)
                     proc.communicate()
-                except Exception as e:
+                except Exception:
                     self.logger.error(
                         "Unable to index requested target {} in {}".format(file, full_dir)
                     )
@@ -152,12 +152,12 @@ class Referencer:
         """Find the XML entry for a given organism name."""
         organism_name = organism_name.lower().replace(" ", "_")
         for entry in root:
-            species = entry.text.strip()
-            organ: str = species.lower().replace(" ", "_")
+            species = entry.text.strip().lower().split(" ")[:2]
+            organ: str = "_".join(species)
             if "escherichia_coli" in organ and "#1" in organ:
-                organ: str = organ[:-2]
-                if organism_name.split("_")[0] == "escherichia":
-                    return entry, organ
+                if organism_name.startswith("escherichia"):
+                    organ_no_suffix: str = organ[:-2]
+                    return entry, organ_no_suffix
             if organ == organism_name:
                 return entry, organ
         return None, None
@@ -267,8 +267,9 @@ class Referencer:
             return
         try:
             for entry in root:
-                species = entry.text.strip()
-                organ = species.lower().replace(" ", "_")
+                # Some species have extra names that are not expected, such as Klebsiella pneumoniae species complex, when we expect just Klebsiella pneumoniae
+                species = entry.text.strip().lower.split(" ")[:2]
+                organ = "_".join(species)
                 if "escherichia_coli" in organ and "#1" in organ:
                     organ = organ[:-2]
                 if organ in self.organisms:
@@ -352,7 +353,7 @@ class Referencer:
                     stderr=subprocess.STDOUT,
                 )
                 output, error = process.communicate()
-                if not "Already up-to-date." in str(output):
+                if "Already up-to-date." not in str(output):
                     self.logger.info("Remote resFinder database updated. Syncing...")
                     wipeIndex = True
                 else:
@@ -427,7 +428,7 @@ class Referencer:
             )
             out, err = proc.communicate()
             self.logger.info("Downloaded reference {}".format(reference))
-        except Exception as e:
+        except Exception:
             self.logger.warning("Unable to download genome '{}' from NCBI".format(reference))
 
     def add_pubmlst(self, organism: str):
@@ -452,7 +453,7 @@ class Referencer:
                             if not subtype["description"].lower().startswith(part):
                                 missingPart = True
                         else:
-                            if not part in subtype["description"].lower():
+                            if part not in subtype["description"].lower():
                                 missingPart = True
                     if not missingPart:
                         # Seqdef always appear after isolates, so this is fine
