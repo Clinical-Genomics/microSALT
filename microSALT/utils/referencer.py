@@ -268,7 +268,7 @@ class Referencer:
         try:
             for entry in root:
                 # Some species have extra names that are not expected, such as Klebsiella pneumoniae species complex, when we expect just Klebsiella pneumoniae
-                species = entry.text.strip().lower.split(" ")[:2]
+                species = entry.text.strip().lower().split(" ")[:2]
                 organ = "_".join(species)
                 if "escherichia_coli" in organ and "#1" in organ:
                     organ = organ[:-2]
