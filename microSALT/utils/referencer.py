@@ -268,9 +268,10 @@ class Referencer:
         try:
             for entry in root:
                 # Some species have extra names that are not expected, such as Klebsiella pneumoniae species complex, when we expect just Klebsiella pneumoniae
-                species = entry.text.strip().lower.split(" ")[:2]
+                species = entry.text.strip().lower().split(" ")[:2]
                 organ = "_".join(species)
-                if "escherichia_coli" in organ and "#1" in organ:
+                # Escherichia coli and Acinetobacter baumannii have two entries, we use the one with the #1 suffix, but we have to remove it here
+                if organ in ["escherichia_coli#1", "acinetobacter_baumannii#1"]:
                     organ = organ[:-2]
                 if organ in self.organisms:
                     update_info = self._should_update_external(organ, entry)
