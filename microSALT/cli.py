@@ -11,6 +11,7 @@ import sys
 import click
 
 from microSALT import __version__, logging_levels, preset_config
+from microSALT.store.database import get_scoped_session_registry
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.reporter import Reporter
@@ -92,6 +93,13 @@ def review_sampleinfo(pfile):
     return data
 
 
+def teardown_session():
+    """Ensure that the session is closed and all resources are released to the connection pool."""
+    registry: scoped_session | None = get_scoped_session_registry()
+    if registry:
+        registry.remove()
+
+
 @click.group()
 @click.version_option(__version__)
 @click.option(
@@ -109,6 +117,7 @@ def root(ctx, logging_level):
     for handler in logger.handlers:
         handler.setLevel(logging_levels[logging_level])
     logger.debug(f"Setting logging level to {logging_levels[logging_level]}")
+    ctx.call_on_close(teardown_session)
 
 
 @root.command()

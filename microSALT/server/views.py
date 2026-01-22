@@ -1,71 +1,64 @@
-import math
 import logging
 import subprocess
-
 from datetime import date
-from flask import Flask, render_template
-from io import StringIO, BytesIO
 
+from jinja2 import Environment, FileSystemLoader
 from sqlalchemy import *
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import *
-from sqlalchemy.sql.expression import case, func
 
-from microSALT import preset_config, __version__
-from microSALT.store.db_manipulator import app
+from microSALT import __version__, preset_config, session
 from microSALT.store.orm_models import (
     Collections,
-    Projects,
     Reports,
     Samples,
-    Seq_types,
     Versions,
 )
 
-engine = create_engine(
-    app.config["SQLALCHEMY_DATABASE_URI"], connect_args={"check_same_thread": False,'timeout':15}
-)
-Session = sessionmaker(bind=engine)
-session = Session()
-app.debug = 0
 # Removes server start messages
 log = logging.getLogger("werkzeug")
 log.setLevel(logging.CRITICAL)
+from microSALT.store.database import get_session
 
 
-@app.route("/")
-def start_page():
-    projects = session.query(Projects).all()
-    session.close()
-    return render_template("start_page.html", projects=projects)
-
-
-@app.route("/microSALT/")
-def reroute_page():
-    projects = session.query(Projects).all()
-    session.close()
-    return render_template("start_page.html", projects=projects)
+def render_template(template_folder, template_name, **context):
+    """Renders a template using Jinja2 directly to avoid Flask overhead"""
+    template_loader = FileSystemLoader(searchpath=template_folder)
+    jinja_env = Environment(loader=template_loader)
+    template = jinja_env.get_template(template_name)
+    return template.render(context)
 
 
 @app.route("/microSALT/<project>")
 def project_page(project):
     organism_groups = list()
     organism_groups.append("all")
-    distinct_organisms = (
-        session.query(Samples).filter_by(CG_ID_project=project).distinct()
-    )
+    distinct_organisms = session.query(Samples).filter_by(CG_ID_project=project).distinct()
     session.close()
     for one_guy in distinct_organisms:
         if one_guy.organism not in organism_groups and one_guy.organism is not None:
             organism_groups.append(one_guy.organism)
     organism_groups.sort()
-    return render_template(
-        "project_page.html", organisms=organism_groups, project=project
-    )
+    return render_template("project_page.html", organisms=organism_groups, project=project)
 
 
 @app.route("/microSALT/<project>/qc")
 def alignment_page(project):
+    sample_info = gen_reportdata(project)
+
+    return render_template(
+        "alignment_page.html",
+        samples=sample_info["samples"],
+        topsample=sample_info["single_sample"],
+        date=date.today().isoformat(),
+        version=sample_info["versions"],
+        user=sample_info["user"],
+        threshold=preset_config["threshold"],
+        reports=sample_info["reports"],
+        build=__version__,
+    )
+
+
+def render_alignment_page(project):
     sample_info = gen_reportdata(project)
 
     return render_template(
@@ -99,6 +92,24 @@ def typing_page(project, organism_group):
     )
 
 
+def render_typing_page(project, organism_group, template_folder):
+    sample_info = gen_reportdata(project, organism_group)
+
+    return render_template(
+        template_folder=template_folder,
+        template_name="typing_page.html",
+        samples=sample_info["samples"],
+        topsample=sample_info["single_sample"],
+        date=date.today().isoformat(),
+        version=sample_info["versions"],
+        user=sample_info["user"],
+        threshold=preset_config["threshold"],
+        verified_organisms=preset_config["regex"]["verified_organisms"],
+        reports=sample_info["reports"],
+        build=__version__,
+    )
+
+
 @app.route("/microSALT/STtracker/<customer>")
 def STtracker_page(customer):
     sample_info = gen_reportdata(pid="all", organism_group="all")
@@ -116,22 +127,19 @@ def STtracker_page(customer):
 
 
 def gen_collectiondata(collect_id=[]):
-    """ Queries database using a set of samples"""
+    """Queries database using a set of samples"""
     arglist = []
-    samples = (
-        session.query(Collections).filter(Collections.ID_collection == collect_id).all()
-    )
+    samples = session.query(Collections).filter(Collections.ID_collection == collect_id).all()
     for sample in samples:
         arglist.append("Samples.CG_ID_sample=='{}'".format(sample.CG_ID_sample))
-    sample_info = session.query(Samples).filter(
-        eval("or_({})".format(",".join(arglist)))
-    )
+    sample_info = session.query(Samples).filter(eval("or_({})".format(",".join(arglist))))
     sample_info = gen_add_info(sample_info)
     return sample_info
 
 
 def gen_reportdata(pid="all", organism_group="all"):
-    """ Queries database for all necessary information for the reports """
+    """Queries database for all necessary information for the reports"""
+    session = get_session()
     if pid == "all" and organism_group == "all":
         sample_info = session.query(Samples)
     elif pid == "all":
@@ -146,16 +154,13 @@ def gen_reportdata(pid="all", organism_group="all"):
     sample_info = gen_add_info(sample_info)
 
     reports = session.query(Reports).filter(Reports.CG_ID_project == pid).all()
-    session.close()
-    sample_info["reports"] = reports = sorted(
-        reports, key=lambda x: x.version, reverse=True
-    )
+    sample_info["reports"] = reports = sorted(reports, key=lambda x: x.version, reverse=True)
 
     return sample_info
 
 
 def gen_add_info(sample_info=dict()):
-    """ Enhances a sample info struct by adding ST_status, threshold info, versioning and sorting """
+    """Enhances a sample info struct by adding ST_status, threshold info, versioning and sorting"""
     # Set ST status
     output = dict()
     output["samples"] = list()
@@ -172,11 +177,9 @@ def gen_add_info(sample_info=dict()):
         try:
             sample_info = sorted(
                 sample_info,
-                key=lambda sample: int(
-                    sample.CG_ID_sample.replace(sample.CG_ID_project, "")[1:]
-                ),
+                key=lambda sample: int(sample.CG_ID_sample.replace(sample.CG_ID_project, "")[1:]),
             )
-        except ValueError as e:
+        except ValueError:
             pass
 
     for s in sample_info:
@@ -257,7 +260,6 @@ def gen_add_info(sample_info=dict()):
         output["single_sample"] = s
 
     versions = session.query(Versions).all()
-    session.close()
     for version in versions:
         name = version.name[8:]
         output["versions"][name] = version.version
