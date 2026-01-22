@@ -5,7 +5,8 @@ from datetime import datetime, timedelta
 from dateutil import parser
 from rauth import OAuth1Session
 
-from microSALT import app, logger
+from microSALT import logger
+from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
 from microSALT.utils.pubmlst.exceptions import (
     PubMLSTError,
     SessionTokenRequestError,
@@ -18,14 +19,12 @@ from microSALT.utils.pubmlst.helpers import (
     load_auth_credentials,
     save_session_token,
 )
-from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
 
 session_token_validity = 12  # 12-hour validity
 session_expiration_buffer = 60  # 60-second buffer
 
 
 class ClientAuthentication:
-
     def __init__(self, service: str):
         """Initialize the client with the specified service."""
         self.service: str = service

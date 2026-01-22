@@ -1,26 +1,22 @@
 """Generates various reports by tapping into Flask and mySQL
-   By: Isak Sylvin, @sylvinite"""
+By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 import json
-import requests
 import os
+import smtplib
 import socket
 import sys
-import smtplib
 import time
-import yaml
-
 from datetime import datetime
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
 from shutil import copyfile
 
-from email.mime.multipart import MIMEMultipart
-from email.mime.application import MIMEApplication
+import requests
+import yaml
 
-from multiprocessing import Process
-
-from microSALT import __version__
-from microSALT.server.views import app, gen_reportdata, gen_collectiondata
+from microSALT.server.views import app, gen_collectiondata, gen_reportdata
 from microSALT.store.db_manipulator import DB_Manipulator
 
 
@@ -37,7 +33,6 @@ class Reporter:
         self.logger = log
         for k, v in config.items():
             app.config[k] = v
-        self.server = Process(target=app.run)
         self.attachments = list()
         self.filedict = dict()
         self.error = False
@@ -129,7 +124,7 @@ class Reporter:
             self.filedict[outname] = ""
             if not silent:
                 self.attachments.append(outname)
-        except Exception as e:
+        except Exception:
             self.logger.error(
                 "Flask instance currently occupied. Possible rogue process. Retry command"
             )
@@ -138,9 +133,8 @@ class Reporter:
     def gen_qc(self, silent=False):
         try:
             last_version = self.db_pusher.get_report(self.name).version
-        except Exception as e:
+        except Exception:
             self.logger.error("Project {} does not exist".format(self.name))
-            self.kill_flask()
             sys.exit(-1)
         try:
             q = requests.get(
@@ -159,7 +153,7 @@ class Reporter:
                 self.filedict[output] = local
                 if not silent:
                     self.attachments.append(output)
-        except Exception as e:
+        except Exception:
             self.logger.error(
                 "Flask instance currently occupied. Possible rogue process. Retry command"
             )
@@ -168,7 +162,7 @@ class Reporter:
     def gen_typing(self, silent=False):
         try:
             last_version = self.db_pusher.get_report(self.name).version
-        except Exception as e:
+        except Exception:
             self.logger.error("Project {} does not exist".format(self.name))
             self.kill_flask()
             sys.exit(-1)
@@ -191,7 +185,7 @@ class Reporter:
                 self.filedict[output] = local
                 if not silent:
                     self.attachments.append(output)
-        except Exception as e:
+        except Exception:
             self.logger.error(
                 "Flask instance currently occupied. Possible rogue process. Retry command"
             )
@@ -211,19 +205,19 @@ class Reporter:
         for s in sample_info["samples"]:
             if motif == "resistance":
                 for r in s.resistances:
-                    if not (r.resistance in motifdict.keys()) and r.threshold == "Passed":
+                    if r.resistance not in motifdict.keys() and r.threshold == "Passed":
                         if r.resistance is None:
                             r.resistance = "None"
                         motifdict[r.resistance] = list()
-                    if r.threshold == "Passed" and not r.gene in motifdict[r.resistance]:
+                    if r.threshold == "Passed" and r.gene not in motifdict[r.resistance]:
                         motifdict[r.resistance].append(r.gene)
             elif motif == "expec":
                 for e in s.expacs:
-                    if not (e.virulence in motifdict.keys()) and e.threshold == "Passed":
+                    if e.virulence not in motifdict.keys() and e.threshold == "Passed":
                         if e.virulence is None:
                             e.virulence = "None"
                         motifdict[e.virulence] = list()
-                    if e.threshold == "Passed" and not e.gene in motifdict[e.virulence]:
+                    if e.threshold == "Passed" and e.gene not in motifdict[e.virulence]:
                         motifdict[e.virulence].append(e.gene)
         for k, v in motifdict.items():
             motifdict[k] = sorted(v)
@@ -263,15 +257,15 @@ class Reporter:
                 # Load single sample
                 if motif == "resistance":
                     for r in s.resistances:
-                        if not (r.resistance in rowdict.keys()) and r.threshold == "Passed":
+                        if r.resistance not in rowdict.keys() and r.threshold == "Passed":
                             rowdict[r.resistance] = dict()
-                        if r.threshold == "Passed" and not r.gene in rowdict[r.resistance]:
+                        if r.threshold == "Passed" and r.gene not in rowdict[r.resistance]:
                             rowdict[r.resistance][r.gene] = r.identity
                 elif motif == "expec":
                     for e in s.expacs:
-                        if not (e.virulence in rowdict.keys()) and e.threshold == "Passed":
+                        if e.virulence not in rowdict.keys() and e.threshold == "Passed":
                             rowdict[e.virulence] = dict()
-                        if e.threshold == "Passed" and not e.gene in rowdict[e.virulence]:
+                        if e.threshold == "Passed" and e.gene not in rowdict[e.virulence]:
                             rowdict[e.virulence][e.gene] = e.identity
                 # Compare single sample to all
                 hits = ""
@@ -618,7 +612,7 @@ class Reporter:
 
             for r in s.resistances:
                 if (
-                    not (r.gene in report[s.CG_ID_sample]["blast_resfinder_resistence"])
+                    r.gene not in report[s.CG_ID_sample]["blast_resfinder_resistence"]
                     and r.threshold == "Passed"
                 ):
                     report[s.CG_ID_sample]["blast_resfinder_resistence"].append(r.gene)
@@ -632,7 +626,7 @@ class Reporter:
                 self.filedict[output] = local
                 if not silent:
                     self.attachments.append(output)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             self.logger.error(
                 "Gen_json unable to produce json file. Path {} does not exist".format(
                     os.path.basename(output)
@@ -681,6 +675,6 @@ class Reporter:
     def restart_web(self):
         try:
             self.kill_flask()
-        except Exception as e:
+        except Exception:
             pass
         self.start_web()

@@ -1,17 +1,21 @@
-import os
-import requests
-import base64
-import hashlib
 import json
-import hmac
-import time
+import os
 from pathlib import Path
-from urllib.parse import quote_plus, urlencode
-from microSALT import app, logger
-from microSALT.utils.pubmlst.exceptions import PathResolutionError, CredentialsFileNotFound, InvalidCredentials, PubMLSTError, SaveSessionError, InvalidURLError
-from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY, Encoding, URL_MAPS
 
-folders_config = app.config["folders"]
+import requests
+
+from microSALT import CONFIG, logger
+from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY, URL_MAPS
+from microSALT.utils.pubmlst.exceptions import (
+    CredentialsFileNotFound,
+    InvalidCredentials,
+    PathResolutionError,
+    PubMLSTError,
+    SaveSessionError,
+)
+
+folders_config: str = CONFIG["folders"]
+
 
 def get_path(config, config_key: str):
     """Get and expand the file path from the configuration."""
@@ -138,7 +142,7 @@ def load_auth_credentials(service: str):
         raise
     except Exception as e:
         raise PubMLSTError(f"An unexpected error occurred while loading {service} credentials: {e}")
-    
+
 
 def save_session_token(service: str, db: str, token: str, secret: str, expiration_date: str):
     """
