@@ -19,30 +19,30 @@ class Profiles:
                 self.add_table(file)
         except Exception as e:
             self.logger.error(
-                "Unable to open profile folder {}".format(self.config["folders"]["profiles"])
+                f"Unable to open profile folder {self.config['folders']['profiles']}"
             )
 
     def add_table(self, file):
         try:
-            with open("{}/{}".format(self.config["folders"]["profiles"], file), "r") as fh:
+            with open(f"{self.config['folders']['profiles']}/{file}", "r") as fh:
                 # Sets profile_* headers
                 head = fh.readline()
                 head = head.rstrip().split("\t")[:8]  # Only consider the first 8 elements
                 index = 0
 
-                header = "Table('profile_{}'.format(file), self.metadata,".format(file)
+                header = f"Table('profile_{file}'.format(file), self.metadata,"
                 while index < len(head):
                     # Set ST as PK
                     if head[index] == "ST":
-                        header += "Column(head[{}], SmallInteger, primary_key=True),".format(index)
+                        header += f"Column(head[{index}], SmallInteger, primary_key=True),"
                     else:
-                        header += "Column(head[{}], SmallInteger),".format(index)
+                        header += f"Column(head[{index}], SmallInteger),"
                     index = index + 1
                 header += ")"
                 p = eval(header)
                 self.tables[file] = p
         except Exception as e:
-            self.logger.error("Unable to open profile file {}".format(file))
+            self.logger.error(f"Unable to open profile file {file}")
 
 
 class Novel:
@@ -57,28 +57,28 @@ class Novel:
                 self.add_table(file)
         except Exception as e:
             self.logger.error(
-                "Unable to open profile folder {}".format(self.config["folders"]["profiles"])
+                f"Unable to open profile folder {self.config['folders']['profiles']}"
             )
 
     def add_table(self, file):
         try:
-            with open("{}/{}".format(self.config["folders"]["profiles"], file), "r") as fh:
+            with open(f"{self.config['folders']['profiles']}/{file}", "r") as fh:
                 # Sets profile_* headers
                 head = fh.readline()
                 head = head.rstrip().split("\t")[:8]  # Only consider the first 8 elements
                 index = 0
 
-                header = "Table('novel_{}'.format(file), self.metadata,".format(file)
+                header = f"Table('novel_{file}'.format(file), self.metadata,"
                 while index < len(head):
                     # Set ST as PK
                     if head[index] == "ST":
-                        header += "Column(head[{}], SmallInteger, primary_key=True),".format(index)
+                        header += f"Column(head[{index}], SmallInteger, primary_key=True),"
                     # Set Clonal complex as string
                     else:
-                        header += "Column(head[{}], SmallInteger),".format(index)
+                        header += f"Column(head[{index}], SmallInteger),"
                     index = index + 1
                 header += ")"
                 p = eval(header)
                 self.tables[file] = p
         except Exception as e:
-            self.logger.error("Unable to open profile file {}".format(file))
+            self.logger.error(f"Unable to open profile file {file}")
