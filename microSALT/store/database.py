@@ -9,7 +9,7 @@ engine: Engine | None = None
 
 def initialize_database(db_uri: str) -> None:
     """Initialize the SQLAlchemy engine and session for status db."""
-    global ENGINE, SESSION
+    global engine, session
 
     engine = create_engine(db_uri, pool_pre_ping=True)
     session_factory = sessionmaker(engine)

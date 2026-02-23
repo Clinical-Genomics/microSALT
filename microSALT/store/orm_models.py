@@ -15,11 +15,6 @@ from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
 
-# Example engine, change to your actual DB URI
-# engine = create_engine("sqlite:///yourdb.sqlite3")
-# Session = sessionmaker(bind=engine)
-# session = Session()
-
 
 class Samples(Base):
     __tablename__ = "samples"

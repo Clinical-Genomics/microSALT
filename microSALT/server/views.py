@@ -1,12 +1,11 @@
 import logging
 import subprocess
 from datetime import date
+from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
-from sqlalchemy import *
-from sqlalchemy.sql import *
 
-from microSALT import __version__, preset_config, session
+from microSALT import __version__, preset_config
 from microSALT.store.orm_models import (
     Collections,
     Reports,
@@ -14,39 +13,69 @@ from microSALT.store.orm_models import (
     Versions,
 )
 
+from microSALT.store.database import get_session
+
 # Removes server start messages
 log = logging.getLogger("werkzeug")
 log.setLevel(logging.CRITICAL)
-from microSALT.store.database import get_session
+
+TEMPLATE_FOLDER = Path(__file__).parent / "templates"
+
+
+def _make_url_for(project=None):
+    """Creates a url_for stub for use in static Jinja2 templates."""
+
+    def url_for(endpoint, **kwargs):
+        if endpoint == "static":
+            return kwargs.get("filename", "")
+        elif endpoint == "start_page":
+            return "#"
+        elif endpoint == "project_page":
+            p = kwargs.get("project", project or "")
+            return "#project-{}".format(p)
+        elif endpoint == "typing_page":
+            p = kwargs.get("project", project or "")
+            og = kwargs.get("organism_group", "all")
+            return "#typing-{}-{}".format(p, og)
+        return "#"
+
+    return url_for
 
 
 def render_template(template_folder, template_name, **context):
     """Renders a template using Jinja2 directly to avoid Flask overhead"""
-    template_loader = FileSystemLoader(searchpath=template_folder)
+    template_loader = FileSystemLoader(searchpath=str(template_folder))
     jinja_env = Environment(loader=template_loader)
     template = jinja_env.get_template(template_name)
-    return template.render(context)
+    if "url_for" not in context:
+        context["url_for"] = _make_url_for()
+    return template.render(**context)
 
 
-@app.route("/microSALT/<project>")
-def project_page(project):
+def project_page(project, template_folder: Path = TEMPLATE_FOLDER):
+    session = get_session()
     organism_groups = list()
     organism_groups.append("all")
     distinct_organisms = session.query(Samples).filter_by(CG_ID_project=project).distinct()
-    session.close()
     for one_guy in distinct_organisms:
         if one_guy.organism not in organism_groups and one_guy.organism is not None:
             organism_groups.append(one_guy.organism)
     organism_groups.sort()
-    return render_template("project_page.html", organisms=organism_groups, project=project)
+    return render_template(
+        template_folder=template_folder,
+        template_name="project_page.html",
+        organisms=organism_groups,
+        project=project,
+        url_for=_make_url_for(project),
+    )
 
 
-@app.route("/microSALT/<project>/qc")
-def alignment_page(project):
+def alignment_page(project, template_folder: Path = TEMPLATE_FOLDER):
     sample_info = gen_reportdata(project)
 
     return render_template(
-        "alignment_page.html",
+        template_folder=template_folder,
+        template_name="alignment_page.html",
         samples=sample_info["samples"],
         topsample=sample_info["single_sample"],
         date=date.today().isoformat(),
@@ -58,41 +87,11 @@ def alignment_page(project):
     )
 
 
-def render_alignment_page(project):
-    sample_info = gen_reportdata(project)
-
-    return render_template(
-        "alignment_page.html",
-        samples=sample_info["samples"],
-        topsample=sample_info["single_sample"],
-        date=date.today().isoformat(),
-        version=sample_info["versions"],
-        user=sample_info["user"],
-        threshold=preset_config["threshold"],
-        reports=sample_info["reports"],
-        build=__version__,
-    )
+def render_alignment_page(project, template_folder: Path = TEMPLATE_FOLDER):
+    return alignment_page(project, template_folder=template_folder)
 
 
-@app.route("/microSALT/<project>/typing/<organism_group>")
-def typing_page(project, organism_group):
-    sample_info = gen_reportdata(project, organism_group)
-
-    return render_template(
-        "typing_page.html",
-        samples=sample_info["samples"],
-        topsample=sample_info["single_sample"],
-        date=date.today().isoformat(),
-        version=sample_info["versions"],
-        user=sample_info["user"],
-        threshold=preset_config["threshold"],
-        verified_organisms=preset_config["regex"]["verified_organisms"],
-        reports=sample_info["reports"],
-        build=__version__,
-    )
-
-
-def render_typing_page(project, organism_group, template_folder):
+def typing_page(project, organism_group, template_folder: Path = TEMPLATE_FOLDER):
     sample_info = gen_reportdata(project, organism_group)
 
     return render_template(
@@ -110,9 +109,12 @@ def render_typing_page(project, organism_group, template_folder):
     )
 
 
-@app.route("/microSALT/STtracker/<customer>")
-def STtracker_page(customer):
-    sample_info = gen_reportdata(pid="all", organism_group="all")
+def render_typing_page(project, organism_group, template_folder: Path = TEMPLATE_FOLDER):
+    return typing_page(project, organism_group, template_folder=template_folder)
+
+
+def STtracker_page(customer, template_folder: Path = TEMPLATE_FOLDER):
+    sample_info = gen_reportdata(project_id="all", organism_group="all")
     final_samples = list()
     for s in sample_info["samples"]:
         if customer == "all" or s.projects.Customer_ID == customer:
@@ -122,13 +124,17 @@ def STtracker_page(customer):
     final_samples = sorted(final_samples, key=lambda sample: (sample.CG_ID_sample))
 
     return render_template(
-        "STtracker_page.html", date=date.today().isoformat(), internal=final_samples
+        template_folder=template_folder,
+        template_name="STtracker_page.html",
+        date=date.today().isoformat(),
+        internal=final_samples,
     )
 
 
 def gen_collectiondata(collect_id=[]):
     """Queries database using a set of samples"""
     arglist = []
+    session = get_session()
     samples = session.query(Collections).filter(Collections.ID_collection == collect_id).all()
     for sample in samples:
         arglist.append("Samples.CG_ID_sample=='{}'".format(sample.CG_ID_sample))
@@ -137,23 +143,23 @@ def gen_collectiondata(collect_id=[]):
     return sample_info
 
 
-def gen_reportdata(pid="all", organism_group="all"):
+def gen_reportdata(project_id="all", organism_group="all"):
     """Queries database for all necessary information for the reports"""
     session = get_session()
-    if pid == "all" and organism_group == "all":
+    if project_id == "all" and organism_group == "all":
         sample_info = session.query(Samples)
-    elif pid == "all":
+    elif project_id == "all":
         sample_info = session.query(Samples).filter(Samples.organism == organism_group)
     elif organism_group == "all":
-        sample_info = session.query(Samples).filter(Samples.CG_ID_project == pid)
+        sample_info = session.query(Samples).filter(Samples.CG_ID_project == project_id)
     else:
         sample_info = session.query(Samples).filter(
-            Samples.CG_ID_project == pid, Samples.organism == organism_group
+            Samples.CG_ID_project == project_id, Samples.organism == organism_group
         )
 
     sample_info = gen_add_info(sample_info)
 
-    reports = session.query(Reports).filter(Reports.CG_ID_project == pid).all()
+    reports = session.query(Reports).filter(Reports.CG_ID_project == project_id).all()
     sample_info["reports"] = reports = sorted(reports, key=lambda x: x.version, reverse=True)
 
     return sample_info
@@ -161,6 +167,7 @@ def gen_reportdata(pid="all", organism_group="all"):
 
 def gen_add_info(sample_info=dict()):
     """Enhances a sample info struct by adding ST_status, threshold info, versioning and sorting"""
+    session = get_session()
     # Set ST status
     output = dict()
     output["samples"] = list()

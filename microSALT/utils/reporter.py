@@ -13,10 +13,15 @@ from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from shutil import copyfile
 
-import requests
 import yaml
 
-from microSALT.server.views import app, gen_collectiondata, gen_reportdata
+from microSALT.server.views import (
+    alignment_page,
+    gen_collectiondata,
+    gen_reportdata,
+    STtracker_page,
+    typing_page,
+)
 from microSALT.store.db_manipulator import DB_Manipulator
 
 
@@ -31,8 +36,6 @@ class Reporter:
             self.output = output + "/"
         self.config = config
         self.logger = log
-        for k, v in config.items():
-            app.config[k] = v
         self.attachments = list()
         self.filedict = dict()
         self.error = False
@@ -113,21 +116,16 @@ class Reporter:
     def gen_STtracker(self, customer="all", silent=False):
         self.name = "Sequence Type Update"
         try:
-            r = requests.get(
-                "http://127.0.0.1:5000/microSALT/STtracker/{}".format(customer),
-                allow_redirects=True,
-            )
+            content = STtracker_page(customer)
             outname = "{}/ST_updates_{}.html".format(self.output, self.now)
             outfile = open(outname, "wb")
-            outfile.write(r.content.decode("iso-8859-1").encode("utf8"))
+            outfile.write(content.encode("utf8"))
             outfile.close()
             self.filedict[outname] = ""
             if not silent:
                 self.attachments.append(outname)
         except Exception:
-            self.logger.error(
-                "Flask instance currently occupied. Possible rogue process. Retry command"
-            )
+            self.logger.error("Failed to generate ST tracker report")
             self.error = True
 
     def gen_qc(self, silent=False):
@@ -137,26 +135,20 @@ class Reporter:
             self.logger.error("Project {} does not exist".format(self.name))
             sys.exit(-1)
         try:
-            q = requests.get(
-                "http://127.0.0.1:5000/microSALT/{}/qc".format(self.name),
-                allow_redirects=True,
-            )
+            content = alignment_page(self.name)
             outfile = "{}_QC_{}.html".format(self.sample.get("Customer_ID_project"), last_version)
             local = "{}/{}".format(self.output, outfile)
             output = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
 
-            outfile = open(output, "wb")
-            outfile.write(q.content.decode("iso-8859-1").encode("utf8"))
-            outfile.close()
+            with open(output, "wb") as f:
+                f.write(content.encode("utf8"))
 
             if os.path.isfile(output):
                 self.filedict[output] = local
                 if not silent:
                     self.attachments.append(output)
         except Exception:
-            self.logger.error(
-                "Flask instance currently occupied. Possible rogue process. Retry command"
-            )
+            self.logger.error("Failed to generate QC report")
             self.error = True
 
     def gen_typing(self, silent=False):
@@ -164,31 +156,24 @@ class Reporter:
             last_version = self.db_pusher.get_report(self.name).version
         except Exception:
             self.logger.error("Project {} does not exist".format(self.name))
-            self.kill_flask()
             sys.exit(-1)
         try:
-            r = requests.get(
-                "http://127.0.0.1:5000/microSALT/{}/typing/all".format(self.name),
-                allow_redirects=True,
-            )
+            content = typing_page(self.name, "all")
             outfile = "{}_Typing_{}.html".format(
                 self.sample.get("Customer_ID_project"), last_version
             )
             local = "{}/{}".format(self.output, outfile)
             output = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
 
-            outfile = open(output, "wb")
-            outfile.write(r.content.decode("iso-8859-1").encode("utf8"))
-            outfile.close()
+            with open(output, "wb") as f:
+                f.write(content.encode("utf8"))
 
             if os.path.isfile(output):
                 self.filedict[output] = local
                 if not silent:
                     self.attachments.append(output)
         except Exception:
-            self.logger.error(
-                "Flask instance currently occupied. Possible rogue process. Retry command"
-            )
+            self.logger.error("Failed to generate typing report")
             self.error = True
 
     def gen_motif(self, motif="resistance", silent=False):
@@ -661,20 +646,4 @@ class Reporter:
         s.quit()
         self.logger.info("Mail containing report sent to {} from {}".format(msg["To"], msg["From"]))
 
-    def start_web(self):
-        self.server.start()
-        self.logger.info("Started webserver on http://127.0.0.1:5000/")
-        # Hinders requests before server goes up
-        time.sleep(0.15)
 
-    def kill_flask(self):
-        self.server.terminate()
-        self.server.join()
-        self.logger.info("Closed webserver on http://127.0.0.1:5000/")
-
-    def restart_web(self):
-        try:
-            self.kill_flask()
-        except Exception:
-            pass
-        self.start_web()
