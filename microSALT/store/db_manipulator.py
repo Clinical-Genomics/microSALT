@@ -9,7 +9,6 @@ import warnings
 
 from collections import OrderedDict
 from datetime import datetime, timezone
-from typing import Dict, List
 
 from dateutil.parser import parse
 from sqlalchemy import inspect as sa_inspect, MetaData, desc, create_engine, or_, and_, text
@@ -97,7 +96,7 @@ class DB_Manipulator:
                 )
                 self.logger.info("Profile table novel_{} initialized".format(k))
 
-    def add_rec(self, data_dict: Dict[str, str], tablename: str, force=False):
+    def add_rec(self, data_dict: dict[str, str], tablename: str, force=False):
         """Adds a record to the specified table through a dict with columns as keys."""
         pk_list = list()
         # Non-orm
@@ -171,7 +170,7 @@ class DB_Manipulator:
                     )
                 )
 
-    def upd_rec(self, req_dict: Dict[str, str], tablename: str, upd_dict: Dict[str, str]):
+    def upd_rec(self, req_dict: dict[str, str], tablename: str, upd_dict: dict[str, str]):
         """Updates a record to the specified table through a dict with columns as keys."""
         table = eval(tablename)
         self.logger.debug(f"Updating table {tablename} with {upd_dict}")
@@ -238,7 +237,7 @@ class DB_Manipulator:
                 self.session.commit()
         self.logger.info("Removed information for {}".format(name))
 
-    def query_rec(self, tablename: str, filters: Dict[str, str]):
+    def query_rec(self, tablename: str, filters: dict[str, str]):
         """Fetches records table, using a primary-key dict with columns as keys.
         Non-PK are ignored"""
         # Non-orm
@@ -263,7 +262,7 @@ class DB_Manipulator:
             entries = self.session.query(table).filter(eval(filter)).all()
             return entries
 
-    def top_index(self, table_str: str, filters: Dict[str, str], column: str):
+    def top_index(self, table_str: str, filters: dict[str, str], column: str):
         """Fetches the top index from column of table, by applying a dict with columns as keys."""
         table = eval(table_str)
         args = list()
@@ -329,7 +328,7 @@ class DB_Manipulator:
         table = eval(tablename)
         return dict.fromkeys(table.__table__.columns.keys())
 
-    def exists(self, table, item: Dict[str, str]):
+    def exists(self, table, item: dict[str, str]):
         """Takes a k-v pair and checks for the entrys existence in the given table"""
         filterstring = ""
         for k, v in item.items():
@@ -736,7 +735,7 @@ class DB_Manipulator:
             self.setPredictor(cg_sid, bestSet)
             return -2
 
-    def bestST(self, cg_sid: str, st_list: List, type="profile"):
+    def bestST(self, cg_sid: str, st_list: list, type="profile"):
         """Takes in a list of ST and a sample.
         Establishes which ST is most likely by criteria id*span -> eval -> contig coverage
         & flags involved alleles"""
