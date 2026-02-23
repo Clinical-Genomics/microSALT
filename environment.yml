@@ -4,14 +4,14 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - python=3.12
-  - blast=2.12.0
-  - bwa=0.7.17
-  - picard=2.20.3
-  - pigz>=2.4
-  - quast=5.3.0
-  - samtools=1.13
-  - trimmomatic=0.39
-  - r-base=4.1.1
-  - openjdk=11.0.9.1
-  - skesa=2.5.1
+  - python=3.13
+  - bioconda::blast=2.12.0
+  - bioconda::bwa=0.7.17
+  - bioconda::picard=2.20.3
+  - bioconda::pigz>=2.4
+  - bioconda::quast=5.3.0
+  - bioconda::samtools=1.13
+  - bioconda::trimmomatic=0.39
+  - conda-forge::r-base=4.1.1
+  - conda-forge::openjdk=11.0.9.1
+  - bioconda::skesa=2.5.1
