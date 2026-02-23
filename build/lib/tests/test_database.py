@@ -3,14 +3,19 @@
 import json
 import os
 import pathlib
+import pdb
 import pytest
+import re
+import requests
+import sys
+import time
 
 from sysconfig import get_path
 from unittest.mock import patch
-from sqlalchemy import inspect as sa_inspect
 
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT import preset_config, logger
+from microSALT.cli import root
 
 
 def unpack_db_json(filename):
@@ -27,6 +32,7 @@ def unpack_db_json(filename):
 
 @pytest.fixture
 def dbm():
+    db_file = re.search('sqlite:///(.+)', preset_config['database']['SQLALCHEMY_DATABASE_URI']).group(1)
     dbm = DB_Manipulator(config=preset_config, log=logger)
     dbm.create_tables()
 
@@ -44,14 +50,13 @@ def dbm():
 
 
 def test_create_every_table(dbm):
-    inspector = sa_inspect(dbm.engine)
-    assert inspector.has_table('samples')
-    assert inspector.has_table('seq_types')
-    assert inspector.has_table('resistances')
-    assert inspector.has_table('expacs')
-    assert inspector.has_table('projects')
-    assert inspector.has_table('reports')
-    assert inspector.has_table('collections')
+    assert dbm.engine.dialect.has_table(dbm.engine, 'samples')
+    assert dbm.engine.dialect.has_table(dbm.engine, 'seq_types')
+    assert dbm.engine.dialect.has_table(dbm.engine, 'resistances')
+    assert dbm.engine.dialect.has_table(dbm.engine, 'expacs')
+    assert dbm.engine.dialect.has_table(dbm.engine, 'projects')
+    assert dbm.engine.dialect.has_table(dbm.engine, 'reports')
+    assert dbm.engine.dialect.has_table(dbm.engine, 'collections')
 
 
 @pytest.mark.xfail(reason="Can no longer fetch from databases without authenticating")

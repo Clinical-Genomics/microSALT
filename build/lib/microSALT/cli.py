@@ -1,0 +1,495 @@
+"""This is the main entry point of microSALT.
+By: Isak Sylvin, @sylvinite"""
+
+#!/usr/bin/env python
+
+import json
+import logging
+import os
+import sys
+
+import click
+
+from microSALT import __version__, logging_levels, preset_config
+from microSALT.store.database import get_scoped_session_registry
+from microSALT.utils.job_creator import Job_Creator
+from microSALT.utils.referencer import Referencer
+from microSALT.utils.reporter import Reporter
+from microSALT.utils.scraper import Scraper
+
+default_sampleinfo = {
+    "CG_ID_project": "XXX0000",
+    "CG_ID_sample": "XXX0000A1",
+    "Customer_ID_project": "100100",
+    "Customer_ID_sample": "10XY123456",
+    "Customer_ID": "cust000",
+    "application_tag": "SOMTIN100",
+    "date_arrival": "0001-01-01 00:00:00",
+    "date_libprep": "0001-01-01 00:00:00",
+    "date_sequencing": "0001-01-01 00:00:00",
+    "method_libprep": "Not in LIMS",
+    "method_sequencing": "Not in LIMS",
+    "organism": "Staphylococcus aureus",
+    "priority": "standard",
+    "reference": "None",
+}
+
+logger = logging.getLogger("main_logger")
+
+if preset_config == "":
+    click.echo(
+        "ERROR - No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting."
+    )
+    sys.exit(-1)
+
+
+@click.pass_context
+def set_cli_config(ctx, config):
+    if config != "":
+        if os.path.exists(config):
+            try:
+                t = ctx.obj["config"]
+                with open(os.path.abspath(config), "r") as conf:
+                    ctx.obj["config"] = json.load(conf)
+                ctx.obj["config"]["folders"]["expec"] = t["folders"]["expec"]
+                ctx.obj["config"]["folders"]["adapters"] = t["folders"]["adapters"]
+                ctx.obj["config"]["config_path"] = os.path.abspath(config)
+            except Exception:
+                pass
+
+
+def done():
+    click.echo("INFO - Execution finished!")
+    logger.debug("INFO - Execution finished!")
+
+
+def review_sampleinfo(pfile):
+    """Reviews sample info. Returns loaded json object"""
+
+    try:
+        with open(pfile) as json_file:
+            data = json.load(json_file)
+    except Exception:
+        click.echo("Unable to read provided sample info file as json. Exiting..")
+        sys.exit(-1)
+
+    if isinstance(data, list):
+        for entry in data:
+            for k, v in default_sampleinfo.items():
+                if k not in entry:
+                    click.echo(
+                        "WARNING - Parameter {} needs to be provided in sample json. Formatting example: ({})".format(
+                            k, v
+                        )
+                    )
+    else:
+        for k, v in default_sampleinfo.items():
+            if k not in data:
+                click.echo(
+                    "WARNING - Parameter {} needs to be provided in sample json. Formatting example: ({})".format(
+                        k, v
+                    )
+                )
+    return data
+
+
+def teardown_session():
+    """Ensure that the session is closed and all resources are released to the connection pool."""
+    registry: scoped_session | None = get_scoped_session_registry()
+    if registry:
+        registry.remove()
+
+
+@click.group()
+@click.version_option(__version__)
+@click.option(
+    "--logging-level",
+    default="INFO",
+    type=click.Choice(list(logging_levels.keys())),
+    help="Set the logging level for the CLI",
+)
+@click.pass_context
+def root(ctx, logging_level):
+    """microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline"""
+    ctx.obj = {}
+    ctx.obj["config"] = preset_config
+    logger.setLevel(logging_levels[logging_level])
+    for handler in logger.handlers:
+        handler.setLevel(logging_levels[logging_level])
+    logger.debug(f"Setting logging level to {logging_levels[logging_level]}")
+    ctx.call_on_close(teardown_session)
+
+
+@root.command()
+@click.argument("sampleinfo_file")
+@click.option("--input", help="Full path to input folder", default="")
+@click.option("--config", help="microSALT config to override default", default="")
+@click.option(
+    "--dry",
+    help="Builds instance without posting to SLURM",
+    default=False,
+    is_flag=True,
+)
+@click.option(
+    "--email",
+    default=preset_config["regex"]["mail_recipient"],
+    help="Forced e-mail recipient",
+)
+@click.option("--skip_update", default=False, help="Skips downloading of references", is_flag=True)
+@click.option(
+    "--force_update",
+    default=False,
+    help="Forces downloading of pubMLST references",
+    is_flag=True,
+)
+@click.option("--untrimmed", help="Use untrimmed input data", default=False, is_flag=True)
+@click.pass_context
+def analyse(
+    ctx,
+    sampleinfo_file,
+    input,
+    config,
+    dry,
+    email,
+    skip_update,
+    force_update,
+    untrimmed,
+):
+    """Sequence analysis, typing and resistance identification"""
+    # Run section
+    pool = []
+    trimmed = not untrimmed
+    set_cli_config(config)
+    ctx.obj["config"]["regex"]["mail_recipient"] = email
+    ctx.obj["config"]["dry"] = dry
+    if not os.path.isdir(input):
+        click.echo("ERROR - Sequence data folder {} does not exist.".format(input))
+        ctx.abort()
+    for subfolder in os.listdir(input):
+        if os.path.isdir("{}/{}".format(input, subfolder)):
+            pool.append(subfolder)
+
+    run_settings = {
+        "input": input,
+        "dry": dry,
+        "email": email,
+        "skip_update": skip_update,
+        "trimmed": not untrimmed,
+        "pool": pool,
+    }
+
+    # Samples section
+    sampleinfo = review_sampleinfo(sampleinfo_file)
+    run_creator = Job_Creator(
+        config=ctx.obj["config"],
+        log=logger,
+        sampleinfo=sampleinfo,
+        run_settings=run_settings,
+    )
+
+    ext_refs = Referencer(
+        config=ctx.obj["config"],
+        log=logger,
+        sampleinfo=sampleinfo,
+        force=force_update,
+    )
+    click.echo("INFO - Checking versions of references..")
+    try:
+        if not skip_update:
+            ext_refs.identify_new(project=True)
+            ext_refs.update_refs()
+            click.echo("INFO - Version check done. Creating sbatch jobs")
+        else:
+            click.echo("INFO - Skipping version check.")
+    except Exception as e:
+        click.echo("{}".format(e))
+    if len(sampleinfo) > 1:
+        run_creator.project_job()
+    elif len(sampleinfo) == 1:
+        run_creator.project_job(single_sample=True)
+    else:
+        ctx.abort()
+
+    done()
+
+
+@root.group()
+@click.pass_context
+def utils(ctx):
+    """Utilities for specific purposes"""
+    pass
+
+
+@utils.group()
+@click.pass_context
+def refer(ctx):
+    """Manipulates MLST organisms"""
+    pass
+
+
+@utils.command()
+@click.argument("sampleinfo_file")
+@click.option("--input", help="Full path to project folder", default="")
+@click.option(
+    "--track",
+    help="Run a specific analysis track",
+    default="default",
+    type=click.Choice(["default", "typing", "qc", "cgmlst"]),
+)
+@click.option("--config", help="microSALT config to override default", default="")
+@click.option(
+    "--dry",
+    help="Builds instance without posting to SLURM",
+    default=False,
+    is_flag=True,
+)
+@click.option(
+    "--email",
+    default=preset_config["regex"]["mail_recipient"],
+    help="Forced e-mail recipient",
+)
+@click.option("--skip_update", default=False, help="Skips downloading of references", is_flag=True)
+@click.option(
+    "--report",
+    default="default",
+    type=click.Choice(["default", "typing", "motif_overview", "qc", "json_dump", "st_update"]),
+)
+@click.option("--output", help="Report output folder", default="")
+@click.pass_context
+def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, report, output):
+    """Sequence analysis, typing and resistance identification"""
+    # Run section
+    pool = []
+    set_cli_config(config)
+    ctx.obj["config"]["regex"]["mail_recipient"] = email
+    ctx.obj["config"]["dry"] = dry
+    if not os.path.isdir(input):
+        click.echo("ERROR - Sequence data folder {} does not exist.".format(input))
+        ctx.abort()
+    if output == "":
+        output = input
+    for subfolder in os.listdir(input):
+        if os.path.isdir("{}/{}".format(input, subfolder)):
+            pool.append(subfolder)
+
+    run_settings = {
+        "input": input,
+        "track": track,
+        "dry": dry,
+        "email": email,
+        "skip_update": skip_update,
+    }
+
+    # Samples section
+    sampleinfo = review_sampleinfo(sampleinfo_file)
+    ext_refs = Referencer(config=ctx.obj["config"], log=logger, sampleinfo=sampleinfo)
+    click.echo("INFO - Checking versions of references..")
+    try:
+        if not skip_update:
+            ext_refs.identify_new(project=True)
+            ext_refs.update_refs()
+            click.echo("INFO - Version check done. Creating sbatch jobs")
+        else:
+            click.echo("INFO - Skipping version check.")
+    except Exception as e:
+        click.echo("{}".format(e))
+
+    res_scraper = Scraper(config=ctx.obj["config"], log=logger, sampleinfo=sampleinfo, input=input)
+    if isinstance(sampleinfo, list) and len(sampleinfo) > 1:
+        res_scraper.scrape_project()
+        # for subfolder in pool:
+        #  res_scraper.scrape_sample()
+    else:
+        res_scraper.scrape_sample()
+
+    codemonkey = Reporter(
+        config=ctx.obj["config"],
+        log=logger,
+        sampleinfo=sampleinfo,
+        output=output,
+        collection=True,
+    )
+    codemonkey.report(report)
+    done()
+
+
+@refer.command()
+@click.argument("organism")
+@click.option("--force", help="Redownloads existing organism", default=False, is_flag=True)
+@click.pass_context
+def add(ctx, organism, force):
+    """Adds a new internal organism from pubMLST"""
+    referee = Referencer(config=ctx.obj["config"], log=logger, force=force)
+    try:
+        referee.add_pubmlst(organism)
+    except Exception as e:
+        click.echo(e.args[0])
+        ctx.abort()
+    click.echo("INFO - Checking versions of all references..")
+    referee = Referencer(config=ctx.obj["config"], log=logger, force=force)
+    referee.update_refs()
+
+
+@refer.command()
+@click.pass_context
+def observe(ctx):
+    """Lists all stored organisms"""
+    refe = Referencer(config=ctx.obj["config"], log=logger)
+    click.echo("INFO - Currently stored organisms:")
+    for org in sorted(refe.existing_organisms()):
+        click.echo(org.replace("_", " ").capitalize())
+
+
+@utils.command()
+@click.argument("sampleinfo_file")
+@click.option(
+    "--email",
+    default=preset_config["regex"]["mail_recipient"],
+    help="Forced e-mail recipient",
+)
+@click.option(
+    "--type",
+    default="default",
+    type=click.Choice(["default", "typing", "motif_overview", "qc", "json_dump", "st_update"]),
+)
+@click.option("--output", help="Full path to output folder", default="")
+@click.option("--collection", default=False, is_flag=True)
+@click.pass_context
+def report(ctx, sampleinfo_file, email, type, output, collection):
+    """Re-generates report for a project"""
+    ctx.obj["config"]["regex"]["mail_recipient"] = email
+    sampleinfo = review_sampleinfo(sampleinfo_file)
+    codemonkey = Reporter(
+        config=ctx.obj["config"],
+        log=logger,
+        sampleinfo=sampleinfo,
+        output=output,
+        collection=collection,
+    )
+    codemonkey.report(type)
+    done()
+
+
+@utils.command()
+@click.pass_context
+def view(ctx):
+    """Starts an interactive webserver for viewing"""
+    codemonkey = Reporter(config=ctx.obj["config"], log=logger)
+    codemonkey.start_web()
+
+
+@utils.command()
+@click.option("--input", help="Full path to project folder", default=os.getcwd())
+@click.pass_context
+def generate(ctx, input):
+    """Creates a blank sample info json for the given input folder"""
+    input = os.path.abspath(input)
+    project_name = os.path.basename(input)
+
+    defaults = default_sampleinfo.copy()
+
+    pool = []
+    if not os.path.isdir(input):
+        click.echo("ERROR - Sequence data folder {} does not exist.".format(project_name))
+        ctx.abort()
+    elif input != os.getcwd():
+        for subfolder in os.listdir(input):
+            if os.path.isdir("{}/{}".format(input, subfolder)):
+                pool.append(defaults.copy())
+                pool[-1]["CG_ID_project"] = project_name
+                pool[-1]["CG_ID_sample"] = subfolder
+    else:
+        project_name = "default_sample_info"
+        pool.append(defaults.copy())
+
+    with open("{}/{}.json".format(os.getcwd(), project_name), "w") as output:
+        json.dump(pool, output, indent=2)
+    click.echo("INFO - Created {}.json in current folder".format(project_name))
+    done()
+
+
+@utils.group()
+@click.pass_context
+def resync(ctx):
+    """Updates internal ST with pubMLST equivalent"""
+
+
+@resync.command()
+@click.option(
+    "--type",
+    default="list",
+    type=click.Choice(["report", "list"]),
+    help="Output format",
+)
+@click.option("--customer", default="all", help="Customer id filter")
+@click.option("--skip_update", default=False, help="Skips downloading of references", is_flag=True)
+@click.option(
+    "--email",
+    default=preset_config["regex"]["mail_recipient"],
+    help="Forced e-mail recipient",
+)
+@click.option("--output", help="Full path to output folder", default="")
+@click.pass_context
+def review(ctx, type, customer, skip_update, email, output):
+    """Generates information about novel ST"""
+    # Trace exists by some samples having pubMLST_ST filled in. Make trace function later
+    ctx.obj["config"]["regex"]["mail_recipient"] = email
+    ext_refs = Referencer(config=ctx.obj["config"], log=logger)
+    if not skip_update:
+        ext_refs.update_refs()
+        ext_refs.resync()
+    click.echo("INFO - Version check done. Generating output")
+    if type == "report":
+        codemonkey = Reporter(config=ctx.obj["config"], log=logger, output=output)
+        codemonkey.report(type="st_update", customer=customer)
+    elif type == "list":
+        ext_refs.resync(type=type)
+    done()
+
+
+@resync.command()
+@click.option("--force-update", default=False, is_flag=True, help="Forces update")
+@click.pass_context
+def update_refs(ctx, force_update: bool):
+    """Updates all references"""
+    ext_refs = Referencer(config=ctx.obj["config"], log=logger, force=force_update)
+    ext_refs.update_refs()
+    done()
+
+
+@resync.command()
+@click.option("--force-update", default=False, is_flag=True, help="Forces update")
+@click.pass_context
+def update_from_static(ctx, force_update: bool):
+    """Updates a specific organism"""
+    ext_refs = Referencer(config=ctx.obj["config"], force=force_update, log=logger)
+    ext_refs.fetch_external()
+    done()
+
+
+@resync.command()
+@click.argument("organism")
+@click.option("--force-update", default=False, is_flag=True, help="Forces update")
+@click.option("--external", is_flag=True, default=False, help="Updates from external sources")
+@click.pass_context
+def update_organism(ctx, external: bool, force_update: bool, organism: str):
+    """Updates a specific organism"""
+    ext_refs = Referencer(config=ctx.obj["config"], log=logger, force=force_update)
+    ext_refs.update_organism(external=external, organism=organism)
+    done()
+
+
+@resync.command()
+@click.argument("sample_name")
+@click.option(
+    "--force",
+    default=False,
+    is_flag=True,
+    help="Resolves sample without checking for pubMLST match",
+)
+@click.pass_context
+def overwrite(ctx, sample_name, force):
+    """Flags sample as resolved"""
+    ext_refs = Referencer(config=ctx.obj["config"], log=logger)
+    ext_refs.resync(type="overwrite", sample=sample_name, ignore=force)
+    done()

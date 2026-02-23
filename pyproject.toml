@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "microSALT"
+dynamic = ["version"]
+description = "Microbial Sequence Analysis and Loci-based Typing"
+authors = [
+    {name = "Isak Sylvin", email = "isak.sylvin@scilifelab.se"},
+]
+requires-python = ">=3.10"
+dependencies = [
+    "biopython>=1.81",
+    "bs4==0.0.1",
+    "click>=8.0",
+    "Jinja2>=3.0",
+    "python-dateutil>=2.8",
+    "pymysql>=1.0",
+    "pyyaml>=6.0",
+    "sqlalchemy>=1.4.50,<2",
+    "genologics==0.4.6",
+    "rauth==0.7.3",
+    "werkzeug>=3.1.6",
+]
+
+[project.scripts]
+microSALT = "microSALT.cli:root"
+
+[project.urls]
+Homepage = "https://github.com/Clinical-Genomics/microSALT"
+
+[tool.setuptools.dynamic]
+version = {attr = "microSALT.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["microSALT*"]
+
+[tool.setuptools.package-data]
+"microSALT.server" = ["templates/*"]
+
+[dependency-groups]
+dev = [
+    "black>=23.0",
+    "coverage>=7.0",
+    "flake8>=6.0",
+    "gitlint>=0.19.1",
+    "pytest>=7.4",
+    "pytest-cov>=4.0",
+    "pylint>=3.0",
+    "yamllint>=1.32",
+]

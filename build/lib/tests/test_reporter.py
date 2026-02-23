@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 
-import json
+import datetime
 import glob
+import json
+import logging
 import os
 import pathlib
+import pdb
 import pytest
 import re
+import sys
 
 from sysconfig import get_path
 from unittest.mock import patch
@@ -65,14 +69,14 @@ def test_jsonreport(mock_db, reporter):
   reporter.gen_json()
   assert len( glob.glob("{}/json/AAA1234.json".format(preset_config['folders']['reports']))) > 0
 
-def test_gen_qc_name_does_not_exist(mock_db, reporter):
+def test_gen_qc(mock_db, reporter):
   reporter.name = "name_that_do_not_exist"
-  with pytest.raises(AttributeError):
+  with pytest.raises(Exception):
     reporter.gen_qc()
 
-def test_gen_typing_name_does_not_exist(mock_db, reporter):
+def test_gen_typing(mock_db, reporter):
   reporter.name = "name_that_do_not_exist"
-  with pytest.raises(AttributeError):
+  with pytest.raises(Exception):
     reporter.gen_typing()
 
 def test_gen_motif(caplog, reporter):
@@ -98,6 +102,10 @@ def test_report(caplog, reporter):
   with pytest.raises(Exception):
     reporter.report()
     assert "Report function recieved invalid format" in caplog.text
+
+@patch('microSALT.utils.reporter.Reporter.start_web')
+def test_restart_web(sw, reporter):
+  reporter.restart_web()
 
 def test_constructor():
   sample_info = [

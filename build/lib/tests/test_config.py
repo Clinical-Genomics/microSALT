@@ -22,6 +22,7 @@ def exp_config():
     'genologics': {'baseuri', 'username', 'password'},
     'pubmlst': {'client_id', 'client_secret'},
     'pasteur': {'client_id', 'client_secret'},
+    'dry': True,
   }
   return precon
 
@@ -30,13 +31,14 @@ def test_existence(exp_config):
   # level one
   config_level_one = preset_config.keys()
   for entry in exp_config.keys():
-    assert entry in config_level_one
+    if entry != 'dry':
+      assert entry in config_level_one
 
-    # level two
-    if isinstance(preset_config[entry], collections.abc.Mapping):
-      config_level_two = preset_config[entry].keys()
-      for thing in exp_config[entry]:
-        assert thing in config_level_two
+      # level two
+      if isinstance(preset_config[entry], collections.abc.Mapping):
+        config_level_two = preset_config[entry].keys()
+        for thing in exp_config[entry]:
+          assert thing in config_level_two
 
 def test_reverse_existence(exp_config):
   """Check that the configuration doesn't contain outdated variables"""

@@ -1,0 +1,21 @@
+[
+{
+"CG_ID_project":"AAA1234",
+"Customer_ID_project":"Trams",
+"date_ordered":"2020-07-14 15:03:51.111",
+"Customer_ID":"1"
+},
+{
+"CG_ID_project":"MLS1234",
+"Customer_ID_project":"Trams",
+"date_ordered":"2020-07-14 15:03:51.111",
+"Customer_ID":"1"
+},
+{
+"CG_ID_project":"MIC1234",
+"Customer_ID_project":"Trams",
+"date_ordered":"2020-07-14 15:03:51.111",
+"Customer_ID":"1"
+}
+]
+

@@ -9,14 +9,10 @@ import subprocess
 import sys
 from sysconfig import get_path
 
-from flask import Flask
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-__version__ = "4.2.8"
-
-app = Flask(__name__, template_folder="server/templates")
-app.config.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
-app.config.setdefault("SQLALCHEMY_BINDS", None)
-app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
+__version__ = "4.3.0"
 
 # Keep track of microSALT installation
 wd = os.path.dirname(os.path.realpath(__file__))
@@ -35,7 +31,7 @@ logging_levels = {
 }
 
 
-def setup_logger(logging_level: str) -> None:
+def setup_logger(logging_level: str, preset_config) -> None:
     global logger
     if logging_level not in logging_levels:
         raise ValueError(
@@ -45,12 +41,17 @@ def setup_logger(logging_level: str) -> None:
     logger.setLevel(logging_levels[logging_level])
     ch = logging.StreamHandler()
     ch.setLevel(logging_levels[logging_level])
-    formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s", "%Y-%m-%d %H:%M:%S")
+
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s", "%Y-%m-%d %H:%M:%S"
+    )
     ch.setFormatter(formatter)
+    fh = logging.FileHandler(os.path.expanduser(preset_config["folders"]["log_file"]))
+    logger.addHandler(fh)
     logger.addHandler(ch)
 
 
-default = os.path.join(os.path.dirname(wd), "configExample.json")
+default = os.path.join(os.environ["HOME"], ".microSALT/config.json")
 
 if "MICROSALT_CONFIG" in os.environ:
     try:
@@ -74,16 +75,19 @@ SESSION = None
 
 if preset_config != "":
     try:
-        # Load flask info
-        app.config.update(preset_config["database"])
+        CONFIG = {}
+
+        engine = create_engine(preset_config["database"]["SQLALCHEMY_DATABASE_URI"])
+        Session = sessionmaker(engine)
+        SESSION = Session()
         # Add `folders` configuration
-        app.config["folders"] = preset_config.get("folders", {})
+        CONFIG["folders"] = preset_config.get("folders", {})
 
         # Ensure PubMLST configuration is included
 
-        app.config["pubmlst"] = preset_config.get("pubmlst", {"client_id": "", "client_secret": ""})
+        CONFIG["pubmlst"] = preset_config.get("pubmlst", {"client_id": "", "client_secret": ""})
 
-        app.config["pasteur"] = preset_config.get("pasteur", {"client_id": "", "client_secret": ""})
+        CONFIG["pasteur"] = preset_config.get("pasteur", {"client_id": "", "client_secret": ""})
 
         # Add extrapaths to config
         preset_config["folders"]["expec"] = os.path.abspath(
@@ -104,7 +108,7 @@ if preset_config != "":
         )
 
         # Initialize logger
-        setup_logger(logging_level="INFO")
+        setup_logger(logging_level="INFO", preset_config=preset_config)
 
         # Create paths mentioned in config
         db_file = re.search(
@@ -155,9 +159,16 @@ if preset_config != "":
                                 os.makedirs(unmade_fldr)
                                 logger.info("Created path {}".format(unmade_fldr))
 
-        fh = logging.FileHandler(os.path.expanduser(preset_config["folders"]["log_file"]))
-        fh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
-        logger.addHandler(fh)
+        # Integrity check database
+        # cmd = "sqlite3 {0}".format(db_file)
+        # cmd = cmd.split()
+        # cmd.append("pragma integrity_check;")
+        # proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        # output, error = proc.communicate()
+        # if "ok" not in str(output):
+        #     logger.error("Database integrity failed! Lock-state detected!")
+        #     sys.exit(-1)
+
     except Exception as e:
         print("Config error: {}".format(str(e)))
         pass

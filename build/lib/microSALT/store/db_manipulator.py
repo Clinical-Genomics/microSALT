@@ -1,26 +1,23 @@
-""" Delivers and fetches data from the database
-   By: Isak Sylvin, @sylvinite"""
+"""Delivers and fetches data from the database
+By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 
 import hashlib
 import sys
 import warnings
-
 from collections import OrderedDict
 from datetime import datetime, timezone
 from typing import Dict, List
 
 from dateutil.parser import parse
-from sqlalchemy import inspect as sa_inspect, MetaData, desc, create_engine, or_, and_, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy import *
 
 # maintain the same connection per thread
-from sqlalchemy.pool import SingletonThreadPool
-
-from microSALT import __version__
+from microSALT import SESSION, engine as MICROSALT_ENGINE, __version__
+from microSALT.store.models import Novel, Profiles
 from microSALT.store.orm_models import (
-    app,
     Collections,
     Expacs,
     Projects,
@@ -30,19 +27,16 @@ from microSALT.store.orm_models import (
     Seq_types,
     Versions,
 )
-from microSALT.store.models import Profiles, Novel
 
 
 class DB_Manipulator:
     def __init__(self, config, log):
         self.config = config
         self.logger = log
-        self.engine = create_engine(
-            app.config["SQLALCHEMY_DATABASE_URI"], poolclass=SingletonThreadPool
-        )
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
-        self.metadata = MetaData(self.engine)
+        self.session = SESSION
+        self.engine = MICROSALT_ENGINE
+        self.metadata = MetaData()
+        self.metadata.bind = self.engine
         self.profiles = Profiles(self.metadata, self.config, self.logger).tables
         self.novel = Novel(self.metadata, self.config, self.logger).tables
         # Turns off pymysql deprecation warnings until they can update their code
@@ -136,7 +130,7 @@ class DB_Manipulator:
                 table = eval(tablename)
                 # Check for existing entry
                 pk_list = table.__table__.primary_key.columns.keys()
-            except Exception as e:
+            except Exception:
                 self.logger.error(
                     "Attempted to access table {} which has not been created".format(tablename)
                 )
@@ -519,9 +513,9 @@ class DB_Manipulator:
             .all()
         )
         for entry in prequery:
-            if not entry.organism in novelbkt:
+            if entry.organism not in novelbkt:
                 novelbkt[entry.organism] = dict()
-            if not entry.ST in novelbkt[entry.organism]:
+            if entry.ST not in novelbkt[entry.organism]:
                 novelbkt[entry.organism][entry.ST] = list()
             novelbkt[entry.organism][entry.ST].append(entry.CG_ID_sample)
         novelbkt = OrderedDict(sorted(novelbkt.items(), key=lambda t: t[0]))
@@ -534,9 +528,9 @@ class DB_Manipulator:
             .all()
         )
         for entry in postquery:
-            if not entry.organism in novelbkt2:
+            if entry.organism not in novelbkt2:
                 novelbkt2[entry.organism] = dict()
-            if not entry.ST in novelbkt2[entry.organism]:
+            if entry.ST not in novelbkt2[entry.organism]:
                 novelbkt2[entry.organism][entry.ST] = list()
             novelbkt2[entry.organism][entry.ST].append(entry.CG_ID_sample)
 
@@ -548,9 +542,9 @@ class DB_Manipulator:
             .all()
         )
         for entry in naquery:
-            if not entry.ST in novelbkt3:
+            if entry.ST not in novelbkt3:
                 novelbkt3[entry.ST] = dict()
-            if not entry.organism in novelbkt3[entry.ST]:
+            if entry.organism not in novelbkt3[entry.ST]:
                 novelbkt3[entry.ST][entry.organism] = list()
             novelbkt3[entry.ST][entry.organism].append(entry.CG_ID_sample)
         novelbkt3 = OrderedDict(sorted(novelbkt3.items(), key=lambda t: t[0], reverse=True))
@@ -638,7 +632,7 @@ class DB_Manipulator:
             if allelediff < 0:
                 self.logger.warning(
                     "Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3".format(
-                        cg_sid, organism
+                        cg_sid,
                     )
                 )
                 self.setPredictor(cg_sid)
@@ -728,9 +722,7 @@ class DB_Manipulator:
         else:
             self.logger.warning(
                 "Sample {} on {} has an allele set but hits are low-quality and\
- do not resolve to an ST. Setting ST to -2".format(
-                    cg_sid, organism
-                )
+ do not resolve to an ST. Setting ST to -2".format(cg_sid, organism)
             )
             bestSet = self.bestAlleles(cg_sid)
             self.setPredictor(cg_sid, bestSet)
@@ -811,9 +803,9 @@ class DB_Manipulator:
                 scores[prof.ST]["spanid"] += allele.span * allele.identity
                 scores[prof.ST]["eval"] += float(allele.evalue)
                 scores[prof.ST]["cc"] += allele.contig_coverage
-                if not allele.loci in bestalleles[prof.ST].keys():
+                if allele.loci not in bestalleles[prof.ST].keys():
                     bestalleles[prof.ST][allele.loci] = dict()
-                if not "contig_name" in bestalleles[prof.ST][allele.loci].keys():
+                if "contig_name" not in bestalleles[prof.ST][allele.loci].keys():
                     bestalleles[prof.ST][allele.loci]["contig_name"] = str(allele.contig_name)
 
         # Establish best ST
