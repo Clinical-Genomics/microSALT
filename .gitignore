@@ -15,4 +15,5 @@ default_sample_info.json
 tmp.json
 .venv/
 .vscode*
-.markdownlint.jsonc
+.markdownlint.jsonc\
+build*
