@@ -3,14 +3,12 @@
 import json
 import os
 import pathlib
-import pdb
 import pytest
 import requests
 import re
 import runpy
 import time
 
-from distutils.sysconfig import get_python_lib
 from unittest.mock import patch
 
 from microSALT.utils.reporter import Reporter
@@ -24,12 +22,6 @@ def unpack_db_json(filename):
     testdata = os.path.abspath(
         os.path.join(pathlib.Path(__file__).parent.parent, "tests/testdata/{}".format(filename))
     )
-    # Check if release install exists
-    for entry in os.listdir(get_python_lib()):
-        if "microSALT-" in entry:
-            testdata = os.path.abspath(
-                os.path.join(os.path.expandvars("$CONDA_PREFIX"), "testdata/{}".format(filename))
-            )
     with open(testdata) as json_file:
         data = json.load(json_file)
     return data
@@ -61,14 +53,6 @@ def testdata():
     testdata = os.path.abspath(
         os.path.join(pathlib.Path(__file__).parent.parent, "tests/testdata/sampleinfo_samples.json")
     )
-    # Check if release install exists
-    for entry in os.listdir(get_python_lib()):
-        if "microSALT-" in entry:
-            testdata = os.path.abspath(
-                os.path.join(
-                    os.path.expandvars("$CONDA_PREFIX"), "testdata/sampleinfo_samples.json"
-                )
-            )
     with open(testdata) as json_file:
         data = json.load(json_file)
     return data

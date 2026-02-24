@@ -5,10 +5,7 @@ import json
 import logging
 import os
 import pathlib
-import pdb
 import pytest
-
-from sysconfig import get_path
 
 from microSALT import preset_config, logger
 from microSALT.utils.scraper import Scraper
@@ -17,23 +14,13 @@ from microSALT.utils.referencer import Referencer
 
 @pytest.fixture
 def testdata_prefix():
-    test_path = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/'))
-    #Check if release install exists
-    for entry in os.listdir(get_path("purelib")):
-        if 'microSALT-' in entry:
-            test_path = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/'))
-    return test_path
+    return os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/'))
 
 
 @pytest.fixture
 def testdata():
     testdata = os.path.abspath(
         os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/sampleinfo_samples.json'))
-    #Check if release install exists
-    for entry in os.listdir(get_path("purelib")):
-        if 'microSALT-' in entry:
-            testdata = os.path.abspath(
-                os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/sampleinfo_samples.json'))
     with open(testdata) as json_file:
         data = json.load(json_file)
     return data

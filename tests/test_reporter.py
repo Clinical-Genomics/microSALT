@@ -7,7 +7,6 @@ import pathlib
 import pytest
 import re
 
-from sysconfig import get_path
 from unittest.mock import patch
 
 from microSALT import preset_config, logger
@@ -16,10 +15,6 @@ from microSALT.store.db_manipulator import DB_Manipulator
 
 def unpack_db_json(filename):
   testdata = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.parent, f'tests/testdata/{filename}'))
-  #Check if release install exists
-  for entry in os.listdir(get_path("purelib")):
-    if 'microSALT-' in entry:
-      testdata = os.path.abspath(os.path.join(os.path.expandvars('$CONDA_PREFIX'), f'testdata/{filename}'))
   with open(testdata) as json_file:
     data = json.load(json_file)
   return data
