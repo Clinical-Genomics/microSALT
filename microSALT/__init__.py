@@ -7,7 +7,7 @@ import pathlib
 import re
 import subprocess
 import sys
-from sysconfig import get_path
+from importlib.resources import files as resource_files
 
 from flask import Flask
 
@@ -86,16 +86,9 @@ if preset_config != "":
         app.config["pasteur"] = preset_config.get("pasteur", {"client_id": "", "client_secret": ""})
 
         # Add extrapaths to config
-        preset_config["folders"]["expec"] = os.path.abspath(
-            os.path.join(pathlib.Path(__file__).parent.parent, "unique_references/ExPEC.fsa")
+        preset_config["folders"]["expec"] = str(
+            resource_files("microSALT").joinpath("unique_references", "ExPEC.fsa")
         )
-        # Check if release install exists
-        for entry in os.listdir(get_path("purelib")):
-            if "microSALT-" in entry:
-                preset_config["folders"]["expec"] = os.path.abspath(
-                    os.path.join(os.path.expandvars("$CONDA_PREFIX"), "expec/ExPEC.fsa")
-                )
-                break
         preset_config["folders"]["adapters"] = os.path.abspath(
             os.path.join(
                 os.path.expandvars("$CONDA_PREFIX"),
