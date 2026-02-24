@@ -17,7 +17,7 @@ from shutil import copyfile
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 
-from multiprocessing import Process
+from multiprocessing import Process, get_context
 
 from microSALT import __version__
 from microSALT.server.views import app, gen_reportdata, gen_collectiondata
@@ -37,7 +37,7 @@ class Reporter:
         self.logger = log
         for k, v in config.items():
             app.config[k] = v
-        self.server = Process(target=app.run)
+        self.server = get_context("fork").Process(target=app.run)
         self.attachments = list()
         self.filedict = dict()
         self.error = False
@@ -619,3 +619,21 @@ class Reporter:
         s.sendmail(msg["From"], msg["To"], msg.as_string())
         s.quit()
         self.logger.info(f"Mail containing report sent to {msg['To']} from {msg['From']}")
+
+    def start_web(self):
+        self.server.start()
+        self.logger.info("Started webserver on http://127.0.0.1:5000/")
+        # Hinders requests before server goes up
+        time.sleep(0.15)
+
+    def kill_flask(self):
+        self.server.terminate()
+        self.server.join()
+        self.logger.info("Closed webserver on http://127.0.0.1:5000/")
+
+    def restart_web(self):
+        try:
+            self.kill_flask()
+        except Exception as e:
+            pass
+        self.start_web()

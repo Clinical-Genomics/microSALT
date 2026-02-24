@@ -62,12 +62,12 @@ def test_jsonreport(mock_db, reporter):
 
 def test_gen_qc_name_does_not_exist(mock_db, reporter):
   reporter.name = "name_that_do_not_exist"
-  with pytest.raises(AttributeError):
+  with pytest.raises(SystemExit):
     reporter.gen_qc()
 
 def test_gen_typing_name_does_not_exist(mock_db, reporter):
   reporter.name = "name_that_do_not_exist"
-  with pytest.raises(AttributeError):
+  with pytest.raises(SystemExit):
     reporter.gen_typing()
 
 def test_gen_motif(caplog, reporter):

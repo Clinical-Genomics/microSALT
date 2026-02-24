@@ -15,7 +15,7 @@ __version__ = "4.3.0"
 
 app = Flask(__name__, template_folder="server/templates")
 app.config.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
-app.config.setdefault("SQLALCHEMY_BINDS", None)
+app.config.setdefault("SQLALCHEMY_BINDS", {})
 app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
 
 # Keep track of microSALT installation
