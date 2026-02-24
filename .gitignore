@@ -16,3 +16,4 @@ tmp.json
 .venv/
 .vscode*
 .markdownlint.jsonc
+build
