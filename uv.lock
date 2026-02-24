@@ -402,6 +402,20 @@ toml = [
 ]
 
 [[package]]
+name = "coveralls"
+version = "4.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "coverage", extra = ["toml"] },
+    { name = "docopt" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e3/b3/25862e4610461ca5ffe75cf8d05e830d0b920e023530ab486598ddbe8df8/coveralls-4.0.2.tar.gz", hash = "sha256:7c21ffa2808d3052fa0cfca3842a9f3d21cc8eada02538c192d932199e5f07d4", size = 12408, upload-time = "2025-11-07T19:18:50.54Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/06/96/3c046a70c27c9be06589aaab99e7e10067177a338a874311347e662aecb1/coveralls-4.0.2-py3-none-any.whl", hash = "sha256:3940f613eac6b3c14d1425741929e1d15f57666f5e7ae0572bbe92357bd6f7ee", size = 13549, upload-time = "2025-11-07T19:18:49.189Z" },
+]
+
+[[package]]
 name = "dill"
 version = "0.4.1"
 source = { registry = "https://pypi.org/simple" }
@@ -409,6 +423,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/81/e1/56027a71e31b02ddc
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl", hash = "sha256:1e1ce33e978ae97fcfcff5638477032b801c46c7c65cf717f95fbc2248f79a9d", size = 120019, upload-time = "2026-01-19T02:36:55.663Z" },
 ]
+
+[[package]]
+name = "docopt"
+version = "0.6.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a2/55/8f8cab2afd404cf578136ef2cc5dfb50baa1761b68c9da1fb1e4eed343c9/docopt-0.6.2.tar.gz", hash = "sha256:49b3a825280bd66b3aa83585ef59c4a8c82f2c8a522dbe754a8bc8d08c85c491", size = 25901, upload-time = "2014-06-16T11:18:57.406Z" }
 
 [[package]]
 name = "exceptiongroup"
@@ -733,6 +753,7 @@ dependencies = [
 dev = [
     { name = "black" },
     { name = "coverage" },
+    { name = "coveralls" },
     { name = "flake8" },
     { name = "gitlint" },
     { name = "pylint" },
@@ -762,6 +783,7 @@ requires-dist = [
 dev = [
     { name = "black", specifier = ">=23.0" },
     { name = "coverage", specifier = ">=7.0" },
+    { name = "coveralls", specifier = ">=3.0" },
     { name = "flake8", specifier = ">=6.0" },
     { name = "gitlint", specifier = ">=0.19.1" },
     { name = "pylint", specifier = ">=3.0" },
