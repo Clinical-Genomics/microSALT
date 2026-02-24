@@ -16,8 +16,4 @@ tmp.json
 .venv/
 .vscode*
 .markdownlint.jsonc
-<<<<<<< python-3.12-migration
 build
-=======
-build
->>>>>>> rc5.0.0
