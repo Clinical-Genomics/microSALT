@@ -454,6 +454,19 @@ wheels = [
 ]
 
 [[package]]
+name = "flask-sqlalchemy"
+version = "3.0.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "flask" },
+    { name = "sqlalchemy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c6/4e/0991354600fe3e1223cd9f025dbde900b1c1fe231762e18cdaffbe55938e/flask_sqlalchemy-3.0.5.tar.gz", hash = "sha256:c5765e58ca145401b52106c0f46178569243c5da25556be2c231ecc60867c5b1", size = 78504, upload-time = "2023-06-21T16:47:21.595Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d8/1d/c3c5afdaebd5d5f82d2c25762f5356416bd7bc109a550c79247134e48ca3/flask_sqlalchemy-3.0.5-py3-none-any.whl", hash = "sha256:cabb6600ddd819a9f859f36515bb1bd8e7dbf30206cc679d2b081dff9e383283", size = 24842, upload-time = "2023-06-21T16:47:19.82Z" },
+]
+
+[[package]]
 name = "genologics"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -705,6 +718,7 @@ dependencies = [
     { name = "bs4" },
     { name = "click" },
     { name = "flask" },
+    { name = "flask-sqlalchemy" },
     { name = "genologics" },
     { name = "jinja2" },
     { name = "pymysql" },
@@ -733,6 +747,7 @@ requires-dist = [
     { name = "bs4", specifier = "==0.0.1" },
     { name = "click", specifier = ">=8.0" },
     { name = "flask", specifier = ">=3.1.3" },
+    { name = "flask-sqlalchemy", specifier = ">=3.0.5" },
     { name = "genologics", specifier = "==0.4.6" },
     { name = "jinja2", specifier = ">=3.0" },
     { name = "pymysql", specifier = ">=1.0" },
