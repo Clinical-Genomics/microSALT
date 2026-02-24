@@ -52,6 +52,14 @@ class Referencer:
         """Set the client for PubMLST API interactions."""
         self.client: BaseClient = get_client(service, database)
 
+    def _singularity_exec(self, tool, command):
+        """Return command wrapped with singularity exec for the given tool container."""
+        sif = self.config['containers'][tool]
+        binary = self.config['singularity']['binary']
+        bind_list = self.config['singularity'].get('bind_paths', [])
+        bind = f"--bind {','.join(bind_list)}" if bind_list else ""
+        return f"{binary} exec {bind} {sif} {command}"
+
     def identify_new(self, cg_id="", project=False):
         """Automatically downloads pubMLST & NCBI organisms not already downloaded"""
         neworgs = list()
@@ -116,12 +124,14 @@ class Referencer:
                 try:
                     # Resistence files
                     if ".fsa" in suffix:
-                        bash_cmd = "makeblastdb -in {}/{} -dbtype nucl -out {}".format(
-                            full_dir, os.path.basename(file), os.path.basename(base)
+                        bash_cmd = self._singularity_exec('blast',
+                            "makeblastdb -in {}/{} -dbtype nucl -out {}".format(
+                                full_dir, os.path.basename(file), os.path.basename(base)
+                            )
                         )
                     # MLST locis
                     else:
-                        bash_cmd = (
+                        bash_cmd = self._singularity_exec('blast',
                             "makeblastdb -in {}/{} -dbtype nucl -parse_seqids -out {}".format(
                                 full_dir, os.path.basename(file), os.path.basename(base)
                             )
@@ -412,7 +422,7 @@ class Referencer:
             output = "{}/{}.fasta".format(self.config["folders"]["genomes"], reference)
             with open(output, "w") as f:
                 f.write(sequence)
-            bwaindex = "bwa index {}".format(output)
+            bwaindex = self._singularity_exec('bwa', "bwa index {}".format(output))
             proc = subprocess.Popen(
                 bwaindex.split(),
                 cwd=self.config["folders"]["genomes"],
@@ -420,7 +430,7 @@ class Referencer:
                 stderr=DEVNULL,
             )
             out, err = proc.communicate()
-            samindex = "samtools faidx {}".format(output)
+            samindex = self._singularity_exec('samtools', "samtools faidx {}".format(output))
             proc = subprocess.Popen(
                 samindex.split(),
                 cwd=self.config["folders"]["genomes"],

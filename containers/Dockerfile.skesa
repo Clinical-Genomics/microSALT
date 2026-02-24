@@ -1,0 +1,10 @@
+# SKESA 2.5.1 — de novo assembler
+# Build: docker build -f Dockerfile.skesa -t skesa:2.5.1 .
+# Convert: singularity pull --name skesa_2.5.1.sif docker://your-repo/skesa:2.5.1
+FROM continuumio/miniconda3:23.5.2-0
+
+RUN conda install -y -c conda-forge -c bioconda \
+        skesa=2.5.1 \
+    && conda clean -afy
+
+ENV PATH=/opt/conda/bin:$PATH

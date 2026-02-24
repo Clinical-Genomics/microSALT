@@ -1,0 +1,14 @@
+# Trimmomatic 0.39 — quality trimming for paired-end Illumina reads
+# Build: docker build -f Dockerfile.trimmomatic -t trimmomatic:0.39 .
+# Convert: singularity pull --name trimmomatic_0.39.sif docker://your-repo/trimmomatic:0.39
+#
+# Adapter files are located inside the container at:
+#   /opt/conda/share/trimmomatic/adapters/
+# Set singularity.trimmomatic_adapters in your config to this path.
+FROM continuumio/miniconda3:23.5.2-0
+
+RUN conda install -y -c conda-forge -c bioconda \
+        trimmomatic=0.39 \
+    && conda clean -afy
+
+ENV PATH=/opt/conda/bin:$PATH

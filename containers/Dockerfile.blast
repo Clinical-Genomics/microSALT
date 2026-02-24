@@ -1,0 +1,10 @@
+# NCBI BLAST 2.12.0 — nucleotide BLAST search and database indexing
+# Build: docker build -f Dockerfile.blast -t blast:2.12.0 .
+# Convert: singularity pull --name blast_2.12.0.sif docker://your-repo/blast:2.12.0
+FROM continuumio/miniconda3:23.5.2-0
+
+RUN conda install -y -c conda-forge -c bioconda \
+        blast=2.12.0 \
+    && conda clean -afy
+
+ENV PATH=/opt/conda/bin:$PATH
