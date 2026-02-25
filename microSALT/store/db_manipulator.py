@@ -15,6 +15,7 @@ from sqlalchemy import *
 
 # maintain the same connection per thread
 from microSALT import SESSION, __version__
+from microSALT.exc.exceptions import RefUpdateLockError
 from microSALT.store.models import Novel, Profiles
 from microSALT.store.orm_models import (
     Collections,
@@ -24,6 +25,7 @@ from microSALT.store.orm_models import (
     Resistances,
     Samples,
     Seq_types,
+    SystemLock,
     Versions,
 )
 
@@ -67,6 +69,9 @@ class DB_Manipulator:
         if not self.engine.dialect.has_table(self.engine, "expacs"):
             Expacs.__table__.create(self.engine)
             self.logger.info("Created ExPEC table")
+        if not self.engine.dialect.has_table(self.engine, "system_locks"):
+            SystemLock.__table__.create(self.engine)
+            self.logger.info("Created system_locks table")
         for k, v in self.profiles.items():
             if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
                 self.profiles[k].create()
@@ -86,6 +91,36 @@ class DB_Manipulator:
                     force=True,
                 )
                 self.logger.info("Profile table novel_{} initialized".format(k))
+
+    def acquire_ref_lock(self):
+        """Acquire the reference-update exclusive lock.
+
+        Raises RefUpdateLockError if the lock is already held by another process.
+        """
+        existing = self.session.query(SystemLock).filter_by(lock_name="ref_update").scalar()
+        if existing:
+            raise RefUpdateLockError(
+                "A reference update is already in progress (lock acquired at {}). "
+                "Please try again later.".format(existing.acquired_at)
+            )
+        self.session.add(SystemLock(lock_name="ref_update", acquired_at=datetime.now(timezone.utc)))
+        self.session.commit()
+        self.logger.info("Reference update lock acquired")
+
+    def release_ref_lock(self):
+        """Release the reference-update exclusive lock."""
+        self.session.query(SystemLock).filter_by(lock_name="ref_update").delete()
+        self.session.commit()
+        self.logger.info("Reference update lock released")
+
+    def check_ref_lock(self):
+        """Raise RefUpdateLockError if a reference update is currently in progress."""
+        lock = self.session.query(SystemLock).filter_by(lock_name="ref_update").scalar()
+        if lock:
+            raise RefUpdateLockError(
+                "The reference database is currently being updated (started at {}). "
+                "Please try again later.".format(lock.acquired_at)
+            )
 
     def add_rec(self, data_dict: Dict[str, str], tablename: str, force=False):
         """Adds a record to the specified table through a dict with columns as keys."""

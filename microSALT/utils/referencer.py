@@ -84,13 +84,17 @@ class Referencer:
 
     def update_refs(self):
         """Updates all references. Order is important, since no object is updated twice"""
-        # Updates
-        self.fetch_pubmlst(self.force)
-        self.fetch_external()
-        self.fetch_resistances(self.force)
+        self.db_access.acquire_ref_lock()
+        try:
+            # Updates
+            self.fetch_pubmlst(self.force)
+            self.fetch_external()
+            self.fetch_resistances(self.force)
 
-        # Reindexes
-        self.index_db(os.path.dirname(self.config["folders"]["expec"]), ".fsa")
+            # Reindexes
+            self.index_db(os.path.dirname(self.config["folders"]["expec"]), ".fsa")
+        finally:
+            self.db_access.release_ref_lock()
 
     def index_db(self, full_dir, suffix):
         """Check for indexation, makeblastdb job if not enough of them."""

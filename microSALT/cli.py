@@ -11,6 +11,7 @@ import sys
 import click
 
 from microSALT import __version__, logging_levels, preset_config
+from microSALT.exc.exceptions import RefUpdateLockError
 from microSALT.store.database import get_scoped_session_registry
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.referencer import Referencer
@@ -193,6 +194,11 @@ def analyse(
         sampleinfo=sampleinfo,
         force=force_update,
     )
+    try:
+        ext_refs.db_access.check_ref_lock()
+    except RefUpdateLockError as e:
+        click.echo("ERROR - {}".format(e))
+        ctx.abort()
     click.echo("INFO - Checking versions of references..")
     try:
         if not skip_update:
@@ -283,6 +289,11 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
     # Samples section
     sampleinfo = review_sampleinfo(sampleinfo_file)
     ext_refs = Referencer(config=ctx.obj["config"], log=logger, sampleinfo=sampleinfo)
+    try:
+        ext_refs.db_access.check_ref_lock()
+    except RefUpdateLockError as e:
+        click.echo("ERROR - {}".format(e))
+        ctx.abort()
     click.echo("INFO - Checking versions of references..")
     try:
         if not skip_update:
