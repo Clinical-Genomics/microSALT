@@ -78,6 +78,8 @@ if preset_config != "":
         Session = sessionmaker(bind=engine)
         global SESSION
         SESSION = Session()
+        global ENGINE
+        ENGINE = engine
         # Add `folders` configuration
         CONFIG["folders"] = preset_config.get("folders", {})
 
