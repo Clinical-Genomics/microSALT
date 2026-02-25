@@ -282,6 +282,36 @@ class DB_Manipulator:
         self.init_profiletable(organism, table)
         self.logger.debug(f"Initialized profile table for {organism}")
 
+    def refresh_profiletable(self, organism: str):
+        """Reload profile table content without dropping the table when possible.
+
+        Reads the downloaded CSV header and compares it against the current
+        table's columns (first 8). If the schema is unchanged, the table is
+        truncated and reloaded in place. If the loci scheme has changed (new
+        or renamed columns) the method falls back to a full drop/recreate via
+        reload_profiletable() so the schema stays in sync with the CSV.
+        """
+        table = self.profiles[organism]
+        file_path = f"{self.config['folders']['profiles']}/{organism}"
+
+        with open(file_path, "r") as fh:
+            csv_cols = fh.readline().rstrip().split("\t")[:8]
+
+        current_cols = list(table.c.keys())
+
+        if csv_cols == current_cols:
+            self.logger.info(
+                f"Schema unchanged for {organism}, truncating and reloading profile table"
+            )
+            table.delete().execute()
+            self.init_profiletable(organism, table)
+        else:
+            self.logger.info(
+                f"Schema changed for {organism} ({current_cols} -> {csv_cols}), "
+                f"dropping and recreating profile table"
+            )
+            self.reload_profiletable(organism)
+
     def init_profiletable(self, filename: str, table):
         """Creates profile tables by looping, since a lot of infiles exist"""
         data = table.insert()

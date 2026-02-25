@@ -651,4 +651,4 @@ class Referencer:
                     "Versions",
                     {"version": external_ver},
                 )
-                self.db_access.reload_profiletable(key)
+                self.db_access.refresh_profiletable(key)
