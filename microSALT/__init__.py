@@ -9,14 +9,7 @@ import subprocess
 import sys
 from importlib.resources import files as resource_files
 
-from flask import Flask
-
 __version__ = "4.3.0"
-
-app = Flask(__name__, template_folder="server/templates")
-app.config.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
-app.config.setdefault("SQLALCHEMY_BINDS", {})
-app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
 
 # Keep track of microSALT installation
 wd = os.path.dirname(os.path.realpath(__file__))
@@ -35,7 +28,7 @@ logging_levels = {
 }
 
 
-def setup_logger(logging_level: str) -> None:
+def setup_logger(logging_level: str, preset_config) -> None:
     global logger
     if logging_level not in logging_levels:
         raise ValueError(
@@ -45,8 +38,13 @@ def setup_logger(logging_level: str) -> None:
     logger.setLevel(logging_levels[logging_level])
     ch = logging.StreamHandler()
     ch.setLevel(logging_levels[logging_level])
-    formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s", "%Y-%m-%d %H:%M:%S")
+
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s", "%Y-%m-%d %H:%M:%S"
+    )
     ch.setFormatter(formatter)
+    fh = logging.FileHandler(os.path.expanduser(preset_config["folders"]["log_file"]))
+    logger.addHandler(fh)
     logger.addHandler(ch)
 
 
@@ -69,21 +67,25 @@ elif os.path.exists(default):
         pass
 
 # Config dependent section:
-engine = None
-SESSION = None
+CONFIG = {}
 
 if preset_config != "":
     try:
-        # Load flask info
-        app.config.update(preset_config["database"])
+        CONFIG = {}
+
+        # Initialize database
+        from microSALT.store.database import initialize_database
+
+        initialize_database(preset_config["database"]["SQLALCHEMY_DATABASE_URI"])
+
         # Add `folders` configuration
-        app.config["folders"] = preset_config.get("folders", {})
+        CONFIG["folders"] = preset_config.get("folders", {})
 
         # Ensure PubMLST configuration is included
 
-        app.config["pubmlst"] = preset_config.get("pubmlst", {"client_id": "", "client_secret": ""})
+        CONFIG["pubmlst"] = preset_config.get("pubmlst", {"client_id": "", "client_secret": ""})
 
-        app.config["pasteur"] = preset_config.get("pasteur", {"client_id": "", "client_secret": ""})
+        CONFIG["pasteur"] = preset_config.get("pasteur", {"client_id": "", "client_secret": ""})
 
         # Add extrapaths to config
         preset_config["folders"]["expec"] = str(
@@ -97,7 +99,7 @@ if preset_config != "":
         )
 
         # Initialize logger
-        setup_logger(logging_level="INFO")
+        setup_logger(logging_level="INFO", preset_config=preset_config)
 
         # Create paths mentioned in config
         db_file = re.search(
@@ -148,9 +150,6 @@ if preset_config != "":
                                 os.makedirs(unmade_fldr)
                                 logger.info(f"Created path {unmade_fldr}")
 
-        fh = logging.FileHandler(os.path.expanduser(preset_config["folders"]["log_file"]))
-        fh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
-        logger.addHandler(fh)
     except Exception as e:
         print(f"Config error: {e!s}")
         pass

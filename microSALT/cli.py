@@ -11,6 +11,8 @@ import sys
 import click
 
 from microSALT import __version__, logging_levels, preset_config
+from microSALT.exc.exceptions import RefUpdateLockError
+from microSALT.store.database import get_scoped_session_registry
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.reporter import Reporter
@@ -88,6 +90,13 @@ def review_sampleinfo(pfile):
     return data
 
 
+def teardown_session():
+    """Ensure that the session is closed and all resources are released to the connection pool."""
+    registry = get_scoped_session_registry()
+    if registry:
+        registry.remove()
+
+
 @click.group()
 @click.version_option(__version__)
 @click.option(
@@ -105,6 +114,7 @@ def root(ctx, logging_level):
     for handler in logger.handlers:
         handler.setLevel(logging_levels[logging_level])
     logger.debug(f"Setting logging level to {logging_levels[logging_level]}")
+    ctx.call_on_close(teardown_session)
 
 
 @root.command()
@@ -180,6 +190,11 @@ def analyse(
         sampleinfo=sampleinfo,
         force=force_update,
     )
+    try:
+        ext_refs.db_access.check_ref_lock()
+    except RefUpdateLockError as e:
+        click.echo("ERROR - {}".format(e))
+        ctx.abort()
     click.echo("INFO - Checking versions of references..")
     try:
         if not skip_update:
@@ -270,6 +285,11 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
     # Samples section
     sampleinfo = review_sampleinfo(sampleinfo_file)
     ext_refs = Referencer(config=ctx.obj["config"], log=logger, sampleinfo=sampleinfo)
+    try:
+        ext_refs.db_access.check_ref_lock()
+    except RefUpdateLockError as e:
+        click.echo("ERROR - {}".format(e))
+        ctx.abort()
     click.echo("INFO - Checking versions of references..")
     try:
         if not skip_update:

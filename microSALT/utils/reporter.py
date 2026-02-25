@@ -1,26 +1,27 @@
 """Generates various reports by tapping into Flask and mySQL
-   By: Isak Sylvin, @sylvinite"""
+By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 import json
-import requests
 import os
+import smtplib
 import socket
 import sys
-import smtplib
 import time
-import yaml
-
 from datetime import datetime
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
 from shutil import copyfile
 
-from email.mime.multipart import MIMEMultipart
-from email.mime.application import MIMEApplication
+import yaml
 
-from multiprocessing import Process, get_context
-
-from microSALT import __version__
-from microSALT.server.views import app, gen_reportdata, gen_collectiondata
+from microSALT.server.views import (
+    alignment_page,
+    gen_collectiondata,
+    gen_reportdata,
+    STtracker_page,
+    typing_page,
+)
 from microSALT.store.db_manipulator import DB_Manipulator
 
 
@@ -35,9 +36,6 @@ class Reporter:
             self.output = output + "/"
         self.config = config
         self.logger = log
-        for k, v in config.items():
-            app.config[k] = v
-        self.server = get_context("fork").Process(target=app.run)
         self.attachments = list()
         self.filedict = dict()
         self.error = False
@@ -73,7 +71,6 @@ class Reporter:
             # Only typing and qc reports are version controlled
             self.gen_version(self.name)
         if type in ["default", "typing", "qc", "st_update"]:
-            self.restart_web()
             if type == "default":
                 self.gen_typing()
                 self.gen_qc()
@@ -85,7 +82,6 @@ class Reporter:
                 self.gen_qc()
             elif type == "st_update":
                 self.gen_STtracker(customer)
-            self.kill_flask()
         elif type in ["json_dump", "motif_overview"]:
             if type == "json_dump":
                 self.gen_json()
@@ -111,79 +107,64 @@ class Reporter:
     def gen_STtracker(self, customer="all", silent=False):
         self.name = "Sequence Type Update"
         try:
-            r = requests.get(
-                f"http://127.0.0.1:5000/microSALT/STtracker/{customer}",
-                allow_redirects=True,
-            )
-            outname = f"{self.output}/ST_updates_{self.now}.html"
+            content = STtracker_page(customer)
+            outname = "{}/ST_updates_{}.html".format(self.output, self.now)
             outfile = open(outname, "wb")
-            outfile.write(r.content.decode("iso-8859-1").encode("utf8"))
+            outfile.write(content.encode("utf8"))
             outfile.close()
             self.filedict[outname] = ""
             if not silent:
                 self.attachments.append(outname)
-        except Exception as e:
-            self.logger.error(
-                "Flask instance currently occupied. Possible rogue process. Retry command"
-            )
+        except Exception:
+            self.logger.error("Failed to generate ST tracker report")
             self.error = True
 
     def gen_qc(self, silent=False):
         try:
             last_version = self.db_pusher.get_report(self.name).version
         except Exception:
-            self.logger.error(f"Project {self.name} does not exist")
+            self.logger.error("Project {} does not exist".format(self.name))
             sys.exit(-1)
         try:
-            q = requests.get(
-                f"http://127.0.0.1:5000/microSALT/{self.name}/qc",
-                allow_redirects=True,
-            )
-            outfile = f"{self.sample.get('Customer_ID_project')}_QC_{last_version}.html"
-            local = f"{self.output}/{outfile}"
-            output = f"{self.config['folders']['reports']}/analysis/{outfile}"
+            content = alignment_page(self.name)
+            outfile = "{}_QC_{}.html".format(self.sample.get("Customer_ID_project"), last_version)
+            local = "{}/{}".format(self.output, outfile)
+            output = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
 
-            outfile = open(output, "wb")
-            outfile.write(q.content.decode("iso-8859-1").encode("utf8"))
-            outfile.close()
+            with open(output, "wb") as f:
+                f.write(content.encode("utf8"))
 
             if os.path.isfile(output):
                 self.filedict[output] = local
                 if not silent:
                     self.attachments.append(output)
-        except Exception as e:
-            self.logger.error(
-                "Flask instance currently occupied. Possible rogue process. Retry command"
-            )
+        except Exception:
+            self.logger.error("Failed to generate QC report")
             self.error = True
 
     def gen_typing(self, silent=False):
         try:
             last_version = self.db_pusher.get_report(self.name).version
         except Exception:
-            self.logger.error(f"Project {self.name} does not exist")
+            self.logger.error("Project {} does not exist".format(self.name))
             sys.exit(-1)
         try:
-            r = requests.get(
-                f"http://127.0.0.1:5000/microSALT/{self.name}/typing/all",
-                allow_redirects=True,
+            content = typing_page(self.name, "all")
+            outfile = "{}_Typing_{}.html".format(
+                self.sample.get("Customer_ID_project"), last_version
             )
-            outfile = f"{self.sample.get('Customer_ID_project')}_Typing_{last_version}.html"
-            local = f"{self.output}/{outfile}"
-            output = f"{self.config['folders']['reports']}/analysis/{outfile}"
+            local = "{}/{}".format(self.output, outfile)
+            output = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
 
-            outfile = open(output, "wb")
-            outfile.write(r.content.decode("iso-8859-1").encode("utf8"))
-            outfile.close()
+            with open(output, "wb") as f:
+                f.write(content.encode("utf8"))
 
             if os.path.isfile(output):
                 self.filedict[output] = local
                 if not silent:
                     self.attachments.append(output)
-        except Exception as e:
-            self.logger.error(
-                "Flask instance currently occupied. Possible rogue process. Retry command"
-            )
+        except Exception:
+            self.logger.error("Failed to generate typing report")
             self.error = True
 
     def gen_motif(self, motif="resistance", silent=False):
@@ -200,19 +181,19 @@ class Reporter:
         for s in sample_info["samples"]:
             if motif == "resistance":
                 for r in s.resistances:
-                    if not (r.resistance in motifdict.keys()) and r.threshold == "Passed":
+                    if r.resistance not in motifdict.keys() and r.threshold == "Passed":
                         if r.resistance is None:
                             r.resistance = "None"
                         motifdict[r.resistance] = list()
-                    if r.threshold == "Passed" and not r.gene in motifdict[r.resistance]:
+                    if r.threshold == "Passed" and r.gene not in motifdict[r.resistance]:
                         motifdict[r.resistance].append(r.gene)
             elif motif == "expec":
                 for e in s.expacs:
-                    if not (e.virulence in motifdict.keys()) and e.threshold == "Passed":
+                    if e.virulence not in motifdict.keys() and e.threshold == "Passed":
                         if e.virulence is None:
                             e.virulence = "None"
                         motifdict[e.virulence] = list()
-                    if e.threshold == "Passed" and not e.gene in motifdict[e.virulence]:
+                    if e.threshold == "Passed" and e.gene not in motifdict[e.virulence]:
                         motifdict[e.virulence].append(e.gene)
         for k, v in motifdict.items():
             motifdict[k] = sorted(v)
@@ -244,15 +225,15 @@ class Reporter:
                 # Load single sample
                 if motif == "resistance":
                     for r in s.resistances:
-                        if not (r.resistance in rowdict.keys()) and r.threshold == "Passed":
+                        if r.resistance not in rowdict.keys() and r.threshold == "Passed":
                             rowdict[r.resistance] = dict()
-                        if r.threshold == "Passed" and not r.gene in rowdict[r.resistance]:
+                        if r.threshold == "Passed" and r.gene not in rowdict[r.resistance]:
                             rowdict[r.resistance][r.gene] = r.identity
                 elif motif == "expec":
                     for e in s.expacs:
-                        if not (e.virulence in rowdict.keys()) and e.threshold == "Passed":
+                        if e.virulence not in rowdict.keys() and e.threshold == "Passed":
                             rowdict[e.virulence] = dict()
-                        if e.threshold == "Passed" and not e.gene in rowdict[e.virulence]:
+                        if e.threshold == "Passed" and e.gene not in rowdict[e.virulence]:
                             rowdict[e.virulence][e.gene] = e.identity
                 # Compare single sample to all
                 hits = ""
@@ -573,7 +554,7 @@ class Reporter:
 
             for r in s.resistances:
                 if (
-                    not (r.gene in report[s.CG_ID_sample]["blast_resfinder_resistence"])
+                    r.gene not in report[s.CG_ID_sample]["blast_resfinder_resistence"]
                     and r.threshold == "Passed"
                 ):
                     report[s.CG_ID_sample]["blast_resfinder_resistence"].append(r.gene)
@@ -587,7 +568,7 @@ class Reporter:
                 self.filedict[output] = local
                 if not silent:
                     self.attachments.append(output)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             self.logger.error(
                 f"Gen_json unable to produce json file. Path {os.path.basename(output)} does not exist"
             )
@@ -619,21 +600,3 @@ class Reporter:
         s.sendmail(msg["From"], msg["To"], msg.as_string())
         s.quit()
         self.logger.info(f"Mail containing report sent to {msg['To']} from {msg['From']}")
-
-    def start_web(self):
-        self.server.start()
-        self.logger.info("Started webserver on http://127.0.0.1:5000/")
-        # Hinders requests before server goes up
-        time.sleep(0.15)
-
-    def kill_flask(self):
-        self.server.terminate()
-        self.server.join()
-        self.logger.info("Closed webserver on http://127.0.0.1:5000/")
-
-    def restart_web(self):
-        try:
-            self.kill_flask()
-        except Exception as e:
-            pass
-        self.start_web()
