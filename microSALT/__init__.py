@@ -71,7 +71,6 @@ elif os.path.exists(default):
 # Config dependent section:
 if preset_config != "":
     try:
-        # Load flask info
         global CONFIG
         CONFIG = {}
 
