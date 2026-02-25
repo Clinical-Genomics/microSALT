@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 
 import json
-import mock
+from unittest import mock
 import os
 import pathlib
-import pdb
 import pytest
 import re
 
-from distutils.sysconfig import get_python_lib
 from unittest.mock import patch
 
 from microSALT.store.db_manipulator import DB_Manipulator
@@ -21,11 +19,6 @@ from microSALT.cli import root
 def testdata():
     testdata = os.path.abspath(
         os.path.join(pathlib.Path(__file__).parent.parent, 'tests/testdata/sampleinfo_samples.json'))
-    #Check if release install exists
-    for entry in os.listdir(get_python_lib()):
-        if 'microSALT-' in entry:
-            testdata = os.path.abspath(
-                os.path.join(os.path.expandvars('$CONDA_PREFIX'), 'testdata/sampleinfo_samples.json'))
     with open(testdata) as json_file:
         data = json.load(json_file)
     return data
@@ -109,3 +102,30 @@ def test_project_job(subproc, testdata):
 
 def test_create_collection():
     pass
+
+
+def test_singularity_exec_binds_finishdir(testdata):
+    """finishdir is automatically added to the --bind list of every singularity exec call."""
+    jc = Job_Creator(
+        run_settings={'input': '/tmp/', 'finishdir': '/tmp/test_runfolder'},
+        config=preset_config,
+        log=logger,
+        sampleinfo=testdata,
+    )
+    cmd = jc._singularity_exec('blast', 'blastn -help')
+    assert '/tmp/test_runfolder' in cmd
+
+
+def test_singularity_exec_does_not_duplicate_finishdir(testdata):
+    """finishdir is not listed twice when it already appears in config bind_paths."""
+    config = dict(preset_config)
+    config['singularity'] = dict(preset_config['singularity'])
+    config['singularity']['bind_paths'] = ['/tmp/test_runfolder', '/data']
+    jc = Job_Creator(
+        run_settings={'input': '/tmp/', 'finishdir': '/tmp/test_runfolder'},
+        config=config,
+        log=logger,
+        sampleinfo=testdata,
+    )
+    cmd = jc._singularity_exec('blast', 'blastn -help')
+    assert cmd.count('/tmp/test_runfolder') == 1

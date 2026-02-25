@@ -108,7 +108,9 @@ class Job_Creator:
         """Return command wrapped with singularity exec for the given tool container."""
         sif = self.config['containers'][tool]
         binary = self.config['singularity']['binary']
-        bind_list = self.config['singularity'].get('bind_paths', [])
+        bind_list = list(self.config['singularity'].get('bind_paths', []))
+        if self.finishdir and self.finishdir not in bind_list:
+            bind_list.append(self.finishdir)
         bind = f"--bind {','.join(bind_list)}" if bind_list else ""
         return f"{binary} exec {bind} {sif} {command}"
 
