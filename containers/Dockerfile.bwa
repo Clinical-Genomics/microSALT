@@ -1,10 +1,17 @@
 # BWA 0.7.17 — short read aligner (mem mode) and reference indexing
 # Build: docker build -f Dockerfile.bwa -t bwa:0.7.17 .
 # Convert: singularity pull --name bwa_0.7.17.sif docker://your-repo/bwa:0.7.17
-FROM continuumio/miniconda3:23.5.2-0
+FROM mambaorg/micromamba:1-bookworm-slim
 
-RUN conda install -y -c conda-forge -c bioconda \
+ARG MAMBA_DOCKERFILE_ACTIVATE=1
+
+USER root
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+USER $MAMBA_USER
+
+RUN micromamba install -y -n base -c conda-forge -c bioconda \
         bwa=0.7.17 \
-    && conda clean -afy
-
-ENV PATH=/opt/conda/bin:$PATH
+    && micromamba clean -afy

@@ -3,10 +3,17 @@
 # Convert: singularity pull --name quast_5.3.0.sif docker://your-repo/quast:5.3.0
 #
 # The entry point is quast.py (as installed by bioconda).
-FROM continuumio/miniconda3:23.5.2-0
+FROM mambaorg/micromamba:1-bookworm-slim
 
-RUN conda install -y -c conda-forge -c bioconda \
+ARG MAMBA_DOCKERFILE_ACTIVATE=1
+
+USER root
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+USER $MAMBA_USER
+
+RUN micromamba install -y -n base -c conda-forge -c bioconda \
         quast=5.3.0 \
-    && conda clean -afy
-
-ENV PATH=/opt/conda/bin:$PATH
+    && micromamba clean -afy
