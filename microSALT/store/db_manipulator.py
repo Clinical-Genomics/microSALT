@@ -1,25 +1,23 @@
-""" Delivers and fetches data from the database
-   By: Isak Sylvin, @sylvinite"""
+"""Delivers and fetches data from the database
+By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 
 import hashlib
 import sys
 import warnings
-
 from collections import OrderedDict
 from datetime import datetime, timezone
-from sqlalchemy import *
-from sqlalchemy.orm import sessionmaker
-from dateutil.parser import parse
-
-# maintain the same connection per thread
-from sqlalchemy.pool import SingletonThreadPool
 from typing import Dict, List
 
-from microSALT import __version__
+from dateutil.parser import parse
+from sqlalchemy import *
+
+# maintain the same connection per thread
+from microSALT.exc.exceptions import RefUpdateLockError
+from microSALT import ENGINE, SESSION, __version__
+from microSALT.store.models import Novel, Profiles
 from microSALT.store.orm_models import (
-    app,
     Collections,
     Expacs,
     Projects,
@@ -27,20 +25,17 @@ from microSALT.store.orm_models import (
     Resistances,
     Samples,
     Seq_types,
+    SystemLock,
     Versions,
 )
-from microSALT.store.models import Profiles, Novel
 
 
 class DB_Manipulator:
     def __init__(self, config, log):
         self.config = config
         self.logger = log
-        self.engine = create_engine(
-            app.config["SQLALCHEMY_DATABASE_URI"], poolclass=SingletonThreadPool
-        )
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
+        self.session = SESSION
+        self.engine = ENGINE
         self.metadata = MetaData(self.engine)
         self.profiles = Profiles(self.metadata, self.config, self.logger).tables
         self.novel = Novel(self.metadata, self.config, self.logger).tables
@@ -75,6 +70,9 @@ class DB_Manipulator:
         if not self.engine.dialect.has_table(self.engine, "expacs"):
             Expacs.__table__.create(self.engine)
             self.logger.info("Created ExPEC table")
+        if not self.engine.dialect.has_table(self.engine, "system_locks"):
+            SystemLock.__table__.create(self.engine)
+            self.logger.info("Created system_locks table")
         for k, v in self.profiles.items():
             if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
                 self.profiles[k].create()
@@ -94,6 +92,36 @@ class DB_Manipulator:
                     force=True,
                 )
                 self.logger.info("Profile table novel_{} initialized".format(k))
+
+    def acquire_ref_lock(self):
+        """Acquire the reference-update exclusive lock.
+
+        Raises RefUpdateLockError if the lock is already held by another process.
+        """
+        existing = self.session.query(SystemLock).filter_by(lock_name="ref_update").scalar()
+        if existing:
+            raise RefUpdateLockError(
+                "A reference update is already in progress (lock acquired at {}). "
+                "Please try again later.".format(existing.acquired_at)
+            )
+        self.session.add(SystemLock(lock_name="ref_update", acquired_at=datetime.now(timezone.utc)))
+        self.session.commit()
+        self.logger.info("Reference update lock acquired")
+
+    def release_ref_lock(self):
+        """Release the reference-update exclusive lock."""
+        self.session.query(SystemLock).filter_by(lock_name="ref_update").delete()
+        self.session.commit()
+        self.logger.info("Reference update lock released")
+
+    def check_ref_lock(self):
+        """Raise RefUpdateLockError if a reference update is currently in progress."""
+        lock = self.session.query(SystemLock).filter_by(lock_name="ref_update").scalar()
+        if lock:
+            raise RefUpdateLockError(
+                "The reference database is currently being updated (started at {}). "
+                "Please try again later.".format(lock.acquired_at)
+            )
 
     def add_rec(self, data_dict: Dict[str, str], tablename: str, force=False):
         """Adds a record to the specified table through a dict with columns as keys."""
@@ -132,7 +160,7 @@ class DB_Manipulator:
                 table = eval(tablename)
                 # Check for existing entry
                 pk_list = table.__table__.primary_key.columns.keys()
-            except Exception as e:
+            except Exception:
                 self.logger.error(
                     "Attempted to access table {} which has not been created".format(tablename)
                 )
@@ -289,6 +317,36 @@ class DB_Manipulator:
         self.logger.debug(f"Recreated profile table for {organism}")
         self.init_profiletable(organism, table)
         self.logger.debug(f"Initialized profile table for {organism}")
+
+    def refresh_profiletable(self, organism: str):
+        """Reload profile table content without dropping the table when possible.
+
+        Reads the downloaded CSV header and compares it against the current
+        table's columns (first 8). If the schema is unchanged, the table is
+        truncated and reloaded in place. If the loci scheme has changed (new
+        or renamed columns) the method falls back to a full drop/recreate via
+        reload_profiletable() so the schema stays in sync with the CSV.
+        """
+        table = self.profiles[organism]
+        file_path = f"{self.config['folders']['profiles']}/{organism}"
+
+        with open(file_path, "r") as fh:
+            csv_cols = fh.readline().rstrip().split("\t")[:8]
+
+        current_cols = list(table.c.keys())
+
+        if csv_cols == current_cols:
+            self.logger.info(
+                f"Schema unchanged for {organism}, truncating and reloading profile table"
+            )
+            table.delete().execute()
+            self.init_profiletable(organism, table)
+        else:
+            self.logger.info(
+                f"Schema changed for {organism} ({current_cols} -> {csv_cols}), "
+                f"dropping and recreating profile table"
+            )
+            self.reload_profiletable(organism)
 
     def init_profiletable(self, filename: str, table):
         """Creates profile tables by looping, since a lot of infiles exist"""
@@ -513,9 +571,9 @@ class DB_Manipulator:
             .all()
         )
         for entry in prequery:
-            if not entry.organism in novelbkt:
+            if entry.organism not in novelbkt:
                 novelbkt[entry.organism] = dict()
-            if not entry.ST in novelbkt[entry.organism]:
+            if entry.ST not in novelbkt[entry.organism]:
                 novelbkt[entry.organism][entry.ST] = list()
             novelbkt[entry.organism][entry.ST].append(entry.CG_ID_sample)
         novelbkt = OrderedDict(sorted(novelbkt.items(), key=lambda t: t[0]))
@@ -528,9 +586,9 @@ class DB_Manipulator:
             .all()
         )
         for entry in postquery:
-            if not entry.organism in novelbkt2:
+            if entry.organism not in novelbkt2:
                 novelbkt2[entry.organism] = dict()
-            if not entry.ST in novelbkt2[entry.organism]:
+            if entry.ST not in novelbkt2[entry.organism]:
                 novelbkt2[entry.organism][entry.ST] = list()
             novelbkt2[entry.organism][entry.ST].append(entry.CG_ID_sample)
 
@@ -542,9 +600,9 @@ class DB_Manipulator:
             .all()
         )
         for entry in naquery:
-            if not entry.ST in novelbkt3:
+            if entry.ST not in novelbkt3:
                 novelbkt3[entry.ST] = dict()
-            if not entry.organism in novelbkt3[entry.ST]:
+            if entry.organism not in novelbkt3[entry.ST]:
                 novelbkt3[entry.ST][entry.organism] = list()
             novelbkt3[entry.ST][entry.organism].append(entry.CG_ID_sample)
         novelbkt3 = OrderedDict(sorted(novelbkt3.items(), key=lambda t: t[0], reverse=True))
@@ -632,7 +690,7 @@ class DB_Manipulator:
             if allelediff < 0:
                 self.logger.warning(
                     "Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3".format(
-                        cg_sid, organism
+                        cg_sid,
                     )
                 )
                 self.setPredictor(cg_sid)
@@ -722,9 +780,7 @@ class DB_Manipulator:
         else:
             self.logger.warning(
                 "Sample {} on {} has an allele set but hits are low-quality and\
- do not resolve to an ST. Setting ST to -2".format(
-                    cg_sid, organism
-                )
+ do not resolve to an ST. Setting ST to -2".format(cg_sid, organism)
             )
             bestSet = self.bestAlleles(cg_sid)
             self.setPredictor(cg_sid, bestSet)
@@ -804,9 +860,9 @@ class DB_Manipulator:
                 scores[prof.ST]["spanid"] += allele.span * allele.identity
                 scores[prof.ST]["eval"] += float(allele.evalue)
                 scores[prof.ST]["cc"] += allele.contig_coverage
-                if not allele.loci in bestalleles[prof.ST].keys():
+                if allele.loci not in bestalleles[prof.ST].keys():
                     bestalleles[prof.ST][allele.loci] = dict()
-                if not "contig_name" in bestalleles[prof.ST][allele.loci].keys():
+                if "contig_name" not in bestalleles[prof.ST][allele.loci].keys():
                     bestalleles[prof.ST][allele.loci]["contig_name"] = str(allele.contig_name)
 
         # Establish best ST
