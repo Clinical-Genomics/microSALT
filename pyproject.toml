@@ -21,6 +21,7 @@ dependencies = [
     "sqlalchemy>=2.0",
     "genologics==0.4.6",
     "rauth==0.7.3",
+    "werkzeug>=3.1.6",
 ]
 
 [project.scripts]
