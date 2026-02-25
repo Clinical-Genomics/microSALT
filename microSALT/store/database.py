@@ -1,6 +1,7 @@
 from typing import Optional
 
-from sqlalchemy import Engine, create_engine
+from sqlalchemy.engine import Engine
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from microSALT.exc.exceptions import MicroSALTError
