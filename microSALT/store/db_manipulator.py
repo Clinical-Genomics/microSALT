@@ -14,6 +14,7 @@ from dateutil.parser import parse
 from sqlalchemy import *
 
 # maintain the same connection per thread
+from microSALT.exc.exceptions import RefUpdateLockError
 from microSALT import ENGINE, SESSION, __version__
 from microSALT.store.models import Novel, Profiles
 from microSALT.store.orm_models import (
@@ -24,6 +25,7 @@ from microSALT.store.orm_models import (
     Resistances,
     Samples,
     Seq_types,
+    SystemLock,
     Versions,
 )
 
@@ -68,6 +70,9 @@ class DB_Manipulator:
         if not self.engine.dialect.has_table(self.engine, "expacs"):
             Expacs.__table__.create(self.engine)
             self.logger.info("Created ExPEC table")
+        if not self.engine.dialect.has_table(self.engine, "system_locks"):
+            SystemLock.__table__.create(self.engine)
+            self.logger.info("Created system_locks table")
         for k, v in self.profiles.items():
             if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
                 self.profiles[k].create()
@@ -87,6 +92,36 @@ class DB_Manipulator:
                     force=True,
                 )
                 self.logger.info("Profile table novel_{} initialized".format(k))
+
+    def acquire_ref_lock(self):
+        """Acquire the reference-update exclusive lock.
+
+        Raises RefUpdateLockError if the lock is already held by another process.
+        """
+        existing = self.session.query(SystemLock).filter_by(lock_name="ref_update").scalar()
+        if existing:
+            raise RefUpdateLockError(
+                "A reference update is already in progress (lock acquired at {}). "
+                "Please try again later.".format(existing.acquired_at)
+            )
+        self.session.add(SystemLock(lock_name="ref_update", acquired_at=datetime.now(timezone.utc)))
+        self.session.commit()
+        self.logger.info("Reference update lock acquired")
+
+    def release_ref_lock(self):
+        """Release the reference-update exclusive lock."""
+        self.session.query(SystemLock).filter_by(lock_name="ref_update").delete()
+        self.session.commit()
+        self.logger.info("Reference update lock released")
+
+    def check_ref_lock(self):
+        """Raise RefUpdateLockError if a reference update is currently in progress."""
+        lock = self.session.query(SystemLock).filter_by(lock_name="ref_update").scalar()
+        if lock:
+            raise RefUpdateLockError(
+                "The reference database is currently being updated (started at {}). "
+                "Please try again later.".format(lock.acquired_at)
+            )
 
     def add_rec(self, data_dict: Dict[str, str], tablename: str, force=False):
         """Adds a record to the specified table through a dict with columns as keys."""
@@ -282,6 +317,36 @@ class DB_Manipulator:
         self.logger.debug(f"Recreated profile table for {organism}")
         self.init_profiletable(organism, table)
         self.logger.debug(f"Initialized profile table for {organism}")
+
+    def refresh_profiletable(self, organism: str):
+        """Reload profile table content without dropping the table when possible.
+
+        Reads the downloaded CSV header and compares it against the current
+        table's columns (first 8). If the schema is unchanged, the table is
+        truncated and reloaded in place. If the loci scheme has changed (new
+        or renamed columns) the method falls back to a full drop/recreate via
+        reload_profiletable() so the schema stays in sync with the CSV.
+        """
+        table = self.profiles[organism]
+        file_path = f"{self.config['folders']['profiles']}/{organism}"
+
+        with open(file_path, "r") as fh:
+            csv_cols = fh.readline().rstrip().split("\t")[:8]
+
+        current_cols = list(table.c.keys())
+
+        if csv_cols == current_cols:
+            self.logger.info(
+                f"Schema unchanged for {organism}, truncating and reloading profile table"
+            )
+            table.delete().execute()
+            self.init_profiletable(organism, table)
+        else:
+            self.logger.info(
+                f"Schema changed for {organism} ({current_cols} -> {csv_cols}), "
+                f"dropping and recreating profile table"
+            )
+            self.reload_profiletable(organism)
 
     def init_profiletable(self, filename: str, table):
         """Creates profile tables by looping, since a lot of infiles exist"""

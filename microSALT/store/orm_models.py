@@ -154,3 +154,17 @@ class Collections(Base):
 
     ID_collection = Column(String(15), primary_key=True)
     CG_ID_sample = Column(String(15), primary_key=True)
+
+
+class SystemLock(Base):
+    """Rows in this table act as advisory locks for long-running operations.
+
+    A row with lock_name='ref_update' signals that a reference update is in
+    progress.  No other processes should modify or read profile tables while
+    this lock is held.
+    """
+
+    __tablename__ = "system_locks"
+
+    lock_name = Column(String(60), primary_key=True, nullable=False)
+    acquired_at = Column(DateTime, nullable=False)
