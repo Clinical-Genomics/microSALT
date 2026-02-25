@@ -1,10 +1,13 @@
-from sqlalchemy import Engine, create_engine
+from typing import Optional
+
+from sqlalchemy.engine import Engine
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from microSALT.exc.exceptions import MicroSALTError
 
-session: scoped_session | None = None
-engine: Engine | None = None
+session: Optional[scoped_session] = None
+engine: Optional[Engine] = None
 
 
 def initialize_database(db_uri: str) -> None:
@@ -23,7 +26,7 @@ def get_session() -> Session:
     return session
 
 
-def get_scoped_session_registry() -> scoped_session | None:
+def get_scoped_session_registry() -> Optional[scoped_session]:
     """Get the scoped session registry for status db."""
     return session
 

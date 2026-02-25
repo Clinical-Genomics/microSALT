@@ -96,7 +96,7 @@ def review_sampleinfo(pfile):
 
 def teardown_session():
     """Ensure that the session is closed and all resources are released to the connection pool."""
-    registry: scoped_session | None = get_scoped_session_registry()
+    registry = get_scoped_session_registry()
     if registry:
         registry.remove()
 

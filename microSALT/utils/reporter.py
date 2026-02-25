@@ -78,7 +78,6 @@ class Reporter:
             # Only typing and qc reports are version controlled
             self.gen_version(self.name)
         if type in ["default", "typing", "qc", "st_update"]:
-            self.restart_web()
             if type == "default":
                 self.gen_typing()
                 self.gen_qc()
@@ -90,7 +89,6 @@ class Reporter:
                 self.gen_qc()
             elif type == "st_update":
                 self.gen_STtracker(customer)
-            self.kill_flask()
         elif type in ["json_dump", "motif_overview"]:
             if type == "json_dump":
                 self.gen_json()

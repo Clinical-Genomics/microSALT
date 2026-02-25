@@ -14,8 +14,8 @@ from dateutil.parser import parse
 from sqlalchemy import *
 
 # maintain the same connection per thread
-from microSALT import SESSION, __version__
 from microSALT.exc.exceptions import RefUpdateLockError
+from microSALT import ENGINE, SESSION, __version__
 from microSALT.store.models import Novel, Profiles
 from microSALT.store.orm_models import (
     Collections,
@@ -35,6 +35,7 @@ class DB_Manipulator:
         self.config = config
         self.logger = log
         self.session = SESSION
+        self.engine = ENGINE
         self.metadata = MetaData(self.engine)
         self.profiles = Profiles(self.metadata, self.config, self.logger).tables
         self.novel = Novel(self.metadata, self.config, self.logger).tables

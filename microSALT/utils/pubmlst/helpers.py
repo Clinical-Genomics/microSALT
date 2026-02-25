@@ -48,7 +48,7 @@ def get_service_config(service: str):
             "database": "pubmlst_test_seqdef",
             "auth_credentials_file_name": "pubmlst_credentials.env",
             "session_credentials_file_name": "pubmlst_session_credentials.json",
-            "config": app.config["pubmlst"],
+            "config": CONFIG["pubmlst"],
         },
         "pasteur": {
             "base_web": "https://bigsdb.pasteur.fr/cgi-bin/bigsdb/bigsdb.pl",
@@ -56,7 +56,7 @@ def get_service_config(service: str):
             "base_api_host": "bigsdb.pasteur.fr",
             "auth_credentials_file_name": "pasteur_credentials.env",
             "session_credentials_file_name": "pasteur_session_credentials.json",
-            "config": app.config["pasteur"],
+            "config": CONFIG["pasteur"],
         },
     }
 
