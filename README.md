@@ -15,9 +15,9 @@ sample, determines a sample's organism specific sequence type, and its
 resistance pattern. microSALT also provides a database storage solution and
 report generation of these results._
 
-_microSALT uses a combination of python, sqLite and flask. Python is used for
-the majority of functionality, the database is handled through sqLite and the
-front-end is handled through flask. All analysis activity by microSALT requires
+_microSALT uses a combination of Python, SQLite and Jinja2. Python is used for
+the majority of functionality, the database is handled through SQLite and
+reports are rendered through Jinja2. All analysis activity by microSALT requires
 a SLURM cluster._
 
 ## Quick installation
@@ -75,8 +75,8 @@ Any definitions will work, as long as they retain the same formatting.
 
 ### Software
 
-- [Conda](https://conda.io) >= 3.6
-- Python 3.6
+- [Conda](https://conda.io) or [micromamba](https://mamba.readthedocs.io)
+- Python >= 3.10
 - [SQLite](https://www.sqlite.org)
 
 ## Contributing to this repo

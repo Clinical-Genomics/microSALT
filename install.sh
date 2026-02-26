@@ -67,7 +67,6 @@ $conda_cmd env create -n $cname -f https://raw.githubusercontent.com/Clinical-Ge
 source activate $cname
 
 if [[ $type == "release" ]]; then
-    pip install -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements.txt -r https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/requirements-dev.txt 
     pip install -U git+https://github.com/Clinical-Genomics/microSALT@$branch
 elif [[ $type == "source" ]]; then
   HERE=$PWD
@@ -76,9 +75,9 @@ elif [[ $type == "source" ]]; then
   fi
   git clone https://github.com/Clinical-Genomics/microSALT
   cd microSALT && git checkout $branch
-  pip install -r requirements.txt -r requirements-dev.txt && pip install -e . && cd ${HERE}
-  echo "Source installed under ${HERE}/microSALT" 
-fi 
+  pip install -e . && cd ${HERE}
+  echo "Source installed under ${HERE}/microSALT"
+fi
 echo "Installation Complete!"
 while true; do
     echo "Configuration requires manual set-up as described in README.md ['yes']:"
