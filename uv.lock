@@ -448,15 +448,6 @@ wheels = [
 ]
 
 [[package]]
-name = "genologics"
-version = "0.4.6"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/44/85/558a93e4311ac23798fcd5389774fd6cefaaa90944edde0ccff85dda9de2/genologics-0.4.6.tar.gz", hash = "sha256:a529ed3673407abfb484f935fc0d80a13e5d5eaa15b1349f4786b36abc92cefa", size = 31375, upload-time = "2019-04-26T14:16:39.4Z" }
-
-[[package]]
 name = "gitlint"
 version = "0.19.1"
 source = { registry = "https://pypi.org/simple" }
@@ -689,7 +680,6 @@ dependencies = [
     { name = "biopython" },
     { name = "bs4" },
     { name = "click" },
-    { name = "genologics" },
     { name = "jinja2" },
     { name = "pymysql" },
     { name = "python-dateutil" },
@@ -717,7 +707,6 @@ requires-dist = [
     { name = "biopython", specifier = ">=1.81" },
     { name = "bs4", specifier = "==0.0.1" },
     { name = "click", specifier = ">=8.0" },
-    { name = "genologics", specifier = "==0.4.6" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "pymysql", specifier = ">=1.0" },
     { name = "python-dateutil", specifier = ">=2.8" },
