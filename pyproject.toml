@@ -19,7 +19,6 @@ dependencies = [
     "pymysql>=1.0",
     "pyyaml>=6.0",
     "sqlalchemy>=2.0",
-    "genologics==0.4.6",
     "rauth==0.7.3",
     "werkzeug>=3.1.6",
 ]
