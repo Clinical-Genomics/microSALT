@@ -3,7 +3,7 @@
 
 <p align="center">
   <a href="https://github.com/Clinical-Genomics/microSALT">
-    <img width="1000" height="250" src="artwork/microsalt.jpg"/>
+    <img width="1000" height="250" src="microSALT/artwork/microsalt.jpg"/>
   </a>
 </p>
 
