@@ -43,12 +43,9 @@ include = ["microSALT*"]
 [dependency-groups]
 dev = [
     "black>=23.0",
-    "coveralls>=3.0",
-    "coverage>=7.0",
     "flake8>=6.0",
     "gitlint>=0.19.1",
     "pytest>=7.4",
-    "pytest-cov>=4.0",
     "pylint>=3.0",
     "yamllint>=1.32",
 ]

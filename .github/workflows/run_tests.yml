@@ -3,9 +3,6 @@ name: Tests
 on: [push]
 
 
-env:
-  COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
-
 jobs:
   build-linux:
     runs-on: ubuntu-latest
