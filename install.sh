@@ -6,31 +6,17 @@ shopt -s nullglob
 
 #Suggests provided branch. Else suggests master
 default_branch=${1-master}
-default_name=${2-microSALT}
 
 echo "Welcome to the microSALT installation script. Q to exit"
-while true; do
-    echo "Name your microSALT environment ['microSALT']:"
-    read input
-    if [[ $input = "q" ]] || [[ $input = "Q" ]]; then
-        break
-    elif [[ $input = "y" ]] || [[ $input = "yes" ]] || [[ $input = "" ]]; then
-        cname=$default_name
-        break
-    else
-        cname=$input
-        break
-    fi
-done
 while true; do
     echo "Would you like a 'release' or 'source' (development) environment ['release']?"
     read input
     if [[ $input = "q" ]] || [[ $input = "Q" ]]; then
-        break
+        exit 0
     elif [[ $input = "y" ]] || [[ $input = "yes" ]] || [[ $input = "" ]]; then
         type="release"
         break
-    elif [[ $input == "source" ]]  || [[ $input == "release" ]]; then
+    elif [[ $input == "source" ]] || [[ $input == "release" ]]; then
         type=$input
         break
     fi
@@ -46,46 +32,24 @@ while true; do
         else
             branch=$input
         fi
-        curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/LICENSE | tac | tac | grep -q 'License' && validbranch=true||echo "Invalid branch name"
+        curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/LICENSE | tac | tac | grep -q 'License' && validbranch=true || echo "Invalid branch name"
     done
     break
 done
-echo "Thank you, setting up environment $cname!"
+echo "Thank you, installing branch $branch!"
 
-#Only use micromamba if inside GitHub Actions
-if [[ -z "${GITHUB_ACTIONS}" ]]; then
-    conda_cmd="micromamba"
-else
-    conda_cmd="conda"
+if [ -d microSALT ]; then
+    rm -rf microSALT
 fi
-#Unload environment
-$conda_cmd info | tac | tac | grep -q $cname && source deactivate || :
-#Remove environment if already present
-$conda_cmd remove -y -n $cname --all || :
 
-$conda_cmd env create -n $cname -f https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/environment.yml
-source activate $cname
-
-# Bootstrap uv into the active conda environment
-pip install uv
+git clone https://github.com/Clinical-Genomics/microSALT
+cd microSALT && git checkout $branch
 
 if [[ $type == "release" ]]; then
-    uv pip install -U git+https://github.com/Clinical-Genomics/microSALT@$branch
+    uv sync
 elif [[ $type == "source" ]]; then
-  HERE=$PWD
-  if [ -d ${HERE}/microSALT ]; then
-    rm -rf microSALT
-  fi
-  git clone https://github.com/Clinical-Genomics/microSALT
-  cd microSALT && git checkout $branch
-  uv pip install -e . && cd ${HERE}
-  echo "Source installed under ${HERE}/microSALT"
+    uv sync --group dev
 fi
-echo "Installation Complete!"
-while true; do
-    echo "Configuration requires manual set-up as described in README.md ['yes']:"
-    read input
-    if [[ $input = "y" ]] || [[ $input = "yes" ]]; then
-        break
-    fi
-done
+
+echo "Installation Complete! Activate the environment with: source microSALT/.venv/bin/activate"
+echo "Configuration requires manual set-up as described in README.md"

@@ -22,9 +22,10 @@ microSALT requires a SLURM cluster._
 
 ## Quick installation
 
-1. `yes | bash <(curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/install.sh)`
-2. `cp configExample.json $HOME/.microSALT/config.json`
-3. `vim $HOME/.microSALT/config.json`
+1. `bash <(curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/install.sh)`
+2. `source microSALT/.venv/bin/activate`
+3. `cp microSALT/configExample.json $HOME/.microSALT/config.json`
+4. `vim $HOME/.microSALT/config.json`
 
 ## Configuration
 
@@ -75,8 +76,7 @@ Any definitions will work, as long as they retain the same formatting.
 
 ### Software
 
-- [Conda](https://conda.io) or [micromamba](https://mamba.readthedocs.io)
-- [uv](https://docs.astral.sh/uv)
+- [uv](https://docs.astral.sh/uv) >= 0.4
 - Python >= 3.10
 - [MySQL](https://www.mysql.com) server
 
