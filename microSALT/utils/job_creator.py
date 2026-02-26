@@ -576,8 +576,6 @@ class Job_Creator:
             sb.write("#!/usr/bin/env bash\n")
         with open(configfile, "w+") as cb:
             configout = self.config.copy()
-            if "genologics" in configout:
-                del configout["genologics"]
             cb.write(f"ANALYSIS STARTED BY: {user}\n")
             cb.write(json.dumps(configout, indent=2, separators=(",", ":")))
 

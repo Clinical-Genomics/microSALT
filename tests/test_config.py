@@ -19,7 +19,6 @@ def exp_config():
                   'duplication_rate_fail', 'insert_size_warn', 'insert_size_fail', 'average_coverage_warn', 'average_coverage_fail',
                   'bp_10x_warn', 'bp_10x_fail', 'bp_30x_warn', 'bp_50x_warn', 'bp_100x_warn'},
     'database': {'SQLALCHEMY_DATABASE_URI', 'SQLALCHEMY_TRACK_MODIFICATIONS', 'DEBUG'},
-    'genologics': {'baseuri', 'username', 'password'},
     'pubmlst': {'client_id', 'client_secret'},
     'pasteur': {'client_id', 'client_secret'},
   }
@@ -59,7 +58,7 @@ def test_paths(exp_config):
   # level one
   for entry in preset_config.keys():
     if entry != '_comment':
-      if isinstance(preset_config[entry], str) and '/' in preset_config[entry] and entry not in ['database', 'genologics']:
+      if isinstance(preset_config[entry], str) and '/' in preset_config[entry] and entry not in ['database']:
         unmade_fldr = preset_config[entry]
         # Embed logic to expand vars and user here
         unmade_fldr = os.path.expandvars(unmade_fldr)
@@ -70,7 +69,7 @@ def test_paths(exp_config):
       # level two
       elif isinstance(preset_config[entry], collections.abc.Mapping):
         for thing in preset_config[entry].keys():
-          if isinstance(preset_config[entry][thing], str) and '/' in preset_config[entry][thing] and entry not in ['database', 'genologics']:
+          if isinstance(preset_config[entry][thing], str) and '/' in preset_config[entry][thing] and entry not in ['database']:
             unmade_fldr = preset_config[entry][thing]
             # Embed logic to expand vars and user here
             unmade_fldr = os.path.expandvars(unmade_fldr)

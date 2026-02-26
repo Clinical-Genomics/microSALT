@@ -111,7 +111,6 @@ if preset_config != "":
                 if (
                     isinstance(preset_config[entry], str)
                     and "/" in preset_config[entry]
-                    and entry not in ["genologics"]
                 ):
                     if not preset_config[entry].startswith("/"):
                         sys.exit(-1)
@@ -126,7 +125,6 @@ if preset_config != "":
                         if (
                             isinstance(preset_config[entry][thing], str)
                             and "/" in preset_config[entry][thing]
-                            and entry not in ["genologics"]
                         ):
                             # Special string, mangling
                             if thing == "log_file":
