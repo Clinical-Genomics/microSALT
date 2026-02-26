@@ -192,7 +192,7 @@ class Job_Creator:
         # Note: The match function requires GNU awk (gawk) to be able to capture groups in regexes.
         batchfile.write(
             "gawk "
-            + "'/^>/ { match($0, /Contig_([0-9]+)_([0-9\.]+)/, m) } "
+            + r"'/^>/ { match($0, /Contig_([0-9]+)_([0-9\.]+)/, m) } "
             + '!/^>/ { seqlen=length($0); print ">NODE_" m[1] "_length_" seqlen "_cov_" m[2]; print $0; }\' '
             + f"{contigs_file_raw} > {contigs_file}\n"
         )
