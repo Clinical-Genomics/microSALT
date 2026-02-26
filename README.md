@@ -75,7 +75,6 @@ Any definitions will work, as long as they retain the same formatting.
 ### Hardware
 
 - A [SLURM](https://slurm.schedmd.com) enabled HPC system
-- A (clarity) LIMS server
 
 ### Software
 
