@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+import collections.abc
 import json
 import os
 import pathlib
@@ -8,7 +7,8 @@ import pytest
 from unittest.mock import patch
 from sqlalchemy import inspect as sa_inspect
 
-from microSALT.store.db_manipulator import DB_Manipulator
+from microSALT.store.db_manipulator import DB_Manipulator, _resolve_orm_table
+from microSALT.store.orm_models import Samples
 from microSALT import preset_config, logger
 
 
@@ -167,3 +167,50 @@ def test_top_index(dbm):
     dbm.add_rec({'CG_ID_sample': 'Uniq_ID_123', 'total_reads': 100}, 'Samples')
     dbm.add_rec({'CG_ID_sample': 'Uniq_ID_321', 'total_reads': 100}, 'Samples')
     ti_returned = dbm.top_index('Samples', {'total_reads': '100'}, 'total_reads')
+    assert ti_returned == 100
+
+    ti_missing = dbm.top_index('Samples', {'total_reads': '99999'}, 'total_reads')
+    assert ti_missing == -1
+
+
+def test_query_rec(dbm):
+    dbm.add_rec({'CG_ID_sample': 'QRY_001'}, 'Samples')
+    dbm.add_rec({'CG_ID_sample': 'QRY_002'}, 'Samples')
+
+    hits = dbm.query_rec('Samples', {'CG_ID_sample': 'QRY_001'})
+    assert len(hits) == 1
+    assert hits[0].CG_ID_sample == 'QRY_001'
+
+    no_hits = dbm.query_rec('Samples', {'CG_ID_sample': 'DOES_NOT_EXIST'})
+    assert len(no_hits) == 0
+
+    multi_filter = dbm.query_rec('Samples', {'CG_ID_sample': 'QRY_001', 'ST': None})
+    assert len(multi_filter) == 1
+
+
+def test_get_columns(dbm):
+    cols = dbm.get_columns('Samples')
+    assert isinstance(cols, dict)
+    assert 'CG_ID_sample' in cols
+    assert 'organism' in cols
+
+
+def test_exists(dbm):
+    dbm.add_rec({'CG_ID_sample': 'EXS_001'}, 'Samples')
+
+    assert dbm.exists('Samples', {'CG_ID_sample': 'EXS_001'}) is True
+    assert dbm.exists('Samples', {'CG_ID_sample': 'DOES_NOT_EXIST'}) is False
+
+
+def test_add_rec_unknown_table(caplog, dbm):
+    dbm.add_rec({'CG_ID_sample': 'ADD1234A1'}, 'An_entry_that_does_not_exist')
+    assert 'Attempted to access table' in caplog.text
+
+
+def test_resolve_orm_table_unknown():
+    with pytest.raises(KeyError):
+        _resolve_orm_table('NonExistentTable')
+
+
+def test_resolve_orm_table_known():
+    assert _resolve_orm_table('Samples') is Samples

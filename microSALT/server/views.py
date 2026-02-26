@@ -133,12 +133,10 @@ def STtracker_page(customer, template_folder: Path = TEMPLATE_FOLDER):
 
 def gen_collectiondata(collect_id=[]):
     """Queries database using a set of samples"""
-    arglist = []
     session = get_session()
     samples = session.query(Collections).filter(Collections.ID_collection == collect_id).all()
-    for sample in samples:
-        arglist.append(f"Samples.CG_ID_sample=='{sample.CG_ID_sample}'")
-    sample_info = session.query(Samples).filter(eval(f"or_({','.join(arglist)})"))
+    sample_ids = [s.CG_ID_sample for s in samples]
+    sample_info = session.query(Samples).filter(Samples.CG_ID_sample.in_(sample_ids))
     sample_info = gen_add_info(sample_info)
     return sample_info
 

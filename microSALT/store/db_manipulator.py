@@ -28,6 +28,25 @@ from microSALT.store.orm_models import (
     Versions,
 )
 
+# Maps string table names (as passed by callers) to ORM classes.
+_ORM_TABLES = {
+    "Collections": Collections,
+    "Expacs": Expacs,
+    "Projects": Projects,
+    "Reports": Reports,
+    "Resistances": Resistances,
+    "Samples": Samples,
+    "Seq_types": Seq_types,
+    "Versions": Versions,
+}
+
+
+def _resolve_orm_table(tablename: str):
+    """Return the ORM class for *tablename*, raising KeyError on unknown names."""
+    if tablename not in _ORM_TABLES:
+        raise KeyError(f"Unknown ORM table: {tablename!r}")
+    return _ORM_TABLES[tablename]
+
 
 class DB_Manipulator:
     def __init__(self, config, log):
@@ -131,11 +150,8 @@ class DB_Manipulator:
             # check for existence
             table = tablename
             pk_list = table.primary_key.columns.keys()
-            args = list()
-            for pk in pk_list:
-                args.append(f"table.c.{pk}=={data_dict[pk]}")
-            args = "or_(" + ",".join(args) + ")"
-            exist = self.session.query(table).filter(eval(args)).all()
+            filter_clauses = [table.c[pk] == data_dict[pk] for pk in pk_list]
+            exist = self.session.query(table).filter(or_(*filter_clauses)).all()
             # Add record
             if len(exist) == 0:
                 data = table.insert()
@@ -159,13 +175,14 @@ class DB_Manipulator:
         # ORM
         else:
             try:
-                table = eval(tablename)
+                table = _resolve_orm_table(tablename)
                 # Check for existing entry
                 pk_list = table.__table__.primary_key.columns.keys()
-            except Exception:
+            except KeyError:
                 self.logger.error(
                     f"Attempted to access table {tablename} which has not been created"
                 )
+                return
             pk_values = list()
             for item in pk_list:
                 pk_values.append(data_dict[item])
@@ -197,19 +214,17 @@ class DB_Manipulator:
 
     def upd_rec(self, req_dict: dict[str, str], tablename: str, upd_dict: dict[str, str]):
         """Updates a record to the specified table through a dict with columns as keys."""
-        table = eval(tablename)
+        table = _resolve_orm_table(tablename)
         self.logger.debug(f"Updating table {tablename} with {upd_dict}")
-        argy = list()
-        for k, v in req_dict.items():
-            if v != None:
-                argy.append(f".filter(table.{k}=='{v}')")
-        filter = "".join(argy)
-        megastring = f"self.session.query(table){filter}"
-        if len(eval(megastring + ".all()")) > 1:
+        filter_clauses = [
+            getattr(table, k) == v for k, v in req_dict.items() if v is not None
+        ]
+        query = self.session.query(table).filter(and_(*filter_clauses))
+        if len(query.all()) > 1:
             self.logger.error("More than 1 record found when orm updating. Exited.")
             sys.exit()
         else:
-            eval(megastring + ".update(upd_dict)")
+            query.update(upd_dict)
             self.session.commit()
         self.logger.debug(f"Updated table {tablename} with {upd_dict} for {req_dict}")
 
@@ -267,45 +282,34 @@ class DB_Manipulator:
         Non-PK are ignored"""
         # Non-orm
         if not isinstance(tablename, str):
-            # check for existence
             table = tablename
-            pk_list = table.primary_key.columns.keys()
-            args = list()
-            for k, v in filters.items():
-                args.append(f"table.c.{k}=={v}")
-            args = "or_(" + ",".join(args) + ")"
-            exist = self.session.query(table).filter(eval(args)).all()
-            return exist
+            filter_clauses = [table.c[k] == v for k, v in filters.items()]
+            return self.session.query(table).filter(or_(*filter_clauses)).all()
         # ORM
         else:
-            table = eval(tablename)
-            args = list()
-            for k, v in filters.items():
-                if v != None:
-                    args.append(f"table.{k}=='{v}'")
-            filter = " and ".join(args)
-            entries = self.session.query(table).filter(eval(filter)).all()
-            return entries
+            table = _resolve_orm_table(tablename)
+            filter_clauses = [
+                getattr(table, k) == v for k, v in filters.items() if v is not None
+            ]
+            return self.session.query(table).filter(and_(*filter_clauses)).all()
 
     def top_index(self, table_str: str, filters: dict[str, str], column: str):
         """Fetches the top index from column of table, by applying a dict with columns as keys."""
-        table = eval(table_str)
-        args = list()
-        for k, v in filters.items():
-            if v != None:
-                args.append(f"table.{k}=='{v}'")
-        filter = " and ".join(args)
+        table = _resolve_orm_table(table_str)
+        filter_clauses = [
+            getattr(table, k) == v for k, v in filters.items() if v is not None
+        ]
         entry = (
             self.session.query(table)
-            .filter(eval(filter))
-            .order_by(desc(eval(f"{table_str}.{column}")))
+            .filter(and_(*filter_clauses))
+            .order_by(desc(getattr(table, column)))
             .limit(1)
             .all()
         )
         if entry == []:
             return int(-1)
         else:
-            return eval(f"entry[0].{column}")
+            return getattr(entry[0], column)
 
     def reload_profiletable(self, organism: str):
         """Drop the named non-orm table, then load it with fresh data"""
@@ -382,21 +386,15 @@ class DB_Manipulator:
 
     def get_columns(self, tablename: str):
         """Returns all records for a given ORM table"""
-        table = eval(tablename)
+        table = _resolve_orm_table(tablename)
         return dict.fromkeys(table.__table__.columns.keys())
 
-    def exists(self, table, item: dict[str, str]):
+    def exists(self, table: str, item: dict[str, str]):
         """Takes a k-v pair and checks for the entrys existence in the given table"""
-        filterstring = ""
-        for k, v in item.items():
-            filterstring += f"{table}.{k}=='{v}',"
-        filterstring = filterstring[:-1]
-        table = eval(table)
-        entry = self.session.query(table).filter(eval(filterstring)).scalar()
-        if entry is None:
-            return False
-        else:
-            return True
+        orm_table = _resolve_orm_table(table)
+        filter_clauses = [getattr(orm_table, k) == v for k, v in item.items()]
+        entry = self.session.query(orm_table).filter(and_(*filter_clauses)).scalar()
+        return entry is not None
 
     def get_version(self, name: str):
         """Gets the version from a given name. Should be generalized to return any value for any input"""
@@ -498,14 +496,12 @@ class DB_Manipulator:
             profile_list = self.session.query(self.profiles[org]).all()
             # Filter
             for novel in novel_list:
-                args = list()
-                for key in org_keys:
-                    if key != "ST" and key != "clonal_complex" and key != "species":
-                        args.append(
-                            f"self.profiles[org].c.{key}=={eval(f'novel.{key}')}"
-                        )
-                args = "and_(" + ",".join(args) + ")"
-                exist = self.session.query(self.profiles[org]).filter(eval(args)).all()
+                filter_clauses = [
+                    self.profiles[org].c[key] == getattr(novel, key)
+                    for key in org_keys
+                    if key not in ("ST", "clonal_complex", "species")
+                ]
+                exist = self.session.query(self.profiles[org]).filter(and_(*filter_clauses)).all()
 
                 if exist:
                     exist = exist[0]
@@ -657,11 +653,10 @@ class DB_Manipulator:
             sample.update({Seq_types.st_predictor: None})
             # Set subset
             for loci, columns in pks.items():
-                arglist = list()
-                for key, val in columns.items():
-                    arglist.append(f"Seq_types.{key}=='{val}'")
-                    args = "and_(" + ", ".join(arglist) + ")"
-                sample.filter(eval(args)).update({Seq_types.st_predictor: 1})
+                filter_clauses = [
+                    getattr(Seq_types, key) == val for key, val in columns.items()
+                ]
+                sample.filter(and_(*filter_clauses)).update({Seq_types.st_predictor: 1})
         self.session.commit()
 
     def alleles2st(self, cg_sid: str):
@@ -687,18 +682,14 @@ class DB_Manipulator:
                 return -3
 
         # Tests all allele combinations found to see if any of them result in ST
-        filter = list()
+        filter_clauses = []
         for key, val in alleles.items():
-            subfilter = list()
-            for num in val:
-                subfilter.append(f" self.profiles[organism].c.{key}=={num} ")
-            subfilter = ",".join(subfilter)
+            col = self.profiles[organism].c[key]
             if len(val) > 1:
-                subfilter = f"or_({subfilter})"
-            filter.append(subfilter)
-        filter = ",".join(filter)
-        filter = f"and_({filter})"
-        output = self.session.query(self.profiles[organism]).filter(eval(filter)).all()
+                filter_clauses.append(or_(*[col == num for num in val]))
+            else:
+                filter_clauses.append(col == val[0])
+        output = self.session.query(self.profiles[organism]).filter(and_(*filter_clauses)).all()
 
         # Check for existence in profile database
         if len(output) > 1:
@@ -719,18 +710,14 @@ class DB_Manipulator:
             self.logger.info(
                 f"Sample {cg_sid} on {organism} has novel ST reliably established. Searching for prior novel definition..."
             )
-            filter = list()
+            filter_clauses = []
             for key, val in alleles.items():
-                subfilter = list()
-                for num in val:
-                    subfilter.append(f" self.novel[organism].c.{key}=={num} ")
-                subfilter = ",".join(subfilter)
+                col = self.novel[organism].c[key]
                 if len(val) > 1:
-                    subfilter = f"or_({subfilter})"
-                filter.append(subfilter)
-            filter = ",".join(filter)
-            filter = f"and_({filter})"
-            output = self.session.query(self.novel[organism]).filter(eval(filter)).all()
+                    filter_clauses.append(or_(*[col == num for num in val]))
+                else:
+                    filter_clauses.append(col == val[0])
+            output = self.session.query(self.novel[organism]).filter(and_(*filter_clauses)).all()
 
             if len(output) > 1:
                 STlist = list()
@@ -804,7 +791,6 @@ class DB_Manipulator:
             prof_keys = list(prof.keys())
             alleleconditions = list()
             alleledict = dict()
-            allconditions = [f"Seq_types.CG_ID_sample=='{cg_sid}'"]
 
             for index, allele in enumerate(prof):
                 if (
@@ -812,14 +798,17 @@ class DB_Manipulator:
                     and "clonal_complex" not in prof_keys[index]
                     and "species" not in prof_keys[index]
                 ):
-                    condition = f"Seq_types.loci=='{prof_keys[index]}' , Seq_types.allele=='{allele}'"
                     alleledict[prof_keys[index]] = ""
-                    alleleconditions.append(f"and_({condition})")
+                    alleleconditions.append(
+                        and_(
+                            Seq_types.loci == prof_keys[index],
+                            Seq_types.allele == allele,
+                        )
+                    )
 
-            alleleconditions = f"or_({','.join(alleleconditions)})"
-            allconditions.append(alleleconditions)
-            allconditions = f"and_({','.join(allconditions)})"
-            all_alleles = self.session.query(Seq_types).filter(eval(allconditions)).all()
+            all_alleles = self.session.query(Seq_types).filter(
+                and_(Seq_types.CG_ID_sample == cg_sid, or_(*alleleconditions))
+            ).all()
 
             # Keep only best hit each loci
             for allele in all_alleles:

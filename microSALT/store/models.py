@@ -18,9 +18,7 @@ class Profiles:
             for file in indata:
                 self.add_table(file)
         except Exception as e:
-            self.logger.error(
-                f"Unable to open profile folder {self.config['folders']['profiles']}"
-            )
+            self.logger.error(f"Unable to open profile folder {self.config['folders']['profiles']}")
 
     def add_table(self, file):
         try:
@@ -28,18 +26,13 @@ class Profiles:
                 # Sets profile_* headers
                 head = fh.readline()
                 head = head.rstrip().split("\t")[:8]  # Only consider the first 8 elements
-                index = 0
-
-                header = f"Table('profile_{file}'.format(file), self.metadata,"
-                while index < len(head):
-                    # Set ST as PK
-                    if head[index] == "ST":
-                        header += f"Column(head[{index}], SmallInteger, primary_key=True),"
+                columns = []
+                for col_name in head:
+                    if col_name == "ST":
+                        columns.append(Column(col_name, SmallInteger, primary_key=True))
                     else:
-                        header += f"Column(head[{index}], SmallInteger),"
-                    index = index + 1
-                header += ")"
-                p = eval(header)
+                        columns.append(Column(col_name, SmallInteger))
+                p = Table(f"profile_{file}", self.metadata, *columns)
                 self.tables[file] = p
         except Exception as e:
             self.logger.error(f"Unable to open profile file {file}")
@@ -56,9 +49,7 @@ class Novel:
             for file in indata:
                 self.add_table(file)
         except Exception as e:
-            self.logger.error(
-                f"Unable to open profile folder {self.config['folders']['profiles']}"
-            )
+            self.logger.error(f"Unable to open profile folder {self.config['folders']['profiles']}")
 
     def add_table(self, file):
         try:
@@ -66,19 +57,14 @@ class Novel:
                 # Sets profile_* headers
                 head = fh.readline()
                 head = head.rstrip().split("\t")[:8]  # Only consider the first 8 elements
-                index = 0
-
-                header = f"Table('novel_{file}'.format(file), self.metadata,"
-                while index < len(head):
-                    # Set ST as PK
-                    if head[index] == "ST":
-                        header += f"Column(head[{index}], SmallInteger, primary_key=True),"
+                columns = []
+                for col_name in head:
+                    if col_name == "ST":
+                        columns.append(Column(col_name, SmallInteger, primary_key=True))
                     # Set Clonal complex as string
                     else:
-                        header += f"Column(head[{index}], SmallInteger),"
-                    index = index + 1
-                header += ")"
-                p = eval(header)
+                        columns.append(Column(col_name, SmallInteger))
+                p = Table(f"novel_{file}", self.metadata, *columns)
                 self.tables[file] = p
         except Exception as e:
             self.logger.error(f"Unable to open profile file {file}")
