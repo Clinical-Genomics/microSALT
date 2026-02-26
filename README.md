@@ -22,6 +22,9 @@ microSALT requires a SLURM cluster._
 
 ## Quick installation
 
+> ![NOTE]
+> This install requires `uv` to be installed on the system. For installation instructions, see [https://docs.astral.sh/uv/getting-started/installation/](https://docs.astral.sh/uv/getting-started/installation/).
+
 1. `bash <(curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/install.sh)`
 2. `source microSALT/.venv/bin/activate`
 3. `cp microSALT/configExample.json $HOME/.microSALT/config.json`
