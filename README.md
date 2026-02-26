@@ -2,7 +2,7 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4026043.svg)](https://doi.org/10.5281/zenodo.4026043)
 
 <p align="center">
-  <a href="https://github.com/sylvinite/microSALT">
+  <a href="https://github.com/Clinical-Genomics/microSALT">
     <img width="1000" height="250" src="artwork/microsalt.jpg"/>
   </a>
 </p>
@@ -22,7 +22,7 @@ microSALT requires a SLURM cluster._
 
 ## Quick installation
 
-> [!NOTE]
+> [!IMPORTANT]
 > This install requires `uv` to be installed on the system. For installation instructions, see [https://docs.astral.sh/uv/getting-started/installation/](https://docs.astral.sh/uv/getting-started/installation/).
 
 1. `bash <(curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/install.sh)`
