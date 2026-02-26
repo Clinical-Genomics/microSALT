@@ -66,8 +66,11 @@ $conda_cmd remove -y -n $cname --all || :
 $conda_cmd env create -n $cname -f https://raw.githubusercontent.com/Clinical-Genomics/microSALT/$branch/environment.yml
 source activate $cname
 
+# Bootstrap uv into the active conda environment
+pip install uv
+
 if [[ $type == "release" ]]; then
-    pip install -U git+https://github.com/Clinical-Genomics/microSALT@$branch
+    uv pip install -U git+https://github.com/Clinical-Genomics/microSALT@$branch
 elif [[ $type == "source" ]]; then
   HERE=$PWD
   if [ -d ${HERE}/microSALT ]; then
@@ -75,7 +78,7 @@ elif [[ $type == "source" ]]; then
   fi
   git clone https://github.com/Clinical-Genomics/microSALT
   cd microSALT && git checkout $branch
-  pip install -e . && cd ${HERE}
+  uv pip install -e . && cd ${HERE}
   echo "Source installed under ${HERE}/microSALT"
 fi
 echo "Installation Complete!"
