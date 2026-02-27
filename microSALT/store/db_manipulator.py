@@ -15,7 +15,7 @@ from sqlalchemy import inspect as sa_inspect, MetaData, desc, or_, and_, text
 from microSALT import __version__
 from microSALT.exc.exceptions import RefUpdateLockError
 from microSALT.store.database import get_session, get_engine
-from microSALT.store.models import Novel, Profiles
+from microSALT.store.models import ProfileTable
 from microSALT.store.orm_models import (
     Collections,
     Expacs,
@@ -55,8 +55,8 @@ class DB_Manipulator:
         self.session = get_session()
         self.engine = get_engine()
         self.metadata = MetaData()
-        self.profiles = Profiles(self.metadata, self.config, self.logger).tables
-        self.novel = Novel(self.metadata, self.config, self.logger).tables
+        self.profiles = ProfileTable("profile_", self.metadata, self.config, self.logger).tables
+        self.novel = ProfileTable("novel_", self.metadata, self.config, self.logger).tables
         # Turns off pymysql deprecation warnings until they can update their code
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -343,9 +343,8 @@ class DB_Manipulator:
             self.logger.info(
                 f"Schema unchanged for {organism}, truncating and reloading profile table"
             )
-            with self.engine.connect() as conn:
-                conn.execute(table.delete())
-                conn.commit()
+            self.session.execute(table.delete())
+            self.session.commit()
             self.init_profiletable(organism, table)
         else:
             self.logger.info(
@@ -354,35 +353,30 @@ class DB_Manipulator:
             )
             self.reload_profiletable(organism)
 
-    def init_profiletable(self, filename: str, table):
-        """Creates profile tables by looping, since a lot of infiles exist"""
-        data = table.insert()
-        linedict = dict.fromkeys(table.c.keys())
+    def init_profiletable(self, filename: str, table) -> None:
+        """Bulk-inserts all data rows from a profile file into *table*."""
         file_path = f"{self.config['folders']['profiles']}/{filename}"
         self.logger.debug(f"Opening profile file: {file_path}")
+        keys = list(table.c.keys())
+        rows = []
         with open(file_path, "r") as fh:
-            # Skips header
-            head = fh.readline()
-            head = head.rstrip().split("\t")
-            self.logger.debug(f"Header columns: {head}")
-            line_num = 0
-            for line in fh:
-                line_num += 1
-                line = line.rstrip().split("\t")
-                self.logger.debug(f"Processing line {line_num}: {line}")
-                index = 0
-                while index < len(line):
-                    linedict[head[index]] = line[index]
-                    index = index + 1
-                self.logger.debug(f"Linedict before insert: {linedict}")
-                try:
-                    with self.engine.connect() as conn:
-                        conn.execute(data, linedict)
-                        conn.commit()
-                    self.logger.debug(f"Inserted line {line_num} into table")
-                except Exception as e:
-                    self.logger.error(f"Failed to insert line {line_num}: {e}")
-        self.logger.debug(f"Initialized profile table for {filename} with {line_num} entries")
+            head = fh.readline().rstrip().split("\t")
+            for raw_line in fh:
+                values = raw_line.rstrip().split("\t")
+                row = {col: None for col in keys}
+                for i, val in enumerate(values[: len(keys)]):
+                    row[head[i]] = val
+                rows.append(row)
+        if not rows:
+            self.logger.warning(f"No data rows found in profile file {filename}")
+            return
+        try:
+            self.session.execute(table.insert(), rows)
+            self.session.commit()
+            self.logger.debug(f"Inserted {len(rows)} rows into profile table for {filename}")
+        except Exception as e:
+            self.session.rollback()
+            self.logger.error(f"Failed to bulk-insert profile data for {filename}: {e}")
 
     def get_columns(self, tablename: str):
         """Returns all records for a given ORM table"""
