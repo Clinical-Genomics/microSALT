@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
 from unittest import mock
-import pytest
-import re
 
 from unittest.mock import patch
 
@@ -17,7 +15,6 @@ def fake_search(int):
 @patch("os.listdir")
 @patch("os.stat")
 @patch("gzip.open")
-@pytest.mark.xfail(reason="Can no longer fetch from databases without authenticating")
 def test_verify_fastq(gopen, stat, listdir, testdata):
     listdir.return_value = [
         "ACC6438A3_HVMHWDSXX_L1_1.fastq.gz",
@@ -38,7 +35,6 @@ def test_verify_fastq(gopen, stat, listdir, testdata):
 
 @patch("re.search")
 @patch("microSALT.utils.job_creator.glob.glob")
-@pytest.mark.xfail(reason="Can no longer fetch from databases without authenticating")
 def test_blast_subset(glob_search, research, testdata):
     jc = Job_Creator(
         run_settings={"input": "/tmp/"}, config=preset_config, log=logger, sampleinfo=testdata
@@ -58,7 +54,7 @@ def test_blast_subset(glob_search, research, testdata):
     assert count > 0
 
 
-@pytest.mark.xfail(reason="Can no longer fetch from databases without authenticating")
+@patch("subprocess.Popen")
 def test_create_snpsection(subproc, testdata):
     # Sets up subprocess mocking
     process_mock = mock.Mock()
@@ -82,7 +78,6 @@ def test_create_snpsection(subproc, testdata):
     assert count > 0
 
 
-@pytest.mark.xfail(reason="Can no longer fetch from databases without authenticating")
 @patch("subprocess.Popen")
 def test_project_job(subproc, testdata):
     # Sets up subprocess mocking
@@ -91,14 +86,12 @@ def test_project_job(subproc, testdata):
     process_mock.configure_mock(**attrs)
     subproc.return_value = process_mock
 
-    jc = Job_Creator(
-        config=preset_config,
-        log=logger,
-        sampleinfo=testdata,
-        run_settings={"pool": ["AAA1234A1", "AAA1234A2"], "input": "/tmp/AAA1234"},
-    )
-    jc.project_job()
+    with patch.dict("os.environ", {"CONDA_PREFIX": "/tmp/mock_conda"}):
+        jc = Job_Creator(
+            config=preset_config,
+            log=logger,
+            sampleinfo=testdata,
+            run_settings={"pool": ["AAA1234A1", "AAA1234A2"], "input": "/tmp/AAA1234"},
+        )
+        jc.project_job()
 
-
-def test_create_collection():
-    pass
