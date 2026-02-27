@@ -95,13 +95,13 @@ class DB_Manipulator:
         for k, v in self.profiles.items():
             if not inspector.has_table(f"profile_{k}"):
                 self.profiles[k].create(self.engine)
-                self.init_profiletable(k, v)
+                self.populate_profiletable(k, v)
                 self.add_rec(
                     {"name": f"profile_{k}", "version": "0"},
                     "Versions",
                     force=True,
                 )
-                self.logger.info(f"Profile table profile_{k} initialized")
+                self.logger.info(f"Profile table profile_{k} created and populated")
         for k, v in self.novel.items():
             if not inspector.has_table(f"novel_{k}"):
                 self.novel[k].create(self.engine)
@@ -312,15 +312,23 @@ class DB_Manipulator:
             return getattr(entry[0], column)
 
     def reload_profiletable(self, organism: str):
-        """Drop the named non-orm table, then load it with fresh data"""
-        table = self.profiles[organism]
+        """Drop the named profile table, rebuild schema from disk, and reload with fresh data.
+
+        The Python Table object is rebuilt from the current file on disk before the DB
+        table is recreated, so schema changes (new or renamed loci columns) are picked up.
+        """
         self.logger.debug(f"Reloading profile table for {organism}")
         self.profiles[organism].drop(self.engine)
         self.logger.debug(f"Dropped profile table for {organism}")
+        # Rebuild the Table object from the file currently on disk (schema may have changed).
+        fresh_metadata = MetaData()
+        fresh = ProfileTable("profile_", fresh_metadata, self.config, self.logger).tables
+        if organism in fresh:
+            self.profiles[organism] = fresh[organism]
         self.profiles[organism].create(self.engine)
         self.logger.debug(f"Recreated profile table for {organism}")
-        self.init_profiletable(organism, table)
-        self.logger.debug(f"Initialized profile table for {organism}")
+        self.populate_profiletable(organism, self.profiles[organism])
+        self.logger.debug(f"Populated profile table for {organism}")
 
     def refresh_profiletable(self, organism: str):
         """Reload profile table content without dropping the table when possible.
@@ -345,7 +353,7 @@ class DB_Manipulator:
             )
             self.session.execute(table.delete())
             self.session.commit()
-            self.init_profiletable(organism, table)
+            self.populate_profiletable(organism, table)
         else:
             self.logger.info(
                 f"Schema changed for {organism} ({current_cols} -> {csv_cols}), "
@@ -353,8 +361,8 @@ class DB_Manipulator:
             )
             self.reload_profiletable(organism)
 
-    def init_profiletable(self, filename: str, table) -> None:
-        """Bulk-inserts all data rows from a profile file into *table*."""
+    def populate_profiletable(self, filename: str, table) -> None:
+        """Bulk-inserts all data rows from a profile file into an already-created *table*."""
         file_path = f"{self.config['folders']['profiles']}/{filename}"
         self.logger.debug(f"Opening profile file: {file_path}")
         keys = list(table.c.keys())
@@ -782,7 +790,7 @@ class DB_Manipulator:
 
         # Get values for each allele set that resolves an ST
         for prof in profiles:
-            prof_keys = list(prof.keys())
+            prof_keys = list(prof._fields)
             alleleconditions = list()
             alleledict = dict()
 

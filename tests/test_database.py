@@ -1,4 +1,5 @@
 import collections.abc
+import copy
 import json
 import os
 import pathlib
@@ -8,7 +9,7 @@ from unittest.mock import patch
 from sqlalchemy import inspect as sa_inspect
 
 from microSALT.store.db_manipulator import DB_Manipulator, _resolve_orm_table
-from microSALT.store.orm_models import Samples
+from microSALT.store.orm_models import Reports, Samples
 from microSALT import preset_config, logger
 
 
@@ -37,6 +38,57 @@ def dbm():
     return dbm
 
 
+@pytest.fixture
+def tmp_profiles_dir(tmp_path):
+    """Creates a temporary profiles directory with a staphylococcus_aureus profile file.
+
+    The file contains two rows: ST=130 (matching sampleinfo_mlst.json alleles) and ST=1.
+    """
+    content = (
+        "ST\tarcC\taroE\tglpF\tgmk\tpta\ttpi\tyqiL\n"
+        "1\t1\t1\t1\t1\t1\t1\t1\n"
+        "130\t6\t57\t45\t2\t7\t58\t52\n"
+    )
+    (tmp_path / "staphylococcus_aureus").write_text(content)
+    return tmp_path
+
+
+@pytest.fixture
+def profile_dbm(tmp_profiles_dir):
+    """DB_Manipulator with profile/novel tables freshly built from tmp_profiles_dir.
+
+    Uses the shared SQLite database but drops and recreates all profile/novel tables
+    on each invocation so tests start with known, clean data.
+    """
+    config = copy.deepcopy(preset_config)
+    config["folders"]["profiles"] = str(tmp_profiles_dir)
+
+    dbm = DB_Manipulator(config=config, log=logger)
+    dbm.create_tables()
+
+    inspector = sa_inspect(dbm.engine)
+
+    # Drop and recreate profile tables with data from tmp_profiles_dir.
+    for name, table in list(dbm.profiles.items()):
+        if inspector.has_table(table.name):
+            table.drop(dbm.engine)
+        table.create(dbm.engine)
+        dbm.populate_profiletable(name, table)
+
+    # Drop and recreate novel tables (empty — entries are written by application logic).
+    for name, table in list(dbm.novel.items()):
+        if inspector.has_table(table.name):
+            table.drop(dbm.engine)
+        table.create(dbm.engine)
+
+    for entry in unpack_db_json('sampleinfo_projects.json'):
+        dbm.add_rec(entry, 'Projects')
+    for entry in unpack_db_json('sampleinfo_mlst.json'):
+        dbm.add_rec(entry, 'Seq_types')
+
+    return dbm
+
+
 def test_create_every_table(dbm):
     inspector = sa_inspect(dbm.engine)
     assert inspector.has_table('samples')
@@ -48,21 +100,23 @@ def test_create_every_table(dbm):
     assert inspector.has_table('collections')
 
 
-@pytest.mark.xfail(reason="Can no longer fetch from databases without authenticating")
-def test_add_rec(caplog, dbm):
-    #Adds records to all databases
+def test_add_rec(caplog, profile_dbm):
+    dbm = profile_dbm
+    # Profile table
     dbm.add_rec(
-        {'ST': '130', 'arcC': '6', 'aroE': '57', 'glpF': '45', 'gmk': '2', 'pta': '7', 'tpi': '58', 'yqiL': '52',
-         'clonal_complex': 'CC1'}, dbm.profiles['staphylococcus_aureus'])
+        {'ST': '130', 'arcC': '6', 'aroE': '57', 'glpF': '45', 'gmk': '2', 'pta': '7', 'tpi': '58', 'yqiL': '52'},
+        dbm.profiles['staphylococcus_aureus'])
     assert len(dbm.query_rec(dbm.profiles['staphylococcus_aureus'], {'ST': '130'})) == 1
     assert len(dbm.query_rec(dbm.profiles['staphylococcus_aureus'], {'ST': '-1'})) == 0
 
+    # Novel table
     dbm.add_rec(
-        {'ST': '130', 'arcC': '6', 'aroE': '57', 'glpF': '45', 'gmk': '2', 'pta': '7', 'tpi': '58', 'yqiL': '52',
-         'clonal_complex': 'CC1'}, dbm.novel['staphylococcus_aureus'])
+        {'ST': '130', 'arcC': '6', 'aroE': '57', 'glpF': '45', 'gmk': '2', 'pta': '7', 'tpi': '58', 'yqiL': '52'},
+        dbm.novel['staphylococcus_aureus'])
     assert len(dbm.query_rec(dbm.novel['staphylococcus_aureus'], {'ST': '130'})) == 1
     assert len(dbm.query_rec(dbm.novel['staphylococcus_aureus'], {'ST': '-1'})) == 0
 
+    # ORM tables
     dbm.add_rec({'CG_ID_sample': 'ADD1234A1'}, 'Samples')
     assert len(dbm.query_rec('Samples', {'CG_ID_sample': 'ADD1234A1'})) > 0
     assert len(dbm.query_rec('Samples', {'CG_ID_sample': 'XXX1234A10'})) == 0
@@ -98,9 +152,8 @@ def test_add_rec(caplog, dbm):
     assert len(dbm.query_rec('Collections', {'CG_ID_sample': 'XXX1234', 'ID_collection': 'MyCollectionFolder'})) == 0
 
     caplog.clear()
-    with pytest.raises(Exception):
-        dbm.add_rec({'CG_ID_sample': 'ADD1234A1'}, 'An_entry_that_does_not_exist')
-        assert "Attempted to access table" in caplog.text
+    dbm.add_rec({'CG_ID_sample': 'ADD1234A1'}, 'An_entry_that_does_not_exist')
+    assert "Attempted to access table" in caplog.text
 
 
 @patch('sys.exit')
@@ -123,8 +176,8 @@ def test_upd_rec(sysexit, caplog, dbm):
     assert "More than 1 record found" in caplog.text
 
 
-@pytest.mark.xfail(reason="Can no longer fetch from databases without authenticating")
-def test_allele_ranker(dbm):
+def test_allele_ranker(profile_dbm):
+    dbm = profile_dbm
     dbm.add_rec({'CG_ID_sample': 'MLS1234A1', 'CG_ID_project': 'MLS1234', 'organism': 'staphylococcus_aureus'},
                 'Samples')
     assert dbm.alleles2st('MLS1234A1') == 130
@@ -138,11 +191,15 @@ def test_allele_ranker(dbm):
         entry['allele'] = 0
         entry['CG_ID_sample'] = 'MLS1234A2'
         dbm.add_rec(entry, 'Seq_types')
-    dbm.alleles2st('MLS1234A2') == -1
+    assert dbm.alleles2st('MLS1234A2') == -1
 
 
-@pytest.mark.xfail(reason="Can no longer fetch from databases without authenticating")
 def test_get_and_set_report(dbm):
+    # Clean up any leftover data from prior runs to keep the test idempotent.
+    dbm.session.query(Reports).filter(Reports.CG_ID_project == 'ADD1234').delete()
+    dbm.session.query(Samples).filter(Samples.CG_ID_sample == 'ADD1234A1').delete()
+    dbm.session.commit()
+
     dbm.add_rec({'CG_ID_sample': 'ADD1234A1', 'method_sequencing': '1000:1'}, 'Samples')
     dbm.add_rec({'CG_ID_project': 'ADD1234', 'version': '1'}, 'Reports')
     assert dbm.get_report('ADD1234').version == 1
@@ -214,3 +271,82 @@ def test_resolve_orm_table_unknown():
 
 def test_resolve_orm_table_known():
     assert _resolve_orm_table('Samples') is Samples
+
+
+def test_populate_profiletable(profile_dbm):
+    """populate_profiletable bulk-inserts all data rows from the profile file."""
+    # Given: a profile table created from a file with two STs (ST=1 and ST=130).
+    dbm = profile_dbm
+    table = dbm.profiles['staphylococcus_aureus']
+
+    # When: populate_profiletable has been called by the profile_dbm fixture.
+
+    # Then: the table contains exactly the two rows from the file.
+    rows = dbm.session.query(table).all()
+    assert len(rows) == 2
+
+    sts = {row.ST for row in rows}
+    assert 130 in sts
+    assert 1 in sts
+
+    # Then: allele values for ST=130 match the source file exactly.
+    st130 = next(r for r in rows if r.ST == 130)
+    assert st130.arcC == 6
+    assert st130.aroE == 57
+    assert st130.glpF == 45
+    assert st130.gmk == 2
+    assert st130.pta == 7
+    assert st130.tpi == 58
+    assert st130.yqiL == 52
+
+
+def test_refresh_profiletable_same_schema(tmp_profiles_dir, profile_dbm):
+    """refresh_profiletable with unchanged columns truncates and reloads data."""
+    # Given: a populated profile table (ST=1, ST=130) and a new file with the
+    # same column layout but different data (ST=99 only).
+    dbm = profile_dbm
+    new_content = (
+        "ST\tarcC\taroE\tglpF\tgmk\tpta\ttpi\tyqiL\n"
+        "99\t3\t3\t3\t3\t3\t3\t3\n"
+    )
+    (tmp_profiles_dir / "staphylococcus_aureus").write_text(new_content)
+
+    # When: refresh_profiletable is called with the updated file.
+    dbm.refresh_profiletable("staphylococcus_aureus")
+
+    # Then: only the new row is present.
+    table = dbm.profiles['staphylococcus_aureus']
+    rows = dbm.session.query(table).all()
+    assert len(rows) == 1
+    assert rows[0].ST == 99
+
+    # Then: old data has been cleared.
+    old_rows = dbm.session.query(table).filter(table.c.ST == 130).all()
+    assert len(old_rows) == 0
+
+
+def test_refresh_profiletable_schema_change(tmp_profiles_dir, profile_dbm):
+    """refresh_profiletable drops and rebuilds the table when column layout changes."""
+    # Given: a populated profile table with columns ST+7 loci (including yqiL)
+    # and a new file that renames yqiL to renamedLocus within the 8-column window.
+    dbm = profile_dbm
+    new_content = (
+        "ST\tarcC\taroE\tglpF\tgmk\tpta\ttpi\trenamedLocus\n"
+        "200\t1\t2\t3\t4\t5\t6\t7\n"
+    )
+    (tmp_profiles_dir / "staphylococcus_aureus").write_text(new_content)
+
+    # When: refresh_profiletable detects the schema change and does a full drop/recreate.
+    dbm.refresh_profiletable("staphylococcus_aureus")
+
+    # Then: the table schema reflects the new column layout.
+    table = dbm.profiles['staphylococcus_aureus']
+    cols = list(table.c.keys())
+    assert "renamedLocus" in cols
+    assert "yqiL" not in cols
+    assert len(cols) == 8  # ST + 7 loci
+
+    # Then: the table is populated with data from the new file.
+    rows = dbm.session.query(table).all()
+    assert len(rows) == 1
+    assert rows[0].ST == 200
