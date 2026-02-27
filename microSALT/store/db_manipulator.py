@@ -168,9 +168,8 @@ class DB_Manipulator:
                                 data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
                             else:
                                 pass
-                with self.engine.connect() as conn:
-                    conn.execute(data, data_dict)
-                    conn.commit()
+                self.session.execute(data, data_dict)
+                self.session.commit()
                 self.logger.info(f"Added entry to table {tablename.fullname}")
         # ORM
         else:
