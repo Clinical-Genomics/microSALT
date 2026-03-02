@@ -95,12 +95,7 @@ if preset_config != "":
                     os.path.join(os.path.expandvars("$CONDA_PREFIX"), "expec/ExPEC.fsa")
                 )
                 break
-        preset_config["folders"]["adapters"] = os.path.abspath(
-            os.path.join(
-                os.path.expandvars("$CONDA_PREFIX"),
-                "share/trimmomatic/adapters/",
-            )
-        )
+        preset_config["singularity"]["trimmomatic_adapters"] = "/opt/conda/share/trimmomatic/adapters/"
 
         # Initialize logger
         setup_logger(logging_level="INFO")

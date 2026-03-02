@@ -106,9 +106,9 @@ class Job_Creator:
 
     def _singularity_exec(self, tool, command):
         """Return command wrapped with singularity exec for the given tool container."""
-        sif = self.config['containers'][tool]
-        binary = self.config['singularity']['binary']
-        bind_list = list(self.config['singularity'].get('bind_paths', []))
+        sif = self.config["containers"][tool]
+        binary = self.config["singularity"]["binary"]
+        bind_list = list(self.config["singularity"].get("bind_paths", []))
         if self.finishdir and self.finishdir not in bind_list:
             bind_list.append(self.finishdir)
         bind = f"--bind {','.join(bind_list)}" if bind_list else ""
@@ -212,8 +212,7 @@ class Job_Creator:
             f"--reads {self.concat_files['f']},{self.concat_files['r']}"
         )
         batchfile.write(
-            f"mkdir -p {assembly_dir} &"
-            f"{self._singularity_exec('skesa', skesa_cmd)}\n"
+            f"mkdir -p {assembly_dir} &" f"{self._singularity_exec('skesa', skesa_cmd)}\n"
         )
 
         # Convert sequence naming in Skesa output into Spades format in the contigs fasta file:
@@ -264,7 +263,8 @@ class Job_Creator:
                 )
                 if name == "mlst":
                     batchfile.write(
-                        self._singularity_exec('blast',
+                        self._singularity_exec(
+                            "blast",
                             "blastn -db {}/{}  -query {}/assembly/{}_contigs.fasta -out {}/blast_search/{}/loci_query_{}.txt -task megablast -num_threads {} -outfmt {}".format(
                                 os.path.dirname(ref),
                                 ref_nosuf,
@@ -275,12 +275,14 @@ class Job_Creator:
                                 ref_nosuf,
                                 self.config["slurm_header"]["threads"],
                                 blast_format,
-                            )
-                        ) + "\n"
+                            ),
+                        )
+                        + "\n"
                     )
                 else:
                     batchfile.write(
-                        self._singularity_exec('blast',
+                        self._singularity_exec(
+                            "blast",
                             "blastn -db {}/{}  -query {}/assembly/{}_contigs.fasta -out {}/blast_search/{}/{}.txt -task megablast -num_threads {} -outfmt {}".format(
                                 os.path.dirname(ref),
                                 ref_nosuf,
@@ -291,8 +293,9 @@ class Job_Creator:
                                 ref_nosuf,
                                 self.config["slurm_header"]["threads"],
                                 blast_format,
-                            )
-                        ) + "\n"
+                            ),
+                        )
+                        + "\n"
                     )
         elif len(file_list) == 1:
             ref_nosuf = re.search(r"(\w+(?:\-\w+)*)\.\w+", os.path.basename(file_list[0])).group(1)
@@ -302,7 +305,8 @@ class Job_Creator:
                 )
             )
             batchfile.write(
-                self._singularity_exec('blast',
+                self._singularity_exec(
+                    "blast",
                     "blastn -db {}/{}  -query {}/assembly/{}_contigs.fasta -out {}/blast_search/{}/{}.txt -task megablast -num_threads {} -outfmt {}".format(
                         os.path.dirname(search_string),
                         ref_nosuf,
@@ -313,8 +317,9 @@ class Job_Creator:
                         ref_nosuf,
                         self.config["slurm_header"]["threads"],
                         blast_format,
-                    )
-                ) + "\n"
+                    ),
+                )
+                + "\n"
             )
         batchfile.write("\n")
         batchfile.close()
@@ -332,40 +337,53 @@ class Job_Creator:
 
         batchfile.write("## Alignment & Deduplication\n")
         batchfile.write(
-            self._singularity_exec('bwa',
+            self._singularity_exec(
+                "bwa",
                 "bwa mem -M -t {} {} {} {} > {}.sam".format(
                     self.config["slurm_header"]["threads"],
                     ref,
                     self.concat_files["f"],
                     self.concat_files["r"],
                     outbase,
-                )
-            ) + "\n"
+                ),
+            )
+            + "\n"
         )
         batchfile.write(
-            self._singularity_exec('samtools',
+            self._singularity_exec(
+                "samtools",
                 "samtools view --threads {} -b -o {}.bam -T {} {}.sam".format(
                     self.config["slurm_header"]["threads"], outbase, ref, outbase
-                )
-            ) + "\n"
+                ),
+            )
+            + "\n"
         )
         batchfile.write(
-            self._singularity_exec('samtools',
+            self._singularity_exec(
+                "samtools",
                 "samtools sort --threads {} -o {}.bam_sort {}.bam".format(
                     self.config["slurm_header"]["threads"], outbase, outbase
-                )
-            ) + "\n"
+                ),
+            )
+            + "\n"
         )
         batchfile.write(
-            self._singularity_exec('picard',
+            self._singularity_exec(
+                "picard",
                 "picard MarkDuplicates I={}.bam_sort O={}.bam_sort_rmdup M={}.stats.dup REMOVE_DUPLICATES=true".format(
                     outbase, outbase, outbase
-                )
-            ) + "\n"
+                ),
+            )
+            + "\n"
         )
-        batchfile.write(self._singularity_exec('samtools', "samtools index {}.bam_sort_rmdup".format(outbase)) + "\n")
         batchfile.write(
-            self._singularity_exec('samtools', "samtools idxstats {}.bam_sort_rmdup".format(outbase))
+            self._singularity_exec("samtools", "samtools index {}.bam_sort_rmdup".format(outbase))
+            + "\n"
+        )
+        batchfile.write(
+            self._singularity_exec(
+                "samtools", "samtools idxstats {}.bam_sort_rmdup".format(outbase)
+            )
             + " &> {}.stats.ref\n".format(outbase)
         )
         # Removal of temp aligment files
@@ -374,25 +392,29 @@ class Job_Creator:
         batchfile.write("## Primary stats generation\n")
         # Insert stats, dedupped
         batchfile.write(
-            self._singularity_exec('picard',
+            self._singularity_exec(
+                "picard",
                 "picard CollectInsertSizeMetrics I={}.bam_sort_rmdup O={}.stats.ins H={}.hist.ins".format(
                     outbase, outbase, outbase
-                )
-            ) + "\n"
+                ),
+            )
+            + "\n"
         )
         # Coverage
         batchfile.write(
-            self._singularity_exec('samtools', "samtools stats --coverage 1,10000,1 {}.bam_sort_rmdup".format(outbase))
+            self._singularity_exec(
+                "samtools", "samtools stats --coverage 1,10000,1 {}.bam_sort_rmdup".format(outbase)
+            )
             + " |grep ^COV | cut -f 2- &> {}.stats.cov\n".format(outbase)
         )
         # Mapped rate, no dedup,dedup in MWGS (trimming has no effect)!
         batchfile.write(
-            self._singularity_exec('samtools', "samtools flagstat {}.bam_sort".format(outbase))
+            self._singularity_exec("samtools", "samtools flagstat {}.bam_sort".format(outbase))
             + " &> {}.stats.map\n".format(outbase)
         )
         # Total reads, no dedup,dedup in MWGS (trimming has no effect)!
         batchfile.write(
-            self._singularity_exec('samtools', "samtools view -c {}.bam_sort".format(outbase))
+            self._singularity_exec("samtools", "samtools view -c {}.bam_sort".format(outbase))
             + " &> {}.stats.raw\n".format(outbase)
         )
 
@@ -403,7 +425,7 @@ class Job_Creator:
         """Concatinates data, possibly trims it, then makes the unstranded reads usable"""
         forward = list()
         reverse = list()
-        for root, dirs, files in os.walk(self.config["folders"]["adapters"]):
+        for root, dirs, files in os.walk(self.config["singularity"]["trimmomatic_adapters"]):
             if "NexteraPE-PE.fa" not in files:
                 self.logger.error(
                     "Adapters folder at {} does not contain NexteraPE-PE.fa. Review paths.yml"
@@ -442,7 +464,8 @@ class Job_Creator:
             ru = "{}/{}_trim_rev_unpair.fastq.gz".format(trimdir, outfile)
             batchfile.write("##Trimming section\n")
             batchfile.write(
-                self._singularity_exec('trimmomatic',
+                self._singularity_exec(
+                    "trimmomatic",
                     "trimmomatic PE -threads {} -phred33 {} {} {} {} {} {}\
       ILLUMINACLIP:{}/NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36".format(
                         self.config["slurm_header"]["threads"],
@@ -452,9 +475,10 @@ class Job_Creator:
                         fu,
                         rp,
                         ru,
-                        self.config["folders"]["adapters"],
-                    )
-                ) + "\n"
+                        self.config["singularity"]["trimmomatic_adapters"],
+                    ),
+                )
+                + "\n"
             )
 
             batchfile.write("## Interlaced trimmed files\n")
@@ -471,11 +495,13 @@ class Job_Creator:
         batchfile.write("# QUAST QC metrics\n")
         batchfile.write("mkdir {}/assembly/quast\n".format(self.finishdir))
         batchfile.write(
-            self._singularity_exec('quast',
+            self._singularity_exec(
+                "quast",
                 "quast.py {}/assembly/{}_contigs.fasta -o {}/assembly/quast".format(
                     self.finishdir, self.name, self.finishdir
-                )
-            ) + "\n"
+                ),
+            )
+            + "\n"
         )
         batchfile.write(
             "mv {}/assembly/quast/report.tsv {}/assembly/quast/{}_report.tsv\n\n".format(

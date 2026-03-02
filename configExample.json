@@ -90,7 +90,7 @@
     "_comment": "Paths that must be visible inside every container (passed as --bind)",
     "bind_paths": ["/data"],
     "_comment": "Adapter path inside the trimmomatic container (bioconda default)",
-    "trimmomatic_adapters": "/opt/conda/share/trimmomatic/adapters"
+    "trimmomatic_adapters": "/opt/conda/share/trimmomatic/adapters/"
   },
   "_comment": "Absolute paths to pre-built Singularity SIF images on the cluster",
   "containers": {
