@@ -9,7 +9,7 @@ description = "Microbial Sequence Analysis and Loci-based Typing"
 authors = [
     {name = "Isak Sylvin", email = "isak.sylvin@scilifelab.se"},
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "biopython>=1.81",
     "bs4==0.0.1",
