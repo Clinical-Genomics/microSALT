@@ -95,7 +95,9 @@ if preset_config != "":
                     os.path.join(os.path.expandvars("$CONDA_PREFIX"), "expec/ExPEC.fsa")
                 )
                 break
-        preset_config["singularity"]["trimmomatic_adapters"] = "/opt/conda/share/trimmomatic/adapters/"
+        preset_config["singularity"][
+            "trimmomatic_adapters"
+        ] = "/opt/conda/share/trimmomatic/adapters/"
 
         # Initialize logger
         setup_logger(logging_level="INFO")
@@ -106,12 +108,8 @@ if preset_config != "":
             preset_config["database"]["SQLALCHEMY_DATABASE_URI"],
         ).group(1)
         for entry in preset_config.keys():
-            if entry != "_comment":
-                if (
-                    isinstance(preset_config[entry], str)
-                    and "/" in preset_config[entry]
-                    and entry not in ["genologics"]
-                ):
+            if entry not in ["_comment", "singularity", "genologics"]:
+                if isinstance(preset_config[entry], str) and "/" in preset_config[entry]:
                     if not preset_config[entry].startswith("/"):
                         sys.exit(-1)
                     unmade_fldr = os.path.abspath(preset_config[entry])
@@ -125,7 +123,6 @@ if preset_config != "":
                         if (
                             isinstance(preset_config[entry][thing], str)
                             and "/" in preset_config[entry][thing]
-                            and entry not in ["genologics"]
                         ):
                             # Special string, mangling
                             if thing == "log_file":
