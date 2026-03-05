@@ -1,4 +1,5 @@
 import collections
+import collections.abc
 import json
 import logging
 import os
@@ -6,10 +7,7 @@ import pathlib
 import re
 import subprocess
 import sys
-from distutils.sysconfig import get_python_lib
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from importlib.resources import files as resource_files
 
 __version__ = "4.3.0"
 
@@ -50,7 +48,7 @@ def setup_logger(logging_level: str, preset_config) -> None:
     logger.addHandler(ch)
 
 
-default = os.path.join(os.environ["HOME"], ".microSALT/config.json")
+default = os.path.join(os.path.dirname(wd), "configExample.json")
 
 if "MICROSALT_CONFIG" in os.environ:
     try:
@@ -58,28 +56,28 @@ if "MICROSALT_CONFIG" in os.environ:
         with open(envvar, "r") as conf:
             preset_config = json.load(conf)
     except Exception as e:
-        print("Config error: {}".format(str(e)))
+        print(f"Config error: {e!s}")
         pass
 elif os.path.exists(default):
     try:
         with open(os.path.abspath(default), "r") as conf:
             preset_config = json.load(conf)
     except Exception as e:
-        print("Config error: {}".format(str(e)))
+        print(f"Config error: {e!s}")
         pass
 
 # Config dependent section:
+CONFIG = {}
+
 if preset_config != "":
     try:
-        global CONFIG
         CONFIG = {}
 
-        engine = create_engine(preset_config["database"]["SQLALCHEMY_DATABASE_URI"])
-        Session = sessionmaker(bind=engine)
-        global SESSION
-        SESSION = Session()
-        global ENGINE
-        ENGINE = engine
+        # Initialize database
+        from microSALT.store.database import initialize_database
+
+        initialize_database(preset_config["database"]["SQLALCHEMY_DATABASE_URI"])
+
         # Add `folders` configuration
         CONFIG["folders"] = preset_config.get("folders", {})
 
@@ -90,16 +88,9 @@ if preset_config != "":
         CONFIG["pasteur"] = preset_config.get("pasteur", {"client_id": "", "client_secret": ""})
 
         # Add extrapaths to config
-        preset_config["folders"]["expec"] = os.path.abspath(
-            os.path.join(pathlib.Path(__file__).parent.parent, "unique_references/ExPEC.fsa")
+        preset_config["folders"]["expec"] = str(
+            resource_files("microSALT").joinpath("unique_references", "ExPEC.fsa")
         )
-        # Check if release install exists
-        for entry in os.listdir(get_python_lib()):
-            if "microSALT-" in entry:
-                preset_config["folders"]["expec"] = os.path.abspath(
-                    os.path.join(os.path.expandvars("$CONDA_PREFIX"), "expec/ExPEC.fsa")
-                )
-                break
         preset_config["folders"]["adapters"] = os.path.abspath(
             os.path.join(
                 os.path.expandvars("$CONDA_PREFIX"),
@@ -120,32 +111,30 @@ if preset_config != "":
                 if (
                     isinstance(preset_config[entry], str)
                     and "/" in preset_config[entry]
-                    and entry not in ["genologics"]
                 ):
                     if not preset_config[entry].startswith("/"):
                         sys.exit(-1)
                     unmade_fldr = os.path.abspath(preset_config[entry])
                     if not pathlib.Path(unmade_fldr).exists():
                         os.makedirs(unmade_fldr)
-                        logger.info("Created path {}".format(unmade_fldr))
+                        logger.info(f"Created path {unmade_fldr}")
 
                 # level two
-                elif isinstance(preset_config[entry], collections.Mapping):
+                elif isinstance(preset_config[entry], collections.abc.Mapping):
                     for thing in preset_config[entry].keys():
                         if (
                             isinstance(preset_config[entry][thing], str)
                             and "/" in preset_config[entry][thing]
-                            and entry not in ["genologics"]
                         ):
                             # Special string, mangling
                             if thing == "log_file":
                                 unmade_fldr = os.path.dirname(preset_config[entry][thing])
-                                bash_cmd = "touch {}".format(preset_config[entry][thing])
+                                bash_cmd = f"touch {preset_config[entry][thing]}"
                                 proc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
                                 output, error = proc.communicate()
                             elif thing == "SQLALCHEMY_DATABASE_URI":
                                 unmade_fldr = os.path.dirname(db_file)
-                                bash_cmd = "touch {}".format(db_file)
+                                bash_cmd = f"touch {db_file}"
                                 proc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
                                 output, error = proc.communicate()
                                 if proc.returncode != 0:
@@ -157,18 +146,8 @@ if preset_config != "":
                                 unmade_fldr = preset_config[entry][thing]
                             if not pathlib.Path(unmade_fldr).exists():
                                 os.makedirs(unmade_fldr)
-                                logger.info("Created path {}".format(unmade_fldr))
-
-        # Integrity check database
-        # cmd = "sqlite3 {0}".format(db_file)
-        # cmd = cmd.split()
-        # cmd.append("pragma integrity_check;")
-        # proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        # output, error = proc.communicate()
-        # if "ok" not in str(output):
-        #     logger.error("Database integrity failed! Lock-state detected!")
-        #     sys.exit(-1)
+                                logger.info(f"Created path {unmade_fldr}")
 
     except Exception as e:
-        print("Config error: {}".format(str(e)))
+        print(f"Config error: {e!s}")
         pass

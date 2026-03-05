@@ -133,12 +133,10 @@ def STtracker_page(customer, template_folder: Path = TEMPLATE_FOLDER):
 
 def gen_collectiondata(collect_id=[]):
     """Queries database using a set of samples"""
-    arglist = []
     session = get_session()
     samples = session.query(Collections).filter(Collections.ID_collection == collect_id).all()
-    for sample in samples:
-        arglist.append("Samples.CG_ID_sample=='{}'".format(sample.CG_ID_sample))
-    sample_info = session.query(Samples).filter(eval("or_({})".format(",".join(arglist))))
+    sample_ids = [s.CG_ID_sample for s in samples]
+    sample_info = session.query(Samples).filter(Samples.CG_ID_sample.in_(sample_ids))
     sample_info = gen_add_info(sample_info)
     return sample_info
 
@@ -229,7 +227,7 @@ def gen_add_info(sample_info=dict()):
                     s.threshold = "Failed"
 
             if near_hits > 0 and s.threshold == "Passed":
-                s.ST_status = "Okänd ({} allele[r])".format(near_hits)
+                s.ST_status = f"Okänd ({near_hits} allele[r])"
         else:
             s.threshold = "Failed"
 

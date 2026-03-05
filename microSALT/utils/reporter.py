@@ -41,14 +41,7 @@ class Reporter:
         self.error = False
         self.dt = datetime.now()
         self.now = time.strftime(
-            "{}.{}.{}_{}.{}.{}".format(
-                self.dt.year,
-                self.dt.month,
-                self.dt.day,
-                self.dt.hour,
-                self.dt.minute,
-                self.dt.second,
-            )
+            f"{self.dt.year}.{self.dt.month}.{self.dt.day}_{self.dt.hour}.{self.dt.minute}.{self.dt.second}"
         )
 
         self.sampleinfo = sampleinfo
@@ -68,9 +61,9 @@ class Reporter:
             self.sample = self.sampleinfo
 
     def create_subfolders(self):
-        os.makedirs("{0}/deliverables".format(self.config["folders"]["reports"]), exist_ok=True)
-        os.makedirs("{0}/json".format(self.config["folders"]["reports"]), exist_ok=True)
-        os.makedirs("{0}/analysis".format(self.config["folders"]["reports"]), exist_ok=True)
+        os.makedirs(f"{self.config['folders']['reports']}/deliverables", exist_ok=True)
+        os.makedirs(f"{self.config['folders']['reports']}/json", exist_ok=True)
+        os.makedirs(f"{self.config['folders']['reports']}/analysis", exist_ok=True)
 
     def report(self, type="default", customer="all"):
         self.create_subfolders()
@@ -181,7 +174,7 @@ class Reporter:
             sample_info = gen_collectiondata(self.name)
         else:
             sample_info = gen_reportdata(self.name)
-        output = "{}/{}_{}_{}.csv".format(self.output, self.name, motif, self.now)
+        output = f"{self.output}/{self.name}_{motif}_{self.now}.csv"
 
         # Load motif & gene names into dict
         motifdict = dict()
@@ -207,9 +200,7 @@ class Reporter:
 
         # Top 2 Header
         sepfix = "sep=,"
-        topline = "Identity {}% & Span {}%,,,".format(
-            self.config["threshold"]["motif_id"], self.config["threshold"]["motif_span"]
-        )
+        topline = f"Identity {self.config['threshold']['motif_id']}% & Span {self.config['threshold']['motif_span']}%,,,"
         botline = "CG Sample ID,Sample ID,Organism,Sequence Type,Thresholds"
         for k in sorted(motifdict.keys()):
             genes = [""] * len(motifdict[k])
@@ -217,26 +208,20 @@ class Reporter:
             if active_gene == "":
                 active_gene = "Uncategorized hits"
             geneholder = ",".join(genes)
-            topline += ",,{}{}".format(active_gene, geneholder)
+            topline += f",,{active_gene}{geneholder}"
             resnames = ",".join(sorted(motifdict[k]))
-            botline += ",,{}".format(resnames)
+            botline += f",,{resnames}"
 
         try:
             excel = open(output, "w+")
-            excel.write("{}\n".format(sepfix))
-            excel.write("{}\n".format(topline))
-            excel.write("{}\n".format(botline))
+            excel.write(f"{sepfix}\n")
+            excel.write(f"{topline}\n")
+            excel.write(f"{botline}\n")
 
             # Create each individual row past the 2nd, per iteration
             for s in sample_info["samples"]:
                 rowdict = dict()
-                pref = "{},{},{},{},{}".format(
-                    s.CG_ID_sample,
-                    s.Customer_ID_sample,
-                    s.organism,
-                    s.ST_status.replace(",", ";"),
-                    s.threshold,
-                )
+                pref = f"{s.CG_ID_sample},{s.Customer_ID_sample},{s.organism},{s.ST_status.replace(',', ';')},{s.threshold}"
                 # Load single sample
                 if motif == "resistance":
                     for r in s.resistances:
@@ -259,7 +244,7 @@ class Reporter:
                             hits += ","
                             if gen in rowdict[res].keys():
                                 # UPD: Change this to identity of hit
-                                hits += "{}".format(rowdict[res][gen])
+                                hits += f"{rowdict[res][gen]}"
                             else:
                                 hits += "0"
                     else:
@@ -268,7 +253,7 @@ class Reporter:
                         pad = ["0"] * len(motifdict[res])
                         hits += ",".join(pad)
 
-                excel.write("{}{}\n".format(pref, hits))
+                excel.write(f"{pref}{hits}\n")
 
             excel.close()
             if os.path.isfile(output):
@@ -277,21 +262,15 @@ class Reporter:
                     self.attachments.append(output)
         except FileNotFoundError as e:
             self.logger.error(
-                "Gen_motif unable to produce excel file. Path {} does not exist".format(
-                    os.path.basename(output)
-                )
+                f"Gen_motif unable to produce excel file. Path {os.path.basename(output)} does not exist"
             )
 
     def gen_delivery(self):
         deliv = dict()
         deliv["files"] = list()
         last_version = self.db_pusher.get_report(self.name).version
-        output = "{}/deliverables/{}_deliverables.yaml".format(
-            self.config["folders"]["reports"], self.sample.get("Customer_ID_project")
-        )
-        local = "{}/{}_deliverables.yaml".format(
-            self.output, self.sample.get("Customer_ID_project")
-        )
+        output = f"{self.config['folders']['reports']}/deliverables/{self.sample.get('Customer_ID_project')}_deliverables.yaml"
+        local = f"{self.output}/{self.sample.get('Customer_ID_project')}_deliverables.yaml"
 
         # Project-wide
         # Sampleinfo
@@ -299,7 +278,7 @@ class Reporter:
             {
                 "format": "json",
                 "id": str(self.sample.get("Customer_ID_project")),
-                "path": "{}/sampleinfo.json".format(self.output),
+                "path": f"{self.output}/sampleinfo.json",
                 "path_index": "~",
                 "step": "analysis",
                 "tag": "sampleinfo",
@@ -310,9 +289,7 @@ class Reporter:
             {
                 "format": "html",
                 "id": str(self.sample.get("Customer_ID_project")),
-                "path": "{}/{}_QC_{}.html".format(
-                    self.output, self.sample.get("Customer_ID_project"), last_version
-                ),
+                "path": f"{self.output}/{self.sample.get('Customer_ID_project')}_QC_{last_version}.html",
                 "path_index": "~",
                 "step": "result_aggregation",
                 "tag": "microsalt-qc",
@@ -323,9 +300,7 @@ class Reporter:
             {
                 "format": "html",
                 "id": str(self.sample.get("Customer_ID_project")),
-                "path": "{}/{}_Typing_{}.html".format(
-                    self.output, self.sample.get("Customer_ID_project"), last_version
-                ),
+                "path": f"{self.output}/{self.sample.get('Customer_ID_project')}_Typing_{last_version}.html",
                 "path_index": "~",
                 "step": "result_aggregation",
                 "tag": "microsalt-type",
@@ -336,7 +311,7 @@ class Reporter:
             {
                 "format": "json",
                 "id": str(self.sample.get("Customer_ID_project")),
-                "path": "{}/{}.json".format(self.output, self.sample.get("CG_ID_project")),
+                "path": f"{self.output}/{self.sample.get('CG_ID_project')}.json",
                 "path_index": "~",
                 "step": "result_aggregation",
                 "tag": "microsalt-json",
@@ -347,7 +322,7 @@ class Reporter:
             {
                 "format": "txt",
                 "id": str(self.sample.get("Customer_ID_project")),
-                "path": "{}/config.log".format(self.output),
+                "path": f"{self.output}/config.log",
                 "path_index": "~",
                 "step": "analysis",
                 "tag": "runtime-settings",
@@ -359,7 +334,7 @@ class Reporter:
             {
                 "format": "txt",
                 "id": str(self.sample.get("Customer_ID_project")),
-                "path": "{}/version.txt".format(self.output),
+                "path": f"{self.output}/version.txt",
                 "path_index": "~",
                 "step": "result_aggregation",
                 "tag": "microsalt-version",
@@ -384,9 +359,7 @@ class Reporter:
                 {
                     "format": "fasta",
                     "id": s["CG_ID_sample"],
-                    "path": "{0}/assembly/{1}_trimmed_contigs.fasta".format(
-                        resultsdir, s["CG_ID_sample"]
-                    ),
+                    "path": f"{resultsdir}/assembly/{s['CG_ID_sample']}_trimmed_contigs.fasta",
                     "path_index": "~",
                     "step": "assembly",
                     "tag": "assembly",
@@ -397,9 +370,7 @@ class Reporter:
                 {
                     "format": "fastq",
                     "id": s["CG_ID_sample"],
-                    "path": "{0}/trimmed/{1}_trim_front_pair.fastq.gz".format(
-                        resultsdir, s["CG_ID_sample"]
-                    ),
+                    "path": f"{resultsdir}/trimmed/{s['CG_ID_sample']}_trim_front_pair.fastq.gz",
                     "path_index": "~",
                     "step": "concatination",
                     "tag": "trimmed-forward-reads",
@@ -410,9 +381,7 @@ class Reporter:
                 {
                     "format": "fastq",
                     "id": s["CG_ID_sample"],
-                    "path": "{0}/trimmed/{1}_trim_rev_pair.fastq.gz".format(
-                        resultsdir, s["CG_ID_sample"]
-                    ),
+                    "path": f"{resultsdir}/trimmed/{s['CG_ID_sample']}_trim_rev_pair.fastq.gz",
                     "path_index": "~",
                     "step": "concatination",
                     "tag": "trimmed-reverse-reads",
@@ -423,9 +392,7 @@ class Reporter:
                 {
                     "format": "fastq",
                     "id": s["CG_ID_sample"],
-                    "path": "{0}/trimmed/{1}_trim_unpair.fastq.gz".format(
-                        resultsdir, s["CG_ID_sample"]
-                    ),
+                    "path": f"{resultsdir}/trimmed/{s['CG_ID_sample']}_trim_unpair.fastq.gz",
                     "path_index": "~",
                     "step": "concatination",
                     "tag": "trimmed-unpaired-reads",
@@ -436,7 +403,7 @@ class Reporter:
                 {
                     "format": "txt",
                     "id": s["CG_ID_sample"],
-                    "path": "{0}/slurm_{1}.log".format(resultsdir, s["CG_ID_sample"]),
+                    "path": f"{resultsdir}/slurm_{s['CG_ID_sample']}.log",
                     "path_index": "~",
                     "step": "analysis",
                     "tag": "logfile",
@@ -447,9 +414,7 @@ class Reporter:
                 {
                     "format": "tsv",
                     "id": s["CG_ID_sample"],
-                    "path": "{0}/assembly/quast/{1}_report.tsv".format(
-                        resultsdir, s["CG_ID_sample"]
-                    ),
+                    "path": f"{resultsdir}/assembly/quast/{s['CG_ID_sample']}_report.tsv",
                     "path_index": "~",
                     "step": "assembly",
                     "tag": "quast-results",
@@ -460,9 +425,7 @@ class Reporter:
                 {
                     "format": "bam",
                     "id": s["CG_ID_sample"],
-                    "path": "{0}/alignment/{1}_{2}.bam_sort".format(
-                        resultsdir, s["CG_ID_sample"], s["reference"]
-                    ),
+                    "path": f"{resultsdir}/alignment/{s['CG_ID_sample']}_{s['reference']}.bam_sort",
                     "path_index": "~",
                     "step": "alignment",
                     "tag": "reference-alignment-sorted",
@@ -473,9 +436,7 @@ class Reporter:
                 {
                     "format": "bam",
                     "id": s["CG_ID_sample"],
-                    "path": "{0}/alignment/{1}_{2}.bam_sort_rmdup".format(
-                        resultsdir, s["CG_ID_sample"], s["reference"]
-                    ),
+                    "path": f"{resultsdir}/alignment/{s['CG_ID_sample']}_{s['reference']}.bam_sort_rmdup",
                     "path_index": "~",
                     "step": "alignment",
                     "tag": "reference-alignment-deduplicated",
@@ -486,9 +447,7 @@ class Reporter:
                 {
                     "format": "meta",
                     "id": s["CG_ID_sample"],
-                    "path": "{0}/alignment/{1}_{2}.stats.ins".format(
-                        resultsdir, s["CG_ID_sample"], s["reference"]
-                    ),
+                    "path": f"{resultsdir}/alignment/{s['CG_ID_sample']}_{s['reference']}.stats.ins",
                     "path_index": "~",
                     "step": "insertsize_calc",
                     "tag": "picard-insertsize",
@@ -510,8 +469,8 @@ class Reporter:
 
     def gen_json(self, silent=False):
         report = dict()
-        local = "{}/{}.json".format(self.output, self.name)
-        output = "{}/json/{}.json".format(self.config["folders"]["reports"], self.name)
+        local = f"{self.output}/{self.name}.json"
+        output = f"{self.config['folders']['reports']}/json/{self.name}.json"
 
         sample_info = gen_reportdata(self.name)
         analyses = [
@@ -611,20 +570,18 @@ class Reporter:
                     self.attachments.append(output)
         except FileNotFoundError:
             self.logger.error(
-                "Gen_json unable to produce json file. Path {} does not exist".format(
-                    os.path.basename(output)
-                )
+                f"Gen_json unable to produce json file. Path {os.path.basename(output)} does not exist"
             )
 
     def mail(self):
         msg = MIMEMultipart()
         if not self.error and self.attachments:
-            msg["Subject"] = "{} ({}) Reports".format(self.name, self.attachments[0].split("_")[0])
+            msg["Subject"] = f"{self.name} ({self.attachments[0].split('_')[0]}) Reports"
         else:
-            msg["Subject"] = "{} Failed Generating Report".format(self.name)
+            msg["Subject"] = f"{self.name} Failed Generating Report"
 
         sender = socket.gethostname()
-        sender_fixed = "{}.com".format(os.path.splitext(sender)[0])
+        sender_fixed = f"{os.path.splitext(sender)[0]}.com"
         msg["From"] = sender_fixed
 
         msg["To"] = self.config["regex"]["mail_recipient"]
@@ -634,7 +591,7 @@ class Reporter:
                 part = MIMEApplication(open(file).read())
                 part.add_header(
                     "Content-Disposition",
-                    'attachment; filename="%s"' % os.path.basename(file),
+                    f'attachment; filename="{os.path.basename(file)}"',
                 )
                 msg.attach(part)
 
@@ -642,6 +599,4 @@ class Reporter:
         s.connect()
         s.sendmail(msg["From"], msg["To"], msg.as_string())
         s.quit()
-        self.logger.info("Mail containing report sent to {} from {}".format(msg["To"], msg["From"]))
-
-
+        self.logger.info(f"Mail containing report sent to {msg['To']} from {msg['From']}")

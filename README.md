@@ -1,10 +1,9 @@
 [![Build status](https://github.com/clinical-genomics/microsalt/actions/workflows/run_tests.yml/badge.svg)](https://github.com/clinical-genomics/microsalt/actions/workflows/run_tests.yml)
-[![Coverage Status](https://coveralls.io/repos/github/Clinical-Genomics/microSALT/badge.svg?branch=master)](https://coveralls.io/github/Clinical-Genomics/microSALT?branch=master)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4026043.svg)](https://doi.org/10.5281/zenodo.4026043)
 
 <p align="center">
-  <a href="https://github.com/sylvinite/microSALT">
-    <img width="1000" height="250" src="artwork/microsalt.jpg"/>
+  <a href="https://github.com/Clinical-Genomics/microSALT">
+    <img width="1000" height="250" src="microSALT/artwork/microsalt.jpg"/>
   </a>
 </p>
 
@@ -16,16 +15,20 @@ sample, determines a sample's organism specific sequence type, and its
 resistance pattern. microSALT also provides a database storage solution and
 report generation of these results._
 
-_microSALT uses a combination of python, sqLite and flask. Python is used for
-the majority of functionality, the database is handled through sqLite and the
-front-end is handled through flask. All analysis activity by microSALT requires
-a SLURM cluster._
+_microSALT uses a combination of Python, MySQL and Jinja2. Python is used for
+the majority of functionality, the database is handled through MySQL via
+SQLAlchemy and reports are rendered through Jinja2. All analysis activity by
+microSALT requires a SLURM cluster._
 
 ## Quick installation
 
-1. `yes | bash <(curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/install.sh)`
-2. `cp configExample.json $HOME/.microSALT/config.json`
-3. `vim $HOME/.microSALT/config.json`
+> [!IMPORTANT]
+> This install requires `uv` to be installed on the system. For installation instructions, see [https://docs.astral.sh/uv/getting-started/installation/](https://docs.astral.sh/uv/getting-started/installation/).
+
+1. `bash <(curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/install.sh)`
+2. `source microSALT/.venv/bin/activate`
+3. `cp microSALT/configExample.json $HOME/.microSALT/config.json`
+4. `vim $HOME/.microSALT/config.json`
 
 ## Configuration
 
@@ -72,13 +75,12 @@ Any definitions will work, as long as they retain the same formatting.
 ### Hardware
 
 - A [SLURM](https://slurm.schedmd.com) enabled HPC system
-- A (clarity) LIMS server
 
 ### Software
 
-- [Conda](https://conda.io) >= 3.6
-- Python 3.6
-- [SQLite](https://www.sqlite.org)
+- [uv](https://docs.astral.sh/uv) >= 0.4
+- Python >= 3.10
+- [MySQL](https://www.mysql.com) server
 
 ## Contributing to this repo
 
