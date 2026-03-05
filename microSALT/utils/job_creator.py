@@ -586,7 +586,7 @@ class Job_Creator:
                 mb.write(f"export MICROSALT_CONFIG={os.environ['MICROSALT_CONFIG']}\n")
             conda_cmd = (
                 f"conda run -p {os.environ['CONDA_PREFIX']} "
-                f"microSALT utils finish {self.finishdir}/sampleinfo.json "
+                f"microsalt utils finish {self.finishdir}/sampleinfo.json "
                 f"--input {self.finishdir} "
                 f"--email {self.config['regex']['mail_recipient']} "
                 f"--report {report} "

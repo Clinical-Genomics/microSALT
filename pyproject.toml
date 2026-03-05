@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.scripts]
-microSALT = "microSALT.cli:root"
+microsalt = "microSALT.cli:root"
 
 [project.urls]
 Homepage = "https://github.com/Clinical-Genomics/microSALT"
