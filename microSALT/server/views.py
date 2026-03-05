@@ -2,10 +2,12 @@ import logging
 import subprocess
 from datetime import date
 from pathlib import Path
+from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
 
 from microSALT import __version__
+from microSALT.config import Threshold
 from microSALT.store.orm_models import (
     Collections,
     Reports,
@@ -70,8 +72,8 @@ def project_page(project, template_folder: Path = TEMPLATE_FOLDER):
     )
 
 
-def alignment_page(project, template_folder: Path = TEMPLATE_FOLDER, config=None):
-    sample_info = gen_reportdata(project, config=config)
+def alignment_page(project, threshold: Threshold, template_folder: Path = TEMPLATE_FOLDER):
+    sample_info = gen_reportdata(project, threshold=threshold)
 
     return render_template(
         template_folder=template_folder,
@@ -81,18 +83,18 @@ def alignment_page(project, template_folder: Path = TEMPLATE_FOLDER, config=None
         date=date.today().isoformat(),
         version=sample_info["versions"],
         user=sample_info["user"],
-        threshold=config.threshold,
+        threshold=threshold,
         reports=sample_info["reports"],
         build=__version__,
     )
 
 
-def render_alignment_page(project, template_folder: Path = TEMPLATE_FOLDER, config=None):
-    return alignment_page(project, template_folder=template_folder, config=config)
+def render_alignment_page(project, threshold: Threshold, template_folder: Path = TEMPLATE_FOLDER):
+    return alignment_page(project, threshold=threshold, template_folder=template_folder)
 
 
-def typing_page(project, organism_group, template_folder: Path = TEMPLATE_FOLDER, config=None):
-    sample_info = gen_reportdata(project, organism_group, config=config)
+def typing_page(project, organism_group, threshold: Threshold, verified_organisms: list, template_folder: Path = TEMPLATE_FOLDER):
+    sample_info = gen_reportdata(project, organism_group, threshold=threshold)
 
     return render_template(
         template_folder=template_folder,
@@ -102,19 +104,19 @@ def typing_page(project, organism_group, template_folder: Path = TEMPLATE_FOLDER
         date=date.today().isoformat(),
         version=sample_info["versions"],
         user=sample_info["user"],
-        threshold=config.threshold,
-        verified_organisms=config.regex.verified_organisms,
+        threshold=threshold,
+        verified_organisms=verified_organisms,
         reports=sample_info["reports"],
         build=__version__,
     )
 
 
-def render_typing_page(project, organism_group, template_folder: Path = TEMPLATE_FOLDER, config=None):
-    return typing_page(project, organism_group, template_folder=template_folder, config=config)
+def render_typing_page(project, organism_group, threshold: Threshold, verified_organisms: list, template_folder: Path = TEMPLATE_FOLDER):
+    return typing_page(project, organism_group, threshold=threshold, verified_organisms=verified_organisms, template_folder=template_folder)
 
 
-def STtracker_page(customer, template_folder: Path = TEMPLATE_FOLDER, config=None):
-    sample_info = gen_reportdata(project_id="all", organism_group="all", config=config)
+def STtracker_page(customer, threshold: Threshold, template_folder: Path = TEMPLATE_FOLDER):
+    sample_info = gen_reportdata(project_id="all", organism_group="all", threshold=threshold)
     final_samples = list()
     for s in sample_info["samples"]:
         if customer == "all" or s.projects.Customer_ID == customer:
@@ -131,17 +133,17 @@ def STtracker_page(customer, template_folder: Path = TEMPLATE_FOLDER, config=Non
     )
 
 
-def gen_collectiondata(collect_id=[], config=None):
+def gen_collectiondata(collect_id=[], threshold: Optional[Threshold] = None):
     """Queries database using a set of samples"""
     session = get_session()
     samples = session.query(Collections).filter(Collections.ID_collection == collect_id).all()
     sample_ids = [s.CG_ID_sample for s in samples]
     sample_info = session.query(Samples).filter(Samples.CG_ID_sample.in_(sample_ids))
-    sample_info = gen_add_info(sample_info, config=config)
+    sample_info = gen_add_info(sample_info, threshold=threshold)
     return sample_info
 
 
-def gen_reportdata(project_id="all", organism_group="all", config=None):
+def gen_reportdata(project_id="all", organism_group="all", threshold: Optional[Threshold] = None):
     """Queries database for all necessary information for the reports"""
     session = get_session()
     if project_id == "all" and organism_group == "all":
@@ -155,7 +157,7 @@ def gen_reportdata(project_id="all", organism_group="all", config=None):
             Samples.CG_ID_project == project_id, Samples.organism == organism_group
         )
 
-    sample_info = gen_add_info(sample_info, config=config)
+    sample_info = gen_add_info(sample_info, threshold=threshold)
 
     reports = session.query(Reports).filter(Reports.CG_ID_project == project_id).all()
     sample_info["reports"] = reports = sorted(reports, key=lambda x: x.version, reverse=True)
@@ -163,7 +165,7 @@ def gen_reportdata(project_id="all", organism_group="all", config=None):
     return sample_info
 
 
-def gen_add_info(sample_info=dict(), config=None):
+def gen_add_info(sample_info=dict(), threshold: Optional[Threshold] = None):
     """Enhances a sample info struct by adding ST_status, threshold info, versioning and sorting"""
     session = get_session()
     # Set ST status
@@ -210,21 +212,22 @@ def gen_add_info(sample_info=dict(), config=None):
         elif hasattr(s, "seq_types") and s.seq_types != [] or s.ST == -2:
             near_hits = 0
             s.threshold = "Passed"
-            for seq_type in s.seq_types:
-                # Identify single deviating allele
-                if (
-                    seq_type.st_predictor
-                    and seq_type.identity >= config.threshold.mlst_novel_id
-                    and config.threshold.mlst_id > seq_type.identity
-                    and 1 - abs(1 - seq_type.span)
-                    >= (config.threshold.mlst_span / 100.0)
-                ):
-                    near_hits = near_hits + 1
-                elif (
-                    seq_type.identity < config.threshold.mlst_novel_id
-                    or seq_type.span < (config.threshold.mlst_span / 100.0)
-                ) and seq_type.st_predictor:
-                    s.threshold = "Failed"
+            if threshold is not None:
+                for seq_type in s.seq_types:
+                    # Identify single deviating allele
+                    if (
+                        seq_type.st_predictor
+                        and seq_type.identity >= threshold.mlst_novel_id
+                        and threshold.mlst_id > seq_type.identity
+                        and 1 - abs(1 - seq_type.span)
+                        >= (threshold.mlst_span / 100.0)
+                    ):
+                        near_hits = near_hits + 1
+                    elif (
+                        seq_type.identity < threshold.mlst_novel_id
+                        or seq_type.span < (threshold.mlst_span / 100.0)
+                    ) and seq_type.st_predictor:
+                        s.threshold = "Failed"
 
             if near_hits > 0 and s.threshold == "Passed":
                 s.ST_status = f"Okänd ({near_hits} allele[r])"
@@ -240,22 +243,23 @@ def gen_add_info(sample_info=dict(), config=None):
                 s.ST_status = "None"
 
         # Resistence filter
-        for r in s.resistances:
-            if (
-                r.identity >= config.threshold.motif_id
-                and r.span >= config.threshold.motif_span / 100.0
-            ):
-                r.threshold = "Passed"
-            else:
-                r.threshold = "Failed"
-        for v in s.expacs:
-            if (
-                v.identity >= config.threshold.motif_id
-                and v.span >= config.threshold.motif_span / 100.0
-            ):
-                v.threshold = "Passed"
-            else:
-                v.threshold = "Failed"
+        if threshold is not None:
+            for r in s.resistances:
+                if (
+                    r.identity >= threshold.motif_id
+                    and r.span >= threshold.motif_span / 100.0
+                ):
+                    r.threshold = "Passed"
+                else:
+                    r.threshold = "Failed"
+            for v in s.expacs:
+                if (
+                    v.identity >= threshold.motif_id
+                    and v.span >= threshold.motif_span / 100.0
+                ):
+                    v.threshold = "Passed"
+                else:
+                    v.threshold = "Failed"
 
         # Seq_type and resistance sorting
         s.seq_types = sorted(s.seq_types, key=lambda x: x.loci)

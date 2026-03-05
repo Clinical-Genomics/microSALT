@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ET
 
 from Bio import Entrez
 
+from microSALT.config import Folders, Threshold, PubMLST, Pasteur
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.pubmlst.client import BaseClient, get_client
 from microSALT.utils.pubmlst.exceptions import InvalidURLError, PubMLSTError
@@ -19,10 +20,13 @@ from microSALT.utils.pubmlst.helpers import get_service_by_url
 
 
 class Referencer:
-    def __init__(self, config, log, sampleinfo={}, force=False):
-        self.config = config
+    def __init__(self, log, folders: Folders, threshold: Threshold, pubmlst: PubMLST, pasteur: Pasteur, sampleinfo={}, force=False):
+        self.folders = folders
+        self.threshold = threshold
+        self.pubmlst = pubmlst
+        self.pasteur = pasteur
         self.logger = log
-        self.db_access = DB_Manipulator(config, log)
+        self.db_access = DB_Manipulator(log=log, folders=folders, threshold=threshold)
         self.updated = list()
         # Fetch names of existing refs
         self.refs = self.db_access.profiles
@@ -49,7 +53,7 @@ class Referencer:
 
     def set_client(self, service: str, database: str = None):
         """Set the client for PubMLST API interactions."""
-        self.client: BaseClient = get_client(service, database, self.config)
+        self.client: BaseClient = get_client(service, database, self.folders, self.pubmlst, self.pasteur)
 
     def identify_new(self, cg_id="", project=False):
         """Automatically downloads pubMLST & NCBI organisms not already downloaded"""
@@ -68,7 +72,7 @@ class Referencer:
                     neworgs.append(org)
                 if (
                     f"{entry.get('reference')}.fasta"
-                    not in os.listdir(self.config.folders.genomes)
+                    not in os.listdir(self.folders.genomes)
                     and entry.get("reference") not in newrefs
                 ):
                     newrefs.append(entry.get("reference"))
@@ -91,7 +95,7 @@ class Referencer:
             self.fetch_resistances(self.force)
 
             # Reindexes
-            self.index_db(os.path.dirname(self.config.folders.expec), ".fsa")
+            self.index_db(os.path.dirname(self.folders.expec), ".fsa")
         finally:
             self.db_access.release_ref_lock()
 
@@ -223,7 +227,7 @@ class Referencer:
         )
 
         # Step 1: Download the profiles CSV
-        st_target = f"{self.config.folders.profiles}/{organ}"
+        st_target = f"{self.folders.profiles}/{organ}"
         profiles_csv = self.client.download_profiles_csv(db, scheme_id)
         profiles_csv = profiles_csv.split("\n")
         trimmed_profiles = []
@@ -237,7 +241,7 @@ class Referencer:
         loci_list = scheme_info.get("loci", [])
 
         # Step 3: Download loci FASTA files
-        output = f"{self.config.folders.references}/{organ}"
+        output = f"{self.folders.references}/{organ}"
         if os.path.isdir(output):
             shutil.rmtree(output)
         os.makedirs(output)
@@ -316,7 +320,7 @@ class Referencer:
     def fetch_resistances(self, force=False):
         cwd = os.getcwd()
         url = "https://bitbucket.org/genomicepidemiology/resfinder_db.git"
-        hiddensrc = f"{self.config.folders.resistances}/.resfinder_db"
+        hiddensrc = f"{self.folders.resistances}/.resfinder_db"
         wipeIndex = False
 
         if not os.path.exists(hiddensrc) or len(os.listdir(hiddensrc)) == 0:
@@ -326,18 +330,18 @@ class Referencer:
             cmd = f"git clone {url} --quiet"
             process = subprocess.Popen(
                 cmd.split(),
-                cwd=self.config.folders.resistances,
+                cwd=self.folders.resistances,
                 stdout=subprocess.PIPE,
             )
             output, error = process.communicate()
             os.rename(
-                f"{self.config.folders.resistances}/resfinder_db",
+                f"{self.folders.resistances}/resfinder_db",
                 hiddensrc,
             )
             wipeIndex = True
         else:
             if not wipeIndex:
-                actual = os.listdir(self.config.folders.resistances)
+                actual = os.listdir(self.folders.resistances)
 
                 for file in os.listdir(hiddensrc):
                     if file not in actual and (".fsa" in file):
@@ -366,11 +370,11 @@ class Referencer:
                     # Copy fresh
                     shutil.copy(
                         f"{hiddensrc}/{file}",
-                        self.config.folders.resistances,
+                        self.folders.resistances,
                     )
 
         # Double checks indexation is current.
-        self.index_db(self.config.folders.resistances, ".fsa")
+        self.index_db(self.folders.resistances, ".fsa")
 
     def existing_organisms(self):
         """Returns list of all organisms currently added"""
@@ -379,7 +383,7 @@ class Referencer:
     def organism2reference(self, normal_organism_name):
         """Finds which reference contains the same words as the organism
         and returns it in a format for database calls. Returns empty string if none found"""
-        orgs = os.listdir(self.config.folders.references)
+        orgs = os.listdir(self.folders.references)
         organism = re.split(r"\W+", normal_organism_name.lower())
         try:
             for target in orgs:
@@ -406,13 +410,13 @@ class Referencer:
             Entrez.email = "2@2.com"
             record = Entrez.efetch(db="nucleotide", id=reference, rettype="fasta", retmod="text")
             sequence = record.read()
-            output = f"{self.config.folders.genomes}/{reference}.fasta"
+            output = f"{self.folders.genomes}/{reference}.fasta"
             with open(output, "w") as f:
                 f.write(sequence)
             bwaindex = f"bwa index {output}"
             proc = subprocess.Popen(
                 bwaindex.split(),
-                cwd=self.config.folders.genomes,
+                cwd=self.folders.genomes,
                 stdout=DEVNULL,
                 stderr=DEVNULL,
             )
@@ -420,7 +424,7 @@ class Referencer:
             samindex = f"samtools faidx {output}"
             proc = subprocess.Popen(
                 samindex.split(),
-                cwd=self.config.folders.genomes,
+                cwd=self.folders.genomes,
                 stdout=DEVNULL,
                 stderr=DEVNULL,
             )
@@ -579,7 +583,7 @@ class Referencer:
                 return None
 
             # Step 1: Download the profiles CSV
-            st_target = f"{self.config.folders.profiles}/{organism}"
+            st_target = f"{self.folders.profiles}/{organism}"
             profiles_csv = self.client.download_profiles_csv(db, scheme_id)
             # Only write the first 8 columns, this avoids adding information such as "clonal_complex" and "species"
             profiles_csv = profiles_csv.split("\n")
@@ -598,7 +602,7 @@ class Referencer:
             loci_list = scheme_info.get("loci", [])
 
             # Step 3: Download loci FASTA files
-            output = f"{self.config.folders.references}/{organism}"
+            output = f"{self.folders.references}/{organism}"
             if os.path.isdir(output):
                 shutil.rmtree(output)
             os.makedirs(output)

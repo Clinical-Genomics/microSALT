@@ -244,58 +244,58 @@ class TestPageRendering:
 
     def test_alignment_page_renders_html(self, populated_db, config):
         """alignment_page returns non-empty HTML string."""
-        html = alignment_page("AAA1234", config=config)
+        html = alignment_page("AAA1234", threshold=config.threshold)
         assert isinstance(html, str)
         assert len(html) > 100
 
     def test_alignment_page_is_valid_html(self, populated_db, config):
         """alignment_page output contains basic HTML structure."""
-        html = alignment_page("AAA1234", config=config)
+        html = alignment_page("AAA1234", threshold=config.threshold)
         assert "<!doctype html>" in html.lower() or "<html" in html.lower()
         assert "</html>" in html.lower()
 
     def test_alignment_page_contains_sample_ids(self, populated_db, config):
         """alignment_page HTML contains sample identifiers."""
-        html = alignment_page("AAA1234", config=config)
+        html = alignment_page("AAA1234", threshold=config.threshold)
         assert "AAA1234A1" in html or "AAA1234A2" in html
 
     def test_typing_page_renders_html(self, populated_db, config):
         """typing_page returns non-empty HTML string."""
-        html = typing_page("AAA1234", "all", config=config)
+        html = typing_page("AAA1234", "all", threshold=config.threshold, verified_organisms=config.regex.verified_organisms)
         assert isinstance(html, str)
         assert len(html) > 100
 
     def test_typing_page_is_valid_html(self, populated_db, config):
         """typing_page output contains basic HTML structure."""
-        html = typing_page("AAA1234", "all", config=config)
+        html = typing_page("AAA1234", "all", threshold=config.threshold, verified_organisms=config.regex.verified_organisms)
         assert "<!doctype html>" in html.lower() or "<html" in html.lower()
         assert "</html>" in html.lower()
 
     def test_typing_page_contains_sample_ids(self, populated_db, config):
         """typing_page HTML contains sample identifiers."""
-        html = typing_page("AAA1234", "all", config=config)
+        html = typing_page("AAA1234", "all", threshold=config.threshold, verified_organisms=config.regex.verified_organisms)
         assert "AAA1234A1" in html or "AAA1234A2" in html
 
     def test_typing_page_organism_filter(self, populated_db, config):
         """typing_page filters by organism correctly."""
-        html_staph = typing_page("AAA1234", "staphylococcus_aureus", config=config)
+        html_staph = typing_page("AAA1234", "staphylococcus_aureus", threshold=config.threshold, verified_organisms=config.regex.verified_organisms)
         assert "AAA1234A1" in html_staph
 
     def test_sttracker_page_renders_html(self, populated_db, config):
         """STtracker_page returns non-empty HTML string."""
-        html = STtracker_page("all", config=config)
+        html = STtracker_page("all", threshold=config.threshold)
         assert isinstance(html, str)
         assert len(html) > 100
 
     def test_sttracker_page_is_valid_html(self, populated_db, config):
         """STtracker_page output contains basic HTML structure."""
-        html = STtracker_page("all", config=config)
+        html = STtracker_page("all", threshold=config.threshold)
         assert "<!doctype html>" in html.lower() or "<html" in html.lower()
         assert "</html>" in html.lower()
 
     def test_sttracker_page_customer_filter(self, populated_db, config):
         """STtracker_page customer='all' does not raise errors."""
-        html = STtracker_page("cust000", config=config)
+        html = STtracker_page("cust000", threshold=config.threshold)
         assert isinstance(html, str)
 
     def test_project_page_empty_project(self, populated_db):
@@ -308,14 +308,14 @@ class TestPageRendering:
         """render_alignment_page produces same output as alignment_page."""
         from microSALT.server.views import render_alignment_page
 
-        html_a = alignment_page("AAA1234", config=config)
-        html_b = render_alignment_page("AAA1234", config=config)
+        html_a = alignment_page("AAA1234", threshold=config.threshold)
+        html_b = render_alignment_page("AAA1234", threshold=config.threshold)
         assert html_a == html_b
 
     def test_render_typing_page_delegates(self, populated_db, config):
         """render_typing_page produces same output as typing_page."""
         from microSALT.server.views import render_typing_page
 
-        html_a = typing_page("AAA1234", "all", config=config)
-        html_b = render_typing_page("AAA1234", "all", config=config)
+        html_a = typing_page("AAA1234", "all", threshold=config.threshold, verified_organisms=config.regex.verified_organisms)
+        html_b = render_typing_page("AAA1234", "all", threshold=config.threshold, verified_organisms=config.regex.verified_organisms)
         assert html_a == html_b

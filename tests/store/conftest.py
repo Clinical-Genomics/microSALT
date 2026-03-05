@@ -32,7 +32,7 @@ def profile_dbm(config, logger, tmp_profiles_dir, unpack_db_json):
     cfg = copy.deepcopy(config)
     cfg.folders.profiles = str(tmp_profiles_dir)
 
-    dbm = DB_Manipulator(config=cfg, log=logger)
+    dbm = DB_Manipulator(log=logger, folders=cfg.folders, threshold=cfg.threshold)
     dbm.create_tables()
 
     inspector = sa_inspect(dbm.engine)

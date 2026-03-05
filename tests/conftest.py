@@ -45,7 +45,7 @@ def unpack_db_json():
 @pytest.fixture
 def dbm(config, logger, unpack_db_json):
     """DB_Manipulator populated with the standard set of test data."""
-    dbm = DB_Manipulator(config=config, log=logger)
+    dbm = DB_Manipulator(log=logger, folders=config.folders, threshold=config.threshold)
     dbm.create_tables()
 
     for entry in unpack_db_json("sampleinfo_projects.json"):

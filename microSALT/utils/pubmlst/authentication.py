@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from dateutil import parser
 from rauth import OAuth1Session
 
+from microSALT.config import Folders, PubMLST, Pasteur
 from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
 from microSALT.utils.pubmlst.exceptions import (
     PubMLSTError,
@@ -26,11 +27,13 @@ session_expiration_buffer = 60  # 60-second buffer
 
 
 class ClientAuthentication:
-    def __init__(self, service: str, config):
+    def __init__(self, service: str, folders: Folders, pubmlst: PubMLST, pasteur: Pasteur):
         """Initialize the client with the specified service."""
         self.service: str = service
-        self.config = config
-        self.service_config: dict = get_service_config(service, config)
+        self.folders = folders
+        self.pubmlst = pubmlst
+        self.pasteur = pasteur
+        self.service_config: dict = get_service_config(service, pubmlst=pubmlst, pasteur=pasteur)
         self.base_api: str = self.service_config["base_api"]
 
     def get_new_session_token(self, db: str):
@@ -38,7 +41,7 @@ class ClientAuthentication:
 
         try:
             consumer_key, consumer_secret, access_token, access_secret = load_auth_credentials(
-                self.service, self.config
+                self.service, self.folders, self.pubmlst, self.pasteur
             )
             logger.debug(f"Consumer Key: {consumer_key[:5]}***")
             logger.debug(f"Consumer Secret: {consumer_secret[:5]}***")
@@ -79,7 +82,9 @@ class ClientAuthentication:
                         token=session_token,
                         secret=session_secret,
                         expiration_date=expiration_time,
-                        config=self.config,
+                        folders=self.folders,
+                        pubmlst=self.pubmlst,
+                        pasteur=self.pasteur,
                     )
                     return session_token, session_secret
 
@@ -104,7 +109,7 @@ class ClientAuthentication:
         """Load session token from file for a specific database."""
         try:
             credentials_file = os.path.join(
-                get_path(self.config.folders, CREDENTIALS_KEY),
+                get_path(self.folders, CREDENTIALS_KEY),
                 self.service_config["session_credentials_file_name"],
             )
 

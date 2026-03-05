@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 from rauth import OAuth1Service
 
 from microSALT.config import load_config
+from microSALT.config import Folders, PubMLST, Pasteur
 from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
 from microSALT.utils.pubmlst.helpers import get_path, get_service_config
 
@@ -72,7 +73,7 @@ def save_to_credentials_py(
 
 def main(service, config, species=None):
     try:
-        service_config = get_service_config(service, config)
+        service_config = get_service_config(service, pubmlst=config.pubmlst, pasteur=config.pasteur)
         bigsd_config = service_config["config"]
         client_id = bigsd_config.client_id
         client_secret = bigsd_config.client_secret

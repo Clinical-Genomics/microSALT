@@ -59,7 +59,7 @@ def test_gen_motif(caplog, reporter):
 def test_gen_json(caplog, reporter):
     caplog.clear()
     reporter.output = "/path/that/do/not/exists/"
-    reporter.config.folders.reports = "/path/that/do/not/exists/"
+    reporter.folders.reports = "/path/that/do/not/exists/"
     reporter.gen_json()
     assert "Gen_json unable to produce" in caplog.text
 
@@ -75,8 +75,10 @@ def test_report(caplog, reporter):
 def test_constructor(config, logger, unpack_db_json):
     sample_info = unpack_db_json("sampleinfo_samples.json")
     reporter_obj = Reporter(
-        config=config,
         log=logger,
+        folders=config.folders,
+        threshold=config.threshold,
+        regex=config.regex,
         sampleinfo=sample_info,
         name="MIC1234A1",
         output="/tmp/MLST",

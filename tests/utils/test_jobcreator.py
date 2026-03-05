@@ -26,7 +26,17 @@ def test_verify_fastq(gopen, stat, listdir, config, logger, testdata):
     stat.return_value = stata
 
     jc = Job_Creator(
-        run_settings={"input": "/tmp/"}, config=config, log=logger, sampleinfo=testdata
+        log=logger,
+        folders=config.folders,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        sampleinfo=testdata,
+        run_settings={"input": "/tmp/"},
     )
     t = jc.verify_fastq()
     assert len(t) > 0
@@ -36,7 +46,17 @@ def test_verify_fastq(gopen, stat, listdir, config, logger, testdata):
 @patch("microSALT.utils.job_creator.glob.glob")
 def test_blast_subset(glob_search, research, config, logger, testdata):
     jc = Job_Creator(
-        run_settings={"input": "/tmp/"}, config=config, log=logger, sampleinfo=testdata
+        log=logger,
+        folders=config.folders,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        sampleinfo=testdata,
+        run_settings={"input": "/tmp/"},
     )
     researcha = mock.MagicMock()
     researcha.group = fake_search
@@ -63,10 +83,17 @@ def test_create_snpsection(subproc, config, logger, testdata):
 
     testdata = [testdata[0]]
     jc = Job_Creator(
-        run_settings={"input": ["AAA1234A1", "AAA1234A2"]},
-        config=config,
         log=logger,
+        folders=config.folders,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
         sampleinfo=testdata,
+        run_settings={"input": ["AAA1234A1", "AAA1234A2"]},
     )
     jc.snp_job()
     outfile = open(jc.get_sbatch(), "r")
@@ -87,8 +114,15 @@ def test_project_job(subproc, config, logger, testdata):
 
     with patch.dict("os.environ", {"CONDA_PREFIX": "/tmp/mock_conda"}):
         jc = Job_Creator(
-            config=config,
             log=logger,
+            folders=config.folders,
+            slurm_header=config.slurm_header,
+            regex=config.regex,
+            dry=False,
+            config_path=config.config_path,
+            threshold=config.threshold,
+            pubmlst=config.pubmlst,
+            pasteur=config.pasteur,
             sampleinfo=testdata,
             run_settings={"pool": ["AAA1234A1", "AAA1234A2"], "input": "/tmp/AAA1234"},
         )

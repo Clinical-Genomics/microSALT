@@ -5,6 +5,7 @@ from pathlib import Path
 
 import requests
 
+from microSALT.config import Folders, PubMLST, Pasteur
 from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY, URL_MAPS
 from microSALT.utils.pubmlst.exceptions import (
     CredentialsFileNotFound,
@@ -33,12 +34,13 @@ def get_path(config, config_key: str):
         raise PathResolutionError(config_key) from e
 
 
-def get_service_config(service: str, config=None):
+def get_service_config(service: str, pubmlst: PubMLST = None, pasteur: Pasteur = None):
     """
     Get the configuration for the specified service (e.g., 'pubmlst' or 'pasteur').
 
     :param service: The name of the service ('pubmlst' or 'pasteur').
-    :param config: The MicroSALTConfig object (optional; required to populate 'config' key).
+    :param pubmlst: PubMLST sub-config (optional).
+    :param pasteur: Pasteur sub-config (optional).
     :return: A dictionary containing the configuration for the service.
     """
     services = {
@@ -49,7 +51,7 @@ def get_service_config(service: str, config=None):
             "database": "pubmlst_test_seqdef",
             "auth_credentials_file_name": "pubmlst_credentials.env",
             "session_credentials_file_name": "pubmlst_session_credentials.json",
-            "config": config.pubmlst if config else None,
+            "config": pubmlst,
         },
         "pasteur": {
             "base_web": "https://bigsdb.pasteur.fr/cgi-bin/bigsdb/bigsdb.pl",
@@ -57,7 +59,7 @@ def get_service_config(service: str, config=None):
             "base_api_host": "bigsdb.pasteur.fr",
             "auth_credentials_file_name": "pasteur_credentials.env",
             "session_credentials_file_name": "pasteur_session_credentials.json",
-            "config": config.pasteur if config else None,
+            "config": pasteur,
         },
     }
 
@@ -93,7 +95,7 @@ def get_url_map(service: str):
     return url_map
 
 
-def load_auth_credentials(service: str, config):
+def load_auth_credentials(service: str, folders: Folders, pubmlst: PubMLST, pasteur: Pasteur):
     """
     Load client ID, client secret, access token, and access secret from the credentials file for the specified service.
 
@@ -102,9 +104,9 @@ def load_auth_credentials(service: str, config):
     :return: A tuple containing the credentials (consumer_key, consumer_secret, access_token, access_secret).
     """
     try:
-        service_config = get_service_config(service, config)
+        service_config = get_service_config(service, pubmlst=pubmlst, pasteur=pasteur)
         credentials_file = os.path.join(
-            get_path(config.folders, CREDENTIALS_KEY),
+            get_path(folders, CREDENTIALS_KEY),
             service_config["auth_credentials_file_name"],
         )
 
@@ -146,7 +148,7 @@ def load_auth_credentials(service: str, config):
         raise PubMLSTError(f"An unexpected error occurred while loading {service} credentials: {e}")
 
 
-def save_session_token(service: str, db: str, token: str, secret: str, expiration_date: str, config):
+def save_session_token(service: str, db: str, token: str, secret: str, expiration_date: str, folders: Folders, pubmlst: PubMLST, pasteur: Pasteur):
     """
     Save session token, secret, and expiration to a JSON file for the specified service and database.
 
@@ -158,9 +160,9 @@ def save_session_token(service: str, db: str, token: str, secret: str, expiratio
     :param config: The MicroSALTConfig object.
     """
     try:
-        service_config = get_service_config(service, config)
+        service_config = get_service_config(service, pubmlst=pubmlst, pasteur=pasteur)
         session_file = os.path.join(
-            get_path(config.folders, CREDENTIALS_KEY),
+            get_path(folders, CREDENTIALS_KEY),
             service_config["session_credentials_file_name"],
         )
 

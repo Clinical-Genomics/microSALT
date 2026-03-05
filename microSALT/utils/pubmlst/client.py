@@ -4,6 +4,7 @@ import requests
 from werkzeug.exceptions import NotFound
 from rauth import OAuth1Session
 
+from microSALT.config import Folders, PubMLST, Pasteur
 from microSALT.utils.pubmlst.authentication import ClientAuthentication
 from microSALT.utils.pubmlst.constants import HTTPMethod, RequestType, ResponseHandler
 from microSALT.utils.pubmlst.exceptions import (
@@ -26,16 +27,18 @@ logger = logging.getLogger("main_logger")
 class BaseClient:
     """Base client for interacting with authenticated APIs."""
 
-    def __init__(self, service: str, database: str = None, config=None):
+    def __init__(self, service: str, database: str = None, folders: Folders = None, pubmlst: PubMLST = None, pasteur: Pasteur = None):
         """Initialize the client with the specified service."""
         try:
             self.service = service
-            self.config = config
+            self.folders = folders
+            self.pubmlst = pubmlst
+            self.pasteur = pasteur
             self.consumer_key, self.consumer_secret, self.access_token, self.access_secret = (
-                load_auth_credentials(service, config)
+                load_auth_credentials(service, folders, pubmlst, pasteur)
             )
-            self.client_auth = ClientAuthentication(service, config)
-            service_config = get_service_config(service, config)
+            self.client_auth = ClientAuthentication(service, folders, pubmlst, pasteur)
+            service_config = get_service_config(service, pubmlst=pubmlst, pasteur=pasteur)
             self.base_api = service_config["base_api"]
             self.database = database or service_config["database"]
             self.base_api_host = service_config["base_api_host"]
@@ -201,24 +204,24 @@ class BaseClient:
 class PubMLSTClient(BaseClient):
     """Client for interacting with the PubMLST authenticated API."""
 
-    def __init__(self, config=None):
+    def __init__(self, folders: Folders = None, pubmlst: PubMLST = None, pasteur: Pasteur = None):
         """Initialize the PubMLST client."""
-        super().__init__(service="pubmlst", config=config)
+        super().__init__(service="pubmlst", folders=folders, pubmlst=pubmlst, pasteur=pasteur)
 
 
 class PasteurClient(BaseClient):
     """Client for interacting with the Pasteur authenticated API."""
 
-    def __init__(self, database: str, config=None):
+    def __init__(self, database: str, folders: Folders = None, pubmlst: PubMLST = None, pasteur: Pasteur = None):
         """Initialize the Pasteur client."""
-        super().__init__(service="pasteur", database=database, config=config)
+        super().__init__(service="pasteur", database=database, folders=folders, pubmlst=pubmlst, pasteur=pasteur)
 
 
-def get_client(service: str, database: str = None, config=None):
+def get_client(service: str, database: str = None, folders: Folders = None, pubmlst: PubMLST = None, pasteur: Pasteur = None):
     """Get the appropriate client for the specified service."""
     if service == "pasteur":
-        return PasteurClient(database=database, config=config)
+        return PasteurClient(database=database, folders=folders, pubmlst=pubmlst, pasteur=pasteur)
     elif service == "pubmlst":
-        return PubMLSTClient(config=config)
+        return PubMLSTClient(folders=folders, pubmlst=pubmlst, pasteur=pasteur)
     else:
         raise ValueError(f"Unknown service: {service}")
