@@ -91,13 +91,6 @@ if preset_config != "":
         preset_config["folders"]["expec"] = str(
             resource_files("microSALT").joinpath("unique_references", "ExPEC.fsa")
         )
-        preset_config["folders"]["adapters"] = os.path.abspath(
-            os.path.join(
-                os.path.expandvars("$CONDA_PREFIX"),
-                "share/trimmomatic/adapters/",
-            )
-        )
-
         # Initialize logger
         setup_logger(logging_level="INFO", preset_config=preset_config)
 

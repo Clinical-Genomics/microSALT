@@ -86,12 +86,11 @@ def test_project_job(subproc, testdata):
     process_mock.configure_mock(**attrs)
     subproc.return_value = process_mock
 
-    with patch.dict("os.environ", {"CONDA_PREFIX": "/tmp/mock_conda"}):
-        jc = Job_Creator(
-            config=preset_config,
-            log=logger,
-            sampleinfo=testdata,
-            run_settings={"pool": ["AAA1234A1", "AAA1234A2"], "input": "/tmp/AAA1234"},
-        )
-        jc.project_job()
+    jc = Job_Creator(
+        config=preset_config,
+        log=logger,
+        sampleinfo=testdata,
+        run_settings={"pool": ["AAA1234A1", "AAA1234A2"], "input": "/tmp/AAA1234"},
+    )
+    jc.project_job()
 

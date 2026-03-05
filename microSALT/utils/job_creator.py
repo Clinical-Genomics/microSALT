@@ -584,15 +584,14 @@ class Job_Creator:
             mb.write("#Uploading of results to database and production of report\n")
             if "MICROSALT_CONFIG" in os.environ:
                 mb.write(f"export MICROSALT_CONFIG={os.environ['MICROSALT_CONFIG']}\n")
-            conda_cmd = (
-                f"conda run -p {os.environ['CONDA_PREFIX']} "
+            finish_cmd = (
                 f"microSALT utils finish {self.finishdir}/sampleinfo.json "
                 f"--input {self.finishdir} "
                 f"--email {self.config['regex']['mail_recipient']} "
                 f"--report {report} "
                 f"{custom_conf}\n"
             )
-            mb.write(conda_cmd)
+            mb.write(finish_cmd)
             mb.write(f"touch {self.finishdir}/run_complete.out\n")
 
         massagedJobs = list()
