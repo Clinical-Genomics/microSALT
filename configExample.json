@@ -34,7 +34,9 @@
     "_comment": "Download path for NCBI genomes, for alignment usage",
     "genomes": "/tmp/MLST/references/genomes",
     "_comment": "Credentials",
-    "credentials": "/tmp/MLST/credentials"
+    "credentials": "/tmp/MLST/credentials",
+    "_comment": "Trimmomatic adapter FASTA files directory",
+    "adapters": "/path/to/trimmomatic/adapters/"
   },
   "_comment": "Database/Flask configuration",
   "database": {

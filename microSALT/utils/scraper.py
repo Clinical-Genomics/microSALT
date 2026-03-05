@@ -193,13 +193,13 @@ class Scraper:
                 if filename == "lactam":
                     filename = "beta-lactam"
                 if type == "resistance":
-                    ref_folder = self.config["folders"]["resistances"]
+                    ref_folder = self.config.folders.resistances
                     suffix = "fsa"
                 elif type == "expec":
-                    ref_folder = os.path.dirname(self.config["folders"]["expec"])
-                    suffix = os.path.basename(self.config["folders"]["expec"]).rsplit(".", 1)[1]
+                    ref_folder = os.path.dirname(self.config.folders.expec)
+                    suffix = os.path.basename(self.config.folders.expec).rsplit(".", 1)[1]
                 elif type == "seq_type":
-                    ref_folder = f"{self.config['folders']['references']}/{organism}"
+                    ref_folder = f"{self.config.folders.references}/{organism}"
                     suffix = "tfa"
                 locilengths = self.get_locilengths(ref_folder, suffix)
 
@@ -422,7 +422,7 @@ class Scraper:
         """Legacy function, loads common resistance names for genes from notes file"""
         conversions = dict()
         try:
-            with open(f"{self.config['folders']['resistances']}/notes.txt") as fh:
+            with open(f"{self.config.folders.resistances}/notes.txt") as fh:
                 for line in fh:
                     if "#" not in line:
                         line = line.split(":")

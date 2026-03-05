@@ -1,9 +1,34 @@
 import json
+import logging
+import os
 import pathlib
 import pytest
 
+from microSALT.config import load_config
+from microSALT import setup_logger
+from microSALT.store.database import initialize_database
 from microSALT.store.db_manipulator import DB_Manipulator
-from microSALT import preset_config, logger
+
+
+def _config_path() -> str:
+    env = os.environ.get("MICROSALT_CONFIG")
+    if env:
+        return env
+    default = pathlib.Path(__file__).parent.parent / "configExample.json"
+    return str(default)
+
+
+@pytest.fixture(scope="session")
+def config():
+    cfg = load_config(_config_path())
+    setup_logger(logging_level="INFO", log_file=cfg.folders.log_file)
+    initialize_database(cfg.database.SQLALCHEMY_DATABASE_URI)
+    return cfg
+
+
+@pytest.fixture(scope="session")
+def logger():
+    return logging.getLogger("main_logger")
 
 
 @pytest.fixture
@@ -18,9 +43,9 @@ def unpack_db_json():
 
 
 @pytest.fixture
-def dbm(unpack_db_json):
+def dbm(config, logger, unpack_db_json):
     """DB_Manipulator populated with the standard set of test data."""
-    dbm = DB_Manipulator(config=preset_config, log=logger)
+    dbm = DB_Manipulator(config=config, log=logger)
     dbm.create_tables()
 
     for entry in unpack_db_json("sampleinfo_projects.json"):

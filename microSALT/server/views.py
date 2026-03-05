@@ -5,7 +5,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
-from microSALT import __version__, preset_config
+from microSALT import __version__
 from microSALT.store.orm_models import (
     Collections,
     Reports,
@@ -70,8 +70,8 @@ def project_page(project, template_folder: Path = TEMPLATE_FOLDER):
     )
 
 
-def alignment_page(project, template_folder: Path = TEMPLATE_FOLDER):
-    sample_info = gen_reportdata(project)
+def alignment_page(project, template_folder: Path = TEMPLATE_FOLDER, config=None):
+    sample_info = gen_reportdata(project, config=config)
 
     return render_template(
         template_folder=template_folder,
@@ -81,18 +81,18 @@ def alignment_page(project, template_folder: Path = TEMPLATE_FOLDER):
         date=date.today().isoformat(),
         version=sample_info["versions"],
         user=sample_info["user"],
-        threshold=preset_config["threshold"],
+        threshold=config.threshold,
         reports=sample_info["reports"],
         build=__version__,
     )
 
 
-def render_alignment_page(project, template_folder: Path = TEMPLATE_FOLDER):
-    return alignment_page(project, template_folder=template_folder)
+def render_alignment_page(project, template_folder: Path = TEMPLATE_FOLDER, config=None):
+    return alignment_page(project, template_folder=template_folder, config=config)
 
 
-def typing_page(project, organism_group, template_folder: Path = TEMPLATE_FOLDER):
-    sample_info = gen_reportdata(project, organism_group)
+def typing_page(project, organism_group, template_folder: Path = TEMPLATE_FOLDER, config=None):
+    sample_info = gen_reportdata(project, organism_group, config=config)
 
     return render_template(
         template_folder=template_folder,
@@ -102,19 +102,19 @@ def typing_page(project, organism_group, template_folder: Path = TEMPLATE_FOLDER
         date=date.today().isoformat(),
         version=sample_info["versions"],
         user=sample_info["user"],
-        threshold=preset_config["threshold"],
-        verified_organisms=preset_config["regex"]["verified_organisms"],
+        threshold=config.threshold,
+        verified_organisms=config.regex.verified_organisms,
         reports=sample_info["reports"],
         build=__version__,
     )
 
 
-def render_typing_page(project, organism_group, template_folder: Path = TEMPLATE_FOLDER):
-    return typing_page(project, organism_group, template_folder=template_folder)
+def render_typing_page(project, organism_group, template_folder: Path = TEMPLATE_FOLDER, config=None):
+    return typing_page(project, organism_group, template_folder=template_folder, config=config)
 
 
-def STtracker_page(customer, template_folder: Path = TEMPLATE_FOLDER):
-    sample_info = gen_reportdata(project_id="all", organism_group="all")
+def STtracker_page(customer, template_folder: Path = TEMPLATE_FOLDER, config=None):
+    sample_info = gen_reportdata(project_id="all", organism_group="all", config=config)
     final_samples = list()
     for s in sample_info["samples"]:
         if customer == "all" or s.projects.Customer_ID == customer:
@@ -131,17 +131,17 @@ def STtracker_page(customer, template_folder: Path = TEMPLATE_FOLDER):
     )
 
 
-def gen_collectiondata(collect_id=[]):
+def gen_collectiondata(collect_id=[], config=None):
     """Queries database using a set of samples"""
     session = get_session()
     samples = session.query(Collections).filter(Collections.ID_collection == collect_id).all()
     sample_ids = [s.CG_ID_sample for s in samples]
     sample_info = session.query(Samples).filter(Samples.CG_ID_sample.in_(sample_ids))
-    sample_info = gen_add_info(sample_info)
+    sample_info = gen_add_info(sample_info, config=config)
     return sample_info
 
 
-def gen_reportdata(project_id="all", organism_group="all"):
+def gen_reportdata(project_id="all", organism_group="all", config=None):
     """Queries database for all necessary information for the reports"""
     session = get_session()
     if project_id == "all" and organism_group == "all":
@@ -155,7 +155,7 @@ def gen_reportdata(project_id="all", organism_group="all"):
             Samples.CG_ID_project == project_id, Samples.organism == organism_group
         )
 
-    sample_info = gen_add_info(sample_info)
+    sample_info = gen_add_info(sample_info, config=config)
 
     reports = session.query(Reports).filter(Reports.CG_ID_project == project_id).all()
     sample_info["reports"] = reports = sorted(reports, key=lambda x: x.version, reverse=True)
@@ -163,7 +163,7 @@ def gen_reportdata(project_id="all", organism_group="all"):
     return sample_info
 
 
-def gen_add_info(sample_info=dict()):
+def gen_add_info(sample_info=dict(), config=None):
     """Enhances a sample info struct by adding ST_status, threshold info, versioning and sorting"""
     session = get_session()
     # Set ST status
@@ -214,15 +214,15 @@ def gen_add_info(sample_info=dict()):
                 # Identify single deviating allele
                 if (
                     seq_type.st_predictor
-                    and seq_type.identity >= preset_config["threshold"]["mlst_novel_id"]
-                    and preset_config["threshold"]["mlst_id"] > seq_type.identity
+                    and seq_type.identity >= config.threshold.mlst_novel_id
+                    and config.threshold.mlst_id > seq_type.identity
                     and 1 - abs(1 - seq_type.span)
-                    >= (preset_config["threshold"]["mlst_span"] / 100.0)
+                    >= (config.threshold.mlst_span / 100.0)
                 ):
                     near_hits = near_hits + 1
                 elif (
-                    seq_type.identity < preset_config["threshold"]["mlst_novel_id"]
-                    or seq_type.span < (preset_config["threshold"]["mlst_span"] / 100.0)
+                    seq_type.identity < config.threshold.mlst_novel_id
+                    or seq_type.span < (config.threshold.mlst_span / 100.0)
                 ) and seq_type.st_predictor:
                     s.threshold = "Failed"
 
@@ -242,16 +242,16 @@ def gen_add_info(sample_info=dict()):
         # Resistence filter
         for r in s.resistances:
             if (
-                r.identity >= preset_config["threshold"]["motif_id"]
-                and r.span >= preset_config["threshold"]["motif_span"] / 100.0
+                r.identity >= config.threshold.motif_id
+                and r.span >= config.threshold.motif_span / 100.0
             ):
                 r.threshold = "Passed"
             else:
                 r.threshold = "Failed"
         for v in s.expacs:
             if (
-                v.identity >= preset_config["threshold"]["motif_id"]
-                and v.span >= preset_config["threshold"]["motif_span"] / 100.0
+                v.identity >= config.threshold.motif_id
+                and v.span >= config.threshold.motif_span / 100.0
             ):
                 v.threshold = "Passed"
             else:

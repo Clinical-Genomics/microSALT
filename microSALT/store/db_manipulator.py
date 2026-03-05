@@ -339,7 +339,7 @@ class DB_Manipulator:
         reload_profiletable() so the schema stays in sync with the CSV.
         """
         table = self.profiles[organism]
-        file_path = f"{self.config['folders']['profiles']}/{organism}"
+        file_path = f"{self.config.folders.profiles}/{organism}"
 
         with open(file_path, "r") as fh:
             csv_cols = fh.readline().rstrip().split("\t")[:8]
@@ -362,7 +362,7 @@ class DB_Manipulator:
 
     def populate_profiletable(self, filename: str, table) -> None:
         """Bulk-inserts all data rows from a profile file into an already-created *table*."""
-        file_path = f"{self.config['folders']['profiles']}/{filename}"
+        file_path = f"{self.config.folders.profiles}/{filename}"
         self.logger.debug(f"Opening profile file: {file_path}")
         keys = list(table.c.keys())
         rows = []
@@ -922,8 +922,8 @@ class DB_Manipulator:
 
     def get_unique_alleles(self, cg_sid: str, organism: str, threshold=True):
         """Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
-        tid = float(self.config["threshold"]["mlst_id"])
-        tspan = (self.config["threshold"]["mlst_span"]) / 100.0
+        tid = float(self.config.threshold.mlst_id)
+        tspan = (self.config.threshold.mlst_span) / 100.0
         if threshold:
             hits = (
                 self.session.query(Seq_types.loci, Seq_types.allele)

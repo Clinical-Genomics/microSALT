@@ -5,7 +5,6 @@ from sqlalchemy import inspect as sa_inspect
 
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.store.orm_models import SystemLock
-from microSALT import preset_config, logger
 
 
 @pytest.fixture
@@ -24,16 +23,16 @@ def tmp_profiles_dir(tmp_path):
 
 
 @pytest.fixture
-def profile_dbm(tmp_profiles_dir, unpack_db_json):
+def profile_dbm(config, logger, tmp_profiles_dir, unpack_db_json):
     """DB_Manipulator with profile/novel tables freshly built from tmp_profiles_dir.
 
     Uses the shared SQLite database but drops and recreates all profile/novel tables
     on each invocation so tests start with known, clean data.
     """
-    config = copy.deepcopy(preset_config)
-    config["folders"]["profiles"] = str(tmp_profiles_dir)
+    cfg = copy.deepcopy(config)
+    cfg.folders.profiles = str(tmp_profiles_dir)
 
-    dbm = DB_Manipulator(config=config, log=logger)
+    dbm = DB_Manipulator(config=cfg, log=logger)
     dbm.create_tables()
 
     inspector = sa_inspect(dbm.engine)

@@ -4,8 +4,9 @@ from argparse import ArgumentParser
 
 from rauth import OAuth1Service
 
+from microSALT.config import load_config
 from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
-from microSALT.utils.pubmlst.helpers import folders_config, get_path, get_service_config
+from microSALT.utils.pubmlst.helpers import get_path, get_service_config
 
 
 def validate_credentials(client_id, client_secret):
@@ -69,12 +70,12 @@ def save_to_credentials_py(
     print(f"Tokens saved to {credentials_file}")
 
 
-def main(service, species=None):
+def main(service, config, species=None):
     try:
-        service_config = get_service_config(service)
+        service_config = get_service_config(service, config)
         bigsd_config = service_config["config"]
-        client_id = bigsd_config["client_id"]
-        client_secret = bigsd_config["client_secret"]
+        client_id = bigsd_config.client_id
+        client_secret = bigsd_config.client_secret
         validate_credentials(client_id, client_secret)
 
         # Determine the database
@@ -87,7 +88,7 @@ def main(service, species=None):
         else:
             raise ValueError(f"Unknown service: {service}")
 
-        credentials_path = get_path(folders_config, CREDENTIALS_KEY)
+        credentials_path = get_path(config.folders, CREDENTIALS_KEY)
         credentials_file = os.path.join(
             credentials_path, service_config.get("auth_credentials_file_name")
         )
@@ -131,5 +132,12 @@ if __name__ == "__main__":
         type=str,
         help="Species name (required for the 'pasteur' service)",
     )
+    parser.add_argument(
+        "--config",
+        type=str,
+        required=True,
+        help="Path to the microSALT configuration JSON file.",
+    )
     args = parser.parse_args()
-    main(args.service, args.species)
+    cfg = load_config(args.config)
+    main(args.service, cfg, args.species)

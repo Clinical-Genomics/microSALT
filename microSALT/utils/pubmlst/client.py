@@ -1,9 +1,9 @@
 from urllib.parse import urlencode
+import logging
 import requests
 from werkzeug.exceptions import NotFound
 from rauth import OAuth1Session
 
-from microSALT import logger
 from microSALT.utils.pubmlst.authentication import ClientAuthentication
 from microSALT.utils.pubmlst.constants import HTTPMethod, RequestType, ResponseHandler
 from microSALT.utils.pubmlst.exceptions import (
@@ -20,19 +20,22 @@ from microSALT.utils.pubmlst.helpers import (
     should_skip_endpoint,
 )
 
+logger = logging.getLogger("main_logger")
+
 
 class BaseClient:
     """Base client for interacting with authenticated APIs."""
 
-    def __init__(self, service: str, database: str = None):
+    def __init__(self, service: str, database: str = None, config=None):
         """Initialize the client with the specified service."""
         try:
             self.service = service
+            self.config = config
             self.consumer_key, self.consumer_secret, self.access_token, self.access_secret = (
-                load_auth_credentials(service)
+                load_auth_credentials(service, config)
             )
-            self.client_auth = ClientAuthentication(service)
-            service_config = get_service_config(service)
+            self.client_auth = ClientAuthentication(service, config)
+            service_config = get_service_config(service, config)
             self.base_api = service_config["base_api"]
             self.database = database or service_config["database"]
             self.base_api_host = service_config["base_api_host"]
@@ -85,7 +88,8 @@ class BaseClient:
             if request_type == RequestType.DB:
                 token, secret = (
                     self.client_auth.load_session_credentials(db)
-                    if db else (self.session_token, self.session_secret)
+                    if db
+                    else (self.session_token, self.session_secret)
                 )
             elif request_type == RequestType.AUTH:
                 token, secret = self.access_token, self.access_secret
@@ -197,24 +201,24 @@ class BaseClient:
 class PubMLSTClient(BaseClient):
     """Client for interacting with the PubMLST authenticated API."""
 
-    def __init__(self):
+    def __init__(self, config=None):
         """Initialize the PubMLST client."""
-        super().__init__(service="pubmlst")
+        super().__init__(service="pubmlst", config=config)
 
 
 class PasteurClient(BaseClient):
     """Client for interacting with the Pasteur authenticated API."""
 
-    def __init__(self, database: str):
+    def __init__(self, database: str, config=None):
         """Initialize the Pasteur client."""
-        super().__init__(service="pasteur", database=database)
+        super().__init__(service="pasteur", database=database, config=config)
 
 
-def get_client(service: str, database: str = None):
+def get_client(service: str, database: str = None, config=None):
     """Get the appropriate client for the specified service."""
     if service == "pasteur":
-        return PasteurClient(database=database)
+        return PasteurClient(database=database, config=config)
     elif service == "pubmlst":
-        return PubMLSTClient()
+        return PubMLSTClient(config=config)
     else:
         raise ValueError(f"Unknown service: {service}")

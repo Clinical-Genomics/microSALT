@@ -61,9 +61,9 @@ class Reporter:
             self.sample = self.sampleinfo
 
     def create_subfolders(self):
-        os.makedirs(f"{self.config['folders']['reports']}/deliverables", exist_ok=True)
-        os.makedirs(f"{self.config['folders']['reports']}/json", exist_ok=True)
-        os.makedirs(f"{self.config['folders']['reports']}/analysis", exist_ok=True)
+        os.makedirs(f"{self.config.folders.reports}/deliverables", exist_ok=True)
+        os.makedirs(f"{self.config.folders.reports}/json", exist_ok=True)
+        os.makedirs(f"{self.config.folders.reports}/analysis", exist_ok=True)
 
     def report(self, type="default", customer="all"):
         self.create_subfolders()
@@ -107,7 +107,7 @@ class Reporter:
     def gen_STtracker(self, customer="all", silent=False):
         self.name = "Sequence Type Update"
         try:
-            content = STtracker_page(customer)
+            content = STtracker_page(customer, config=self.config)
             outname = "{}/ST_updates_{}.html".format(self.output, self.now)
             outfile = open(outname, "wb")
             outfile.write(content.encode("utf8"))
@@ -126,10 +126,10 @@ class Reporter:
             self.logger.error("Project {} does not exist".format(self.name))
             sys.exit(-1)
         try:
-            content = alignment_page(self.name)
+            content = alignment_page(self.name, config=self.config)
             outfile = "{}_QC_{}.html".format(self.sample.get("Customer_ID_project"), last_version)
             local = "{}/{}".format(self.output, outfile)
-            output = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
+            output = "{}/analysis/{}".format(self.config.folders.reports, outfile)
 
             with open(output, "wb") as f:
                 f.write(content.encode("utf8"))
@@ -149,12 +149,12 @@ class Reporter:
             self.logger.error("Project {} does not exist".format(self.name))
             sys.exit(-1)
         try:
-            content = typing_page(self.name, "all")
+            content = typing_page(self.name, "all", config=self.config)
             outfile = "{}_Typing_{}.html".format(
                 self.sample.get("Customer_ID_project"), last_version
             )
             local = "{}/{}".format(self.output, outfile)
-            output = "{}/analysis/{}".format(self.config["folders"]["reports"], outfile)
+            output = "{}/analysis/{}".format(self.config.folders.reports, outfile)
 
             with open(output, "wb") as f:
                 f.write(content.encode("utf8"))
@@ -171,9 +171,9 @@ class Reporter:
         if motif not in ["resistance", "expec"]:
             self.logger.error("Invalid motif type specified for gen_motif function")
         if self.collection:
-            sample_info = gen_collectiondata(self.name)
+            sample_info = gen_collectiondata(self.name, config=self.config)
         else:
-            sample_info = gen_reportdata(self.name)
+            sample_info = gen_reportdata(self.name, config=self.config)
         output = f"{self.output}/{self.name}_{motif}_{self.now}.csv"
 
         # Load motif & gene names into dict
@@ -200,7 +200,7 @@ class Reporter:
 
         # Top 2 Header
         sepfix = "sep=,"
-        topline = f"Identity {self.config['threshold']['motif_id']}% & Span {self.config['threshold']['motif_span']}%,,,"
+        topline = f"Identity {self.config.threshold.motif_id}% & Span {self.config.threshold.motif_span}%,,,"
         botline = "CG Sample ID,Sample ID,Organism,Sequence Type,Thresholds"
         for k in sorted(motifdict.keys()):
             genes = [""] * len(motifdict[k])
@@ -269,7 +269,7 @@ class Reporter:
         deliv = dict()
         deliv["files"] = list()
         last_version = self.db_pusher.get_report(self.name).version
-        output = f"{self.config['folders']['reports']}/deliverables/{self.sample.get('Customer_ID_project')}_deliverables.yaml"
+        output = f"{self.config.folders.reports}/deliverables/{self.sample.get('Customer_ID_project')}_deliverables.yaml"
         local = f"{self.output}/{self.sample.get('Customer_ID_project')}_deliverables.yaml"
 
         # Project-wide
@@ -470,9 +470,9 @@ class Reporter:
     def gen_json(self, silent=False):
         report = dict()
         local = f"{self.output}/{self.name}.json"
-        output = f"{self.config['folders']['reports']}/json/{self.name}.json"
+        output = f"{self.config.folders.reports}/json/{self.name}.json"
 
-        sample_info = gen_reportdata(self.name)
+        sample_info = gen_reportdata(self.name, config=self.config)
         analyses = [
             "blast_pubmlst",
             "quast_assembly",
@@ -584,7 +584,7 @@ class Reporter:
         sender_fixed = f"{os.path.splitext(sender)[0]}.com"
         msg["From"] = sender_fixed
 
-        msg["To"] = self.config["regex"]["mail_recipient"]
+        msg["To"] = self.config.regex.mail_recipient
 
         if not self.error:
             for file in self.attachments:

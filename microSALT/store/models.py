@@ -34,16 +34,16 @@ class ProfileTable:
         self.config = config
         self.logger = log
         try:
-            for filename in os.listdir(self.config["folders"]["profiles"]):
+            for filename in os.listdir(self.config.folders.profiles):
                 self._add_table(filename)
         except Exception:
             self.logger.error(
-                f"Unable to open profile folder {self.config['folders']['profiles']}"
+                f"Unable to open profile folder {self.config.folders.profiles}"
             )
 
     def _add_table(self, filename: str) -> None:
         try:
-            with open(f"{self.config['folders']['profiles']}/{filename}", "r") as fh:
+            with open(f"{self.config.folders.profiles}/{filename}", "r") as fh:
                 head = fh.readline().rstrip().split("\t")[:8]
             columns = [
                 Column(col, SmallInteger, primary_key=(col == "ST"))
