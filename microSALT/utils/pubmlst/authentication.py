@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from dateutil import parser
 from rauth import OAuth1Session
 
-from microSALT.config import Folders, PubMLST, Pasteur
+from microSALT.config import Folders, PubMLSTCredentials, PasteurCredentials
 from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
 from microSALT.utils.pubmlst.exceptions import (
     PubMLSTError,
@@ -27,7 +27,7 @@ session_expiration_buffer = 60  # 60-second buffer
 
 
 class ClientAuthentication:
-    def __init__(self, service: str, folders: Folders, pubmlst: PubMLST, pasteur: Pasteur):
+    def __init__(self, service: str, folders: Folders, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials):
         """Initialize the client with the specified service."""
         self.service: str = service
         self.folders = folders

@@ -17,13 +17,13 @@ from pathlib import Path
 import yaml
 
 from microSALT import __version__
-from microSALT.config import Folders, Threshold, SlurmHeader, Regex, PubMLST, Pasteur
+from microSALT.config import Folders, Threshold, SlurmHeader, Regex, PubMLSTCredentials, PasteurCredentials
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.referencer import Referencer
 
 
 class Job_Creator:
-    def __init__(self, log, folders: Folders, slurm_header: SlurmHeader, regex: Regex, dry: bool, config_path: str, threshold: Threshold, pubmlst: PubMLST, pasteur: Pasteur, sampleinfo={}, run_settings={}):
+    def __init__(self, log, folders: Folders, slurm_header: SlurmHeader, regex: Regex, dry: bool, config_path: str, threshold: Threshold, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials, sampleinfo={}, run_settings={}):
         self.folders = folders
         self.slurm_header = slurm_header
         self.regex = regex

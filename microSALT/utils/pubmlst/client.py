@@ -4,7 +4,7 @@ import requests
 from werkzeug.exceptions import NotFound
 from rauth import OAuth1Session
 
-from microSALT.config import Folders, PubMLST, Pasteur
+from microSALT.config import Folders, PubMLSTCredentials, PasteurCredentials
 from microSALT.utils.pubmlst.authentication import ClientAuthentication
 from microSALT.utils.pubmlst.constants import HTTPMethod, RequestType, ResponseHandler
 from microSALT.utils.pubmlst.exceptions import (
@@ -27,7 +27,7 @@ logger = logging.getLogger("main_logger")
 class BaseClient:
     """Base client for interacting with authenticated APIs."""
 
-    def __init__(self, service: str, database: str = None, folders: Folders = None, pubmlst: PubMLST = None, pasteur: Pasteur = None):
+    def __init__(self, service: str, database: str = None, folders: Folders = None, pubmlst: PubMLSTCredentials = None, pasteur: PasteurCredentials = None):
         """Initialize the client with the specified service."""
         try:
             self.service = service
@@ -204,7 +204,7 @@ class BaseClient:
 class PubMLSTClient(BaseClient):
     """Client for interacting with the PubMLST authenticated API."""
 
-    def __init__(self, folders: Folders = None, pubmlst: PubMLST = None, pasteur: Pasteur = None):
+    def __init__(self, folders: Folders = None, pubmlst: PubMLSTCredentials = None, pasteur: PasteurCredentials = None):
         """Initialize the PubMLST client."""
         super().__init__(service="pubmlst", folders=folders, pubmlst=pubmlst, pasteur=pasteur)
 
@@ -212,12 +212,12 @@ class PubMLSTClient(BaseClient):
 class PasteurClient(BaseClient):
     """Client for interacting with the Pasteur authenticated API."""
 
-    def __init__(self, database: str, folders: Folders = None, pubmlst: PubMLST = None, pasteur: Pasteur = None):
+    def __init__(self, database: str, folders: Folders = None, pubmlst: PubMLSTCredentials = None, pasteur: PasteurCredentials = None):
         """Initialize the Pasteur client."""
         super().__init__(service="pasteur", database=database, folders=folders, pubmlst=pubmlst, pasteur=pasteur)
 
 
-def get_client(service: str, database: str = None, folders: Folders = None, pubmlst: PubMLST = None, pasteur: Pasteur = None):
+def get_client(service: str, database: str = None, folders: Folders = None, pubmlst: PubMLSTCredentials = None, pasteur: PasteurCredentials = None):
     """Get the appropriate client for the specified service."""
     if service == "pasteur":
         return PasteurClient(database=database, folders=folders, pubmlst=pubmlst, pasteur=pasteur)

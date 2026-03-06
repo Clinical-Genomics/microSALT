@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from rauth import OAuth1Service
 
 from microSALT.config import load_config
-from microSALT.config import Folders, PubMLST, Pasteur
+from microSALT.config import Folders, PubMLSTCredentials, PasteurCredentials
 from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
 from microSALT.utils.pubmlst.helpers import get_path, get_service_config
 

@@ -10,7 +10,7 @@ import string
 import sys
 import time
 
-from microSALT.config import Folders, Threshold, SlurmHeader, Regex, PubMLST, Pasteur
+from microSALT.config import Folders, Threshold, SlurmHeader, Regex, PubMLSTCredentials, PasteurCredentials
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.job_creator import Job_Creator
@@ -18,7 +18,7 @@ from microSALT.utils.job_creator import Job_Creator
 
 # TODO: Rewrite so samples use seperate objects
 class Scraper:
-    def __init__(self, log, folders: Folders, threshold: Threshold, slurm_header: SlurmHeader, regex: Regex, dry: bool, config_path: str, pubmlst: PubMLST, pasteur: Pasteur, sampleinfo={}, input=""):
+    def __init__(self, log, folders: Folders, threshold: Threshold, slurm_header: SlurmHeader, regex: Regex, dry: bool, config_path: str, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials, sampleinfo={}, input=""):
         self.folders = folders
         self.threshold = threshold
         self.slurm_header = slurm_header

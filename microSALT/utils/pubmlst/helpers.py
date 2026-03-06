@@ -5,7 +5,7 @@ from pathlib import Path
 
 import requests
 
-from microSALT.config import Folders, PubMLST, Pasteur
+from microSALT.config import Folders, PubMLSTCredentials, PasteurCredentials
 from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY, URL_MAPS
 from microSALT.utils.pubmlst.exceptions import (
     CredentialsFileNotFound,
@@ -34,7 +34,7 @@ def get_path(config, config_key: str):
         raise PathResolutionError(config_key) from e
 
 
-def get_service_config(service: str, pubmlst: PubMLST = None, pasteur: Pasteur = None):
+def get_service_config(service: str, pubmlst: PubMLSTCredentials = None, pasteur: PasteurCredentials = None):
     """
     Get the configuration for the specified service (e.g., 'pubmlst' or 'pasteur').
 
@@ -95,7 +95,7 @@ def get_url_map(service: str):
     return url_map
 
 
-def load_auth_credentials(service: str, folders: Folders, pubmlst: PubMLST, pasteur: Pasteur):
+def load_auth_credentials(service: str, folders: Folders, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials):
     """
     Load client ID, client secret, access token, and access secret from the credentials file for the specified service.
 
@@ -148,7 +148,7 @@ def load_auth_credentials(service: str, folders: Folders, pubmlst: PubMLST, past
         raise PubMLSTError(f"An unexpected error occurred while loading {service} credentials: {e}")
 
 
-def save_session_token(service: str, db: str, token: str, secret: str, expiration_date: str, folders: Folders, pubmlst: PubMLST, pasteur: Pasteur):
+def save_session_token(service: str, db: str, token: str, secret: str, expiration_date: str, folders: Folders, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials):
     """
     Save session token, secret, and expiration to a JSON file for the specified service and database.
 

@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 
 from Bio import Entrez
 
-from microSALT.config import Folders, Threshold, PubMLST, Pasteur
+from microSALT.config import Folders, Threshold, PubMLSTCredentials, PasteurCredentials
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.pubmlst.client import BaseClient, get_client
 from microSALT.utils.pubmlst.exceptions import InvalidURLError, PubMLSTError
@@ -20,7 +20,7 @@ from microSALT.utils.pubmlst.helpers import get_service_by_url
 
 
 class Referencer:
-    def __init__(self, log, folders: Folders, threshold: Threshold, pubmlst: PubMLST, pasteur: Pasteur, sampleinfo={}, force=False):
+    def __init__(self, log, folders: Folders, threshold: Threshold, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials, sampleinfo={}, force=False):
         self.folders = folders
         self.threshold = threshold
         self.pubmlst = pubmlst

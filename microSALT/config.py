@@ -65,14 +65,15 @@ class Threshold(BaseModel):
     bp_100x_warn: float = 20
 
 
-class PubMLST(BaseModel):
+class BIGSdbCredentials(BaseModel):
     client_id: str = ""
     client_secret: str = ""
 
+class PubMLSTCredentials(BIGSdbCredentials):
+    pass
 
-class Pasteur(BaseModel):
-    client_id: str = ""
-    client_secret: str = ""
+class PasteurCredentials(BIGSdbCredentials):
+    pass
 
 
 class MicroSALTConfig(BaseModel):
@@ -81,8 +82,8 @@ class MicroSALTConfig(BaseModel):
     folders: Folders
     database: Database
     threshold: Threshold
-    pubmlst: PubMLST = PubMLST()
-    pasteur: Pasteur = Pasteur()
+    pubmlst: PubMLSTCredentials = PubMLSTCredentials()
+    pasteur: PasteurCredentials = PasteurCredentials()
     # Runtime fields set by the CLI, not from the JSON file
     dry: bool = False
     config_path: str = ""
