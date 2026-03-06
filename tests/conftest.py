@@ -101,7 +101,7 @@ def unpack_db_json():
 
 
 @pytest.fixture
-def dbm(config, logger, unpack_db_json):
+def dbm(config: MicroSALTConfig, logger: logging.Logger, unpack_db_json):
     """DB_Manipulator populated with the standard set of test data."""
     dbm = DB_Manipulator(log=logger, folders=config.folders, threshold=config.threshold)
     dbm.create_tables()

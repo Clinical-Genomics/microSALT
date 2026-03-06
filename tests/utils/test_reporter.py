@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from microSALT.store.db_manipulator import DB_Manipulator
 
 import glob
 import pytest
@@ -6,7 +7,7 @@ import pytest
 from microSALT.utils.reporter import Reporter
 
 
-def test_motif(dbm, reporter):
+def test_motif(dbm: DB_Manipulator, reporter: Reporter):
     reporter.create_subfolders()
     reporter.gen_motif(motif="resistance")
     assert len(glob.glob(f"{reporter.output}/AAA1234_resistance*")) > 0

@@ -7,6 +7,7 @@ import logging
 import pytest
 
 from microSALT.utils.scraper import Scraper
+from tests.utils.conftest import BlastScraperContext
 
 
 def test_quast_scraping(
@@ -17,18 +18,18 @@ def test_quast_scraping(
 
 
 def test_blast_scraping(
-    blast_scraper: Scraper, testdata_prefix: str, caplog: pytest.LogCaptureFixture
+    blast_scraper_context: BlastScraperContext, testdata_prefix: str, caplog: pytest.LogCaptureFixture
 ) -> None:
     """BLAST scraping should find sequence-type candidates and resistance genes."""
     caplog.set_level(logging.DEBUG)
 
-    blast_scraper.scrape_blast(
+    blast_scraper_context.scraper.scrape_blast(
         type="seq_type", file_list=[f"{testdata_prefix}/blast_single_loci.txt"]
     )
     assert "candidate" in caplog.text
 
     caplog.clear()
-    hits = blast_scraper.scrape_blast(
+    hits = blast_scraper_context.scraper.scrape_blast(
         type="resistance",
         file_list=[f"{testdata_prefix}/blast_single_resistance.txt"],
     )
