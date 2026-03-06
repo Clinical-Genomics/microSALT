@@ -140,7 +140,7 @@ def init_references(config: MicroSALTConfig, logger: logging.Logger, testdata: l
 
 
 @pytest.fixture
-def blast_scraper(
+def blast_scraper_context(
     config: MicroSALTConfig,
     logger: logging.Logger,
     testdata: list[dict],
