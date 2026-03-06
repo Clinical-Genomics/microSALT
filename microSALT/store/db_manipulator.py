@@ -1,25 +1,22 @@
-""" Delivers and fetches data from the database
-   By: Isak Sylvin, @sylvinite"""
+"""Delivers and fetches data from the database
+By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 
 import hashlib
 import sys
 import warnings
-
 from collections import OrderedDict
 from datetime import datetime, timezone
-from sqlalchemy import *
-from sqlalchemy.orm import sessionmaker
-from dateutil.parser import parse
 
-# maintain the same connection per thread
-from sqlalchemy.pool import SingletonThreadPool
-from typing import Dict, List
+from dateutil.parser import parse
+from sqlalchemy import inspect as sa_inspect, MetaData, desc, or_, and_, text
 
 from microSALT import __version__
+from microSALT.exc.exceptions import RefUpdateLockError
+from microSALT.store.database import get_session, get_engine
+from microSALT.store.models import ProfileTable
 from microSALT.store.orm_models import (
-    app,
     Collections,
     Expacs,
     Projects,
@@ -27,23 +24,39 @@ from microSALT.store.orm_models import (
     Resistances,
     Samples,
     Seq_types,
+    SystemLock,
     Versions,
 )
-from microSALT.store.models import Profiles, Novel
+
+# Maps string table names (as passed by callers) to ORM classes.
+_ORM_TABLES = {
+    "Collections": Collections,
+    "Expacs": Expacs,
+    "Projects": Projects,
+    "Reports": Reports,
+    "Resistances": Resistances,
+    "Samples": Samples,
+    "Seq_types": Seq_types,
+    "Versions": Versions,
+}
+
+
+def _resolve_orm_table(tablename: str):
+    """Return the ORM class for *tablename*, raising KeyError on unknown names."""
+    if tablename not in _ORM_TABLES:
+        raise KeyError(f"Unknown ORM table: {tablename!r}")
+    return _ORM_TABLES[tablename]
 
 
 class DB_Manipulator:
     def __init__(self, config, log):
         self.config = config
         self.logger = log
-        self.engine = create_engine(
-            app.config["SQLALCHEMY_DATABASE_URI"], poolclass=SingletonThreadPool
-        )
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
-        self.metadata = MetaData(self.engine)
-        self.profiles = Profiles(self.metadata, self.config, self.logger).tables
-        self.novel = Novel(self.metadata, self.config, self.logger).tables
+        self.session = get_session()
+        self.engine = get_engine()
+        self.metadata = MetaData()
+        self.profiles = ProfileTable("profile_", self.metadata, self.config, self.logger).tables
+        self.novel = ProfileTable("novel_", self.metadata, self.config, self.logger).tables
         # Turns off pymysql deprecation warnings until they can update their code
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -51,51 +64,85 @@ class DB_Manipulator:
 
     def create_tables(self):
         """Creates all tables individually. A bit more control than usual"""
-        if not self.engine.dialect.has_table(self.engine, "projects"):
+        inspector = sa_inspect(self.engine)
+        if not inspector.has_table("projects"):
             Projects.__table__.create(self.engine)
             self.logger.info("Created projects table")
-        if not self.engine.dialect.has_table(self.engine, "samples"):
+        if not inspector.has_table("samples"):
             Samples.__table__.create(self.engine)
             self.logger.info("Created samples table")
-        if not self.engine.dialect.has_table(self.engine, "versions"):
+        if not inspector.has_table("versions"):
             Versions.__table__.create(self.engine)
             self.logger.info("Created versions table")
-        if not self.engine.dialect.has_table(self.engine, "seq_types"):
+        if not inspector.has_table("seq_types"):
             Seq_types.__table__.create(self.engine)
             self.logger.info("Created sequencing types table")
-        if not self.engine.dialect.has_table(self.engine, "resistances"):
+        if not inspector.has_table("resistances"):
             Resistances.__table__.create(self.engine)
             self.logger.info("Created resistance table")
-        if not self.engine.dialect.has_table(self.engine, "reports"):
+        if not inspector.has_table("reports"):
             Reports.__table__.create(self.engine)
             self.logger.info("Created reports table")
-        if not self.engine.dialect.has_table(self.engine, "collections"):
+        if not inspector.has_table("collections"):
             Collections.__table__.create(self.engine)
             self.logger.info("Created collections table")
-        if not self.engine.dialect.has_table(self.engine, "expacs"):
+        if not inspector.has_table("expacs"):
             Expacs.__table__.create(self.engine)
             self.logger.info("Created ExPEC table")
+        if not inspector.has_table("system_locks"):
+            SystemLock.__table__.create(self.engine)
+            self.logger.info("Created system_locks table")
         for k, v in self.profiles.items():
-            if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
-                self.profiles[k].create()
-                self.init_profiletable(k, v)
+            if not inspector.has_table(f"profile_{k}"):
+                self.profiles[k].create(self.engine)
+                self.populate_profiletable(k, v)
                 self.add_rec(
-                    {"name": "profile_{}".format(k), "version": "0"},
+                    {"name": f"profile_{k}", "version": "0"},
                     "Versions",
                     force=True,
                 )
-                self.logger.info("Profile table profile_{} initialized".format(k))
+                self.logger.info(f"Profile table profile_{k} created and populated")
         for k, v in self.novel.items():
-            if not self.engine.dialect.has_table(self.engine, "novel_{}".format(k)):
-                self.novel[k].create()
+            if not inspector.has_table(f"novel_{k}"):
+                self.novel[k].create(self.engine)
                 self.add_rec(
-                    {"name": "novel_{}".format(k), "version": "0"},
+                    {"name": f"novel_{k}", "version": "0"},
                     "Versions",
                     force=True,
                 )
-                self.logger.info("Profile table novel_{} initialized".format(k))
+                self.logger.info(f"Profile table novel_{k} initialized")
 
-    def add_rec(self, data_dict: Dict[str, str], tablename: str, force=False):
+    def acquire_ref_lock(self):
+        """Acquire the reference-update exclusive lock.
+
+        Raises RefUpdateLockError if the lock is already held by another process.
+        """
+        existing = self.session.query(SystemLock).filter_by(lock_name="ref_update").scalar()
+        if existing:
+            raise RefUpdateLockError(
+                "A reference update is already in progress (lock acquired at {}). "
+                "Please try again later.".format(existing.acquired_at)
+            )
+        self.session.add(SystemLock(lock_name="ref_update", acquired_at=datetime.now(timezone.utc)))
+        self.session.commit()
+        self.logger.info("Reference update lock acquired")
+
+    def release_ref_lock(self):
+        """Release the reference-update exclusive lock."""
+        self.session.query(SystemLock).filter_by(lock_name="ref_update").delete()
+        self.session.commit()
+        self.logger.info("Reference update lock released")
+
+    def check_ref_lock(self):
+        """Raise RefUpdateLockError if a reference update is currently in progress."""
+        lock = self.session.query(SystemLock).filter_by(lock_name="ref_update").scalar()
+        if lock:
+            raise RefUpdateLockError(
+                "The reference database is currently being updated (started at {}). "
+                "Please try again later.".format(lock.acquired_at)
+            )
+
+    def add_rec(self, data_dict: dict[str, str], tablename: str, force=False):
         """Adds a record to the specified table through a dict with columns as keys."""
         pk_list = list()
         # Non-orm
@@ -103,11 +150,8 @@ class DB_Manipulator:
             # check for existence
             table = tablename
             pk_list = table.primary_key.columns.keys()
-            args = list()
-            for pk in pk_list:
-                args.append("table.c.{}=={}".format(pk, data_dict[pk]))
-            args = "or_(" + ",".join(args) + ")"
-            exist = self.session.query(table).filter(eval(args)).all()
+            filter_clauses = [table.c[pk] == data_dict[pk] for pk in pk_list]
+            exist = self.session.query(table).filter(or_(*filter_clauses)).all()
             # Add record
             if len(exist) == 0:
                 data = table.insert()
@@ -124,22 +168,24 @@ class DB_Manipulator:
                                 data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
                             else:
                                 pass
-                data.execute(data_dict)
-                self.logger.info("Added entry to table {}".format(tablename.fullname))
+                self.session.execute(data, data_dict)
+                self.session.commit()
+                self.logger.info(f"Added entry to table {tablename.fullname}")
         # ORM
         else:
             try:
-                table = eval(tablename)
+                table = _resolve_orm_table(tablename)
                 # Check for existing entry
                 pk_list = table.__table__.primary_key.columns.keys()
-            except Exception as e:
+            except KeyError:
                 self.logger.error(
-                    "Attempted to access table {} which has not been created".format(tablename)
+                    f"Attempted to access table {tablename} which has not been created"
                 )
+                return
             pk_values = list()
             for item in pk_list:
                 pk_values.append(data_dict[item])
-            existing = self.session.query(table).get(pk_values)
+            existing = self.session.get(table, pk_values)
             # Add record
             if not existing or force:
                 newobj = table()
@@ -162,26 +208,22 @@ class DB_Manipulator:
                 self.session.commit()
             else:
                 self.logger.warning(
-                    "Record [{}]=[{}] in table {} already exists".format(
-                        ", ".join(pk_list), ", ".join(pk_values), tablename
-                    )
+                    f"Record [{', '.join(pk_list)}]=[{', '.join(pk_values)}] in table {tablename} already exists"
                 )
 
-    def upd_rec(self, req_dict: Dict[str, str], tablename: str, upd_dict: Dict[str, str]):
+    def upd_rec(self, req_dict: dict[str, str], tablename: str, upd_dict: dict[str, str]):
         """Updates a record to the specified table through a dict with columns as keys."""
-        table = eval(tablename)
+        table = _resolve_orm_table(tablename)
         self.logger.debug(f"Updating table {tablename} with {upd_dict}")
-        argy = list()
-        for k, v in req_dict.items():
-            if v != None:
-                argy.append(".filter(table.{}=='{}')".format(k, v))
-        filter = "".join(argy)
-        megastring = "self.session.query(table){}".format(filter)
-        if len(eval(megastring + ".all()")) > 1:
+        filter_clauses = [
+            getattr(table, k) == v for k, v in req_dict.items() if v is not None
+        ]
+        query = self.session.query(table).filter(and_(*filter_clauses))
+        if len(query.all()) > 1:
             self.logger.error("More than 1 record found when orm updating. Exited.")
             sys.exit()
         else:
-            eval(megastring + ".update(upd_dict)")
+            query.update(upd_dict)
             self.session.commit()
         self.logger.debug(f"Updated table {tablename} with {upd_dict} for {req_dict}")
 
@@ -191,22 +233,22 @@ class DB_Manipulator:
         if type == "Projects":
             entries.append(
                 self.session.query(Expacs)
-                .filter(Expacs.CG_ID_sample.like("{}%".format(name)))
+                .filter(Expacs.CG_ID_sample.like(f"{name}%"))
                 .all()
             )
             entries.append(
                 self.session.query(Seq_types)
-                .filter(Seq_types.CG_ID_sample.like("{}%".format(name)))
+                .filter(Seq_types.CG_ID_sample.like(f"{name}%"))
                 .all()
             )
             entries.append(
                 self.session.query(Resistances)
-                .filter(Resistances.CG_ID_sample.like("{}%".format(name)))
+                .filter(Resistances.CG_ID_sample.like(f"{name}%"))
                 .all()
             )
             entries.append(
                 self.session.query(Samples)
-                .filter(Samples.CG_ID_sample.like("{}%".format(name)))
+                .filter(Samples.CG_ID_sample.like(f"{name}%"))
                 .all()
             )
             # entries.append(self.session.query(Projects).filter(Projects.CG_ID_project==name).all())
@@ -225,116 +267,135 @@ class DB_Manipulator:
             )
         else:
             self.logger.error(
-                "Incorrect type {} specified for removal of {}. Check code".format(type, name)
+                f"Incorrect type {type} specified for removal of {name}. Check code"
             )
             sys.exit()
         for entry in entries:
             for instance in entry:
                 self.session.delete(instance)
                 self.session.commit()
-        self.logger.info("Removed information for {}".format(name))
+        self.logger.info(f"Removed information for {name}")
 
-    def query_rec(self, tablename: str, filters: Dict[str, str]):
+    def query_rec(self, tablename: str, filters: dict[str, str]):
         """Fetches records table, using a primary-key dict with columns as keys.
         Non-PK are ignored"""
         # Non-orm
         if not isinstance(tablename, str):
-            # check for existence
             table = tablename
-            pk_list = table.primary_key.columns.keys()
-            args = list()
-            for k, v in filters.items():
-                args.append("table.c.{}=={}".format(k, v))
-            args = "or_(" + ",".join(args) + ")"
-            exist = self.session.query(table).filter(eval(args)).all()
-            return exist
+            filter_clauses = [table.c[k] == v for k, v in filters.items()]
+            return self.session.query(table).filter(or_(*filter_clauses)).all()
         # ORM
         else:
-            table = eval(tablename)
-            args = list()
-            for k, v in filters.items():
-                if v != None:
-                    args.append("table.{}=='{}'".format(k, v))
-            filter = " and ".join(args)
-            entries = self.session.query(table).filter(eval(filter)).all()
-            return entries
+            table = _resolve_orm_table(tablename)
+            filter_clauses = [
+                getattr(table, k) == v for k, v in filters.items() if v is not None
+            ]
+            return self.session.query(table).filter(and_(*filter_clauses)).all()
 
-    def top_index(self, table_str: str, filters: Dict[str, str], column: str):
+    def top_index(self, table_str: str, filters: dict[str, str], column: str):
         """Fetches the top index from column of table, by applying a dict with columns as keys."""
-        table = eval(table_str)
-        args = list()
-        for k, v in filters.items():
-            if v != None:
-                args.append("table.{}=='{}'".format(k, v))
-        filter = " and ".join(args)
+        table = _resolve_orm_table(table_str)
+        filter_clauses = [
+            getattr(table, k) == v for k, v in filters.items() if v is not None
+        ]
         entry = (
             self.session.query(table)
-            .filter(eval(filter))
-            .order_by(desc(eval("{}.{}".format(table_str, column))))
+            .filter(and_(*filter_clauses))
+            .order_by(desc(getattr(table, column)))
             .limit(1)
             .all()
         )
         if entry == []:
             return int(-1)
         else:
-            return eval("entry[0].{}".format(column))
+            return getattr(entry[0], column)
 
     def reload_profiletable(self, organism: str):
-        """Drop the named non-orm table, then load it with fresh data"""
-        table = self.profiles[organism]
-        self.logger.debug(f"Reloading profile table for {organism}")
-        self.profiles[organism].drop()
-        self.logger.debug(f"Dropped profile table for {organism}")
-        self.profiles[organism].create()
-        self.logger.debug(f"Recreated profile table for {organism}")
-        self.init_profiletable(organism, table)
-        self.logger.debug(f"Initialized profile table for {organism}")
+        """Drop the named profile table, rebuild schema from disk, and reload with fresh data.
 
-    def init_profiletable(self, filename: str, table):
-        """Creates profile tables by looping, since a lot of infiles exist"""
-        data = table.insert()
-        linedict = dict.fromkeys(table.c.keys())
+        The Python Table object is rebuilt from the current file on disk before the DB
+        table is recreated, so schema changes (new or renamed loci columns) are picked up.
+        """
+        self.logger.debug(f"Reloading profile table for {organism}")
+        self.profiles[organism].drop(self.engine)
+        self.logger.debug(f"Dropped profile table for {organism}")
+        # Rebuild the Table object from the file currently on disk (schema may have changed).
+        fresh_metadata = MetaData()
+        fresh = ProfileTable("profile_", fresh_metadata, self.config, self.logger).tables
+        if organism in fresh:
+            self.profiles[organism] = fresh[organism]
+        self.profiles[organism].create(self.engine)
+        self.logger.debug(f"Recreated profile table for {organism}")
+        self.populate_profiletable(organism, self.profiles[organism])
+        self.logger.debug(f"Populated profile table for {organism}")
+
+    def refresh_profiletable(self, organism: str):
+        """Reload profile table content without dropping the table when possible.
+
+        Reads the downloaded CSV header and compares it against the current
+        table's columns (first 8). If the schema is unchanged, the table is
+        truncated and reloaded in place. If the loci scheme has changed (new
+        or renamed columns) the method falls back to a full drop/recreate via
+        reload_profiletable() so the schema stays in sync with the CSV.
+        """
+        table = self.profiles[organism]
+        file_path = f"{self.config['folders']['profiles']}/{organism}"
+
+        with open(file_path, "r") as fh:
+            csv_cols = fh.readline().rstrip().split("\t")[:8]
+
+        current_cols = list(table.c.keys())
+
+        if csv_cols == current_cols:
+            self.logger.info(
+                f"Schema unchanged for {organism}, truncating and reloading profile table"
+            )
+            self.session.execute(table.delete())
+            self.session.commit()
+            self.populate_profiletable(organism, table)
+        else:
+            self.logger.info(
+                f"Schema changed for {organism} ({current_cols} -> {csv_cols}), "
+                f"dropping and recreating profile table"
+            )
+            self.reload_profiletable(organism)
+
+    def populate_profiletable(self, filename: str, table) -> None:
+        """Bulk-inserts all data rows from a profile file into an already-created *table*."""
         file_path = f"{self.config['folders']['profiles']}/{filename}"
         self.logger.debug(f"Opening profile file: {file_path}")
+        keys = list(table.c.keys())
+        rows = []
         with open(file_path, "r") as fh:
-            # Skips header
-            head = fh.readline()
-            head = head.rstrip().split("\t")
-            self.logger.debug(f"Header columns: {head}")
-            line_num = 0
-            for line in fh:
-                line_num += 1
-                line = line.rstrip().split("\t")
-                self.logger.debug(f"Processing line {line_num}: {line}")
-                index = 0
-                while index < len(line):
-                    linedict[head[index]] = line[index]
-                    index = index + 1
-                self.logger.debug(f"Linedict before insert: {linedict}")
-                try:
-                    data.execute(linedict)
-                    self.logger.debug(f"Inserted line {line_num} into table")
-                except Exception as e:
-                    self.logger.error(f"Failed to insert line {line_num}: {e}")
-        self.logger.debug(f"Initialized profile table for {filename} with {line_num} entries")
+            head = fh.readline().rstrip().split("\t")
+            for raw_line in fh:
+                values = raw_line.rstrip().split("\t")
+                row = {col: None for col in keys}
+                for i, val in enumerate(values[: len(keys)]):
+                    row[head[i]] = val
+                rows.append(row)
+        if not rows:
+            self.logger.warning(f"No data rows found in profile file {filename}")
+            return
+        try:
+            self.session.execute(table.insert(), rows)
+            self.session.commit()
+            self.logger.debug(f"Inserted {len(rows)} rows into profile table for {filename}")
+        except Exception as e:
+            self.session.rollback()
+            self.logger.error(f"Failed to bulk-insert profile data for {filename}: {e}")
 
     def get_columns(self, tablename: str):
         """Returns all records for a given ORM table"""
-        table = eval(tablename)
+        table = _resolve_orm_table(tablename)
         return dict.fromkeys(table.__table__.columns.keys())
 
-    def exists(self, table, item: Dict[str, str]):
+    def exists(self, table: str, item: dict[str, str]):
         """Takes a k-v pair and checks for the entrys existence in the given table"""
-        filterstring = ""
-        for k, v in item.items():
-            filterstring += "{}.{}=='{}',".format(table, k, v)
-        filterstring = filterstring[:-1]
-        table = eval(table)
-        entry = self.session.query(table).filter(eval(filterstring)).scalar()
-        if entry is None:
-            return False
-        else:
-            return True
+        orm_table = _resolve_orm_table(table)
+        filter_clauses = [getattr(orm_table, k) == v for k, v in item.items()]
+        entry = self.session.query(orm_table).filter(and_(*filter_clauses)).scalar()
+        return entry is not None
 
     def get_version(self, name: str):
         """Gets the version from a given name. Should be generalized to return any value for any input"""
@@ -436,14 +497,12 @@ class DB_Manipulator:
             profile_list = self.session.query(self.profiles[org]).all()
             # Filter
             for novel in novel_list:
-                args = list()
-                for key in org_keys:
-                    if key != "ST" and key != "clonal_complex" and key != "species":
-                        args.append(
-                            "self.profiles[org].c.{}=={}".format(key, eval("novel.{}".format(key)))
-                        )
-                args = "and_(" + ",".join(args) + ")"
-                exist = self.session.query(self.profiles[org]).filter(eval(args)).all()
+                filter_clauses = [
+                    self.profiles[org].c[key] == getattr(novel, key)
+                    for key in org_keys
+                    if key not in ("ST", "clonal_complex", "species")
+                ]
+                exist = self.session.query(self.profiles[org]).filter(and_(*filter_clauses)).all()
 
                 if exist:
                     exist = exist[0]
@@ -468,9 +527,7 @@ class DB_Manipulator:
                         # review
                         if entry.pubmlst_ST == -1 and not overwrite:
                             self.logger.info(
-                                "Update: Sample {} of organism {}; Internal ST {} is now linked to {} '{}'".format(
-                                    entry.CG_ID_sample, org, novel.ST, exist.ST, exist
-                                )
+                                f"Update: Sample {entry.CG_ID_sample} of organism {org}; Internal ST {novel.ST} is now linked to {exist.ST} '{exist}'"
                             )
                             self.upd_rec(
                                 {"CG_ID_sample": entry.CG_ID_sample},
@@ -480,9 +537,7 @@ class DB_Manipulator:
                         # overwrite
                         elif overwrite:
                             self.logger.info(
-                                "Replacement: Sample {} of organism {}; Internal ST {} is now {} '{}'".format(
-                                    entry.CG_ID_sample, org, novel.ST, exist.ST, exist
-                                )
+                                f"Replacement: Sample {entry.CG_ID_sample} of organism {org}; Internal ST {novel.ST} is now {exist.ST} '{exist}'"
                             )
                             self.upd_rec(
                                 {"CG_ID_sample": entry.CG_ID_sample},
@@ -495,13 +550,11 @@ class DB_Manipulator:
         query = self.session.query(Samples).filter(Samples.CG_ID_sample == sample).all()
         if len(query) > 0:
             self.logger.info(
-                "Ignore: Sample {} from organism {} with ST {}; is now flagged as resolved.".format(
-                    query[0].CG_ID_sample, query[0].organism, query[0].ST
-                )
+                f"Ignore: Sample {query[0].CG_ID_sample} from organism {query[0].organism} with ST {query[0].ST}; is now flagged as resolved."
             )
             self.upd_rec({"CG_ID_sample": query[0].CG_ID_sample}, "Samples", {"pubmlst_ST": 0})
         else:
-            self.logger.error("Sample {} not found in database. Verify name".format(sample))
+            self.logger.error(f"Sample {sample} not found in database. Verify name")
 
     def list_unresolved(self):
         """Lists all novel samples that current havent been flagged as resolved"""
@@ -513,9 +566,9 @@ class DB_Manipulator:
             .all()
         )
         for entry in prequery:
-            if not entry.organism in novelbkt:
+            if entry.organism not in novelbkt:
                 novelbkt[entry.organism] = dict()
-            if not entry.ST in novelbkt[entry.organism]:
+            if entry.ST not in novelbkt[entry.organism]:
                 novelbkt[entry.organism][entry.ST] = list()
             novelbkt[entry.organism][entry.ST].append(entry.CG_ID_sample)
         novelbkt = OrderedDict(sorted(novelbkt.items(), key=lambda t: t[0]))
@@ -528,9 +581,9 @@ class DB_Manipulator:
             .all()
         )
         for entry in postquery:
-            if not entry.organism in novelbkt2:
+            if entry.organism not in novelbkt2:
                 novelbkt2[entry.organism] = dict()
-            if not entry.ST in novelbkt2[entry.organism]:
+            if entry.ST not in novelbkt2[entry.organism]:
                 novelbkt2[entry.organism][entry.ST] = list()
             novelbkt2[entry.organism][entry.ST].append(entry.CG_ID_sample)
 
@@ -542,9 +595,9 @@ class DB_Manipulator:
             .all()
         )
         for entry in naquery:
-            if not entry.ST in novelbkt3:
+            if entry.ST not in novelbkt3:
                 novelbkt3[entry.ST] = dict()
-            if not entry.organism in novelbkt3[entry.ST]:
+            if entry.organism not in novelbkt3[entry.ST]:
                 novelbkt3[entry.ST][entry.organism] = list()
             novelbkt3[entry.ST][entry.organism].append(entry.CG_ID_sample)
         novelbkt3 = OrderedDict(sorted(novelbkt3.items(), key=lambda t: t[0], reverse=True))
@@ -558,16 +611,12 @@ class DB_Manipulator:
 
         print("\n####Unresolved samples and their respective error flags:####\n")
         for k, v in novelbkt3.items():
-            print("\n##Code {} - {}##".format(k, codetrans[k]))
+            print(f"\n##Code {k} - {codetrans[k]}##")
             for x, y in v.items():
                 if x is not None:
                     x = x.replace("_", " ").capitalize()
                 print(
-                    "{} ({} samples):\n{}".format(
-                        x,
-                        len(y),
-                        sorted(y),
-                    )
+                    f"{x} ({len(y)} samples):\n{sorted(y)}"
                 )
         if len(novelbkt3) == 0:
             print("None!")
@@ -576,9 +625,9 @@ class DB_Manipulator:
         for k, v in novelbkt2.items():
             if k is not None:
                 k = k.replace("_", " ").capitalize()
-            print("Organism {} ({}):".format(k, len(v)))
+            print(f"Organism {k} ({len(v)}):")
             for x, y in v.items():
-                print("{}:{} ({} ST)".format(x, sorted(y), len(y)))
+                print(f"{x}:{sorted(y)} ({len(y)} ST)")
         if len(novelbkt2) == 0:
             print("None!")
 
@@ -586,9 +635,9 @@ class DB_Manipulator:
         for k, v in novelbkt.items():
             if k is not None:
                 k = k.replace("_", " ").capitalize()
-            print("Organism {} ({}):".format(k, len(v)))
+            print(f"Organism {k} ({len(v)}):")
             for x, y in v.items():
-                print("{}:{} ({} novel ST)".format(x, sorted(y), len(y)))
+                print(f"{x}:{sorted(y)} ({len(y)} novel ST)")
         if len(novelbkt) == 0:
             print("None!")
 
@@ -605,11 +654,10 @@ class DB_Manipulator:
             sample.update({Seq_types.st_predictor: None})
             # Set subset
             for loci, columns in pks.items():
-                arglist = list()
-                for key, val in columns.items():
-                    arglist.append("Seq_types.{}=='{}'".format(key, val))
-                    args = "and_(" + ", ".join(arglist) + ")"
-                sample.filter(eval(args)).update({Seq_types.st_predictor: 1})
+                filter_clauses = [
+                    getattr(Seq_types, key) == val for key, val in columns.items()
+                ]
+                sample.filter(and_(*filter_clauses)).update({Seq_types.st_predictor: 1})
         self.session.commit()
 
     def alleles2st(self, cg_sid: str):
@@ -620,9 +668,7 @@ class DB_Manipulator:
         )
         if organism is None:
             self.logger.warning(
-                "No organism set for {}. Most likely control sample. Setting ST to -1".format(
-                    cg_sid
-                )
+                f"No organism set for {cg_sid}. Most likely control sample. Setting ST to -1"
             )
             return -1
         [alleles, allelediff] = self.get_unique_alleles(cg_sid, organism, threshold)
@@ -631,26 +677,20 @@ class DB_Manipulator:
             [alleles, allelediff] = self.get_unique_alleles(cg_sid, organism, threshold)
             if allelediff < 0:
                 self.logger.warning(
-                    "Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3".format(
-                        cg_sid, organism
-                    )
+                    f"Insufficient allele hits to establish ST for sample {cg_sid}, even without thresholds. Setting ST to -3"
                 )
                 self.setPredictor(cg_sid)
                 return -3
 
         # Tests all allele combinations found to see if any of them result in ST
-        filter = list()
+        filter_clauses = []
         for key, val in alleles.items():
-            subfilter = list()
-            for num in val:
-                subfilter.append(" self.profiles[organism].c.{}=={} ".format(key, num))
-            subfilter = ",".join(subfilter)
+            col = self.profiles[organism].c[key]
             if len(val) > 1:
-                subfilter = "or_({})".format(subfilter)
-            filter.append(subfilter)
-        filter = ",".join(filter)
-        filter = "and_({})".format(filter)
-        output = self.session.query(self.profiles[organism]).filter(eval(filter)).all()
+                filter_clauses.append(or_(*[col == num for num in val]))
+            else:
+                filter_clauses.append(col == val[0])
+        output = self.session.query(self.profiles[organism]).filter(and_(*filter_clauses)).all()
 
         # Check for existence in profile database
         if len(output) > 1:
@@ -660,9 +700,7 @@ class DB_Manipulator:
             best = self.bestST(cg_sid, STlist, "profile")
             if threshold:
                 self.logger.warning(
-                    "Multiple ST within threshold found for sample {}, list: {}. Established ST{} as best hit.".format(
-                        cg_sid, STlist, best
-                    )
+                    f"Multiple ST within threshold found for sample {cg_sid}, list: {STlist}. Established ST{best} as best hit."
                 )
             return best
         elif len(output) == 1:
@@ -671,22 +709,16 @@ class DB_Manipulator:
         # Check for existence in novel database
         elif threshold:
             self.logger.info(
-                "Sample {} on {} has novel ST reliably established. Searching for prior novel definition...".format(
-                    cg_sid, organism
-                )
+                f"Sample {cg_sid} on {organism} has novel ST reliably established. Searching for prior novel definition..."
             )
-            filter = list()
+            filter_clauses = []
             for key, val in alleles.items():
-                subfilter = list()
-                for num in val:
-                    subfilter.append(" self.novel[organism].c.{}=={} ".format(key, num))
-                subfilter = ",".join(subfilter)
+                col = self.novel[organism].c[key]
                 if len(val) > 1:
-                    subfilter = "or_({})".format(subfilter)
-                filter.append(subfilter)
-            filter = ",".join(filter)
-            filter = "and_({})".format(filter)
-            output = self.session.query(self.novel[organism]).filter(eval(filter)).all()
+                    filter_clauses.append(or_(*[col == num for num in val]))
+                else:
+                    filter_clauses.append(col == val[0])
+            output = self.session.query(self.novel[organism]).filter(and_(*filter_clauses)).all()
 
             if len(output) > 1:
                 STlist = list()
@@ -695,9 +727,7 @@ class DB_Manipulator:
                 best = self.bestST(cg_sid, STlist, "novel")
                 if threshold:
                     self.logger.warning(
-                        "Multiple ST within novel threshold found for sample {}, list: {}. Established ST{} as best hit.".format(
-                            cg_sid, STlist, best
-                        )
+                        f"Multiple ST within novel threshold found for sample {cg_sid}, list: {STlist}. Established ST{best} as best hit."
                     )
                 return best
             elif len(output) == 1:
@@ -721,16 +751,13 @@ class DB_Manipulator:
                 return self.bestST(cg_sid, [st], "novel")
         else:
             self.logger.warning(
-                "Sample {} on {} has an allele set but hits are low-quality and\
- do not resolve to an ST. Setting ST to -2".format(
-                    cg_sid, organism
-                )
+                f"Sample {cg_sid} on {organism} has an allele set but hits are low-quality and do not resolve to an ST. Setting ST to -2"
             )
             bestSet = self.bestAlleles(cg_sid)
             self.setPredictor(cg_sid, bestSet)
             return -2
 
-    def bestST(self, cg_sid: str, st_list: List, type="profile"):
+    def bestST(self, cg_sid: str, st_list: list, type="profile"):
         """Takes in a list of ST and a sample.
         Establishes which ST is most likely by criteria id*span -> eval -> contig coverage
         & flags involved alleles"""
@@ -750,38 +777,39 @@ class DB_Manipulator:
             if type == "profile":
                 profiles.append(
                     self.session.query(self.profiles[organism])
-                    .filter(text("ST={}".format(st)))
+                    .filter(text(f"ST={st}"))
                     .first()
                 )
             elif type == "novel":
                 profiles.append(
                     self.session.query(self.novel[organism])
-                    .filter(text("ST={}".format(st)))
+                    .filter(text(f"ST={st}"))
                     .first()
                 )
 
         # Get values for each allele set that resolves an ST
         for prof in profiles:
+            prof_keys = list(prof._fields)
             alleleconditions = list()
             alleledict = dict()
-            allconditions = ["Seq_types.CG_ID_sample=='{}'".format(cg_sid)]
 
             for index, allele in enumerate(prof):
                 if (
-                    "ST" not in prof.keys()[index]
-                    and "clonal_complex" not in prof.keys()[index]
-                    and "species" not in prof.keys()[index]
+                    "ST" not in prof_keys[index]
+                    and "clonal_complex" not in prof_keys[index]
+                    and "species" not in prof_keys[index]
                 ):
-                    condition = "Seq_types.loci=='{}' , Seq_types.allele=='{}'".format(
-                        prof.keys()[index], allele
+                    alleledict[prof_keys[index]] = ""
+                    alleleconditions.append(
+                        and_(
+                            Seq_types.loci == prof_keys[index],
+                            Seq_types.allele == allele,
+                        )
                     )
-                    alleledict[prof.keys()[index]] = ""
-                    alleleconditions.append("and_({})".format(condition))
 
-            alleleconditions = "or_({})".format(",".join(alleleconditions))
-            allconditions.append(alleleconditions)
-            allconditions = "and_({})".format(",".join(allconditions))
-            all_alleles = self.session.query(Seq_types).filter(eval(allconditions)).all()
+            all_alleles = self.session.query(Seq_types).filter(
+                and_(Seq_types.CG_ID_sample == cg_sid, or_(*alleleconditions))
+            ).all()
 
             # Keep only best hit each loci
             for allele in all_alleles:
@@ -804,9 +832,9 @@ class DB_Manipulator:
                 scores[prof.ST]["spanid"] += allele.span * allele.identity
                 scores[prof.ST]["eval"] += float(allele.evalue)
                 scores[prof.ST]["cc"] += allele.contig_coverage
-                if not allele.loci in bestalleles[prof.ST].keys():
+                if allele.loci not in bestalleles[prof.ST].keys():
                     bestalleles[prof.ST][allele.loci] = dict()
-                if not "contig_name" in bestalleles[prof.ST][allele.loci].keys():
+                if "contig_name" not in bestalleles[prof.ST][allele.loci].keys():
                     bestalleles[prof.ST][allele.loci]["contig_name"] = str(allele.contig_name)
 
         # Establish best ST

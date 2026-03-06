@@ -11,6 +11,8 @@ import sys
 import click
 
 from microSALT import __version__, logging_levels, preset_config
+from microSALT.exc.exceptions import RefUpdateLockError
+from microSALT.store.database import get_scoped_session_registry
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.reporter import Reporter
@@ -77,19 +79,22 @@ def review_sampleinfo(pfile):
             for k, v in default_sampleinfo.items():
                 if k not in entry:
                     click.echo(
-                        "WARNING - Parameter {} needs to be provided in sample json. Formatting example: ({})".format(
-                            k, v
-                        )
+                        f"WARNING - Parameter {k} needs to be provided in sample json. Formatting example: ({v})"
                     )
     else:
         for k, v in default_sampleinfo.items():
             if k not in data:
                 click.echo(
-                    "WARNING - Parameter {} needs to be provided in sample json. Formatting example: ({})".format(
-                        k, v
-                    )
+                    f"WARNING - Parameter {k} needs to be provided in sample json. Formatting example: ({v})"
                 )
     return data
+
+
+def teardown_session():
+    """Ensure that the session is closed and all resources are released to the connection pool."""
+    registry = get_scoped_session_registry()
+    if registry:
+        registry.remove()
 
 
 @click.group()
@@ -109,6 +114,7 @@ def root(ctx, logging_level):
     for handler in logger.handlers:
         handler.setLevel(logging_levels[logging_level])
     logger.debug(f"Setting logging level to {logging_levels[logging_level]}")
+    ctx.call_on_close(teardown_session)
 
 
 @root.command()
@@ -154,10 +160,10 @@ def analyse(
     ctx.obj["config"]["regex"]["mail_recipient"] = email
     ctx.obj["config"]["dry"] = dry
     if not os.path.isdir(input):
-        click.echo("ERROR - Sequence data folder {} does not exist.".format(input))
+        click.echo(f"ERROR - Sequence data folder {input} does not exist.")
         ctx.abort()
     for subfolder in os.listdir(input):
-        if os.path.isdir("{}/{}".format(input, subfolder)):
+        if os.path.isdir(f"{input}/{subfolder}"):
             pool.append(subfolder)
 
     run_settings = {
@@ -184,6 +190,11 @@ def analyse(
         sampleinfo=sampleinfo,
         force=force_update,
     )
+    try:
+        ext_refs.db_access.check_ref_lock()
+    except RefUpdateLockError as e:
+        click.echo("ERROR - {}".format(e))
+        ctx.abort()
     click.echo("INFO - Checking versions of references..")
     try:
         if not skip_update:
@@ -193,7 +204,7 @@ def analyse(
         else:
             click.echo("INFO - Skipping version check.")
     except Exception as e:
-        click.echo("{}".format(e))
+        click.echo(f"{e}")
     if len(sampleinfo) > 1:
         run_creator.project_job()
     elif len(sampleinfo) == 1:
@@ -255,12 +266,12 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
     ctx.obj["config"]["regex"]["mail_recipient"] = email
     ctx.obj["config"]["dry"] = dry
     if not os.path.isdir(input):
-        click.echo("ERROR - Sequence data folder {} does not exist.".format(input))
+        click.echo(f"ERROR - Sequence data folder {input} does not exist.")
         ctx.abort()
     if output == "":
         output = input
     for subfolder in os.listdir(input):
-        if os.path.isdir("{}/{}".format(input, subfolder)):
+        if os.path.isdir(f"{input}/{subfolder}"):
             pool.append(subfolder)
 
     run_settings = {
@@ -274,6 +285,11 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
     # Samples section
     sampleinfo = review_sampleinfo(sampleinfo_file)
     ext_refs = Referencer(config=ctx.obj["config"], log=logger, sampleinfo=sampleinfo)
+    try:
+        ext_refs.db_access.check_ref_lock()
+    except RefUpdateLockError as e:
+        click.echo("ERROR - {}".format(e))
+        ctx.abort()
     click.echo("INFO - Checking versions of references..")
     try:
         if not skip_update:
@@ -283,7 +299,7 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
         else:
             click.echo("INFO - Skipping version check.")
     except Exception as e:
-        click.echo("{}".format(e))
+        click.echo(f"{e}")
 
     res_scraper = Scraper(config=ctx.obj["config"], log=logger, sampleinfo=sampleinfo, input=input)
     if isinstance(sampleinfo, list) and len(sampleinfo) > 1:
@@ -381,11 +397,11 @@ def generate(ctx, input):
 
     pool = []
     if not os.path.isdir(input):
-        click.echo("ERROR - Sequence data folder {} does not exist.".format(project_name))
+        click.echo(f"ERROR - Sequence data folder {project_name} does not exist.")
         ctx.abort()
     elif input != os.getcwd():
         for subfolder in os.listdir(input):
-            if os.path.isdir("{}/{}".format(input, subfolder)):
+            if os.path.isdir(f"{input}/{subfolder}"):
                 pool.append(defaults.copy())
                 pool[-1]["CG_ID_project"] = project_name
                 pool[-1]["CG_ID_sample"] = subfolder
@@ -393,9 +409,9 @@ def generate(ctx, input):
         project_name = "default_sample_info"
         pool.append(defaults.copy())
 
-    with open("{}/{}.json".format(os.getcwd(), project_name), "w") as output:
+    with open(f"{os.getcwd()}/{project_name}.json", "w") as output:
         json.dump(pool, output, indent=2)
-    click.echo("INFO - Created {}.json in current folder".format(project_name))
+    click.echo(f"INFO - Created {project_name}.json in current folder")
     done()
 
 

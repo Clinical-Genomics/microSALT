@@ -1,11 +1,11 @@
-import sys
 import os
-
+import sys
 from argparse import ArgumentParser
+
 from rauth import OAuth1Service
-from microSALT import app
-from microSALT.utils.pubmlst.helpers import get_path, get_service_config, folders_config
+
 from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
+from microSALT.utils.pubmlst.helpers import folders_config, get_path, get_service_config
 
 
 def validate_credentials(client_id, client_secret):

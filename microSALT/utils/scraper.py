@@ -14,6 +14,7 @@ from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.job_creator import Job_Creator
 
+
 # TODO: Rewrite so samples use seperate objects
 class Scraper:
     def __init__(self, config, log, sampleinfo={}, input=""):
@@ -53,12 +54,12 @@ class Scraper:
             project = self.name
         self.db_pusher.purge_rec(project, "Projects")
         if not self.db_pusher.exists("Projects", {"CG_ID_project": project}):
-            self.logger.warning("Replacing project {}".format(project))
+            self.logger.warning(f"Replacing project {project}")
             self.job_fallback.create_project(project)
 
         # Scrape order matters a lot!
         for item in os.listdir(self.infolder):
-            sampledir = "{}/{}".format(self.infolder, item)
+            sampledir = f"{self.infolder}/{item}"
             if os.path.isdir(sampledir):
                 local_param = [p for p in self.sampleinfo if p["CG_ID_sample"] == item]
                 if local_param != []:
@@ -71,9 +72,7 @@ class Scraper:
                     )
                     sample_scraper.scrape_sample()
                 else:
-                    self.logger.warning(
-                        "Skipping {} due to lacking info in sample_json file".format(dir)
-                    )
+                    self.logger.warning(f"Skipping {dir} due to lacking info in sample_json file")
 
     def scrape_sample(self, sample=None):
         """Scrapes a sample folder for information"""
@@ -84,23 +83,18 @@ class Scraper:
         if not self.db_pusher.exists(
             "Projects", {"CG_ID_project": self.sample.get("CG_ID_project")}
         ):
-            self.logger.warning(
-                "Replacing project {}".format(self.sample.get("CG_ID_project"))
-            )
+            self.logger.warning(f"Replacing project {self.sample.get('CG_ID_project')}")
             self.job_fallback.create_project(self.sample.get("CG_ID_project"))
 
         if not self.db_pusher.exists("Samples", {"CG_ID_sample": sample}):
-            self.logger.info("Replacing sample {}".format(sample))
+            self.logger.info(f"Replacing sample {sample}")
             self.job_fallback.create_sample(sample)
 
         # Scrape order matters a lot!
         self.sampledir = self.infolder
         self.scrape_blast(type="seq_type")
         self.scrape_blast(type="resistance")
-        if (
-            self.referencer.organism2reference(self.sample.get("organism"))
-            == "escherichia_coli"
-        ):
+        if self.referencer.organism2reference(self.sample.get("organism")) == "escherichia_coli":
             self.scrape_blast(type="expec")
         self.scrape_alignment()
         self.scrape_quast()
@@ -109,9 +103,9 @@ class Scraper:
     def scrape_quast(self, filename=""):
         """Scrapes a quast report for assembly information"""
         if filename == "":
-            filename = "{}/assembly/quast/{}_report.tsv".format(self.sampledir, self.name)
+            filename = f"{self.sampledir}/assembly/quast/{self.name}_report.tsv"
             if not os.path.isfile(filename):
-                filename = "{}/assembly/quast/report.tsv".format(self.sampledir)
+                filename = f"{self.sampledir}/assembly/quast/report.tsv"
 
         quast = dict()
         try:
@@ -128,19 +122,19 @@ class Scraper:
                         quast["n50"] = int(lsplit[1])
 
             self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", quast)
-            self.logger.debug(
-                "Project {} recieved quast stats: {}".format(self.name, quast)
-            )
+            self.logger.debug(f"Project {self.name} recieved quast stats: {quast}")
         except Exception as e:
-            self.logger.warning(
-                "Cannot generate quast statistics for {}".format(self.name)
-            )
+            self.logger.warning(f"Cannot generate quast statistics for {self.name}")
 
     def scrape_reference(self) -> None:
         """Scrapes a reference assembly to calculate the size"""
-        assembly = "{}/../../../references/genomes/{}.fasta".format(self.sampledir, self.sample.get("reference"))
+        assembly = (
+            f"{self.sampledir}/../../../references/genomes/{self.sample.get('reference')}.fasta"
+        )
         if not os.path.exists(assembly):
-            assembly = "{}/../../references/genomes/{}.fasta".format(self.sampledir, self.sample.get("reference"))
+            assembly = (
+                f"{self.sampledir}/../../references/genomes/{self.sample.get('reference')}.fasta"
+            )
         reference_data = dict()
         try:
             with open(assembly, "r") as infile:
@@ -151,23 +145,19 @@ class Scraper:
                         assembly_length += len(curated_line)
                 reference_data["reference_length"] = assembly_length
             self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", reference_data)
-            self.logger.debug(
-                "Project {} recieved quast stats: {}".format(self.name, reference_data)
-            )
+            self.logger.debug(f"Project {self.name} recieved quast stats: {reference_data}")
         except Exception as e:
-            self.logger.warning(
-                "Cannot find assembly size for reference {}".format(self.name)
-            )
+            self.logger.warning(f"Cannot find assembly size for reference {self.name}")
 
     def get_locilengths(self, foldername, suffix):
-        """ Generate a dict of length for any given loci """
+        """Generate a dict of length for any given loci"""
         # Create dict with full name as key, associated nucleotides as value.
         alleles = dict()
         finalalleles = dict()
         for file in os.listdir(foldername):
             if file.endswith(suffix):
                 lastallele = ""
-                f = open("{}/{}".format(foldername, file), "r")
+                f = open(f"{foldername}/{file}", "r")
                 for row in f:
                     if ">" in row:
                         lastallele = row.strip()
@@ -188,18 +178,14 @@ class Scraper:
 
         if file_list == []:
             if type == "seq_type":
-                file_list = glob.glob("{}/blast_search/mlst/*".format(self.sampledir))
+                file_list = glob.glob(f"{self.sampledir}/blast_search/mlst/*")
             else:
-                file_list = glob.glob(
-                    "{}/blast_search/{}/*".format(self.sampledir, type)
-                )
+                file_list = glob.glob(f"{self.sampledir}/blast_search/{type}/*")
 
         organism = self.referencer.organism2reference(self.sample.get("organism"))
         if organism:
-            self.db_pusher.upd_rec(
-                {"CG_ID_sample": self.name}, "Samples", {"organism": organism}
-            )
-        res_cols = self.db_pusher.get_columns("{}".format(type2db))
+            self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", {"organism": organism})
+        res_cols = self.db_pusher.get_columns(f"{type2db}")
 
         try:
             for file in file_list:
@@ -211,17 +197,13 @@ class Scraper:
                     suffix = "fsa"
                 elif type == "expec":
                     ref_folder = os.path.dirname(self.config["folders"]["expec"])
-                    suffix = os.path.basename(self.config["folders"]["expec"]).rsplit(
-                        ".", 1
-                    )[1]
+                    suffix = os.path.basename(self.config["folders"]["expec"]).rsplit(".", 1)[1]
                 elif type == "seq_type":
-                    ref_folder = "{}/{}".format(
-                        self.config["folders"]["references"], organism
-                    )
+                    ref_folder = f"{self.config['folders']['references']}/{organism}"
                     suffix = "tfa"
                 locilengths = self.get_locilengths(ref_folder, suffix)
 
-                with open("{}".format(file), "r") as sample:
+                with open(f"{file}", "r") as sample:
                     for line in sample:
                         # Ignore commented fields
                         if not line[0] == "#":
@@ -243,7 +225,9 @@ class Scraper:
 
                                 if type == "resistance":
                                     hypo[-1]["instance"] = filename
-                                    partials = re.search("(?:\>)*(.+)_(\d+){1,3}(?:_(.+))",elem_list[3])
+                                    partials = re.search(
+                                        r"(?:>)*(.+)_(\d+){1,3}_(.+)", elem_list[3]
+                                    )
                                     hypo[-1]["reference"] = partials.group(3)
                                     hypo[-1]["gene"] = partials.group(1)
                                     if hypo[-1]["gene"] in self.gene2resistance.keys():
@@ -251,22 +235,29 @@ class Scraper:
                                             hypo[-1]["gene"]
                                         ]
                                     else:
-                                        hypo[-1]["{}".format(type)] = hypo[-1][
-                                            "instance"
-                                        ].capitalize()
-                                    #Ignores reference name and finds relevant resFinder entry
+                                        hypo[-1][f"{type}"] = hypo[-1]["instance"].capitalize()
+                                    # Ignores reference name and finds relevant resFinder entry
 
-                                    padder = [x for x in locilengths.keys() if x.startswith('>{}_'.format(partials[1]))]
+                                    padder = [
+                                        x
+                                        for x in locilengths.keys()
+                                        if x.startswith(f">{partials[1]}_")
+                                    ]
                                     if len(padder) == 0:
-                                        padder = [x for x in locilengths.keys() if x.startswith('>{}_'.format(partials[1][:-1]))]
+                                        padder = [
+                                            x
+                                            for x in locilengths.keys()
+                                            if x.startswith(f">{partials[1][:-1]}_")
+                                        ]
                                     try:
                                         padder = padder[0]
                                     except IndexError as e:
-                                        self.logger.warning("In {} gene {} can't be resolved. Wrong resistance?".format(self.name, partials[1]))
+                                        self.logger.warning(
+                                            f"In {self.name} gene {partials[1]} can't be resolved. Wrong resistance?"
+                                        )
 
                                     hypo[-1]["span"] = (
-                                        float(hypo[-1]["subject_length"])
-                                        / locilengths[padder]
+                                        float(hypo[-1]["subject_length"]) / locilengths[padder]
                                     )
 
                                 elif type == "expec":
@@ -296,16 +287,14 @@ class Scraper:
                                     # Description
                                     if len(partials.groups()) >= 4:
                                         hypo[-1]["virulence"] = (
-                                            partials.group(4)
-                                            .replace("_", " ")
-                                            .capitalize()
+                                            partials.group(4).replace("_", " ").capitalize()
                                         )
                                     else:
                                         hypo[-1]["virulence"] = ""
-                                    #padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))][0]
+                                    # padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))][0]
                                     hypo[-1]["span"] = (
                                         float(hypo[-1]["subject_length"])
-                                        / locilengths[">{}".format(elem_list[3])]
+                                        / locilengths[f">{elem_list[3]}"]
                                     )
 
                                 elif type == "seq_type":
@@ -314,31 +303,38 @@ class Scraper:
                                     )
                                     hypo[-1]["loci"] = partials.group(1)
                                     hypo[-1]["allele"] = int(partials.group(2))
-                                    #Ignores reference name and finds relevant resFinder entry
+                                    # Ignores reference name and finds relevant resFinder entry
 
-                                    padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[0]))]
+                                    padder = [
+                                        x
+                                        for x in locilengths.keys()
+                                        if x.startswith(f">{partials[0]}")
+                                    ]
                                     if len(padder) == 0:
-                                        padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[0][:-1]))]                 
+                                        padder = [
+                                            x
+                                            for x in locilengths.keys()
+                                            if x.startswith(f">{partials[0][:-1]}")
+                                        ]
                                     try:
                                         padder = padder[0]
                                     except IndexError as e:
-                                        self.logger.warning("In {} allele {} can't be resolved. Wrong organism?".format(self.name, partials[0]))
+                                        self.logger.warning(
+                                            f"In {self.name} allele {partials[0]} can't be resolved. Wrong organism?"
+                                        )
                                     hypo[-1]["span"] = (
-                                        float(hypo[-1]["subject_length"])
-                                        / locilengths[padder]
+                                        float(hypo[-1]["subject_length"]) / locilengths[padder]
                                     )
 
                                 # split elem 2 into contig node_NO, length, cov
                                 nodeinfo = elem_list[2].split("_")
-                                hypo[-1]["contig_name"] = "{}_{}".format(
-                                    nodeinfo[0], nodeinfo[1]
-                                )
+                                hypo[-1]["contig_name"] = f"{nodeinfo[0]}_{nodeinfo[1]}"
                                 hypo[-1]["contig_length"] = int(nodeinfo[3])
                                 hypo[-1]["contig_coverage"] = nodeinfo[5]
-                                self.logger.debug("scrape_blast scrape loop hit '{}'".format(elem_list[3]))
-            self.logger.info("{} candidate {} hits found".format(len(hypo), type2db))
+                                self.logger.debug(f"scrape_blast scrape loop hit '{elem_list[3]}'")
+            self.logger.info(f"{len(hypo)} candidate {type2db} hits found")
         except Exception as e:
-            self.logger.error("Unable to process the pattern of {}".format(str(e)))
+            self.logger.error(f"Unable to process the pattern of {e!s}")
 
         # Cleanup of overlapping hits
         if type == "seq_type":
@@ -357,16 +353,12 @@ class Scraper:
                     # Overlapping or shared gene
                     if (
                         (
-                            hypo[ind].get("contig_start")
-                            >= hypo[targ].get("contig_start")
-                            and hypo[ind].get("contig_start")
-                            <= hypo[targ].get("contig_end")
+                            hypo[ind].get("contig_start") >= hypo[targ].get("contig_start")
+                            and hypo[ind].get("contig_start") <= hypo[targ].get("contig_end")
                         )
                         or (
-                            hypo[ind].get("contig_end")
-                            >= hypo[targ].get("contig_start")
-                            and hypo[ind].get("contig_end")
-                            <= hypo[targ].get("contig_end")
+                            hypo[ind].get("contig_end") >= hypo[targ].get("contig_start")
+                            and hypo[ind].get("contig_end") <= hypo[targ].get("contig_end")
                         )
                         or (hypo[ind].get(identifier) == hypo[targ].get(identifier))
                     ):
@@ -409,43 +401,28 @@ class Scraper:
             ind += 1
 
         self.logger.info(
-            "{} {} hits were added after removing overlaps and duplicate hits".format(
-                len(hypo), type
-            )
+            f"{len(hypo)} {type} hits were added after removing overlaps and duplicate hits"
         )
         for hit in hypo:
             self.logger.debug(
-                "Kept {}:{} with span {} and id {}".format(
-                    hit.get("loci"),
-                    hit.get("allele"),
-                    hit.get("span"),
-                    hit.get("identity"),
-                )
+                f"Kept {hit.get('loci')}:{hit.get('allele')} with span {hit.get('span')} and id {hit.get('identity')}"
             )
-            self.db_pusher.add_rec(hit, "{}".format(type2db))
+            self.db_pusher.add_rec(hit, f"{type2db}")
 
         if type == "seq_type":
             try:
                 ST = self.db_pusher.alleles2st(self.name)
-                self.db_pusher.upd_rec(
-                    {"CG_ID_sample": self.name}, "Samples", {"ST": ST}
-                )
-                self.logger.info("Sample {} received ST {}".format(self.name, ST))
+                self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", {"ST": ST})
+                self.logger.info(f"Sample {self.name} received ST {ST}")
             except Exception as e:
-                self.logger.warning(
-                    "Unable to type sample {} due to data value '{}'".format(
-                        self.name, str(e)
-                    )
-                )
+                self.logger.warning(f"Unable to type sample {self.name} due to data value '{e!s}'")
         return hypo
 
     def load_resistances(self):
         """Legacy function, loads common resistance names for genes from notes file"""
         conversions = dict()
         try:
-            with open(
-                "{}/notes.txt".format(self.config["folders"]["resistances"])
-            ) as fh:
+            with open(f"{self.config['folders']['resistances']}/notes.txt") as fh:
                 for line in fh:
                     if "#" not in line:
                         line = line.split(":")
@@ -454,15 +431,13 @@ class Scraper:
                         # Workaround for case issues
                         conversions[line[0].lower()] = cropped
         except Exception as e:
-            self.logger.error(
-                "Unable to initialize trivial names for resistances ({})".format(e)
-            )
+            self.logger.error(f"Unable to initialize trivial names for resistances ({e})")
         return conversions
 
     def scrape_alignment(self, file_list=[]):
         """Scrapes a single alignment result"""
         if file_list == []:
-            file_list = glob.glob("{}/alignment/*.stats.*".format(self.sampledir))
+            file_list = glob.glob(f"{self.sampledir}/alignment/*.stats.*")
         ins_list = list()
         cov_dict = dict()
         align_dict = dict()

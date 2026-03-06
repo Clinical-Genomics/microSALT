@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 import collections
+import collections.abc
 import os
 import pathlib
-import pytest
 
 from microSALT import preset_config
 
@@ -32,14 +32,13 @@ def test_existence(exp_config):
   # level one
   config_level_one = preset_config.keys()
   for entry in exp_config.keys():
-    if entry != 'dry':
-      assert entry in config_level_one
+    assert entry in config_level_one
 
-      # level two
-      if isinstance(preset_config[entry], collections.Mapping):
-        config_level_two = preset_config[entry].keys()
-        for thing in exp_config[entry]:
-          assert thing in config_level_two
+    # level two
+    if isinstance(preset_config[entry], collections.abc.Mapping):
+      config_level_two = preset_config[entry].keys()
+      for thing in exp_config[entry]:
+        assert thing in config_level_two
 
 def test_reverse_existence(exp_config):
   """Check that the configuration doesn't contain outdated variables"""
@@ -52,7 +51,7 @@ def test_reverse_existence(exp_config):
 
       # level two
       config_level_two = exp_config[entry]
-      if isinstance(preset_config[entry], collections.Mapping):
+      if isinstance(preset_config[entry], collections.abc.Mapping):
         for thing in preset_config[entry].keys():
           if thing != '_comment':
             assert thing in config_level_two
@@ -71,7 +70,7 @@ def test_paths(exp_config):
         assert (pathlib.Path(unmade_fldr).exists())
 
       # level two
-      elif isinstance(preset_config[entry], collections.Mapping):
+      elif isinstance(preset_config[entry], collections.abc.Mapping):
         for thing in preset_config[entry].keys():
           if isinstance(preset_config[entry][thing], str) and '/' in preset_config[entry][thing] and entry not in ['database', 'genologics', 'containers', 'singularity']:
             unmade_fldr = preset_config[entry][thing]

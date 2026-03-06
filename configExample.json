@@ -69,12 +69,6 @@
     "bp_50x_warn": 50,
     "bp_100x_warn": 20
   },
-  "_comment": "Genologics temporary configuration file",
-  "genologics": {
-    "baseuri": "https://lims.facility.se/",
-    "username": "limsuser",
-    "password": "mypassword"
-  },
   "_comment": "Credentials",
   "pubmlst": {
     "client_id": "",

@@ -9,7 +9,6 @@ import shutil
 import subprocess
 import urllib.request
 import xml.etree.ElementTree as ET
-from typing import Optional, Tuple, Union
 
 from Bio import Entrez
 
@@ -76,7 +75,7 @@ class Referencer:
                 if ref not in self.organisms and org not in neworgs:
                     neworgs.append(org)
                 if (
-                    "{}.fasta".format(entry.get("reference"))
+                    f"{entry.get('reference')}.fasta"
                     not in os.listdir(self.config["folders"]["genomes"])
                     and entry.get("reference") not in newrefs
                 ):
@@ -92,21 +91,25 @@ class Referencer:
 
     def update_refs(self):
         """Updates all references. Order is important, since no object is updated twice"""
-        # Updates
-        self.fetch_pubmlst(self.force)
-        self.fetch_external()
-        self.fetch_resistances(self.force)
+        self.db_access.acquire_ref_lock()
+        try:
+            # Updates
+            self.fetch_pubmlst(self.force)
+            self.fetch_external()
+            self.fetch_resistances(self.force)
 
-        # Reindexes
-        self.index_db(os.path.dirname(self.config["folders"]["expec"]), ".fsa")
+            # Reindexes
+            self.index_db(os.path.dirname(self.config["folders"]["expec"]), ".fsa")
+        finally:
+            self.db_access.release_ref_lock()
 
     def index_db(self, full_dir, suffix):
         """Check for indexation, makeblastdb job if not enough of them."""
         reindexation = False
         files = os.listdir(full_dir)
-        sufx_files = glob.glob("{}/*{}".format(full_dir, suffix))  # List of source files
+        sufx_files = glob.glob(f"{full_dir}/*{suffix}")  # List of source files
         for file in sufx_files:
-            subsuf = "\{}$".format(suffix)
+            subsuf = f"\\{suffix}$"
             base = re.sub(subsuf, "", file)
 
             bases = 0
@@ -116,7 +119,7 @@ class Referencer:
                 if os.path.basename(base) == elem[: elem.rfind(".")]:
                     bases = bases + 1
                     # Number of index files fresher than source (6)
-                    if os.stat(file).st_mtime < os.stat("{}/{}".format(full_dir, elem)).st_mtime:
+                    if os.stat(file).st_mtime < os.stat(f"{full_dir}/{elem}").st_mtime:
                         newer = newer + 1
             # 7 for parse_seqids, 4 for not.
             if not (bases == 7 or newer == 6) and not (bases == 4 and newer == 3):
@@ -140,14 +143,14 @@ class Referencer:
                     proc.communicate()
                 except Exception:
                     self.logger.error(
-                        "Unable to index requested target {} in {}".format(file, full_dir)
+                        f"Unable to index requested target {file} in {full_dir}"
                     )
         if reindexation:
-            self.logger.info("Re-indexed contents of {}".format(full_dir))
+            self.logger.info(f"Re-indexed contents of {full_dir}")
 
     def _parse_external_xml(
         self, url: str = "https://pubmlst.org/static/data/dbases.xml"
-    ) -> Optional[ET.Element]:
+    ) -> ET.Element | None:
         """Fetch and parse the external XML, returning the root element."""
         try:
             query = urllib.request.urlopen(url).read()
@@ -158,7 +161,7 @@ class Referencer:
 
     def _find_entry_for_organism(
         self, root: ET.Element, organism_name: str
-    ) -> Tuple[Optional[ET.Element], Optional[str]]:
+    ) -> tuple[ET.Element | None, str | None]:
         """Find the XML entry for a given organism name."""
         organism_name = organism_name.lower().replace(" ", "_")
         for entry in root:
@@ -172,7 +175,7 @@ class Referencer:
                 return entry, organ
         return None, None
 
-    def _should_update_external(self, organ: str, entry: ET.Element) -> Union[dict, bool]:
+    def _should_update_external(self, organ: str, entry: ET.Element) -> dict | bool:
         """Determine if the external data for an organism should be updated."""
         currver = self.db_access.get_version(f"profile_{organ}")
         st_link = entry.find("./mlst/database/profiles/url").text
@@ -327,14 +330,14 @@ class Referencer:
     def fetch_resistances(self, force=False):
         cwd = os.getcwd()
         url = "https://bitbucket.org/genomicepidemiology/resfinder_db.git"
-        hiddensrc = "{}/.resfinder_db".format(self.config["folders"]["resistances"])
+        hiddensrc = f"{self.config['folders']['resistances']}/.resfinder_db"
         wipeIndex = False
 
         if not os.path.exists(hiddensrc) or len(os.listdir(hiddensrc)) == 0:
             self.logger.info("resFinder database not found. Caching..")
             if not os.path.exists(hiddensrc):
                 os.makedirs(hiddensrc)
-            cmd = "git clone {} --quiet".format(url)
+            cmd = f"git clone {url} --quiet"
             process = subprocess.Popen(
                 cmd.split(),
                 cwd=self.config["folders"]["resistances"],
@@ -342,7 +345,7 @@ class Referencer:
             )
             output, error = process.communicate()
             os.rename(
-                "{}/resfinder_db".format(self.config["folders"]["resistances"]),
+                f"{self.config['folders']['resistances']}/resfinder_db",
                 hiddensrc,
             )
             wipeIndex = True
@@ -373,10 +376,10 @@ class Referencer:
         # Actual update of resistance folder
         if wipeIndex:
             for file in os.listdir(hiddensrc):
-                if os.path.isfile("{}/{}".format(hiddensrc, file)):
+                if os.path.isfile(f"{hiddensrc}/{file}"):
                     # Copy fresh
                     shutil.copy(
-                        "{}/{}".format(hiddensrc, file),
+                        f"{hiddensrc}/{file}",
                         self.config["folders"]["resistances"],
                     )
 
@@ -407,9 +410,7 @@ class Referencer:
                     return target
         except Exception as e:
             self.logger.warning(
-                "Unable to find existing reference for {}, strain {} has no reference match\nSource: {}".format(
-                    organism, normal_organism_name, e
-                )
+                f"Unable to find existing reference for {organism}, strain {normal_organism_name} has no reference match\nSource: {e}"
             )
 
     def download_ncbi(self, reference):
@@ -419,7 +420,7 @@ class Referencer:
             Entrez.email = "2@2.com"
             record = Entrez.efetch(db="nucleotide", id=reference, rettype="fasta", retmod="text")
             sequence = record.read()
-            output = "{}/{}.fasta".format(self.config["folders"]["genomes"], reference)
+            output = f"{self.config['folders']['genomes']}/{reference}.fasta"
             with open(output, "w") as f:
                 f.write(sequence)
             bwaindex = self._singularity_exec('bwa', "bwa index {}".format(output))
@@ -438,9 +439,9 @@ class Referencer:
                 stderr=DEVNULL,
             )
             out, err = proc.communicate()
-            self.logger.info("Downloaded reference {}".format(reference))
+            self.logger.info(f"Downloaded reference {reference}")
         except Exception:
-            self.logger.warning("Unable to download genome '{}' from NCBI".format(reference))
+            self.logger.warning(f"Unable to download genome '{reference}' from NCBI")
 
     def add_pubmlst(self, organism: str):
         """Checks pubmlst for references of given organism and downloads them"""
@@ -449,7 +450,7 @@ class Referencer:
         try:
             organism = organism.lower().replace(".", " ")
             if organism.replace(" ", "_") in self.organisms and not self.force:
-                self.logger.info("Organism {} already stored in microSALT".format(organism))
+                self.logger.info(f"Organism {organism} already stored in microSALT")
                 return
             db_query = self.query_pubmlst()
 
@@ -471,25 +472,23 @@ class Referencer:
                         seqdef_url = subtype["href"]
                         desc = subtype["description"]
                         counter += 1.0
-                        self.logger.info("Located pubMLST hit {} for sample".format(desc))
+                        self.logger.info(f"Located pubMLST hit {desc} for sample")
             if counter > 2.0:
                 raise Exception(
-                    "Reference '{}' resolved to {} organisms. Please be more stringent".format(
-                        errorg, int(counter / 2)
-                    )
+                    f"Reference '{errorg}' resolved to {int(counter / 2)} organisms. Please be more stringent"
                 )
             elif counter < 1.0:
                 # add external
                 raise Exception(
-                    "Unable to find requested organism '{}' in pubMLST database".format(errorg)
+                    f"Unable to find requested organism '{errorg}' in pubMLST database"
                 )
             else:
                 truename = desc.lower().split(" ")
-                truename = "{}_{}".format(truename[0], truename[1])
+                truename = f"{truename[0]}_{truename[1]}"
                 self.download_pubmlst(truename, seqdef_url, force=self.force)
                 # Update organism list
                 self.refs = self.db_access.profiles
-                self.logger.info("Created table profile_{}".format(truename))
+                self.logger.info(f"Created table profile_{truename}")
         except Exception as e:
             self.logger.warning(e.args[0])
 
@@ -657,8 +656,8 @@ class Referencer:
                 )
                 self.download_pubmlst(key, val, force)
                 self.db_access.upd_rec(
-                    {"name": "profile_{}".format(key)},
+                    {"name": f"profile_{key}"},
                     "Versions",
                     {"version": external_ver},
                 )
-                self.db_access.reload_profiletable(key)
+                self.db_access.refresh_profiletable(key)
