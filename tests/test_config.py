@@ -1,31 +1,11 @@
 #!/usr/bin/env python
-
+import pytest
 import collections
 import collections.abc
 import os
 import pathlib
 
 from microSALT import preset_config
-
-@pytest.fixture
-def exp_config():
-  precon = {
-    'slurm_header': {'time', 'threads', 'qos', 'job_prefix', 'project', 'type'},
-    'regex': {'file_pattern', 'mail_recipient', 'verified_organisms'},
-    'folders': {'results', 'reports', 'log_file', 'seqdata', 'profiles', 'references', 'resistances', 'genomes', 'expec', 'adapters', 'credentials'},
-    'threshold': {'mlst_id', 'mlst_novel_id', 'mlst_span', 'motif_id', 'motif_span', 'total_reads_warn', 'total_reads_fail',
-                  'NTC_total_reads_warn', 'NTC_total_reads_fail', 'mapped_rate_warn', 'mapped_rate_fail', 'duplication_rate_warn',
-                  'duplication_rate_fail', 'insert_size_warn', 'insert_size_fail', 'average_coverage_warn', 'average_coverage_fail',
-                  'bp_10x_warn', 'bp_10x_fail', 'bp_30x_warn', 'bp_50x_warn', 'bp_100x_warn'},
-    'database': {'SQLALCHEMY_DATABASE_URI', 'SQLALCHEMY_TRACK_MODIFICATIONS', 'DEBUG'},
-    'genologics': {'baseuri', 'username', 'password'},
-    'pubmlst': {'client_id', 'client_secret'},
-    'pasteur': {'client_id', 'client_secret'},
-    'singularity': {'binary', 'bind_paths', 'trimmomatic_adapters'},
-    'containers': {'skesa', 'blast', 'bwa', 'samtools', 'picard', 'trimmomatic', 'quast'},
-    'dry': True,
-  }
-  return precon
 
 def test_existence(exp_config):
   """Checks that the configuration contains certain key variables"""
