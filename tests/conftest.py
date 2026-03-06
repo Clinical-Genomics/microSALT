@@ -52,7 +52,6 @@ def exp_config():
             "resistances",
             "genomes",
             "expec",
-            "adapters",
             "credentials",
         },
         "threshold": {
@@ -82,4 +81,6 @@ def exp_config():
         "database": {"SQLALCHEMY_DATABASE_URI", "SQLALCHEMY_TRACK_MODIFICATIONS", "DEBUG"},
         "pubmlst": {"client_id", "client_secret"},
         "pasteur": {"client_id", "client_secret"},
+        "singularity": {"binary", "bind_paths", "trimmomatic_adapters"},
+        "containers": {"skesa", "blast", "bwa", "samtools", "picard", "trimmomatic", "quast"},
     }
