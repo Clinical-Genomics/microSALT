@@ -1,26 +1,84 @@
 import json
 import logging
-import os
 import pathlib
 import pytest
+from importlib.resources import files as resource_files
 
-from microSALT.config import load_config
+from microSALT.config import (
+    Database,
+    Folders,
+    MicroSALTConfig,
+    PasteurCredentials,
+    PubMLSTCredentials,
+    Regex,
+    SlurmHeader,
+    Threshold,
+)
 from microSALT import setup_logger
 from microSALT.store.database import initialize_database
 from microSALT.store.db_manipulator import DB_Manipulator
 
 
-def _config_path() -> str:
-    env = os.environ.get("MICROSALT_CONFIG")
-    if env:
-        return env
-    default = pathlib.Path(__file__).parent.parent / "configExample.json"
-    return str(default)
-
-
 @pytest.fixture(scope="session")
-def config():
-    cfg = load_config(_config_path())
+def config(tmp_path_factory: pytest.TempPathFactory) -> MicroSALTConfig:
+    """Session-scoped config built from tmp_path_factory so all paths are isolated."""
+    base = tmp_path_factory.mktemp("microsalt")
+
+    results = base / "results"
+    reports = base / "reports"
+    seqdata = base / "projects"
+    profiles = base / "references" / "ST_profiles"
+    references = base / "references" / "ST_loci"
+    resistances = base / "references" / "resistances"
+    genomes = base / "references" / "genomes"
+    credentials = base / "credentials"
+
+    for d in (results, reports, seqdata, profiles, references, resistances, genomes, credentials):
+        d.mkdir(parents=True, exist_ok=True)
+
+    log_file = base / "microsalt.log"
+    db_path = base / "microsalt.db"
+
+    cfg = MicroSALTConfig(
+        slurm_header=SlurmHeader(
+            time="12:00:00",
+            threads="8",
+            qos="normal",
+            job_prefix="MLST",
+            project="production",
+            type="core",
+        ),
+        regex=Regex(
+            mail_recipient="username@suffix.com",
+            file_pattern=r"\w{8,12}_\w{8,10}(?:-\d+)*_L\d_(?:R)*(\d{1}).fastq.gz",
+            verified_organisms=[],
+        ),
+        folders=Folders(
+            results=str(results),
+            reports=str(reports),
+            log_file=str(log_file),
+            seqdata=str(seqdata),
+            profiles=str(profiles),
+            references=str(references),
+            resistances=str(resistances),
+            genomes=str(genomes),
+            credentials=str(credentials),
+            adapters="/path/to/trimmomatic/adapters/",
+        ),
+        database=Database(
+            SQLALCHEMY_DATABASE_URI=f"sqlite:///{db_path}",
+            SQLALCHEMY_TRACK_MODIFICATIONS="False",
+            DEBUG="True",
+        ),
+        threshold=Threshold(),
+        pubmlst=PubMLSTCredentials(),
+        pasteur=PasteurCredentials(),
+    )
+    cfg.folders.expec = str(
+        resource_files("microSALT").joinpath("unique_references", "ExPEC.fsa")
+    )
+    cfg.config_path = str(base / "config.json")
+
     setup_logger(logging_level="INFO", log_file=cfg.folders.log_file)
     initialize_database(cfg.database.SQLALCHEMY_DATABASE_URI)
     return cfg
