@@ -128,16 +128,12 @@ class Referencer:
                     # Resistence files
                     if ".fsa" in suffix:
                         bash_cmd = self._singularity_exec('blast',
-                            "makeblastdb -in {}/{} -dbtype nucl -out {}".format(
-                                full_dir, os.path.basename(file), os.path.basename(base)
-                            )
+                            f"makeblastdb -in {full_dir}/{os.path.basename(file)} -dbtype nucl -out {os.path.basename(base)}"
                         )
                     # MLST locis
                     else:
                         bash_cmd = self._singularity_exec('blast',
-                            "makeblastdb -in {}/{} -dbtype nucl -parse_seqids -out {}".format(
-                                full_dir, os.path.basename(file), os.path.basename(base)
-                            )
+                            f"makeblastdb -in {full_dir}/{os.path.basename(file)} -dbtype nucl -parse_seqids -out {os.path.basename(base)}"
                         )
                     proc = subprocess.Popen(bash_cmd.split(), cwd=full_dir, stdout=subprocess.PIPE)
                     proc.communicate()
@@ -423,7 +419,7 @@ class Referencer:
             output = f"{self.config['folders']['genomes']}/{reference}.fasta"
             with open(output, "w") as f:
                 f.write(sequence)
-            bwaindex = self._singularity_exec('bwa', "bwa index {}".format(output))
+            bwaindex = self._singularity_exec('bwa', f"bwa index {output}")
             proc = subprocess.Popen(
                 bwaindex.split(),
                 cwd=self.config["folders"]["genomes"],
@@ -431,7 +427,7 @@ class Referencer:
                 stderr=DEVNULL,
             )
             out, err = proc.communicate()
-            samindex = self._singularity_exec('samtools', "samtools faidx {}".format(output))
+            samindex = self._singularity_exec('samtools', f"samtools faidx {output}")
             proc = subprocess.Popen(
                 samindex.split(),
                 cwd=self.config["folders"]["genomes"],
