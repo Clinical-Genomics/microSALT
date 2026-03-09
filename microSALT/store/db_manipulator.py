@@ -13,6 +13,7 @@ from dateutil.parser import parse
 from sqlalchemy import inspect as sa_inspect, MetaData, desc, or_, and_, text
 
 from microSALT import __version__
+from microSALT.config import Folders, Threshold
 from microSALT.exc.exceptions import RefUpdateLockError
 from microSALT.store.database import get_session, get_engine
 from microSALT.store.models import ProfileTable
@@ -49,14 +50,15 @@ def _resolve_orm_table(tablename: str):
 
 
 class DB_Manipulator:
-    def __init__(self, config, log):
-        self.config = config
+    def __init__(self, log, folders: Folders, threshold: Threshold):
+        self.folders = folders
+        self.threshold = threshold
         self.logger = log
         self.session = get_session()
         self.engine = get_engine()
         self.metadata = MetaData()
-        self.profiles = ProfileTable("profile_", self.metadata, self.config, self.logger).tables
-        self.novel = ProfileTable("novel_", self.metadata, self.config, self.logger).tables
+        self.profiles = ProfileTable("profile_", self.metadata, self.folders.profiles, self.logger).tables
+        self.novel = ProfileTable("novel_", self.metadata, self.folders.profiles, self.logger).tables
         # Turns off pymysql deprecation warnings until they can update their code
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -321,7 +323,7 @@ class DB_Manipulator:
         self.logger.debug(f"Dropped profile table for {organism}")
         # Rebuild the Table object from the file currently on disk (schema may have changed).
         fresh_metadata = MetaData()
-        fresh = ProfileTable("profile_", fresh_metadata, self.config, self.logger).tables
+        fresh = ProfileTable("profile_", fresh_metadata, self.folders.profiles, self.logger).tables
         if organism in fresh:
             self.profiles[organism] = fresh[organism]
         self.profiles[organism].create(self.engine)
@@ -339,7 +341,7 @@ class DB_Manipulator:
         reload_profiletable() so the schema stays in sync with the CSV.
         """
         table = self.profiles[organism]
-        file_path = f"{self.config['folders']['profiles']}/{organism}"
+        file_path = f"{self.folders.profiles}/{organism}"
 
         with open(file_path, "r") as fh:
             csv_cols = fh.readline().rstrip().split("\t")[:8]
@@ -362,7 +364,7 @@ class DB_Manipulator:
 
     def populate_profiletable(self, filename: str, table) -> None:
         """Bulk-inserts all data rows from a profile file into an already-created *table*."""
-        file_path = f"{self.config['folders']['profiles']}/{filename}"
+        file_path = f"{self.folders.profiles}/{filename}"
         self.logger.debug(f"Opening profile file: {file_path}")
         keys = list(table.c.keys())
         rows = []
@@ -922,8 +924,8 @@ class DB_Manipulator:
 
     def get_unique_alleles(self, cg_sid: str, organism: str, threshold=True):
         """Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
-        tid = float(self.config["threshold"]["mlst_id"])
-        tspan = (self.config["threshold"]["mlst_span"]) / 100.0
+        tid = float(self.threshold.mlst_id)
+        tspan = (self.threshold.mlst_span) / 100.0
         if threshold:
             hits = (
                 self.session.query(Seq_types.loci, Seq_types.allele)

@@ -23,27 +23,27 @@ class ProfileTable:
     Args:
         prefix: Table name prefix, e.g. ``"profile_"`` or ``"novel_"``.
         metadata: The shared SQLAlchemy MetaData instance.
-        config: Application config dict (must contain ``folders.profiles``).
+        profiles_path: Path to the folder containing ST profile files.
         log: Logger instance.
     """
 
-    def __init__(self, prefix: str, metadata, config, log):
+    def __init__(self, prefix: str, metadata, profiles_path: str, log):
         self.tables: dict[str, Table] = dict()
         self.prefix = prefix
         self.metadata = metadata
-        self.config = config
+        self.profiles_path = profiles_path
         self.logger = log
         try:
-            for filename in os.listdir(self.config["folders"]["profiles"]):
+            for filename in os.listdir(self.profiles_path):
                 self._add_table(filename)
         except Exception:
             self.logger.error(
-                f"Unable to open profile folder {self.config['folders']['profiles']}"
+                f"Unable to open profile folder {self.profiles_path}"
             )
 
     def _add_table(self, filename: str) -> None:
         try:
-            with open(f"{self.config['folders']['profiles']}/{filename}", "r") as fh:
+            with open(f"{self.profiles_path}/{filename}", "r") as fh:
                 head = fh.readline().rstrip().split("\t")[:8]
             columns = [
                 Column(col, SmallInteger, primary_key=(col == "ST"))

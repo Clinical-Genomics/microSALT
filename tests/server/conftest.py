@@ -24,8 +24,12 @@ def db_engine():
 
 
 @pytest.fixture(scope="module")
-def db_session(db_engine):
+def db_session(config, db_engine):
     """Scoped session bound to the in-memory engine.
+
+    Depends on ``config`` to ensure initialize_database() (called by that
+    fixture) runs *before* we wire db_module.session to the in-memory engine,
+    so the in-memory session is not overwritten afterwards.
 
     Also wires up the module-level session used by get_session() in views.py.
     """

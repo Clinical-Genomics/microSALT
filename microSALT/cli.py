@@ -6,13 +6,17 @@ By: Isak Sylvin, @sylvinite"""
 import json
 import logging
 import os
+import pathlib
+import re
+import subprocess
 import sys
 
 import click
 
-from microSALT import __version__, logging_levels, preset_config
+from microSALT import __version__, logging_levels, setup_logger
+from microSALT.config import MicroSALTConfig, load_config
 from microSALT.exc.exceptions import RefUpdateLockError
-from microSALT.store.database import get_scoped_session_registry
+from microSALT.store.database import get_scoped_session_registry, initialize_database
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.reporter import Reporter
@@ -36,27 +40,6 @@ default_sampleinfo = {
 }
 
 logger = logging.getLogger("main_logger")
-
-if preset_config == "":
-    click.echo(
-        "ERROR - No properly set-up config under neither envvar MICROSALT_CONFIG nor ~/.microSALT/config.json. Exiting."
-    )
-    sys.exit(-1)
-
-
-@click.pass_context
-def set_cli_config(ctx, config):
-    if config != "":
-        if os.path.exists(config):
-            try:
-                t = ctx.obj["config"]
-                with open(os.path.abspath(config), "r") as conf:
-                    ctx.obj["config"] = json.load(conf)
-                ctx.obj["config"]["folders"]["expec"] = t["folders"]["expec"]
-                ctx.obj["config"]["singularity"]["trimmomatic_adapters"] = t["singularity"]["trimmomatic_adapters"]
-                ctx.obj["config"]["config_path"] = os.path.abspath(config)
-            except Exception:
-                pass
 
 
 def done():
@@ -97,8 +80,54 @@ def teardown_session():
         registry.remove()
 
 
+def _ensure_directories(config: MicroSALTConfig) -> None:
+    """Create any configured directory paths that do not yet exist."""
+    db_uri = config.database.SQLALCHEMY_DATABASE_URI
+    db_match = re.search("sqlite:///(.+)", db_uri)
+    if db_match:
+        db_file = db_match.group(1)
+        db_dir = os.path.dirname(db_file)
+        if db_dir and not pathlib.Path(db_dir).exists():
+            os.makedirs(db_dir)
+        proc = subprocess.Popen(f"touch {db_file}".split(), stdout=subprocess.PIPE)
+        _, _ = proc.communicate()
+        if proc.returncode != 0:
+            click.echo("ERROR - Database writing failed! Invalid user access detected!")
+            sys.exit(-1)
+
+    log_dir = os.path.dirname(config.folders.log_file)
+    if log_dir and not pathlib.Path(log_dir).exists():
+        os.makedirs(log_dir)
+    proc = subprocess.Popen(
+        f"touch {config.folders.log_file}".split(), stdout=subprocess.PIPE
+    )
+    proc.communicate()
+
+    folder_paths = [
+        config.folders.results,
+        config.folders.reports,
+        config.folders.seqdata,
+        config.folders.profiles,
+        config.folders.references,
+        config.folders.resistances,
+        config.folders.genomes,
+        config.folders.credentials,
+        config.folders.adapters,
+    ]
+    for path in folder_paths:
+        p = pathlib.Path(os.path.expandvars(os.path.expanduser(path)))
+        if not p.exists():
+            os.makedirs(p)
+
+
 @click.group()
 @click.version_option(__version__)
+@click.option(
+    "--config",
+    required=True,
+    help="Path to microSALT config JSON file",
+    type=click.Path(exists=True, dir_okay=False),
+)
 @click.option(
     "--logging-level",
     default="INFO",
@@ -106,32 +135,30 @@ def teardown_session():
     help="Set the logging level for the CLI",
 )
 @click.pass_context
-def root(ctx, logging_level):
+def root(ctx, config, logging_level):
     """microbial Sequence Analysis and Loci-based Typing (microSALT) pipeline"""
-    ctx.obj = {}
-    ctx.obj["config"] = preset_config
+    cfg = load_config(config)
+    _ensure_directories(cfg)
+    initialize_database(cfg.database.SQLALCHEMY_DATABASE_URI)
+    setup_logger(logging_level=logging_level, log_file=cfg.folders.log_file)
     logger.setLevel(logging_levels[logging_level])
     for handler in logger.handlers:
         handler.setLevel(logging_levels[logging_level])
-    logger.debug(f"Setting logging level to {logging_levels[logging_level]}")
+    ctx.obj = {}
+    ctx.obj["config"] = cfg
     ctx.call_on_close(teardown_session)
 
 
 @root.command()
 @click.argument("sampleinfo_file")
 @click.option("--input", help="Full path to input folder", default="")
-@click.option("--config", help="microSALT config to override default", default="")
 @click.option(
     "--dry",
     help="Builds instance without posting to SLURM",
     default=False,
     is_flag=True,
 )
-@click.option(
-    "--email",
-    default=preset_config["regex"]["mail_recipient"],
-    help="Forced e-mail recipient",
-)
+@click.option("--email", default="", help="Forced e-mail recipient")
 @click.option("--skip_update", default=False, help="Skips downloading of references", is_flag=True)
 @click.option(
     "--force_update",
@@ -145,7 +172,6 @@ def analyse(
     ctx,
     sampleinfo_file,
     input,
-    config,
     dry,
     email,
     skip_update,
@@ -153,12 +179,10 @@ def analyse(
     untrimmed,
 ):
     """Sequence analysis, typing and resistance identification"""
-    # Run section
     pool = []
-    trimmed = not untrimmed
-    set_cli_config(config)
-    ctx.obj["config"]["regex"]["mail_recipient"] = email
-    ctx.obj["config"]["dry"] = dry
+    if email:
+        ctx.obj["config"].regex.mail_recipient = email
+    ctx.obj["config"].dry = dry
     if not os.path.isdir(input):
         click.echo(f"ERROR - Sequence data folder {input} does not exist.")
         ctx.abort()
@@ -169,24 +193,38 @@ def analyse(
     run_settings = {
         "input": input,
         "dry": dry,
-        "email": email,
+        "email": ctx.obj["config"].regex.mail_recipient,
         "skip_update": skip_update,
         "trimmed": not untrimmed,
         "pool": pool,
     }
 
-    # Samples section
     sampleinfo = review_sampleinfo(sampleinfo_file)
+    cfg = ctx.obj["config"]
     run_creator = Job_Creator(
-        config=ctx.obj["config"],
         log=logger,
+        folders=cfg.folders,
+        slurm_header=cfg.slurm_header,
+        regex=cfg.regex,
+        dry=cfg.dry,
+        config_path=cfg.config_path,
+        threshold=cfg.threshold,
+        pubmlst=cfg.pubmlst,
+        pasteur=cfg.pasteur,
+        singularity=cfg.singularity,
+        containers=cfg.containers,
         sampleinfo=sampleinfo,
         run_settings=run_settings,
     )
 
     ext_refs = Referencer(
-        config=ctx.obj["config"],
         log=logger,
+        folders=cfg.folders,
+        threshold=cfg.threshold,
+        pubmlst=cfg.pubmlst,
+        pasteur=cfg.pasteur,
+        singularity=cfg.singularity,
+        containers=cfg.containers,
         sampleinfo=sampleinfo,
         force=force_update,
     )
@@ -238,18 +276,13 @@ def refer(ctx):
     default="default",
     type=click.Choice(["default", "typing", "qc", "cgmlst"]),
 )
-@click.option("--config", help="microSALT config to override default", default="")
 @click.option(
     "--dry",
     help="Builds instance without posting to SLURM",
     default=False,
     is_flag=True,
 )
-@click.option(
-    "--email",
-    default=preset_config["regex"]["mail_recipient"],
-    help="Forced e-mail recipient",
-)
+@click.option("--email", default="", help="Forced e-mail recipient")
 @click.option("--skip_update", default=False, help="Skips downloading of references", is_flag=True)
 @click.option(
     "--report",
@@ -258,13 +291,12 @@ def refer(ctx):
 )
 @click.option("--output", help="Report output folder", default="")
 @click.pass_context
-def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, report, output):
+def finish(ctx, sampleinfo_file, input, track, dry, email, skip_update, report, output):
     """Sequence analysis, typing and resistance identification"""
-    # Run section
     pool = []
-    set_cli_config(config)
-    ctx.obj["config"]["regex"]["mail_recipient"] = email
-    ctx.obj["config"]["dry"] = dry
+    if email:
+        ctx.obj["config"].regex.mail_recipient = email
+    ctx.obj["config"].dry = dry
     if not os.path.isdir(input):
         click.echo(f"ERROR - Sequence data folder {input} does not exist.")
         ctx.abort()
@@ -278,13 +310,22 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
         "input": input,
         "track": track,
         "dry": dry,
-        "email": email,
+        "email": ctx.obj["config"].regex.mail_recipient,
         "skip_update": skip_update,
     }
 
-    # Samples section
     sampleinfo = review_sampleinfo(sampleinfo_file)
-    ext_refs = Referencer(config=ctx.obj["config"], log=logger, sampleinfo=sampleinfo)
+    cfg = ctx.obj["config"]
+    ext_refs = Referencer(
+        log=logger,
+        folders=cfg.folders,
+        threshold=cfg.threshold,
+        pubmlst=cfg.pubmlst,
+        pasteur=cfg.pasteur,
+        singularity=cfg.singularity,
+        containers=cfg.containers,
+        sampleinfo=sampleinfo,
+    )
     try:
         ext_refs.db_access.check_ref_lock()
     except RefUpdateLockError as e:
@@ -301,17 +342,31 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
     except Exception as e:
         click.echo(f"{e}")
 
-    res_scraper = Scraper(config=ctx.obj["config"], log=logger, sampleinfo=sampleinfo, input=input)
+    res_scraper = Scraper(
+        log=logger,
+        folders=cfg.folders,
+        threshold=cfg.threshold,
+        slurm_header=cfg.slurm_header,
+        regex=cfg.regex,
+        dry=cfg.dry,
+        config_path=cfg.config_path,
+        pubmlst=cfg.pubmlst,
+        pasteur=cfg.pasteur,
+        singularity=cfg.singularity,
+        containers=cfg.containers,
+        sampleinfo=sampleinfo,
+        input=input,
+    )
     if isinstance(sampleinfo, list) and len(sampleinfo) > 1:
         res_scraper.scrape_project()
-        # for subfolder in pool:
-        #  res_scraper.scrape_sample()
     else:
         res_scraper.scrape_sample()
 
     codemonkey = Reporter(
-        config=ctx.obj["config"],
         log=logger,
+        folders=cfg.folders,
+        threshold=cfg.threshold,
+        regex=cfg.regex,
         sampleinfo=sampleinfo,
         output=output,
         collection=True,
@@ -326,14 +381,23 @@ def finish(ctx, sampleinfo_file, input, track, config, dry, email, skip_update, 
 @click.pass_context
 def add(ctx, organism, force):
     """Adds a new internal organism from pubMLST"""
-    referee = Referencer(config=ctx.obj["config"], log=logger, force=force)
+    cfg = ctx.obj["config"]
+    referee = Referencer(
+        log=logger, folders=cfg.folders, threshold=cfg.threshold,
+        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur,
+        singularity=cfg.singularity, containers=cfg.containers, force=force,
+    )
     try:
         referee.add_pubmlst(organism)
     except Exception as e:
         click.echo(e.args[0])
         ctx.abort()
     click.echo("INFO - Checking versions of all references..")
-    referee = Referencer(config=ctx.obj["config"], log=logger, force=force)
+    referee = Referencer(
+        log=logger, folders=cfg.folders, threshold=cfg.threshold,
+        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur,
+        singularity=cfg.singularity, containers=cfg.containers, force=force,
+    )
     referee.update_refs()
 
 
@@ -341,7 +405,12 @@ def add(ctx, organism, force):
 @click.pass_context
 def observe(ctx):
     """Lists all stored organisms"""
-    refe = Referencer(config=ctx.obj["config"], log=logger)
+    cfg = ctx.obj["config"]
+    refe = Referencer(
+        log=logger, folders=cfg.folders, threshold=cfg.threshold,
+        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur,
+        singularity=cfg.singularity, containers=cfg.containers,
+    )
     click.echo("INFO - Currently stored organisms:")
     for org in sorted(refe.existing_organisms()):
         click.echo(org.replace("_", " ").capitalize())
@@ -349,11 +418,7 @@ def observe(ctx):
 
 @utils.command()
 @click.argument("sampleinfo_file")
-@click.option(
-    "--email",
-    default=preset_config["regex"]["mail_recipient"],
-    help="Forced e-mail recipient",
-)
+@click.option("--email", default="", help="Forced e-mail recipient")
 @click.option(
     "--type",
     default="default",
@@ -364,11 +429,15 @@ def observe(ctx):
 @click.pass_context
 def report(ctx, sampleinfo_file, email, type, output, collection):
     """Re-generates report for a project"""
-    ctx.obj["config"]["regex"]["mail_recipient"] = email
+    if email:
+        ctx.obj["config"].regex.mail_recipient = email
+    cfg = ctx.obj["config"]
     sampleinfo = review_sampleinfo(sampleinfo_file)
     codemonkey = Reporter(
-        config=ctx.obj["config"],
         log=logger,
+        folders=cfg.folders,
+        threshold=cfg.threshold,
+        regex=cfg.regex,
         sampleinfo=sampleinfo,
         output=output,
         collection=collection,
@@ -381,7 +450,8 @@ def report(ctx, sampleinfo_file, email, type, output, collection):
 @click.pass_context
 def view(ctx):
     """Starts an interactive webserver for viewing"""
-    codemonkey = Reporter(config=ctx.obj["config"], log=logger)
+    cfg = ctx.obj["config"]
+    codemonkey = Reporter(log=logger, folders=cfg.folders, threshold=cfg.threshold, regex=cfg.regex)
     codemonkey.start_web()
 
 
@@ -430,24 +500,25 @@ def resync(ctx):
 )
 @click.option("--customer", default="all", help="Customer id filter")
 @click.option("--skip_update", default=False, help="Skips downloading of references", is_flag=True)
-@click.option(
-    "--email",
-    default=preset_config["regex"]["mail_recipient"],
-    help="Forced e-mail recipient",
-)
+@click.option("--email", default="", help="Forced e-mail recipient")
 @click.option("--output", help="Full path to output folder", default="")
 @click.pass_context
 def review(ctx, type, customer, skip_update, email, output):
     """Generates information about novel ST"""
-    # Trace exists by some samples having pubMLST_ST filled in. Make trace function later
-    ctx.obj["config"]["regex"]["mail_recipient"] = email
-    ext_refs = Referencer(config=ctx.obj["config"], log=logger)
+    if email:
+        ctx.obj["config"].regex.mail_recipient = email
+    cfg = ctx.obj["config"]
+    ext_refs = Referencer(
+        log=logger, folders=cfg.folders, threshold=cfg.threshold,
+        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur,
+        singularity=cfg.singularity, containers=cfg.containers,
+    )
     if not skip_update:
         ext_refs.update_refs()
         ext_refs.resync()
     click.echo("INFO - Version check done. Generating output")
     if type == "report":
-        codemonkey = Reporter(config=ctx.obj["config"], log=logger, output=output)
+        codemonkey = Reporter(log=logger, folders=cfg.folders, threshold=cfg.threshold, regex=cfg.regex, output=output)
         codemonkey.report(type="st_update", customer=customer)
     elif type == "list":
         ext_refs.resync(type=type)
@@ -459,7 +530,12 @@ def review(ctx, type, customer, skip_update, email, output):
 @click.pass_context
 def update_refs(ctx, force_update: bool):
     """Updates all references"""
-    ext_refs = Referencer(config=ctx.obj["config"], log=logger, force=force_update)
+    cfg = ctx.obj["config"]
+    ext_refs = Referencer(
+        log=logger, folders=cfg.folders, threshold=cfg.threshold,
+        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur,
+        singularity=cfg.singularity, containers=cfg.containers, force=force_update,
+    )
     ext_refs.update_refs()
     done()
 
@@ -469,7 +545,12 @@ def update_refs(ctx, force_update: bool):
 @click.pass_context
 def update_from_static(ctx, force_update: bool):
     """Updates a specific organism"""
-    ext_refs = Referencer(config=ctx.obj["config"], force=force_update, log=logger)
+    cfg = ctx.obj["config"]
+    ext_refs = Referencer(
+        log=logger, folders=cfg.folders, threshold=cfg.threshold,
+        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur,
+        singularity=cfg.singularity, containers=cfg.containers, force=force_update,
+    )
     ext_refs.fetch_external()
     done()
 
@@ -481,7 +562,12 @@ def update_from_static(ctx, force_update: bool):
 @click.pass_context
 def update_organism(ctx, external: bool, force_update: bool, organism: str):
     """Updates a specific organism"""
-    ext_refs = Referencer(config=ctx.obj["config"], log=logger, force=force_update)
+    cfg = ctx.obj["config"]
+    ext_refs = Referencer(
+        log=logger, folders=cfg.folders, threshold=cfg.threshold,
+        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur,
+        singularity=cfg.singularity, containers=cfg.containers, force=force_update,
+    )
     ext_refs.update_organism(external=external, organism=organism)
     done()
 
@@ -497,6 +583,11 @@ def update_organism(ctx, external: bool, force_update: bool, organism: str):
 @click.pass_context
 def overwrite(ctx, sample_name, force):
     """Flags sample as resolved"""
-    ext_refs = Referencer(config=ctx.obj["config"], log=logger)
+    cfg = ctx.obj["config"]
+    ext_refs = Referencer(
+        log=logger, folders=cfg.folders, threshold=cfg.threshold,
+        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur,
+        singularity=cfg.singularity, containers=cfg.containers,
+    )
     ext_refs.resync(type="overwrite", sample=sample_name, ignore=force)
     done()

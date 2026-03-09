@@ -17,13 +17,23 @@ from pathlib import Path
 import yaml
 
 from microSALT import __version__
+from microSALT.config import Folders, Threshold, SlurmHeader, Regex, PubMLSTCredentials, PasteurCredentials, Singularity, Containers
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.referencer import Referencer
 
 
 class Job_Creator:
-    def __init__(self, config, log, sampleinfo={}, run_settings={}):
-        self.config = config
+    def __init__(self, log, folders: Folders, slurm_header: SlurmHeader, regex: Regex, dry: bool, config_path: str, threshold: Threshold, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials, singularity: Singularity, containers: Containers, sampleinfo={}, run_settings={}):
+        self.folders = folders
+        self.slurm_header = slurm_header
+        self.regex = regex
+        self.dry = dry
+        self.config_path = config_path
+        self.threshold = threshold
+        self.pubmlst = pubmlst
+        self.pasteur = pasteur
+        self.singularity = singularity
+        self.containers = containers
         self.logger = log
         self.batchfile = "/tmp/batchfile.sbatch"
 
@@ -74,24 +84,24 @@ class Job_Creator:
             )
 
         if run_settings.get("finishdir") is None:
-            self.finishdir = f"{config['folders']['results']}/{self.name}_{self.now}"
-        self.db_pusher = DB_Manipulator(config, log)
+            self.finishdir = f"{folders.results}/{self.name}_{self.now}"
+        self.db_pusher = DB_Manipulator(log=log, folders=folders, threshold=threshold)
         self.concat_files = dict()
-        self.ref_resolver = Referencer(config, log)
+        self.ref_resolver = Referencer(log=log, folders=folders, threshold=threshold, pubmlst=pubmlst, pasteur=pasteur, singularity=singularity, containers=containers)
 
     def get_sbatch(self):
         """Returns sbatchfile, slightly superflous"""
         return self.batchfile
 
     def get_headerargs(self):
-        headerline = f"-A {self.config['slurm_header']['project']} -p {self.config['slurm_header']['type']} -n {self.config['slurm_header']['threads']} -t {self.config['slurm_header']['time']} -J {self.config['slurm_header']['job_prefix']}_{self.name} --qos {self.config['slurm_header']['qos']} --output {self.finishdir}/slurm_{self.name}.log"
+        headerline = f"-A {self.slurm_header.project} -p {self.slurm_header.type} -n {self.slurm_header.threads} -t {self.slurm_header.time} -J {self.slurm_header.job_prefix}_{self.name} --qos {self.slurm_header.qos} --output {self.finishdir}/slurm_{self.name}.log"
         return headerline
 
-    def _singularity_exec(self, tool, command):
+    def _singularity_exec(self, tool: str, command: str) -> str:
         """Return command wrapped with singularity exec for the given tool container."""
-        sif = self.config["containers"][tool]
-        binary = self.config["singularity"]["binary"]
-        bind_list = list(self.config["singularity"].get("bind_paths", []))
+        sif = getattr(self.containers, tool)
+        binary = self.singularity.binary
+        bind_list = list(self.singularity.bind_paths)
         if self.finishdir and self.finishdir not in bind_list:
             bind_list.append(self.finishdir)
         bind = f"--bind {','.join(bind_list)}" if bind_list else ""
@@ -104,7 +114,7 @@ class Job_Creator:
         if files == []:
             raise Exception(f"Directory {self.indir} lacks fastq files.")
         for file in files:
-            file_match = re.match(self.config["regex"]["file_pattern"], file)
+            file_match = re.match(self.regex.file_pattern, file)
             if file_match:
                 # Check that symlinks resolve
                 path = f"{self.indir}/{file}"
@@ -140,7 +150,7 @@ class Job_Creator:
                     )
         if verified_files == []:
             raise Exception(
-                f"No files in directory {self.indir} match file_pattern '{self.config['regex']['file_pattern']}'."
+                f"No files in directory {self.indir} match file_pattern '{self.regex.file_pattern}'."
             )
 
         # Warn about file sizes
@@ -181,8 +191,8 @@ class Job_Creator:
         batchfile.write("# SKESA assembly\n")
         skesa_cmd = (
             f"skesa "
-            f"--cores {self.config['slurm_header']['threads']} "
-            f"--memory {8 * int(self.config['slurm_header']['threads'])} "
+            f"--cores {self.slurm_header.threads} "
+            f"--memory {8 * int(self.slurm_header.threads)} "
             f"--contigs_out {contigs_file_raw} "
             f"--reads {self.concat_files['f']},{self.concat_files['r']}"
         )
@@ -238,7 +248,7 @@ class Job_Creator:
                     batchfile.write(
                         self._singularity_exec(
                             "blast",
-                            f"blastn -db {os.path.dirname(ref)}/{ref_nosuf}  -query {self.finishdir}/assembly/{self.name}_contigs.fasta -out {self.finishdir}/blast_search/{name}/loci_query_{ref_nosuf}.txt -task megablast -num_threads {self.config['slurm_header']['threads']} -outfmt {blast_format}",
+                            f"blastn -db {os.path.dirname(ref)}/{ref_nosuf}  -query {self.finishdir}/assembly/{self.name}_contigs.fasta -out {self.finishdir}/blast_search/{name}/loci_query_{ref_nosuf}.txt -task megablast -num_threads {self.slurm_header.threads} -outfmt {blast_format}",
                         )
                         + "\n"
                     )
@@ -246,7 +256,7 @@ class Job_Creator:
                     batchfile.write(
                         self._singularity_exec(
                             "blast",
-                            f"blastn -db {os.path.dirname(ref)}/{ref_nosuf}  -query {self.finishdir}/assembly/{self.name}_contigs.fasta -out {self.finishdir}/blast_search/{name}/{ref_nosuf}.txt -task megablast -num_threads {self.config['slurm_header']['threads']} -outfmt {blast_format}",
+                            f"blastn -db {os.path.dirname(ref)}/{ref_nosuf}  -query {self.finishdir}/assembly/{self.name}_contigs.fasta -out {self.finishdir}/blast_search/{name}/{ref_nosuf}.txt -task megablast -num_threads {self.slurm_header.threads} -outfmt {blast_format}",
                         )
                         + "\n"
                     )
@@ -258,7 +268,7 @@ class Job_Creator:
             batchfile.write(
                 self._singularity_exec(
                     "blast",
-                    f"blastn -db {os.path.dirname(search_string)}/{ref_nosuf}  -query {self.finishdir}/assembly/{self.name}_contigs.fasta -out {self.finishdir}/blast_search/{name}/{ref_nosuf}.txt -task megablast -num_threads {self.config['slurm_header']['threads']} -outfmt {blast_format}",
+                    f"blastn -db {os.path.dirname(search_string)}/{ref_nosuf}  -query {self.finishdir}/assembly/{self.name}_contigs.fasta -out {self.finishdir}/blast_search/{name}/{ref_nosuf}.txt -task megablast -num_threads {self.slurm_header.threads} -outfmt {blast_format}",
                 )
                 + "\n"
             )
@@ -267,7 +277,7 @@ class Job_Creator:
 
     def create_variantsection(self):
         """Creates a job for variant calling based on local alignment"""
-        ref = f"{self.config['folders']['genomes']}/{self.sample.get('reference')}.fasta"
+        ref = f"{self.folders.genomes}/{self.sample.get('reference')}.fasta"
         localdir = f"{self.finishdir}/alignment"
         outbase = f"{localdir}/{self.name}_{self.sample.get('reference')}"
 
@@ -280,21 +290,21 @@ class Job_Creator:
         batchfile.write(
             self._singularity_exec(
                 "bwa",
-                f"bwa mem -M -t {self.config['slurm_header']['threads']} {ref} {self.concat_files['f']} {self.concat_files['r']} > {outbase}.sam",
+                f"bwa mem -M -t {self.slurm_header.threads} {ref} {self.concat_files['f']} {self.concat_files['r']} > {outbase}.sam",
             )
             + "\n"
         )
         batchfile.write(
             self._singularity_exec(
                 "samtools",
-                f"samtools view --threads {self.config['slurm_header']['threads']} -b -o {outbase}.bam -T {ref} {outbase}.sam",
+                f"samtools view --threads {self.slurm_header.threads} -b -o {outbase}.bam -T {ref} {outbase}.sam",
             )
             + "\n"
         )
         batchfile.write(
             self._singularity_exec(
                 "samtools",
-                f"samtools sort --threads {self.config['slurm_header']['threads']} -o {outbase}.bam_sort {outbase}.bam",
+                f"samtools sort --threads {self.slurm_header.threads} -o {outbase}.bam_sort {outbase}.bam",
             )
             + "\n"
         )
@@ -352,7 +362,8 @@ class Job_Creator:
         """Concatinates data, possibly trims it, then makes the unstranded reads usable"""
         forward = list()
         reverse = list()
-        for root, dirs, files in os.walk(self.config["singularity"]["trimmomatic_adapters"]):
+
+        for root, dirs, files in os.walk(self.folders.adapters):
             if "NexteraPE-PE.fa" not in files:
                 self.logger.error(
                     "Adapters folder at {} does not contain NexteraPE-PE.fa. Review paths.yml"
@@ -390,10 +401,10 @@ class Job_Creator:
                 self._singularity_exec(
                     "trimmomatic",
                     (
-                        f"trimmomatic PE -threads {self.config['slurm_header']['threads']}"
+                        f"trimmomatic PE -threads {self.slurm_header.threads}"
                         f" -phred33 {self.concat_files.get('f')} {self.concat_files.get('r')}"
                         f" {fp} {fu} {rp} {ru}"
-                        f" ILLUMINACLIP:{self.config['singularity']['trimmomatic_adapters']}/NexteraPE-PE.fa:2:30:10"
+                        f" ILLUMINACLIP:{self.folders.adapters}/NexteraPE-PE.fa:2:30:10"
                         " LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36"
                     ),
                 )
@@ -441,7 +452,7 @@ class Job_Creator:
             if "_" in name:
                 name = name.split("_")[0]
             batchfile.write(f"# Basecalling for sample {name}\n")
-            ref = f"{self.config['folders']['genomes']}/{self.sample.get('reference')}.fasta"
+            ref = f"{self.folders.genomes}/{self.sample.get('reference')}.fasta"
             outbase = f"{item}/{name}_{self.sample.get('reference')}"
             batchfile.write(
                 f"samtools view -h -q 1 -F 4 -F 256 {outbase}.bam_sort_rmdup | grep -v XA:Z | grep -v SA:Z| samtools view -b - > {self.finishdir}/{name}.unique\n"
@@ -549,7 +560,7 @@ class Job_Creator:
             self.logger.error(f"Unable to add sample {self.name} to database")
 
     def project_job(self, single_sample=False):
-        if "dry" in self.config and self.config["dry"] == True:
+        if self.dry:
             dry = True
         else:
             dry = False
@@ -601,8 +612,17 @@ class Job_Creator:
                     sample_settings["finishdir"] = sample_out
                     sample_settings["timestamp"] = self.now
                     sample_instance = Job_Creator(
-                        config=self.config,
                         log=self.logger,
+                        folders=self.folders,
+                        slurm_header=self.slurm_header,
+                        regex=self.regex,
+                        dry=self.dry,
+                        config_path=self.config_path,
+                        threshold=self.threshold,
+                        pubmlst=self.pubmlst,
+                        pasteur=self.pasteur,
+                        singularity=self.singularity,
+                        containers=self.containers,
                         sampleinfo=local_sampleinfo,
                         run_settings=sample_settings,
                     )
@@ -630,8 +650,8 @@ class Job_Creator:
         if self.qc_only:
             report = "qc"
         custom_conf = ""
-        if "config_path" in self.config:
-            custom_conf = f"--config {self.config['config_path']}"
+        if self.config_path:
+            custom_conf = f"--config {self.config_path}"
 
         process = subprocess.Popen("id -un".split(), stdout=subprocess.PIPE)
         user, error = process.communicate()
@@ -648,7 +668,12 @@ class Job_Creator:
         with open(startfile, "w+") as sb:
             sb.write("#!/usr/bin/env bash\n")
         with open(configfile, "w+") as cb:
-            configout = self.config.copy()
+            configout = {
+                "folders": self.folders.model_dump(),
+                "slurm_header": self.slurm_header.model_dump(),
+                "regex": self.regex.model_dump(),
+                "threshold": self.threshold.model_dump(),
+            }
             cb.write(f"ANALYSIS STARTED BY: {user}\n")
             cb.write(json.dumps(configout, indent=2, separators=(",", ":")))
 
@@ -661,7 +686,7 @@ class Job_Creator:
                 f"conda run -p {os.environ['CONDA_PREFIX']} "
                 f"microSALT utils finish {self.finishdir}/sampleinfo.json "
                 f"--input {self.finishdir} "
-                f"--email {self.config['regex']['mail_recipient']} "
+                f"--email {self.regex.mail_recipient} "
                 f"--report {report} "
                 f"{custom_conf}\n"
             )
@@ -682,7 +707,7 @@ class Job_Creator:
                 i += maxlen
             for entry in massagedJobs:
                 if massagedJobs.index(entry) < len(massagedJobs) - 1:
-                    head = f"-A {self.config['slurm_header']['project']} -p core -n 1 -t 00:00:10 -J {self.config['slurm_header']['job_prefix']}_{self.name}_SUBTRACKER --qos {self.config['slurm_header']['qos']} --dependency=afterany:{entry}"
+                    head = f"-A {self.slurm_header.project} -p core -n 1 -t 00:00:10 -J {self.slurm_header.job_prefix}_{self.name}_SUBTRACKER --qos {self.slurm_header.qos} --dependency=afterany:{entry}"
                     bash_cmd = f"sbatch {head} {startfile}"
                     mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
                     output, error = mailproc.communicate()
@@ -693,10 +718,10 @@ class Job_Creator:
                     break
 
         head = (
-            f"-A {self.config['slurm_header']['project']} -p core -n 1 -t 6:00:00 "
-            f"-J {self.config['slurm_header']['job_prefix']}_{self.name}_MAILJOB "
-            f"--qos {self.config['slurm_header']['qos']} --open-mode append "
-            f"--dependency=afterany:{final} --output {self.config['folders']['log_file']}"
+            f"-A {self.slurm_header.project} -p core -n 1 -t 6:00:00 "
+            f"-J {self.slurm_header.job_prefix}_{self.name}_MAILJOB "
+            f"--qos {self.slurm_header.qos} --open-mode append "
+            f"--dependency=afterany:{final} --output {self.folders.log_file}"
         )
         bash_cmd = f"sbatch {head} {mailfile}"
         mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
@@ -711,7 +736,7 @@ class Job_Creator:
         try:
             # Generates file with all slurm ids
             slurmname = f"{self.name}_slurm_ids.yaml"
-            slurmreport_storedir = Path(self.config["folders"]["reports"], "trailblazer", slurmname)
+            slurmreport_storedir = Path(self.folders.reports, "trailblazer", slurmname)
             slurmreport_workdir = Path(self.finishdir, slurmname)
             with slurmreport_workdir.open("w") as slurmreport_file:
                 yaml.safe_dump(
@@ -772,11 +797,11 @@ class Job_Creator:
         batchfile.close()
         self.blast_subset(
             "mlst",
-            f"{self.config['folders']['references']}/{reforganism}/*.tfa",
+            f"{self.folders.references}/{reforganism}/*.tfa",
         )
-        self.blast_subset("resistance", f"{self.config['folders']['resistances']}/*.fsa")
+        self.blast_subset("resistance", f"{self.folders.resistances}/*.fsa")
         if reforganism == "escherichia_coli":
-            ss = f"{os.path.dirname(self.config['folders']['expec'])}/*{os.path.splitext(self.config['folders']['expec'])[1]}"
+            ss = f"{os.path.dirname(self.folders.expec)}/*{os.path.splitext(self.folders.expec)[1]}"
             self.blast_subset("expec", ss)
 
     def snp_job(self):
@@ -795,7 +820,7 @@ class Job_Creator:
         batchfile.close()
 
         headerline = (
-            f"-A {self.config['slurm_header']['project']} -p {self.config['slurm_header']['type']} -n 1 -t 24:00:00 -J {self.config['slurm_header']['job_prefix']}_{self.name} --qos {self.config['slurm_header']['qos']} --output {self.finishdir}/slurm_{self.name}.log"
+            f"-A {self.slurm_header.project} -p {self.slurm_header.type} -n 1 -t 24:00:00 -J {self.slurm_header.job_prefix}_{self.name} --qos {self.slurm_header.qos} --output {self.finishdir}/slurm_{self.name}.log"
         )
         outfile = self.get_sbatch()
         bash_cmd = f"sbatch {headerline} {outfile}"

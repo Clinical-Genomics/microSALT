@@ -1,9 +1,96 @@
 import json
+import logging
 import pathlib
 import pytest
+from importlib.resources import files as resource_files
 
+from microSALT.config import (
+    Containers,
+    Database,
+    Folders,
+    MicroSALTConfig,
+    PasteurCredentials,
+    PubMLSTCredentials,
+    Regex,
+    Singularity,
+    SlurmHeader,
+    Threshold,
+)
+from microSALT import setup_logger
+from microSALT.store.database import initialize_database
 from microSALT.store.db_manipulator import DB_Manipulator
-from microSALT import preset_config, logger
+
+
+@pytest.fixture(scope="session")
+def config(tmp_path_factory: pytest.TempPathFactory) -> MicroSALTConfig:
+    """Session-scoped config built from tmp_path_factory so all paths are isolated."""
+    base = tmp_path_factory.mktemp("microsalt")
+
+    results = base / "results"
+    reports = base / "reports"
+    seqdata = base / "projects"
+    profiles = base / "references" / "ST_profiles"
+    references = base / "references" / "ST_loci"
+    resistances = base / "references" / "resistances"
+    genomes = base / "references" / "genomes"
+    credentials = base / "credentials"
+
+    for d in (results, reports, seqdata, profiles, references, resistances, genomes, credentials):
+        d.mkdir(parents=True, exist_ok=True)
+
+    log_file = base / "microsalt.log"
+    db_path = base / "microsalt.db"
+
+    cfg = MicroSALTConfig(
+        slurm_header=SlurmHeader(
+            time="12:00:00",
+            threads="8",
+            qos="normal",
+            job_prefix="MLST",
+            project="production",
+            type="core",
+        ),
+        regex=Regex(
+            mail_recipient="username@suffix.com",
+            file_pattern=r"\w{8,12}_\w{8,10}(?:-\d+)*_L\d_(?:R)*(\d{1}).fastq.gz",
+            verified_organisms=[],
+        ),
+        folders=Folders(
+            results=str(results),
+            reports=str(reports),
+            log_file=str(log_file),
+            seqdata=str(seqdata),
+            profiles=str(profiles),
+            references=str(references),
+            resistances=str(resistances),
+            genomes=str(genomes),
+            credentials=str(credentials),
+            adapters="/path/to/trimmomatic/adapters/",
+        ),
+        database=Database(
+            SQLALCHEMY_DATABASE_URI=f"sqlite:///{db_path}",
+            SQLALCHEMY_TRACK_MODIFICATIONS="False",
+            DEBUG="True",
+        ),
+        threshold=Threshold(),
+        pubmlst=PubMLSTCredentials(),
+        pasteur=PasteurCredentials(),
+        singularity=Singularity(),
+        containers=Containers(),
+    )
+    cfg.folders.expec = str(
+        resource_files("microSALT").joinpath("unique_references", "ExPEC.fsa")
+    )
+    cfg.config_path = str(base / "config.json")
+
+    setup_logger(logging_level="INFO", log_file=cfg.folders.log_file)
+    initialize_database(cfg.database.SQLALCHEMY_DATABASE_URI)
+    return cfg
+
+
+@pytest.fixture(scope="session")
+def logger():
+    return logging.getLogger("main_logger")
 
 
 @pytest.fixture
@@ -18,9 +105,9 @@ def unpack_db_json():
 
 
 @pytest.fixture
-def dbm(unpack_db_json):
+def dbm(config: MicroSALTConfig, logger: logging.Logger, unpack_db_json):
     """DB_Manipulator populated with the standard set of test data."""
-    dbm = DB_Manipulator(config=preset_config, log=logger)
+    dbm = DB_Manipulator(log=logger, folders=config.folders, threshold=config.threshold)
     dbm.create_tables()
 
     for entry in unpack_db_json("sampleinfo_projects.json"):

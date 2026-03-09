@@ -1,11 +1,12 @@
 import json
+import logging
 import os
 from datetime import datetime, timedelta
 
 from dateutil import parser
 from rauth import OAuth1Session
 
-from microSALT import logger
+from microSALT.config import Folders, PubMLSTCredentials, PasteurCredentials
 from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
 from microSALT.utils.pubmlst.exceptions import (
     PubMLSTError,
@@ -13,22 +14,26 @@ from microSALT.utils.pubmlst.exceptions import (
     SessionTokenResponseError,
 )
 from microSALT.utils.pubmlst.helpers import (
-    folders_config,
     get_path,
     get_service_config,
     load_auth_credentials,
     save_session_token,
 )
 
+logger = logging.getLogger("main_logger")
+
 session_token_validity = 12  # 12-hour validity
 session_expiration_buffer = 60  # 60-second buffer
 
 
 class ClientAuthentication:
-    def __init__(self, service: str):
+    def __init__(self, service: str, folders: Folders, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials):
         """Initialize the client with the specified service."""
         self.service: str = service
-        self.service_config: dict = get_service_config(service)
+        self.folders = folders
+        self.pubmlst = pubmlst
+        self.pasteur = pasteur
+        self.service_config: dict = get_service_config(service, pubmlst=pubmlst, pasteur=pasteur)
         self.base_api: str = self.service_config["base_api"]
 
     def get_new_session_token(self, db: str):
@@ -36,7 +41,7 @@ class ClientAuthentication:
 
         try:
             consumer_key, consumer_secret, access_token, access_secret = load_auth_credentials(
-                self.service
+                self.service, self.folders, self.pubmlst, self.pasteur
             )
             logger.debug(f"Consumer Key: {consumer_key[:5]}***")
             logger.debug(f"Consumer Secret: {consumer_secret[:5]}***")
@@ -77,6 +82,9 @@ class ClientAuthentication:
                         token=session_token,
                         secret=session_secret,
                         expiration_date=expiration_time,
+                        folders=self.folders,
+                        pubmlst=self.pubmlst,
+                        pasteur=self.pasteur,
                     )
                     return session_token, session_secret
 
@@ -101,7 +109,7 @@ class ClientAuthentication:
         """Load session token from file for a specific database."""
         try:
             credentials_file = os.path.join(
-                get_path(folders_config, CREDENTIALS_KEY),
+                get_path(self.folders, CREDENTIALS_KEY),
                 self.service_config["session_credentials_file_name"],
             )
 
