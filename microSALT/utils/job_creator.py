@@ -680,10 +680,9 @@ class Job_Creator:
         with open(mailfile, "w+") as mb:
             mb.write("#!/usr/bin/env bash\n\n")
             mb.write("#Uploading of results to database and production of report\n")
-            if "MICROSALT_CONFIG" in os.environ:
-                mb.write(f"export MICROSALT_CONFIG={os.environ['MICROSALT_CONFIG']}\n")
             finish_cmd = (
-                f"microSALT utils finish {self.finishdir}/sampleinfo.json "
+                f"uv tool run microSALT --config {self.config_path} utils finish "
+                f"{self.finishdir}/sampleinfo.json "
                 f"--input {self.finishdir} "
                 f"--email {self.regex.mail_recipient} "
                 f"--report {report} "
