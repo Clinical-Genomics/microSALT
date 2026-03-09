@@ -5,7 +5,6 @@ from unittest import mock
 from unittest.mock import patch
 
 from microSALT.utils.job_creator import Job_Creator
-from microSALT import preset_config, logger
 
 
 def fake_search(int):
@@ -15,7 +14,7 @@ def fake_search(int):
 @patch("os.listdir")
 @patch("os.stat")
 @patch("gzip.open")
-def test_verify_fastq(gopen, stat, listdir, testdata):
+def test_verify_fastq(gopen, stat, listdir, config, logger, testdata):
     listdir.return_value = [
         "ACC6438A3_HVMHWDSXX_L1_1.fastq.gz",
         "ACC6438A3_HVMHWDSXX_L1_2.fastq.gz",
@@ -27,7 +26,19 @@ def test_verify_fastq(gopen, stat, listdir, testdata):
     stat.return_value = stata
 
     jc = Job_Creator(
-        run_settings={"input": "/tmp/"}, config=preset_config, log=logger, sampleinfo=testdata
+        log=logger,
+        folders=config.folders,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
+        sampleinfo=testdata,
+        run_settings={"input": "/tmp/"},
     )
     t = jc.verify_fastq()
     assert len(t) > 0
@@ -35,9 +46,21 @@ def test_verify_fastq(gopen, stat, listdir, testdata):
 
 @patch("re.search")
 @patch("microSALT.utils.job_creator.glob.glob")
-def test_blast_subset(glob_search, research, testdata):
+def test_blast_subset(glob_search, research, config, logger, testdata):
     jc = Job_Creator(
-        run_settings={"input": "/tmp/"}, config=preset_config, log=logger, sampleinfo=testdata
+        log=logger,
+        folders=config.folders,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
+        sampleinfo=testdata,
+        run_settings={"input": "/tmp/"},
     )
     researcha = mock.MagicMock()
     researcha.group = fake_search
@@ -55,7 +78,7 @@ def test_blast_subset(glob_search, research, testdata):
 
 
 @patch("subprocess.Popen")
-def test_create_snpsection(subproc, testdata):
+def test_create_snpsection(subproc, config, logger, testdata):
     # Sets up subprocess mocking
     process_mock = mock.Mock()
     attrs = {"communicate.return_value": ("output 123456789", "error")}
@@ -64,10 +87,19 @@ def test_create_snpsection(subproc, testdata):
 
     testdata = [testdata[0]]
     jc = Job_Creator(
-        run_settings={"input": ["AAA1234A1", "AAA1234A2"]},
-        config=preset_config,
         log=logger,
+        folders=config.folders,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
         sampleinfo=testdata,
+        run_settings={"input": ["AAA1234A1", "AAA1234A2"]},
     )
     jc.snp_job()
     outfile = open(jc.get_sbatch(), "r")
@@ -79,7 +111,7 @@ def test_create_snpsection(subproc, testdata):
 
 
 @patch("subprocess.Popen")
-def test_project_job(subproc, testdata):
+def test_project_job(subproc, config, logger, testdata):
     # Sets up subprocess mocking
     process_mock = mock.Mock()
     attrs = {"communicate.return_value": ("output 123456789", "error")}
@@ -88,10 +120,61 @@ def test_project_job(subproc, testdata):
 
     with patch.dict("os.environ", {"CONDA_PREFIX": "/tmp/mock_conda"}):
         jc = Job_Creator(
-            config=preset_config,
             log=logger,
+            folders=config.folders,
+            slurm_header=config.slurm_header,
+            regex=config.regex,
+            dry=False,
+            config_path=config.config_path,
+            threshold=config.threshold,
+            pubmlst=config.pubmlst,
+            pasteur=config.pasteur,
+            singularity=config.singularity,
+            containers=config.containers,
             sampleinfo=testdata,
             run_settings={"pool": ["AAA1234A1", "AAA1234A2"], "input": "/tmp/AAA1234"},
         )
         jc.project_job()
 
+def test_singularity_exec_binds_finishdir(config, logger, testdata):
+    """finishdir is automatically added to the --bind list of every singularity exec call."""
+    jc = Job_Creator(
+        log=logger,
+        folders=config.folders,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
+        sampleinfo=testdata,
+        run_settings={"input": "/tmp/", "finishdir": "/tmp/test_runfolder"},
+    )
+    cmd = jc._singularity_exec("blast", "blastn -help")
+    assert "/tmp/test_runfolder" in cmd
+
+
+def test_singularity_exec_does_not_duplicate_finishdir(config, logger, testdata):
+    """finishdir is not listed twice when it already appears in singularity.bind_paths."""
+    from microSALT.config import Singularity
+    singularity = Singularity(bind_paths=["/tmp/test_runfolder", "/data"])
+    jc = Job_Creator(
+        log=logger,
+        folders=config.folders,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        singularity=singularity,
+        containers=config.containers,
+        sampleinfo=testdata,
+        run_settings={"input": "/tmp/", "finishdir": "/tmp/test_runfolder"},
+    )
+    cmd = jc._singularity_exec("blast", "blastn -help")
+    assert cmd.count("/tmp/test_runfolder") == 1

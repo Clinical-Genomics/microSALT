@@ -1,62 +1,94 @@
-#!/usr/bin/env python
-
-import collections
-import collections.abc
-import os
 import pathlib
 
-from microSALT import preset_config
+import pytest
+from pydantic import ValidationError
+
+from microSALT.config import (
+    MicroSALTConfig,
+    load_config,
+    Folders,
+    Regex,
+    SlurmHeader,
+    Threshold,
+    Database,
+)
+
+CONFIGEXAMPLE = str(pathlib.Path(__file__).parent.parent / "configExample.json")
 
 
-def test_existence(exp_config):
-  """Checks that the configuration contains certain key variables"""
-  # level one
-  config_level_one = preset_config.keys()
-  for entry in exp_config.keys():
-    assert entry in config_level_one
+def test_load_config_parses_example():
+    """load_config() successfully parses configExample.json into a MicroSALTConfig."""
+    cfg = load_config(CONFIGEXAMPLE)
+    assert isinstance(cfg, MicroSALTConfig)
 
-    # level two
-    if isinstance(preset_config[entry], collections.abc.Mapping):
-      config_level_two = preset_config[entry].keys()
-      for thing in exp_config[entry]:
-        assert thing in config_level_two
 
-def test_reverse_existence(exp_config):
-  """Check that the configuration doesn't contain outdated variables"""
+def test_config_sections_present():
+    """All top-level config sections are populated after parsing."""
+    cfg = load_config(CONFIGEXAMPLE)
+    assert isinstance(cfg.slurm_header, SlurmHeader)
+    assert isinstance(cfg.regex, Regex)
+    assert isinstance(cfg.folders, Folders)
+    assert isinstance(cfg.database, Database)
+    assert isinstance(cfg.threshold, Threshold)
 
-  # level one
-  config_level_one = exp_config.keys()
-  for entry in preset_config.keys():
-    if entry not in ['_comment']:
-      assert entry in config_level_one
 
-      # level two
-      config_level_two = exp_config[entry]
-      if isinstance(preset_config[entry], collections.abc.Mapping):
-        for thing in preset_config[entry].keys():
-          if thing != '_comment':
-            assert thing in config_level_two
+def test_slurm_header_fields():
+    cfg = load_config(CONFIGEXAMPLE)
+    assert cfg.slurm_header.time
+    assert cfg.slurm_header.threads
+    assert cfg.slurm_header.qos
+    assert cfg.slurm_header.job_prefix
+    assert cfg.slurm_header.project
+    assert cfg.slurm_header.type
 
-def test_paths(exp_config):
-  """Tests existence for all paths mentioned in variables"""
-  # level one
-  for entry in preset_config.keys():
-    if entry != '_comment':
-      if isinstance(preset_config[entry], str) and '/' in preset_config[entry] and entry not in ['database']:
-        unmade_fldr = preset_config[entry]
-        # Embed logic to expand vars and user here
-        unmade_fldr = os.path.expandvars(unmade_fldr)
-        unmade_fldr = os.path.expanduser(unmade_fldr)
-        unmade_fldr = os.path.abspath(unmade_fldr)
-        assert (pathlib.Path(unmade_fldr).exists())
-    
-      # level two
-      elif isinstance(preset_config[entry], collections.abc.Mapping):
-        for thing in preset_config[entry].keys():
-          if isinstance(preset_config[entry][thing], str) and '/' in preset_config[entry][thing] and entry not in ['database']:
-            unmade_fldr = preset_config[entry][thing]
-            # Embed logic to expand vars and user here
-            unmade_fldr = os.path.expandvars(unmade_fldr)
-            unmade_fldr = os.path.expanduser(unmade_fldr)
-            unmade_fldr = os.path.abspath(unmade_fldr)
-            assert (pathlib.Path(unmade_fldr).exists())
+
+def test_folders_fields():
+    cfg = load_config(CONFIGEXAMPLE)
+    assert cfg.folders.results
+    assert cfg.folders.reports
+    assert cfg.folders.log_file
+    assert cfg.folders.seqdata
+    assert cfg.folders.profiles
+    assert cfg.folders.references
+    assert cfg.folders.resistances
+    assert cfg.folders.genomes
+    assert cfg.folders.credentials
+    assert cfg.folders.adapters
+
+
+def test_expec_path_injected():
+    """The expec path is derived from package data and injected by load_config."""
+    cfg = load_config(CONFIGEXAMPLE)
+    assert cfg.folders.expec
+    assert "ExPEC.fsa" in cfg.folders.expec
+
+
+def test_config_path_injected():
+    """config_path is set to the resolved path of the config file."""
+    cfg = load_config(CONFIGEXAMPLE)
+    assert cfg.config_path
+    assert cfg.config_path.endswith("configExample.json")
+
+
+def test_threshold_defaults():
+    cfg = load_config(CONFIGEXAMPLE)
+    assert cfg.threshold.mlst_id == 100
+    assert cfg.threshold.mlst_novel_id == 99.5
+    assert cfg.threshold.mlst_span == 90
+
+
+def test_runtime_defaults():
+    """Runtime fields default to safe values before CLI sets them."""
+    cfg = load_config(CONFIGEXAMPLE)
+    assert cfg.dry is False
+    assert cfg.config_path != ""
+
+
+def test_missing_required_field_raises(tmp_path):
+    """A config missing a required section raises a Pydantic ValidationError."""
+    import json
+
+    bad_config = tmp_path / "bad.json"
+    bad_config.write_text(json.dumps({"slurm_header": {"time": "1:00:00"}}))
+    with pytest.raises(ValidationError):
+        load_config(str(bad_config))
