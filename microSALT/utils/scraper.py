@@ -10,6 +10,7 @@ import string
 import sys
 import time
 
+from microSALT.config import Folders, Threshold, SlurmHeader, Regex, PubMLSTCredentials, PasteurCredentials, Singularity, Containers
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.job_creator import Job_Creator
@@ -17,12 +18,21 @@ from microSALT.utils.job_creator import Job_Creator
 
 # TODO: Rewrite so samples use seperate objects
 class Scraper:
-    def __init__(self, config, log, sampleinfo={}, input=""):
-        self.config = config
+    def __init__(self, log, folders: Folders, threshold: Threshold, slurm_header: SlurmHeader, regex: Regex, dry: bool, config_path: str, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials, singularity: Singularity = None, containers: Containers = None, sampleinfo={}, input=""):
+        self.folders = folders
+        self.threshold = threshold
+        self.slurm_header = slurm_header
+        self.regex = regex
+        self.dry = dry
+        self.config_path = config_path
+        self.pubmlst = pubmlst
+        self.pasteur = pasteur
+        self.singularity = singularity or Singularity()
+        self.containers = containers or Containers()
         self.logger = log
-        self.db_pusher = DB_Manipulator(config, log)
-        self.referencer = Referencer(config, log)
-        self.job_fallback = Job_Creator(config=config, log=log, sampleinfo=sampleinfo)
+        self.db_pusher = DB_Manipulator(log=log, folders=folders, threshold=threshold)
+        self.referencer = Referencer(log=log, folders=folders, threshold=threshold, pubmlst=pubmlst, pasteur=pasteur, singularity=self.singularity, containers=self.containers)
+        self.job_fallback = Job_Creator(log=log, folders=folders, slurm_header=slurm_header, regex=regex, dry=dry, config_path=config_path, threshold=threshold, pubmlst=pubmlst, pasteur=pasteur, singularity=self.singularity, containers=self.containers, sampleinfo=sampleinfo)
         self.infolder = os.path.abspath(input)
         self.sampledir = ""
 
@@ -65,8 +75,15 @@ class Scraper:
                 if local_param != []:
                     local_param = local_param[0]
                     sample_scraper = Scraper(
-                        config=self.config,
                         log=self.logger,
+                        folders=self.folders,
+                        threshold=self.threshold,
+                        slurm_header=self.slurm_header,
+                        regex=self.regex,
+                        dry=self.dry,
+                        config_path=self.config_path,
+                        pubmlst=self.pubmlst,
+                        pasteur=self.pasteur,
                         sampleinfo=local_param,
                         input=sampledir,
                     )
@@ -193,13 +210,13 @@ class Scraper:
                 if filename == "lactam":
                     filename = "beta-lactam"
                 if type == "resistance":
-                    ref_folder = self.config["folders"]["resistances"]
+                    ref_folder = self.folders.resistances
                     suffix = "fsa"
                 elif type == "expec":
-                    ref_folder = os.path.dirname(self.config["folders"]["expec"])
-                    suffix = os.path.basename(self.config["folders"]["expec"]).rsplit(".", 1)[1]
+                    ref_folder = os.path.dirname(self.folders.expec)
+                    suffix = os.path.basename(self.folders.expec).rsplit(".", 1)[1]
                 elif type == "seq_type":
-                    ref_folder = f"{self.config['folders']['references']}/{organism}"
+                    ref_folder = f"{self.folders.references}/{organism}"
                     suffix = "tfa"
                 locilengths = self.get_locilengths(ref_folder, suffix)
 
@@ -422,7 +439,7 @@ class Scraper:
         """Legacy function, loads common resistance names for genes from notes file"""
         conversions = dict()
         try:
-            with open(f"{self.config['folders']['resistances']}/notes.txt") as fh:
+            with open(f"{self.folders.resistances}/notes.txt") as fh:
                 for line in fh:
                     if "#" not in line:
                         line = line.split(":")

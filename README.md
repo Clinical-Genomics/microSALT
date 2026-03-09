@@ -49,11 +49,11 @@ export MICROSALT_CONFIG=/MY/FAV/FOLDER/config.json
 
 ## Usage
 
-- `microSALT analyse` contains functions to start sbatch job(s) & produce
+- `microsalt analyse` contains functions to start sbatch job(s) & produce
   output to `folders['results']`. Afterwards the parsed results are uploaded
   to the SQL back-end and produce reports (HTML), which are then automatically
   e-mailed to the user.
-- `microSALT utils` contains various functionality, including generating the
+- `microsalt utils` contains various functionality, including generating the
   sample description json, manually adding new reference organisms and
   re-generating reports.
 

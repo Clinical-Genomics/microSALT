@@ -1,13 +1,13 @@
 #!/usr/bin/env python
+from microSALT.store.db_manipulator import DB_Manipulator
 
 import glob
 import pytest
 
-from microSALT import preset_config, logger
 from microSALT.utils.reporter import Reporter
 
 
-def test_motif(dbm, reporter):
+def test_motif(dbm: DB_Manipulator, reporter: Reporter):
     reporter.create_subfolders()
     reporter.gen_motif(motif="resistance")
     assert len(glob.glob(f"{reporter.output}/AAA1234_resistance*")) > 0
@@ -16,23 +16,23 @@ def test_motif(dbm, reporter):
     assert len(glob.glob(f"{reporter.output}/AAA1234_expec*")) > 0
 
 
-def test_deliveryreport(dbm, reporter):
+def test_deliveryreport(config, dbm, reporter):
     reporter.create_subfolders()
     reporter.gen_delivery()
     assert (
         len(
             glob.glob(
-                f"{preset_config['folders']['reports']}/deliverables/999999_deliverables.yaml"
+                f"{config.folders.reports}/deliverables/999999_deliverables.yaml"
             )
         )
         > 0
     )
 
 
-def test_jsonreport(dbm, reporter):
+def test_jsonreport(config, dbm, reporter):
     reporter.create_subfolders()
     reporter.gen_json()
-    assert len(glob.glob(f"{preset_config['folders']['reports']}/json/AAA1234.json")) > 0
+    assert len(glob.glob(f"{config.folders.reports}/json/AAA1234.json")) > 0
 
 
 def test_gen_qc_name_does_not_exist(dbm, reporter):
@@ -60,8 +60,7 @@ def test_gen_motif(caplog, reporter):
 def test_gen_json(caplog, reporter):
     caplog.clear()
     reporter.output = "/path/that/do/not/exists/"
-    preset_config["folders"]["reports"] = "/path/that/do/not/exists/"
-    reporter.config = preset_config
+    reporter.folders.reports = "/path/that/do/not/exists/"
     reporter.gen_json()
     assert "Gen_json unable to produce" in caplog.text
 
@@ -74,11 +73,13 @@ def test_report(caplog, reporter):
         assert "Report function recieved invalid format" in caplog.text
 
 
-def test_constructor(unpack_db_json):
+def test_constructor(config, logger, unpack_db_json):
     sample_info = unpack_db_json("sampleinfo_samples.json")
     reporter_obj = Reporter(
-        config=preset_config,
         log=logger,
+        folders=config.folders,
+        threshold=config.threshold,
+        regex=config.regex,
         sampleinfo=sample_info,
         name="MIC1234A1",
         output="/tmp/MLST",
