@@ -35,6 +35,8 @@ def test_verify_fastq(gopen, stat, listdir, config, logger, testdata):
         threshold=config.threshold,
         pubmlst=config.pubmlst,
         pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
         sampleinfo=testdata,
         run_settings={"input": "/tmp/"},
     )
@@ -55,6 +57,8 @@ def test_blast_subset(glob_search, research, config, logger, testdata):
         threshold=config.threshold,
         pubmlst=config.pubmlst,
         pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
         sampleinfo=testdata,
         run_settings={"input": "/tmp/"},
     )
@@ -92,6 +96,8 @@ def test_create_snpsection(subproc, config, logger, testdata):
         threshold=config.threshold,
         pubmlst=config.pubmlst,
         pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
         sampleinfo=testdata,
         run_settings={"input": ["AAA1234A1", "AAA1234A2"]},
     )
@@ -123,33 +129,52 @@ def test_project_job(subproc, config, logger, testdata):
             threshold=config.threshold,
             pubmlst=config.pubmlst,
             pasteur=config.pasteur,
+            singularity=config.singularity,
+            containers=config.containers,
             sampleinfo=testdata,
             run_settings={"pool": ["AAA1234A1", "AAA1234A2"], "input": "/tmp/AAA1234"},
         )
         jc.project_job()
 
-def test_singularity_exec_binds_finishdir(testdata):
+def test_singularity_exec_binds_finishdir(config, logger, testdata):
     """finishdir is automatically added to the --bind list of every singularity exec call."""
     jc = Job_Creator(
-        run_settings={'input': '/tmp/', 'finishdir': '/tmp/test_runfolder'},
-        config=preset_config,
         log=logger,
+        folders=config.folders,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
         sampleinfo=testdata,
+        run_settings={"input": "/tmp/", "finishdir": "/tmp/test_runfolder"},
     )
-    cmd = jc._singularity_exec('blast', 'blastn -help')
-    assert '/tmp/test_runfolder' in cmd
+    cmd = jc._singularity_exec("blast", "blastn -help")
+    assert "/tmp/test_runfolder" in cmd
 
 
-def test_singularity_exec_does_not_duplicate_finishdir(testdata):
-    """finishdir is not listed twice when it already appears in config bind_paths."""
-    config = dict(preset_config)
-    config['singularity'] = dict(preset_config['singularity'])
-    config['singularity']['bind_paths'] = ['/tmp/test_runfolder', '/data']
+def test_singularity_exec_does_not_duplicate_finishdir(config, logger, testdata):
+    """finishdir is not listed twice when it already appears in singularity.bind_paths."""
+    from microSALT.config import Singularity
+    singularity = Singularity(bind_paths=["/tmp/test_runfolder", "/data"])
     jc = Job_Creator(
-        run_settings={'input': '/tmp/', 'finishdir': '/tmp/test_runfolder'},
-        config=config,
         log=logger,
+        folders=config.folders,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        singularity=singularity,
+        containers=config.containers,
         sampleinfo=testdata,
+        run_settings={"input": "/tmp/", "finishdir": "/tmp/test_runfolder"},
     )
-    cmd = jc._singularity_exec('blast', 'blastn -help')
-    assert cmd.count('/tmp/test_runfolder') == 1
+    cmd = jc._singularity_exec("blast", "blastn -help")
+    assert cmd.count("/tmp/test_runfolder") == 1

@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 
 from Bio import Entrez
 
-from microSALT.config import Folders, Threshold, PubMLSTCredentials, PasteurCredentials
+from microSALT.config import Folders, Threshold, PubMLSTCredentials, PasteurCredentials, Singularity, Containers
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.pubmlst.client import BaseClient, get_client
 from microSALT.utils.pubmlst.exceptions import InvalidURLError, PubMLSTError
@@ -20,11 +20,13 @@ from microSALT.utils.pubmlst.helpers import get_service_by_url
 
 
 class Referencer:
-    def __init__(self, log, folders: Folders, threshold: Threshold, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials, sampleinfo={}, force=False):
+    def __init__(self, log, folders: Folders, threshold: Threshold, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials, singularity: Singularity = None, containers: Containers = None, sampleinfo={}, force=False):
         self.folders = folders
         self.threshold = threshold
         self.pubmlst = pubmlst
         self.pasteur = pasteur
+        self.singularity = singularity or Singularity()
+        self.containers = containers or Containers()
         self.logger = log
         self.db_access = DB_Manipulator(log=log, folders=folders, threshold=threshold)
         self.updated = list()
@@ -55,11 +57,11 @@ class Referencer:
         """Set the client for PubMLST API interactions."""
         self.client: BaseClient = get_client(service, database, self.folders, self.pubmlst, self.pasteur)
 
-    def _singularity_exec(self, tool, command):
+    def _singularity_exec(self, tool: str, command: str) -> str:
         """Return command wrapped with singularity exec for the given tool container."""
-        sif = self.config['containers'][tool]
-        binary = self.config['singularity']['binary']
-        bind_list = self.config['singularity'].get('bind_paths', [])
+        sif = getattr(self.containers, tool)
+        binary = self.singularity.binary
+        bind_list = list(self.singularity.bind_paths)
         bind = f"--bind {','.join(bind_list)}" if bind_list else ""
         return f"{binary} exec {bind} {sif} {command}"
 

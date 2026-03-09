@@ -10,7 +10,7 @@ import string
 import sys
 import time
 
-from microSALT.config import Folders, Threshold, SlurmHeader, Regex, PubMLSTCredentials, PasteurCredentials
+from microSALT.config import Folders, Threshold, SlurmHeader, Regex, PubMLSTCredentials, PasteurCredentials, Singularity, Containers
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.job_creator import Job_Creator
@@ -18,7 +18,7 @@ from microSALT.utils.job_creator import Job_Creator
 
 # TODO: Rewrite so samples use seperate objects
 class Scraper:
-    def __init__(self, log, folders: Folders, threshold: Threshold, slurm_header: SlurmHeader, regex: Regex, dry: bool, config_path: str, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials, sampleinfo={}, input=""):
+    def __init__(self, log, folders: Folders, threshold: Threshold, slurm_header: SlurmHeader, regex: Regex, dry: bool, config_path: str, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials, singularity: Singularity = None, containers: Containers = None, sampleinfo={}, input=""):
         self.folders = folders
         self.threshold = threshold
         self.slurm_header = slurm_header
@@ -27,10 +27,12 @@ class Scraper:
         self.config_path = config_path
         self.pubmlst = pubmlst
         self.pasteur = pasteur
+        self.singularity = singularity or Singularity()
+        self.containers = containers or Containers()
         self.logger = log
         self.db_pusher = DB_Manipulator(log=log, folders=folders, threshold=threshold)
-        self.referencer = Referencer(log=log, folders=folders, threshold=threshold, pubmlst=pubmlst, pasteur=pasteur)
-        self.job_fallback = Job_Creator(log=log, folders=folders, slurm_header=slurm_header, regex=regex, dry=dry, config_path=config_path, threshold=threshold, pubmlst=pubmlst, pasteur=pasteur, sampleinfo=sampleinfo)
+        self.referencer = Referencer(log=log, folders=folders, threshold=threshold, pubmlst=pubmlst, pasteur=pasteur, singularity=self.singularity, containers=self.containers)
+        self.job_fallback = Job_Creator(log=log, folders=folders, slurm_header=slurm_header, regex=regex, dry=dry, config_path=config_path, threshold=threshold, pubmlst=pubmlst, pasteur=pasteur, singularity=self.singularity, containers=self.containers, sampleinfo=sampleinfo)
         self.infolder = os.path.abspath(input)
         self.sampledir = ""
 

@@ -211,6 +211,8 @@ def analyse(
         threshold=cfg.threshold,
         pubmlst=cfg.pubmlst,
         pasteur=cfg.pasteur,
+        singularity=cfg.singularity,
+        containers=cfg.containers,
         sampleinfo=sampleinfo,
         run_settings=run_settings,
     )
@@ -221,6 +223,8 @@ def analyse(
         threshold=cfg.threshold,
         pubmlst=cfg.pubmlst,
         pasteur=cfg.pasteur,
+        singularity=cfg.singularity,
+        containers=cfg.containers,
         sampleinfo=sampleinfo,
         force=force_update,
     )
@@ -318,6 +322,8 @@ def finish(ctx, sampleinfo_file, input, track, dry, email, skip_update, report, 
         threshold=cfg.threshold,
         pubmlst=cfg.pubmlst,
         pasteur=cfg.pasteur,
+        singularity=cfg.singularity,
+        containers=cfg.containers,
         sampleinfo=sampleinfo,
     )
     try:
@@ -346,6 +352,8 @@ def finish(ctx, sampleinfo_file, input, track, dry, email, skip_update, report, 
         config_path=cfg.config_path,
         pubmlst=cfg.pubmlst,
         pasteur=cfg.pasteur,
+        singularity=cfg.singularity,
+        containers=cfg.containers,
         sampleinfo=sampleinfo,
         input=input,
     )
@@ -376,7 +384,8 @@ def add(ctx, organism, force):
     cfg = ctx.obj["config"]
     referee = Referencer(
         log=logger, folders=cfg.folders, threshold=cfg.threshold,
-        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur, force=force,
+        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur,
+        singularity=cfg.singularity, containers=cfg.containers, force=force,
     )
     try:
         referee.add_pubmlst(organism)
@@ -386,7 +395,8 @@ def add(ctx, organism, force):
     click.echo("INFO - Checking versions of all references..")
     referee = Referencer(
         log=logger, folders=cfg.folders, threshold=cfg.threshold,
-        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur, force=force,
+        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur,
+        singularity=cfg.singularity, containers=cfg.containers, force=force,
     )
     referee.update_refs()
 
@@ -399,6 +409,7 @@ def observe(ctx):
     refe = Referencer(
         log=logger, folders=cfg.folders, threshold=cfg.threshold,
         pubmlst=cfg.pubmlst, pasteur=cfg.pasteur,
+        singularity=cfg.singularity, containers=cfg.containers,
     )
     click.echo("INFO - Currently stored organisms:")
     for org in sorted(refe.existing_organisms()):
@@ -500,6 +511,7 @@ def review(ctx, type, customer, skip_update, email, output):
     ext_refs = Referencer(
         log=logger, folders=cfg.folders, threshold=cfg.threshold,
         pubmlst=cfg.pubmlst, pasteur=cfg.pasteur,
+        singularity=cfg.singularity, containers=cfg.containers,
     )
     if not skip_update:
         ext_refs.update_refs()
@@ -521,7 +533,8 @@ def update_refs(ctx, force_update: bool):
     cfg = ctx.obj["config"]
     ext_refs = Referencer(
         log=logger, folders=cfg.folders, threshold=cfg.threshold,
-        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur, force=force_update,
+        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur,
+        singularity=cfg.singularity, containers=cfg.containers, force=force_update,
     )
     ext_refs.update_refs()
     done()
@@ -535,7 +548,8 @@ def update_from_static(ctx, force_update: bool):
     cfg = ctx.obj["config"]
     ext_refs = Referencer(
         log=logger, folders=cfg.folders, threshold=cfg.threshold,
-        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur, force=force_update,
+        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur,
+        singularity=cfg.singularity, containers=cfg.containers, force=force_update,
     )
     ext_refs.fetch_external()
     done()
@@ -551,7 +565,8 @@ def update_organism(ctx, external: bool, force_update: bool, organism: str):
     cfg = ctx.obj["config"]
     ext_refs = Referencer(
         log=logger, folders=cfg.folders, threshold=cfg.threshold,
-        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur, force=force_update,
+        pubmlst=cfg.pubmlst, pasteur=cfg.pasteur,
+        singularity=cfg.singularity, containers=cfg.containers, force=force_update,
     )
     ext_refs.update_organism(external=external, organism=organism)
     done()
@@ -572,6 +587,7 @@ def overwrite(ctx, sample_name, force):
     ext_refs = Referencer(
         log=logger, folders=cfg.folders, threshold=cfg.threshold,
         pubmlst=cfg.pubmlst, pasteur=cfg.pasteur,
+        singularity=cfg.singularity, containers=cfg.containers,
     )
     ext_refs.resync(type="overwrite", sample=sample_name, ignore=force)
     done()

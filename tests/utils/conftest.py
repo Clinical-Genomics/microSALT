@@ -121,6 +121,8 @@ def scraper(config: MicroSALTConfig, logger: logging.Logger, testdata: list[dict
         config_path=config.config_path,
         pubmlst=config.pubmlst,
         pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
         sampleinfo=testdata[0],
     )
 
@@ -133,6 +135,8 @@ def init_references(config: MicroSALTConfig, logger: logging.Logger, testdata: l
         threshold=config.threshold,
         pubmlst=config.pubmlst,
         pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
         sampleinfo=testdata,
     )
     ref_obj.identify_new(testdata[0].get("CG_ID_project"), project=True)
@@ -170,6 +174,8 @@ def blast_scraper_context(
         config_path=config.config_path,
         pubmlst=config.pubmlst,
         pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
         sampleinfo=testdata[0],
     )
 

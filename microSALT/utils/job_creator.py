@@ -17,13 +17,13 @@ from pathlib import Path
 import yaml
 
 from microSALT import __version__
-from microSALT.config import Folders, Threshold, SlurmHeader, Regex, PubMLSTCredentials, PasteurCredentials
+from microSALT.config import Folders, Threshold, SlurmHeader, Regex, PubMLSTCredentials, PasteurCredentials, Singularity, Containers
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.referencer import Referencer
 
 
 class Job_Creator:
-    def __init__(self, log, folders: Folders, slurm_header: SlurmHeader, regex: Regex, dry: bool, config_path: str, threshold: Threshold, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials, sampleinfo={}, run_settings={}):
+    def __init__(self, log, folders: Folders, slurm_header: SlurmHeader, regex: Regex, dry: bool, config_path: str, threshold: Threshold, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials, singularity: Singularity, containers: Containers, sampleinfo={}, run_settings={}):
         self.folders = folders
         self.slurm_header = slurm_header
         self.regex = regex
@@ -32,6 +32,8 @@ class Job_Creator:
         self.threshold = threshold
         self.pubmlst = pubmlst
         self.pasteur = pasteur
+        self.singularity = singularity
+        self.containers = containers
         self.logger = log
         self.batchfile = "/tmp/batchfile.sbatch"
 
@@ -85,7 +87,7 @@ class Job_Creator:
             self.finishdir = f"{folders.results}/{self.name}_{self.now}"
         self.db_pusher = DB_Manipulator(log=log, folders=folders, threshold=threshold)
         self.concat_files = dict()
-        self.ref_resolver = Referencer(log=log, folders=folders, threshold=threshold, pubmlst=pubmlst, pasteur=pasteur)
+        self.ref_resolver = Referencer(log=log, folders=folders, threshold=threshold, pubmlst=pubmlst, pasteur=pasteur, singularity=singularity, containers=containers)
 
     def get_sbatch(self):
         """Returns sbatchfile, slightly superflous"""
@@ -95,11 +97,11 @@ class Job_Creator:
         headerline = f"-A {self.slurm_header.project} -p {self.slurm_header.type} -n {self.slurm_header.threads} -t {self.slurm_header.time} -J {self.slurm_header.job_prefix}_{self.name} --qos {self.slurm_header.qos} --output {self.finishdir}/slurm_{self.name}.log"
         return headerline
 
-    def _singularity_exec(self, tool, command):
+    def _singularity_exec(self, tool: str, command: str) -> str:
         """Return command wrapped with singularity exec for the given tool container."""
-        sif = self.config["containers"][tool]
-        binary = self.config["singularity"]["binary"]
-        bind_list = list(self.config["singularity"].get("bind_paths", []))
+        sif = getattr(self.containers, tool)
+        binary = self.singularity.binary
+        bind_list = list(self.singularity.bind_paths)
         if self.finishdir and self.finishdir not in bind_list:
             bind_list.append(self.finishdir)
         bind = f"--bind {','.join(bind_list)}" if bind_list else ""
@@ -619,6 +621,8 @@ class Job_Creator:
                         threshold=self.threshold,
                         pubmlst=self.pubmlst,
                         pasteur=self.pasteur,
+                        singularity=self.singularity,
+                        containers=self.containers,
                         sampleinfo=local_sampleinfo,
                         run_settings=sample_settings,
                     )

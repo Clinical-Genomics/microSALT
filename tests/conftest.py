@@ -5,12 +5,14 @@ import pytest
 from importlib.resources import files as resource_files
 
 from microSALT.config import (
+    Containers,
     Database,
     Folders,
     MicroSALTConfig,
     PasteurCredentials,
     PubMLSTCredentials,
     Regex,
+    Singularity,
     SlurmHeader,
     Threshold,
 )
@@ -73,6 +75,8 @@ def config(tmp_path_factory: pytest.TempPathFactory) -> MicroSALTConfig:
         threshold=Threshold(),
         pubmlst=PubMLSTCredentials(),
         pasteur=PasteurCredentials(),
+        singularity=Singularity(),
+        containers=Containers(),
     )
     cfg.folders.expec = str(
         resource_files("microSALT").joinpath("unique_references", "ExPEC.fsa")

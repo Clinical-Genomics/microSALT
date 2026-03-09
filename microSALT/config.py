@@ -76,6 +76,22 @@ class PasteurCredentials(BIGSdbCredentials):
     pass
 
 
+class Singularity(BaseModel):
+    binary: str = "/usr/bin/singularity"
+    bind_paths: list[str] = []
+    trimmomatic_adapters: str = "/opt/conda/share/trimmomatic/adapters/"
+
+
+class Containers(BaseModel):
+    skesa: str = ""
+    blast: str = ""
+    bwa: str = ""
+    samtools: str = ""
+    picard: str = ""
+    trimmomatic: str = ""
+    quast: str = ""
+
+
 class MicroSALTConfig(BaseModel):
     slurm_header: SlurmHeader
     regex: Regex
@@ -84,6 +100,8 @@ class MicroSALTConfig(BaseModel):
     threshold: Threshold
     pubmlst: PubMLSTCredentials = PubMLSTCredentials()
     pasteur: PasteurCredentials = PasteurCredentials()
+    singularity: Singularity = Singularity()
+    containers: Containers = Containers()
     # Runtime fields set by the CLI, not from the JSON file
     dry: bool = False
     config_path: str = ""
