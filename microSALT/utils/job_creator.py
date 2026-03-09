@@ -10,7 +10,8 @@ import os
 import re
 import shutil
 import subprocess
-from sys import executable
+import sys
+from importlib.metadata import entry_points
 import time
 from datetime import datetime
 from pathlib import Path
@@ -678,7 +679,8 @@ class Job_Creator:
             cb.write(f"ANALYSIS STARTED BY: {user}\n")
             cb.write(json.dumps(configout, indent=2, separators=(",", ":")))
 
-        microsalt_bin = Path(executable).parent / "microsalt"
+        _ep = next(ep for ep in entry_points(group="console_scripts") if ep.value == "microSALT.cli:root")
+        microsalt_bin = Path(sys.executable).parent / _ep.name
         with open(mailfile, "w+") as mb:
             mb.write("#!/usr/bin/env bash\n\n")
             mb.write("#Uploading of results to database and production of report\n")
