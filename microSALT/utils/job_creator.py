@@ -95,6 +95,16 @@ class Job_Creator:
         headerline = f"-A {self.slurm_header.project} -p {self.slurm_header.type} -n {self.slurm_header.threads} -t {self.slurm_header.time} -J {self.slurm_header.job_prefix}_{self.name} --qos {self.slurm_header.qos} --output {self.finishdir}/slurm_{self.name}.log"
         return headerline
 
+    def _singularity_exec(self, tool, command):
+        """Return command wrapped with singularity exec for the given tool container."""
+        sif = self.config["containers"][tool]
+        binary = self.config["singularity"]["binary"]
+        bind_list = list(self.config["singularity"].get("bind_paths", []))
+        if self.finishdir and self.finishdir not in bind_list:
+            bind_list.append(self.finishdir)
+        bind = f"--bind {','.join(bind_list)}" if bind_list else ""
+        return f"{binary} exec {bind} {sif} {command}"
+
     def verify_fastq(self):
         """Uses arg indir to return a dict of PE fastq tuples fulfilling naming convention"""
         verified_files = list()
@@ -177,13 +187,15 @@ class Job_Creator:
         batchfile = open(self.batchfile, "a+")
         # memory is actually 128 per node regardless of cores.
         batchfile.write("# SKESA assembly\n")
-        batchfile.write(
-            f"mkdir -p {assembly_dir} &"
+        skesa_cmd = (
             f"skesa "
             f"--cores {self.slurm_header.threads} "
             f"--memory {8 * int(self.slurm_header.threads)} "
             f"--contigs_out {contigs_file_raw} "
-            f"--reads {self.concat_files['f']},{self.concat_files['r']}\n"
+            f"--reads {self.concat_files['f']},{self.concat_files['r']}"
+        )
+        batchfile.write(
+            f"mkdir -p {assembly_dir} &" f"{self._singularity_exec('skesa', skesa_cmd)}\n"
         )
 
         # Convert sequence naming in Skesa output into Spades format in the contigs fasta file:
@@ -232,11 +244,19 @@ class Job_Creator:
                 )
                 if name == "mlst":
                     batchfile.write(
-                        f"blastn -db {os.path.dirname(ref)}/{ref_nosuf}  -query {self.finishdir}/assembly/{self.name}_contigs.fasta -out {self.finishdir}/blast_search/{name}/loci_query_{ref_nosuf}.txt -task megablast -num_threads {self.slurm_header.threads} -outfmt {blast_format}\n"
+                        self._singularity_exec(
+                            "blast",
+                            f"blastn -db {os.path.dirname(ref)}/{ref_nosuf}  -query {self.finishdir}/assembly/{self.name}_contigs.fasta -out {self.finishdir}/blast_search/{name}/loci_query_{ref_nosuf}.txt -task megablast -num_threads {self.slurm_header.threads} -outfmt {blast_format}",
+                        )
+                        + "\n"
                     )
                 else:
                     batchfile.write(
-                        f"blastn -db {os.path.dirname(ref)}/{ref_nosuf}  -query {self.finishdir}/assembly/{self.name}_contigs.fasta -out {self.finishdir}/blast_search/{name}/{ref_nosuf}.txt -task megablast -num_threads {self.slurm_header.threads} -outfmt {blast_format}\n"
+                        self._singularity_exec(
+                            "blast",
+                            f"blastn -db {os.path.dirname(ref)}/{ref_nosuf}  -query {self.finishdir}/assembly/{self.name}_contigs.fasta -out {self.finishdir}/blast_search/{name}/{ref_nosuf}.txt -task megablast -num_threads {self.slurm_header.threads} -outfmt {blast_format}",
+                        )
+                        + "\n"
                     )
         elif len(file_list) == 1:
             ref_nosuf = re.search(r"(\w+(?:\-\w+)*)\.\w+", os.path.basename(file_list[0])).group(1)
@@ -244,7 +264,11 @@ class Job_Creator:
                 f"## BLAST {name} search in {self.sample.get('organism').replace('_', ' ').capitalize()}\n"
             )
             batchfile.write(
-                f"blastn -db {os.path.dirname(search_string)}/{ref_nosuf}  -query {self.finishdir}/assembly/{self.name}_contigs.fasta -out {self.finishdir}/blast_search/{name}/{ref_nosuf}.txt -task megablast -num_threads {self.slurm_header.threads} -outfmt {blast_format}\n"
+                self._singularity_exec(
+                    "blast",
+                    f"blastn -db {os.path.dirname(search_string)}/{ref_nosuf}  -query {self.finishdir}/assembly/{self.name}_contigs.fasta -out {self.finishdir}/blast_search/{name}/{ref_nosuf}.txt -task megablast -num_threads {self.slurm_header.threads} -outfmt {blast_format}",
+                )
+                + "\n"
             )
         batchfile.write("\n")
         batchfile.close()
@@ -262,20 +286,42 @@ class Job_Creator:
 
         batchfile.write("## Alignment & Deduplication\n")
         batchfile.write(
-            f"bwa mem -M -t {self.slurm_header.threads} {ref} {self.concat_files['f']} {self.concat_files['r']} > {outbase}.sam\n"
+            self._singularity_exec(
+                "bwa",
+                f"bwa mem -M -t {self.slurm_header.threads} {ref} {self.concat_files['f']} {self.concat_files['r']} > {outbase}.sam",
+            )
+            + "\n"
         )
         batchfile.write(
-            f"samtools view --threads {self.slurm_header.threads} -b -o {outbase}.bam -T {ref} {outbase}.sam\n"
+            self._singularity_exec(
+                "samtools",
+                f"samtools view --threads {self.slurm_header.threads} -b -o {outbase}.bam -T {ref} {outbase}.sam",
+            )
+            + "\n"
         )
         batchfile.write(
-            f"samtools sort --threads {self.slurm_header.threads} -o {outbase}.bam_sort {outbase}.bam\n"
+            self._singularity_exec(
+                "samtools",
+                f"samtools sort --threads {self.slurm_header.threads} -o {outbase}.bam_sort {outbase}.bam",
+            )
+            + "\n"
         )
         batchfile.write(
-            f"picard MarkDuplicates I={outbase}.bam_sort O={outbase}.bam_sort_rmdup M={outbase}.stats.dup REMOVE_DUPLICATES=true\n"
+            self._singularity_exec(
+                "picard",
+                f"picard MarkDuplicates I={outbase}.bam_sort O={outbase}.bam_sort_rmdup M={outbase}.stats.dup REMOVE_DUPLICATES=true",
+            )
+            + "\n"
         )
-        batchfile.write(f"samtools index {outbase}.bam_sort_rmdup\n")
         batchfile.write(
-            f"samtools idxstats {outbase}.bam_sort_rmdup &> {outbase}.stats.ref\n"
+            self._singularity_exec("samtools", f"samtools index {outbase}.bam_sort_rmdup")
+            + "\n"
+        )
+        batchfile.write(
+            self._singularity_exec(
+                "samtools", f"samtools idxstats {outbase}.bam_sort_rmdup"
+            )
+            + f" &> {outbase}.stats.ref\n"
         )
         # Removal of temp aligment files
         batchfile.write(f"rm {outbase}.bam {outbase}.sam\n")
@@ -283,16 +329,29 @@ class Job_Creator:
         batchfile.write("## Primary stats generation\n")
         # Insert stats, dedupped
         batchfile.write(
-            f"picard CollectInsertSizeMetrics I={outbase}.bam_sort_rmdup O={outbase}.stats.ins H={outbase}.hist.ins\n"
+            self._singularity_exec(
+                "picard",
+                f"picard CollectInsertSizeMetrics I={outbase}.bam_sort_rmdup O={outbase}.stats.ins H={outbase}.hist.ins",
+            )
+            + "\n"
         )
         # Coverage
         batchfile.write(
-            f"samtools stats --coverage 1,10000,1 {outbase}.bam_sort_rmdup |grep ^COV | cut -f 2- &> {outbase}.stats.cov\n"
+            self._singularity_exec(
+                "samtools", f"samtools stats --coverage 1,10000,1 {outbase}.bam_sort_rmdup"
+            )
+            + f" |grep ^COV | cut -f 2- &> {outbase}.stats.cov\n"
         )
         # Mapped rate, no dedup,dedup in MWGS (trimming has no effect)!
-        batchfile.write(f"samtools flagstat {outbase}.bam_sort &> {outbase}.stats.map\n")
+        batchfile.write(
+            self._singularity_exec("samtools", f"samtools flagstat {outbase}.bam_sort")
+            + f" &> {outbase}.stats.map\n"
+        )
         # Total reads, no dedup,dedup in MWGS (trimming has no effect)!
-        batchfile.write(f"samtools view -c {outbase}.bam_sort &> {outbase}.stats.raw\n")
+        batchfile.write(
+            self._singularity_exec("samtools", f"samtools view -c {outbase}.bam_sort")
+            + f" &> {outbase}.stats.raw\n"
+        )
 
         batchfile.write("\n\n")
         batchfile.close()
@@ -301,6 +360,7 @@ class Job_Creator:
         """Concatinates data, possibly trims it, then makes the unstranded reads usable"""
         forward = list()
         reverse = list()
+
         for root, dirs, files in os.walk(self.folders.adapters):
             if "NexteraPE-PE.fa" not in files:
                 self.logger.error(
@@ -336,7 +396,17 @@ class Job_Creator:
             ru = f"{trimdir}/{outfile}_trim_rev_unpair.fastq.gz"
             batchfile.write("##Trimming section\n")
             batchfile.write(
-                f"trimmomatic PE -threads {self.slurm_header.threads} -phred33 {self.concat_files.get('f')} {self.concat_files.get('r')} {fp} {fu} {rp} {ru}      ILLUMINACLIP:{self.folders.adapters}/NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36\n"
+                self._singularity_exec(
+                    "trimmomatic",
+                    (
+                        f"trimmomatic PE -threads {self.slurm_header.threads}"
+                        f" -phred33 {self.concat_files.get('f')} {self.concat_files.get('r')}"
+                        f" {fp} {fu} {rp} {ru}"
+                        f" ILLUMINACLIP:{self.folders.adapters}/NexteraPE-PE.fa:2:30:10"
+                        " LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36"
+                    ),
+                )
+                + "\n"
             )
 
             batchfile.write("## Interlaced trimmed files\n")
@@ -353,7 +423,11 @@ class Job_Creator:
         batchfile.write("# QUAST QC metrics\n")
         batchfile.write(f"mkdir {self.finishdir}/assembly/quast\n")
         batchfile.write(
-            f"quast.py {self.finishdir}/assembly/{self.name}_contigs.fasta -o {self.finishdir}/assembly/quast\n"
+            self._singularity_exec(
+                "quast",
+                f"quast.py {self.finishdir}/assembly/{self.name}_contigs.fasta -o {self.finishdir}/assembly/quast",
+            )
+            + "\n"
         )
         batchfile.write(
             f"mv {self.finishdir}/assembly/quast/report.tsv {self.finishdir}/assembly/quast/{self.name}_report.tsv\n\n"

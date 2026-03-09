@@ -111,7 +111,7 @@ class Reporter:
         self.name = "Sequence Type Update"
         try:
             content = STtracker_page(customer, threshold=self.threshold)
-            outname = "{}/ST_updates_{}.html".format(self.output, self.now)
+            outname = f"{self.output}/ST_updates_{self.now}.html"
             outfile = open(outname, "wb")
             outfile.write(content.encode("utf8"))
             outfile.close()
@@ -126,13 +126,13 @@ class Reporter:
         try:
             last_version = self.db_pusher.get_report(self.name).version
         except Exception:
-            self.logger.error("Project {} does not exist".format(self.name))
+            self.logger.error(f"Project {self.name} does not exist")
             sys.exit(-1)
         try:
             content = alignment_page(self.name, threshold=self.threshold)
-            outfile = "{}_QC_{}.html".format(self.sample.get("Customer_ID_project"), last_version)
-            local = "{}/{}".format(self.output, outfile)
-            output = "{}/analysis/{}".format(self.folders.reports, outfile)
+            outfile = f"{self.sample.get('Customer_ID_project')}_QC_{last_version}.html"
+            local = f"{self.output}/{outfile}"
+            output = f"{self.folders.reports}/analysis/{outfile}"
 
             with open(output, "wb") as f:
                 f.write(content.encode("utf8"))
@@ -149,15 +149,13 @@ class Reporter:
         try:
             last_version = self.db_pusher.get_report(self.name).version
         except Exception:
-            self.logger.error("Project {} does not exist".format(self.name))
+            self.logger.error(f"Project {self.name} does not exist")
             sys.exit(-1)
         try:
             content = typing_page(self.name, "all", threshold=self.threshold, verified_organisms=self.regex.verified_organisms)
-            outfile = "{}_Typing_{}.html".format(
-                self.sample.get("Customer_ID_project"), last_version
-            )
-            local = "{}/{}".format(self.output, outfile)
-            output = "{}/analysis/{}".format(self.folders.reports, outfile)
+            outfile = f"{self.sample.get('Customer_ID_project')}_Typing_{last_version}.html"
+            local = f"{self.output}/{outfile}"
+            output = f"{self.folders.reports}/analysis/{outfile}"
 
             with open(output, "wb") as f:
                 f.write(content.encode("utf8"))
