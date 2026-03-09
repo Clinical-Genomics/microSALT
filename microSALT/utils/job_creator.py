@@ -10,6 +10,7 @@ import os
 import re
 import shutil
 import subprocess
+from sys import executable
 import time
 from datetime import datetime
 from pathlib import Path
@@ -677,20 +678,18 @@ class Job_Creator:
             cb.write(f"ANALYSIS STARTED BY: {user}\n")
             cb.write(json.dumps(configout, indent=2, separators=(",", ":")))
 
+        microsalt_bin = Path(executable).parent / "microsalt"
         with open(mailfile, "w+") as mb:
             mb.write("#!/usr/bin/env bash\n\n")
             mb.write("#Uploading of results to database and production of report\n")
-            if "MICROSALT_CONFIG" in os.environ:
-                mb.write(f"export MICROSALT_CONFIG={os.environ['MICROSALT_CONFIG']}\n")
-            conda_cmd = (
-                f"conda run -p {os.environ['CONDA_PREFIX']} "
-                f"microsalt utils finish {self.finishdir}/sampleinfo.json "
+            finish_cmd = (
+                f"{microsalt_bin} --config {self.config_path} utils finish {self.finishdir}/sampleinfo.json "
                 f"--input {self.finishdir} "
                 f"--email {self.regex.mail_recipient} "
                 f"--report {report} "
                 f"{custom_conf}\n"
             )
-            mb.write(conda_cmd)
+            mb.write(finish_cmd)
             mb.write(f"touch {self.finishdir}/run_complete.out\n")
 
         massagedJobs = list()
