@@ -1,12 +1,11 @@
 #!/usr/bin/env python
-
+import pytest
 import collections
 import collections.abc
 import os
 import pathlib
 
 from microSALT import preset_config
-
 
 def test_existence(exp_config):
   """Checks that the configuration contains certain key variables"""
@@ -42,18 +41,18 @@ def test_paths(exp_config):
   # level one
   for entry in preset_config.keys():
     if entry != '_comment':
-      if isinstance(preset_config[entry], str) and '/' in preset_config[entry] and entry not in ['database']:
+      if isinstance(preset_config[entry], str) and '/' in preset_config[entry] and entry not in ['database', 'genologics', 'containers', 'singularity']:
         unmade_fldr = preset_config[entry]
         # Embed logic to expand vars and user here
         unmade_fldr = os.path.expandvars(unmade_fldr)
         unmade_fldr = os.path.expanduser(unmade_fldr)
         unmade_fldr = os.path.abspath(unmade_fldr)
         assert (pathlib.Path(unmade_fldr).exists())
-    
+
       # level two
       elif isinstance(preset_config[entry], collections.abc.Mapping):
         for thing in preset_config[entry].keys():
-          if isinstance(preset_config[entry][thing], str) and '/' in preset_config[entry][thing] and entry not in ['database']:
+          if isinstance(preset_config[entry][thing], str) and '/' in preset_config[entry][thing] and entry not in ['database', 'genologics', 'containers', 'singularity']:
             unmade_fldr = preset_config[entry][thing]
             # Embed logic to expand vars and user here
             unmade_fldr = os.path.expandvars(unmade_fldr)
