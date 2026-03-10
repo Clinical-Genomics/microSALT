@@ -83,7 +83,7 @@ def config(tmp_path_factory: pytest.TempPathFactory) -> MicroSALTConfig:
     )
     cfg.config_path = str(base / "config.json")
 
-    setup_logger(logging_level="INFO", log_file=cfg.folders.log_file)
+    setup_logger(logging_level="INFO")
     initialize_database(cfg.database.SQLALCHEMY_DATABASE_URI)
     return cfg
 

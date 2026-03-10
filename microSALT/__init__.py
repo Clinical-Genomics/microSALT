@@ -1,5 +1,4 @@
 import logging
-import os
 
 __version__ = "4.3.0"
 
@@ -14,7 +13,7 @@ logging_levels = {
 }
 
 
-def setup_logger(logging_level: str, log_file: str) -> None:
+def setup_logger(logging_level: str) -> None:
     global logger
     if logging_level not in logging_levels:
         raise ValueError(
@@ -28,7 +27,4 @@ def setup_logger(logging_level: str, log_file: str) -> None:
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s", "%Y-%m-%d %H:%M:%S"
     )
     ch.setFormatter(formatter)
-    fh = logging.FileHandler(os.path.expanduser(log_file))
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
     logger.addHandler(ch)
