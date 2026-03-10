@@ -1,9 +1,10 @@
-#!/usr/bin/env python
-
+from pathlib import Path
 from unittest import mock
-
 from unittest.mock import patch
 
+import pytest
+
+from microSALT.config import MicroSALTConfig
 from microSALT.utils.job_creator import Job_Creator
 
 
@@ -136,6 +137,7 @@ def test_project_job(subproc, config, logger, testdata):
         )
         jc.project_job()
 
+
 def test_singularity_exec_binds_finishdir(config, logger, testdata):
     """finishdir is automatically added to the --bind list of every singularity exec call."""
     jc = Job_Creator(
@@ -160,6 +162,7 @@ def test_singularity_exec_binds_finishdir(config, logger, testdata):
 def test_singularity_exec_does_not_duplicate_finishdir(config, logger, testdata):
     """finishdir is not listed twice when it already appears in singularity.bind_paths."""
     from microSALT.config import Singularity
+
     singularity = Singularity(bind_paths=["/tmp/test_runfolder", "/data"])
     jc = Job_Creator(
         log=logger,
@@ -180,7 +183,9 @@ def test_singularity_exec_does_not_duplicate_finishdir(config, logger, testdata)
     assert cmd.count("/tmp/test_runfolder") == 1
 
 
-def _make_jc(config, logger, testdata, tmp_path) -> Job_Creator:
+def _make_jc(
+    config: MicroSALTConfig, logger: pytest.LogCaptureFixture, testdata: dict, tmp_path: Path
+) -> Job_Creator:
     return Job_Creator(
         log=logger,
         folders=config.folders,
@@ -201,6 +206,7 @@ def _make_jc(config, logger, testdata, tmp_path) -> Job_Creator:
 def test_write_mailjob_uses_existing_executable(config, logger, testdata, tmp_path):
     """The binary embedded in mailjob.sh must exist on the filesystem."""
     import pathlib
+
     jc = _make_jc(config, logger, testdata, tmp_path)
     mailfile = str(tmp_path / "mailjob.sh")
 
@@ -208,17 +214,14 @@ def test_write_mailjob_uses_existing_executable(config, logger, testdata, tmp_pa
 
     content = pathlib.Path(mailfile).read_text()
     # Extract the first token of the finish command (the binary path)
-    bin_path = next(
-        line.split()[0]
-        for line in content.splitlines()
-        if "utils finish" in line
-    )
+    bin_path = next(line.split()[0] for line in content.splitlines() if "utils finish" in line)
     assert pathlib.Path(bin_path).exists(), f"Binary not found on disk: {bin_path}"
 
 
 def test_write_mailjob_contains_finish_command(config, logger, testdata, tmp_path):
     """mailjob.sh must contain the expected microsalt utils finish invocation."""
     import pathlib
+
     jc = _make_jc(config, logger, testdata, tmp_path)
     mailfile = str(tmp_path / "mailjob.sh")
 
@@ -228,4 +231,3 @@ def test_write_mailjob_contains_finish_command(config, logger, testdata, tmp_pat
     assert "utils finish" in content
     assert "--report qc" in content
     assert str(tmp_path) in content
-
