@@ -178,3 +178,54 @@ def test_singularity_exec_does_not_duplicate_finishdir(config, logger, testdata)
     )
     cmd = jc._singularity_exec("blast", "blastn -help")
     assert cmd.count("/tmp/test_runfolder") == 1
+
+
+def _make_jc(config, logger, testdata, tmp_path) -> Job_Creator:
+    return Job_Creator(
+        log=logger,
+        folders=config.folders,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
+        sampleinfo=testdata,
+        run_settings={"input": "/tmp/", "finishdir": str(tmp_path)},
+    )
+
+
+def test_write_mailjob_uses_existing_executable(config, logger, testdata, tmp_path):
+    """The binary embedded in mailjob.sh must exist on the filesystem."""
+    import pathlib
+    jc = _make_jc(config, logger, testdata, tmp_path)
+    mailfile = str(tmp_path / "mailjob.sh")
+
+    jc._write_mailjob(mailfile, "default", "")
+
+    content = pathlib.Path(mailfile).read_text()
+    # Extract the first token of the finish command (the binary path)
+    bin_path = next(
+        line.split()[0]
+        for line in content.splitlines()
+        if "utils finish" in line
+    )
+    assert pathlib.Path(bin_path).exists(), f"Binary not found on disk: {bin_path}"
+
+
+def test_write_mailjob_contains_finish_command(config, logger, testdata, tmp_path):
+    """mailjob.sh must contain the expected microsalt utils finish invocation."""
+    import pathlib
+    jc = _make_jc(config, logger, testdata, tmp_path)
+    mailfile = str(tmp_path / "mailjob.sh")
+
+    jc._write_mailjob(mailfile, "qc", "")
+
+    content = pathlib.Path(mailfile).read_text()
+    assert "utils finish" in content
+    assert "--report qc" in content
+    assert str(tmp_path) in content
+
