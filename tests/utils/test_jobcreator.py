@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from unittest import mock
-
 from unittest.mock import patch
 
 from microSALT.utils.job_creator import Job_Creator

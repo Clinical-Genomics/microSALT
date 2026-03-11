@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-from microSALT.store.db_manipulator import DB_Manipulator
-
 import glob
+
 import pytest
 
+from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.reporter import Reporter
 
 

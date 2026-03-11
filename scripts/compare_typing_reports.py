@@ -22,7 +22,6 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup, Tag
 
-
 # ---------------------------------------------------------------------------
 # Data containers
 # ---------------------------------------------------------------------------
@@ -167,7 +166,12 @@ def parse_report(path: Path) -> Report:
             for row in _rows(table):
                 if len(row) >= 4:
                     current_detail.mlst.append(
-                        MLSTRow(loci=row[1], allele=row[2], identity=row[3], span=row[4] if len(row) > 4 else "")
+                        MLSTRow(
+                            loci=row[1],
+                            allele=row[2],
+                            identity=row[3],
+                            span=row[4] if len(row) > 4 else "",
+                        )
                     )
             continue
 
@@ -176,7 +180,13 @@ def parse_report(path: Path) -> Report:
             for row in _rows(table):
                 if len(row) >= 5:
                     current_detail.resistances.append(
-                        ResistanceRow(gene=row[1], group=row[2], reference=row[3], identity=row[4], span=row[5] if len(row) > 5 else "")
+                        ResistanceRow(
+                            gene=row[1],
+                            group=row[2],
+                            reference=row[3],
+                            identity=row[4],
+                            span=row[5] if len(row) > 5 else "",
+                        )
                     )
 
     return Report(
@@ -209,12 +219,18 @@ def compare_reports(r1: Report, r2: Report) -> int:
     """Print differences between two reports.  Returns number of differences."""
     diffs = 0
 
-    print(f"\n{_BOLD}Report A:{_RESET} {r1.path}  (version {r1.report_version}, project {r1.project_id})")
-    print(f"{_BOLD}Report B:{_RESET} {r2.path}  (version {r2.report_version}, project {r2.project_id})\n")
+    print(
+        f"\n{_BOLD}Report A:{_RESET} {r1.path}  (version {r1.report_version}, project {r1.project_id})"
+    )
+    print(
+        f"{_BOLD}Report B:{_RESET} {r2.path}  (version {r2.report_version}, project {r2.project_id})\n"
+    )
 
     all_cg_ids = sorted(set(r1.summaries) | set(r2.summaries))
     if not all_cg_ids:
-        print(f"{_YELLOW}WARNING: No samples found — check that the HTML files are valid microSALT typing reports.{_RESET}")
+        print(
+            f"{_YELLOW}WARNING: No samples found — check that the HTML files are valid microSALT typing reports.{_RESET}"
+        )
         return 0
 
     for cg_id in all_cg_ids:
