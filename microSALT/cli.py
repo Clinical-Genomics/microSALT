@@ -16,7 +16,11 @@ import click
 from microSALT import __version__, logging_levels, setup_logger
 from microSALT.config import MicroSALTConfig, load_config
 from microSALT.exc.exceptions import RefUpdateLockError
-from microSALT.store.database import create_tables, get_scoped_session_registry, initialize_database
+from microSALT.store.database import (
+    create_tables,
+    get_scoped_session_registry,
+    initialize_database,
+)
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.reporter import Reporter
@@ -110,7 +114,6 @@ def _ensure_directories(config: MicroSALTConfig) -> None:
         config.folders.resistances,
         config.folders.genomes,
         config.folders.credentials,
-        config.folders.adapters,
     ]
     for path in folder_paths:
         p = pathlib.Path(os.path.expandvars(os.path.expanduser(path)))

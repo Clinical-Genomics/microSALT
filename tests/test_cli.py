@@ -58,7 +58,6 @@ def setup_config(tmp_path: Path) -> MicroSALTConfig:
             resistances=str(base / "resistances"),
             genomes=str(base / "genomes"),
             credentials=str(base / "credentials"),
-            adapters=str(base / "adapters"),
         ),
         database=Database(SQLALCHEMY_DATABASE_URI=f"sqlite:///{base / 'microsalt.db'}"),
         threshold=Threshold(),

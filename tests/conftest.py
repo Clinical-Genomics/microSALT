@@ -1,9 +1,11 @@
 import json
 import logging
 import pathlib
-import pytest
 from importlib.resources import files as resource_files
 
+import pytest
+
+from microSALT import setup_logger
 from microSALT.config import (
     Containers,
     Database,
@@ -16,7 +18,6 @@ from microSALT.config import (
     SlurmHeader,
     Threshold,
 )
-from microSALT import setup_logger
 from microSALT.store.database import initialize_database
 from microSALT.store.db_manipulator import DB_Manipulator
 
@@ -65,7 +66,6 @@ def config(tmp_path_factory: pytest.TempPathFactory) -> MicroSALTConfig:
             resistances=str(resistances),
             genomes=str(genomes),
             credentials=str(credentials),
-            adapters="/path/to/trimmomatic/adapters/",
         ),
         database=Database(
             SQLALCHEMY_DATABASE_URI=f"sqlite:///{db_path}",
@@ -78,9 +78,7 @@ def config(tmp_path_factory: pytest.TempPathFactory) -> MicroSALTConfig:
         singularity=Singularity(),
         containers=Containers(),
     )
-    cfg.folders.expec = str(
-        resource_files("microSALT").joinpath("unique_references", "ExPEC.fsa")
-    )
+    cfg.folders.expec = str(resource_files("microSALT").joinpath("unique_references", "ExPEC.fsa"))
     cfg.config_path = str(base / "config.json")
 
     setup_logger(logging_level="INFO")

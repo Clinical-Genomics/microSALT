@@ -139,7 +139,6 @@ def parse_report(path: Path) -> Report:
     # Each sample detail section has an overview table containing "CG Prov ID".
     # We walk all tables and use context to pair MLST/resistance tables with
     # the sample they belong to.
-    current_cg_id: str | None = None
     current_detail: SampleDetail | None = None
 
     for table in soup.find_all("table"):
@@ -258,6 +257,11 @@ def compare_reports(r1: Report, r2: Report) -> int:
         # MLST allele comparison
         d1 = r1.details.get(cg_id)
         d2 = r2.details.get(cg_id)
+        if d1 is None or d2 is None:
+            missing = "A" if d1 is None else "B"
+            sample_diffs.append(
+                f"  {_YELLOW}WARNING: per-sample detail section missing in report {missing}{_RESET}"
+            )
         if d1 and d2:
             loci1 = {m.loci: m.allele for m in d1.mlst}
             loci2 = {m.loci: m.allele for m in d2.mlst}

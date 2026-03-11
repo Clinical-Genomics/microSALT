@@ -30,7 +30,6 @@ class Folders(BaseModel):
     resistances: str
     genomes: str
     credentials: str
-    adapters: str
     expec: str = ""  # filled in after construction
 
 
@@ -69,8 +68,10 @@ class BIGSdbCredentials(BaseModel):
     client_id: str = ""
     client_secret: str = ""
 
+
 class PubMLSTCredentials(BIGSdbCredentials):
     pass
+
 
 class PasteurCredentials(BIGSdbCredentials):
     pass

@@ -11,21 +11,45 @@ import re
 import shutil
 import subprocess
 import sys
-from importlib.metadata import entry_points
 import time
 from datetime import datetime
+from importlib.metadata import entry_points
 from pathlib import Path
 
 import yaml
 
 from microSALT import __version__
-from microSALT.config import Folders, Threshold, SlurmHeader, Regex, PubMLSTCredentials, PasteurCredentials, Singularity, Containers
+from microSALT.config import (
+    Containers,
+    Folders,
+    PasteurCredentials,
+    PubMLSTCredentials,
+    Regex,
+    Singularity,
+    SlurmHeader,
+    Threshold,
+)
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.referencer import Referencer
 
 
 class Job_Creator:
-    def __init__(self, log, folders: Folders, slurm_header: SlurmHeader, regex: Regex, dry: bool, config_path: str, threshold: Threshold, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials, singularity: Singularity, containers: Containers, sampleinfo={}, run_settings={}):
+    def __init__(
+        self,
+        log,
+        folders: Folders,
+        slurm_header: SlurmHeader,
+        regex: Regex,
+        dry: bool,
+        config_path: str,
+        threshold: Threshold,
+        pubmlst: PubMLSTCredentials,
+        pasteur: PasteurCredentials,
+        singularity: Singularity,
+        containers: Containers,
+        sampleinfo={},
+        run_settings={},
+    ):
         self.folders = folders
         self.slurm_header = slurm_header
         self.regex = regex
@@ -89,7 +113,15 @@ class Job_Creator:
             self.finishdir = f"{folders.results}/{self.name}_{self.now}"
         self.db_pusher = DB_Manipulator(log=log, folders=folders, threshold=threshold)
         self.concat_files = dict()
-        self.ref_resolver = Referencer(log=log, folders=folders, threshold=threshold, pubmlst=pubmlst, pasteur=pasteur, singularity=singularity, containers=containers)
+        self.ref_resolver = Referencer(
+            log=log,
+            folders=folders,
+            threshold=threshold,
+            pubmlst=pubmlst,
+            pasteur=pasteur,
+            singularity=singularity,
+            containers=containers,
+        )
 
     def get_sbatch(self):
         """Returns sbatchfile, slightly superflous"""
@@ -141,15 +173,13 @@ class Job_Creator:
                     else:
                         pairno = 2 - 1 % int(file_match[1])  # 1->2, 2->1
                         # Construct mate name
-                        pairname = f"{file_match.string[:file_match.end(1) - 1]}{pairno}{file_match.string[file_match.end(1):file_match.end()]}"
+                        pairname = f"{file_match.string[: file_match.end(1) - 1]}{pairno}{file_match.string[file_match.end(1) : file_match.end()]}"
                     if pairname in files:
                         files.pop(files.index(pairname))
                         verified_files.append(file_match[0])
                         verified_files.append(pairname)
                 else:
-                    raise Exception(
-                        f"Some fastq files have no mate in directory {self.indir}."
-                    )
+                    raise Exception(f"Some fastq files have no mate in directory {self.indir}.")
         if verified_files == []:
             raise Exception(
                 f"No files in directory {self.indir} match file_pattern '{self.regex.file_pattern}'."
@@ -163,9 +193,7 @@ class Job_Creator:
                 if bsize > 1000:
                     self.logger.warning(f"Input fastq {vfile} exceeds 1000MB")
             except Exception:
-                self.logger.warning(
-                    f"Unable to verify size of input file {self.indir}/{vfile}"
-                )
+                self.logger.warning(f"Unable to verify size of input file {self.indir}/{vfile}")
 
         # Warn about invalid fastq files
         for vfile in verified_files:
@@ -198,9 +226,7 @@ class Job_Creator:
             f"--contigs_out {contigs_file_raw} "
             f"--reads {self.concat_files['f']},{self.concat_files['r']}"
         )
-        batchfile.write(
-            f"mkdir -p {assembly_dir} &" f"{self._singularity_exec('skesa', skesa_cmd)}\n"
-        )
+        batchfile.write(f"mkdir -p {assembly_dir} &{self._singularity_exec('skesa', skesa_cmd)}\n")
 
         # Convert sequence naming in Skesa output into Spades format in the contigs fasta file:
         # ----------------------------------------------
@@ -318,13 +344,10 @@ class Job_Creator:
             + "\n"
         )
         batchfile.write(
-            self._singularity_exec("samtools", f"samtools index {outbase}.bam_sort_rmdup")
-            + "\n"
+            self._singularity_exec("samtools", f"samtools index {outbase}.bam_sort_rmdup") + "\n"
         )
         batchfile.write(
-            self._singularity_exec(
-                "samtools", f"samtools idxstats {outbase}.bam_sort_rmdup"
-            )
+            self._singularity_exec("samtools", f"samtools idxstats {outbase}.bam_sort_rmdup")
             + f" &> {outbase}.stats.ref\n"
         )
         # Removal of temp aligment files
@@ -365,13 +388,6 @@ class Job_Creator:
         forward = list()
         reverse = list()
 
-        for root, dirs, files in os.walk(self.folders.adapters):
-            if "NexteraPE-PE.fa" not in files:
-                self.logger.error(
-                    "Adapters folder at {} does not contain NexteraPE-PE.fa. Review paths.yml"
-                )
-            else:
-                break
         trimdir = f"{self.finishdir}/trimmed"
         files = self.verify_fastq()
         batchfile = open(self.batchfile, "a+")
@@ -406,7 +422,7 @@ class Job_Creator:
                         f"trimmomatic PE -threads {self.slurm_header.threads}"
                         f" -phred33 {self.concat_files.get('f')} {self.concat_files.get('r')}"
                         f" {fp} {fu} {rp} {ru}"
-                        f" ILLUMINACLIP:{self.folders.adapters}/NexteraPE-PE.fa:2:30:10"
+                        f" ILLUMINACLIP:{self.singularity.trimmomatic_adapters}/NexteraPE-PE.fa:2:30:10"
                         " LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36"
                     ),
                 )
@@ -579,9 +595,7 @@ class Job_Creator:
             else:
                 self.create_project(self.name)
         except Exception:
-            self.logger.error(
-                f"LIMS interaction failed. Unable to read/write project {self.name}"
-            )
+            self.logger.error(f"LIMS interaction failed. Unable to read/write project {self.name}")
         # Writes the job creation sbatch
         if single_sample:
             try:
@@ -648,7 +662,9 @@ class Job_Creator:
 
     def _write_mailjob(self, mailfile: str, report: str, custom_conf: str) -> None:
         """Write the mailjob.sh script that runs `microsalt utils finish` after all jobs complete."""
-        _ep = next(ep for ep in entry_points(group="console_scripts") if ep.value == "microSALT.cli:root")
+        _ep = next(
+            ep for ep in entry_points(group="console_scripts") if ep.value == "microSALT.cli:root"
+        )
         microsalt_bin = Path(sys.executable).parent / _ep.name
         with open(mailfile, "w+") as mb:
             mb.write("#!/usr/bin/env bash\n\n")
@@ -788,9 +804,7 @@ class Job_Creator:
             except Exception:
                 self.logger.error(f"Unable to access LIMS info for sample {self.name}")
         except Exception as e:
-            self.logger.error(
-                f"Unable to create job for sample {self.name}\nSource: {e!s}"
-            )
+            self.logger.error(f"Unable to create job for sample {self.name}\nSource: {e!s}")
             shutil.rmtree(self.finishdir, ignore_errors=True)
             raise
 
@@ -824,9 +838,7 @@ class Job_Creator:
         batchfile = open(self.batchfile, "a+")
         batchfile.close()
 
-        headerline = (
-            f"-A {self.slurm_header.project} -p {self.slurm_header.type} -n 1 -t 24:00:00 -J {self.slurm_header.job_prefix}_{self.name} --qos {self.slurm_header.qos} --output {self.finishdir}/slurm_{self.name}.log"
-        )
+        headerline = f"-A {self.slurm_header.project} -p {self.slurm_header.type} -n 1 -t 24:00:00 -J {self.slurm_header.job_prefix}_{self.name} --qos {self.slurm_header.qos} --output {self.finishdir}/slurm_{self.name}.log"
         outfile = self.get_sbatch()
         bash_cmd = f"sbatch {headerline} {outfile}"
         samproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)

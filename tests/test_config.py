@@ -4,13 +4,13 @@ import pytest
 from pydantic import ValidationError
 
 from microSALT.config import (
-    MicroSALTConfig,
-    load_config,
+    Database,
     Folders,
+    MicroSALTConfig,
     Regex,
     SlurmHeader,
     Threshold,
-    Database,
+    load_config,
 )
 
 CONFIGEXAMPLE = str(pathlib.Path(__file__).parent.parent / "configExample.json")
@@ -53,7 +53,6 @@ def test_folders_fields():
     assert cfg.folders.resistances
     assert cfg.folders.genomes
     assert cfg.folders.credentials
-    assert cfg.folders.adapters
 
 
 def test_expec_path_injected():
