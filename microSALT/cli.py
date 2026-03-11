@@ -16,7 +16,7 @@ import click
 from microSALT import __version__, logging_levels, setup_logger
 from microSALT.config import MicroSALTConfig, load_config
 from microSALT.exc.exceptions import RefUpdateLockError
-from microSALT.store.database import get_scoped_session_registry, initialize_database
+from microSALT.store.database import create_tables, get_scoped_session_registry, initialize_database
 from microSALT.utils.job_creator import Job_Creator
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.reporter import Reporter
@@ -154,6 +154,8 @@ def setup(config: MicroSALTConfig):
     """Create all configured directories and verify database access. Run once after installation."""
     _ensure_directories(config)
     click.echo("INFO - Directory setup complete.")
+    create_tables()
+    click.echo("INFO - Database tables created (or already exist).")
     done()
 
 

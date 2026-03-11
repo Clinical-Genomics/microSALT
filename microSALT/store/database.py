@@ -3,6 +3,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from microSALT.exc.exceptions import MicroSALTError
+from microSALT.store.orm_models import Base
 
 session: scoped_session | None = None
 engine: Engine | None = None
@@ -34,3 +35,10 @@ def get_engine() -> Engine:
     if not engine:
         raise MicroSALTError("Database not initialised")
     return engine
+
+
+def create_tables() -> None:
+    """Create all ORM-defined tables that do not yet exist in the database."""
+    if not engine:
+        raise MicroSALTError("Database not initialised")
+    Base.metadata.create_all(engine)
