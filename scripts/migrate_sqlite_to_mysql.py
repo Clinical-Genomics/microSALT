@@ -101,8 +101,8 @@ def main() -> int:
     parser.add_argument(
         "--sqlite",
         required=True,
-        metavar="URI",
-        help="SQLAlchemy URI for the source SQLite DB  (e.g. sqlite:////path/to/microsalt.db)",
+        metavar="PATH_OR_URI",
+        help="Path to the source SQLite file, or a full SQLAlchemy URI  (e.g. sqlite:////path/to/microsalt.db)",
     )
     parser.add_argument(
         "--mysql",
@@ -117,12 +117,19 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    print(f"Source : {args.sqlite}")
+    # Accept a bare file path as well as a full SQLAlchemy URI
+    sqlite_uri = args.sqlite
+    if not sqlite_uri.startswith("sqlite:"):
+        import os
+
+        sqlite_uri = "sqlite:///" + os.path.abspath(sqlite_uri)
+
+    print(f"Source : {sqlite_uri}")
     print(f"Target : {args.mysql}")
     if args.dry_run:
         print("DRY RUN — no data will be written.\n")
 
-    src_engine = create_engine(args.sqlite, pool_pre_ping=True)
+    src_engine = create_engine(sqlite_uri, pool_pre_ping=True)
     dst_engine = create_engine(args.mysql, pool_pre_ping=True)
 
     # Ensure all ORM tables exist in the destination
@@ -133,11 +140,11 @@ def main() -> int:
     total_skipped = 0
 
     with Session(src_engine) as src_session, Session(dst_engine) as dst_session:
+        src_inspector = inspect(src_engine)
         for model in TABLES:
             table_name = model.__tablename__
 
             # Check whether the table exists in the source at all
-            src_inspector = inspect(src_engine)
             if table_name not in src_inspector.get_table_names():
                 print(f"  {table_name:<20} — not present in source, skipping")
                 continue
