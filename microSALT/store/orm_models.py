@@ -27,7 +27,7 @@ class Samples(Base):
     CG_ID_sample = Column(String(15), primary_key=True, nullable=False)
     CG_ID_project = Column(String(15), ForeignKey("projects.CG_ID_project"))
     Customer_ID_sample = Column(String(40))
-    organism = Column(String(30))
+    organism = Column(String(100))
     ST = Column(SmallInteger, default=-1)
     pubmlst_ST = Column(SmallInteger, default=-1)
     date_analysis = Column(DateTime)

@@ -20,7 +20,7 @@ primary key) are skipped rather than duplicated or overwritten.
 import argparse
 import sys
 
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import String, create_engine, inspect, text
 from sqlalchemy.orm import Session
 
 from microSALT.store.orm_models import (
@@ -48,6 +48,48 @@ TABLES: list[type] = [
     Versions,
     SystemLock,
 ]
+
+
+def _widen_varchar_columns(dst_engine) -> None:
+    """ALTER any MySQL VARCHAR column that is narrower than the ORM definition.
+
+    Called after create_all so that tables are guaranteed to exist.
+    Handles the case where the schema was already created with an older,
+    narrower column definition.
+    """
+    dst_inspector = inspect(dst_engine)
+    existing_tables = dst_inspector.get_table_names()
+
+    with dst_engine.connect() as conn:
+        for model in TABLES:
+            table_name = model.__tablename__
+            if table_name not in existing_tables:
+                continue
+
+            actual_cols = {c["name"]: c for c in dst_inspector.get_columns(table_name)}
+
+            for col in inspect(model).mapper.columns:
+                if not isinstance(col.type, String):
+                    continue
+                orm_len = col.type.length
+                if orm_len is None:
+                    continue
+                actual = actual_cols.get(col.name)
+                if actual is None:
+                    continue
+                actual_len = getattr(actual["type"], "length", None)
+                if actual_len is not None and actual_len < orm_len:
+                    print(
+                        f"  Widening {table_name}.{col.name}: "
+                        f"VARCHAR({actual_len}) → VARCHAR({orm_len})"
+                    )
+                    conn.execute(
+                        text(
+                            f"ALTER TABLE `{table_name}` MODIFY COLUMN"
+                            f" `{col.name}` VARCHAR({orm_len})"
+                        )
+                    )
+        conn.commit()
 
 
 def _columns(model: type) -> list[str]:
@@ -132,9 +174,11 @@ def main() -> int:
     src_engine = create_engine(sqlite_uri, pool_pre_ping=True)
     dst_engine = create_engine(args.mysql, pool_pre_ping=True)
 
-    # Ensure all ORM tables exist in the destination
+    # Ensure all ORM tables exist in the destination, then widen any columns
+    # that are narrower in MySQL than the current ORM definition.
     if not args.dry_run:
         Base.metadata.create_all(dst_engine)
+        _widen_varchar_columns(dst_engine)
 
     total_inserted = 0
     total_skipped = 0
