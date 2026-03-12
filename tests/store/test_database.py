@@ -298,8 +298,8 @@ def test_get_columns(dbm):
 def test_exists(dbm):
     dbm.add_rec({"CG_ID_sample": "EXS_001"}, "Samples")
 
-    assert dbm.exists("Samples", {"CG_ID_sample": "EXS_001"}) is True
-    assert dbm.exists("Samples", {"CG_ID_sample": "DOES_NOT_EXIST"}) is False
+    assert dbm.read_exists("Samples", {"CG_ID_sample": "EXS_001"}) is True
+    assert dbm.read_exists("Samples", {"CG_ID_sample": "DOES_NOT_EXIST"}) is False
 
 
 def test_add_rec_unknown_table(caplog, dbm):
