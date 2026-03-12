@@ -21,6 +21,7 @@ import argparse
 import sys
 
 from sqlalchemy import create_engine, inspect
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from microSALT.store.orm_models import (
@@ -49,6 +50,7 @@ TABLES: list[type] = [
     SystemLock,
 ]
 
+
 def _columns(model: type) -> list[str]:
     """Return the list of column attribute names for an ORM model."""
     return [c.key for c in inspect(model).mapper.column_attrs]
@@ -70,6 +72,7 @@ def migrate_table(src: Session, dst: Session, model: type) -> tuple[int, int]:
 
     inserted = 0
     skipped = 0
+    orphaned = 0
 
     rows = src.query(model).all()
     for row in rows:
@@ -89,10 +92,14 @@ def migrate_table(src: Session, dst: Session, model: type) -> tuple[int, int]:
         # source session's identity map.
         new_obj = model(**{col: getattr(row, col) for col in cols})
         dst.add(new_obj)
-        inserted += 1
+        try:
+            dst.flush()
+            inserted += 1
+        except IntegrityError:
+            dst.rollback()
+            orphaned += 1
 
-    dst.flush()
-    return inserted, skipped
+    return inserted, skipped, orphaned
 
 
 def main() -> int:
@@ -159,12 +166,13 @@ def main() -> int:
                 continue
 
             try:
-                inserted, skipped = migrate_table(src_session, dst_session, model)
-                print(
-                    f"  {table_name:<20} — inserted {inserted}, skipped {skipped} (already present)"
-                )
+                inserted, skipped, orphaned = migrate_table(src_session, dst_session, model)
+                summary = f"inserted {inserted}, skipped {skipped} (already present)"
+                if orphaned:
+                    summary += f", skipped {orphaned} (orphaned, no parent row)"
+                print(f"  {table_name:<20} — {summary}")
                 total_inserted += inserted
-                total_skipped += skipped
+                total_skipped += skipped + orphaned
             except Exception as exc:
                 dst_session.rollback()
                 print(f"  {table_name:<20} — ERROR: {exc}", file=sys.stderr)
