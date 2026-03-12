@@ -62,7 +62,7 @@ class Scraper:
         """Scrapes a project folder for information"""
         if project is None:
             project = self.name
-        self.db_pusher.purge_rec(project, "Projects")
+        self.db_pusher.delete_records(project, "Projects")
         if not self.db_pusher.read_exists("Projects", {"CG_ID_project": project}):
             self.logger.warning(f"Replacing project {project}")
             self.job_fallback.create_project(project)
@@ -95,7 +95,7 @@ class Scraper:
         """Scrapes a sample folder for information"""
         if sample is None:
             sample = self.name
-        self.db_pusher.purge_rec(sample, "Samples")
+        self.db_pusher.delete_records(sample, "Samples")
 
         if not self.db_pusher.read_exists(
             "Projects", {"CG_ID_project": self.sample.get("CG_ID_project")}

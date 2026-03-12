@@ -256,10 +256,10 @@ def test_get_and_set_report(dbm):
 @patch("sys.exit")
 def test_purge_rec(sysexit, caplog, dbm):
     dbm.add_rec({"CG_ID_sample": "UPD1234A1"}, "Samples")
-    dbm.purge_rec("UPD1234A1", "Collections")
+    dbm.delete_records("UPD1234A1", "Collections")
 
     caplog.clear()
-    dbm.purge_rec("UPD1234A1", "Not_Samples_nor_Collections")
+    dbm.delete_records("UPD1234A1", "Not_Samples_nor_Collections")
     assert "Incorrect type" in caplog.text
 
 

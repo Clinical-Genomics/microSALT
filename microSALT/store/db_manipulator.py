@@ -242,7 +242,7 @@ class DB_Manipulator:
             self.session.commit()
         self.logger.debug(f"Updated table {tablename} with {upd_dict} for {req_dict}")
 
-    def purge_rec(self, name: str, type: str):
+    def delete_records(self, name: str, type: str):
         """Removes seq_data, resistances, sample(s) and possibly project"""
         entries = list()
         if type == "Projects":
