@@ -39,7 +39,6 @@ def config(tmp_path_factory: pytest.TempPathFactory) -> MicroSALTConfig:
     for d in (results, reports, seqdata, profiles, references, resistances, genomes, credentials):
         d.mkdir(parents=True, exist_ok=True)
 
-    log_file = base / "microsalt.log"
     db_path = base / "microsalt.db"
 
     cfg = MicroSALTConfig(
@@ -59,7 +58,6 @@ def config(tmp_path_factory: pytest.TempPathFactory) -> MicroSALTConfig:
         folders=Folders(
             results=str(results),
             reports=str(reports),
-            log_file=str(log_file),
             seqdata=str(seqdata),
             profiles=str(profiles),
             references=str(references),
@@ -130,7 +128,6 @@ def exp_config():
         "folders": {
             "results",
             "reports",
-            "log_file",
             "seqdata",
             "profiles",
             "references",

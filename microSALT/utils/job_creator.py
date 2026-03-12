@@ -742,7 +742,7 @@ class Job_Creator:
             f"-A {self.slurm_header.project} -p core -n 1 -t 6:00:00 "
             f"-J {self.slurm_header.job_prefix}_{self.name}_MAILJOB "
             f"--qos {self.slurm_header.qos} --open-mode append "
-            f"--dependency=afterany:{final} --output {self.folders.log_file}"
+            f"--dependency=afterany:{final} --output {self.finishdir}/mailjob.out"
         )
         bash_cmd = f"sbatch {head} {mailfile}"
         mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)

@@ -23,7 +23,6 @@ class Regex(BaseModel):
 class Folders(BaseModel):
     results: str
     reports: str
-    log_file: str
     seqdata: str
     profiles: str
     references: str

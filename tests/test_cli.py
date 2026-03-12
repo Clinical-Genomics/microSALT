@@ -51,7 +51,6 @@ def setup_config(tmp_path: Path) -> MicroSALTConfig:
         folders=Folders(
             results=str(base / "results"),
             reports=str(base / "reports"),
-            log_file=str(base / "microsalt.log"),
             seqdata=str(base / "seqdata"),
             profiles=str(base / "profiles"),
             references=str(base / "references"),

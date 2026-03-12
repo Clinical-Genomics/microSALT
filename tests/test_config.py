@@ -46,7 +46,6 @@ def test_folders_fields():
     cfg = load_config(CONFIGEXAMPLE)
     assert cfg.folders.results
     assert cfg.folders.reports
-    assert cfg.folders.log_file
     assert cfg.folders.seqdata
     assert cfg.folders.profiles
     assert cfg.folders.references

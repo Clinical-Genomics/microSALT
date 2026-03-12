@@ -1,14 +1,9 @@
 import os
 import sys
-from argparse import ArgumentParser
 
 from requests_oauthlib import OAuth1Session
 
 from microSALT.config import (
-    Folders,
-    PasteurCredentials,
-    PubMLSTCredentials,
-    load_config,
     MicroSALTConfig,
 )
 from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
@@ -118,28 +113,3 @@ def main(service: str, config: MicroSALTConfig, species: str | None = None):
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
-
-
-if __name__ == "__main__":
-    parser = ArgumentParser(description="Get PubMLST or Pasteur credentials.")
-    parser.add_argument(
-        "-s",
-        "--service",
-        type=str,
-        default="pubmlst",
-        help="Service name (default: pubmlst)",
-    )
-    parser.add_argument(
-        "--species",
-        type=str,
-        help="Species name (required for the 'pasteur' service)",
-    )
-    parser.add_argument(
-        "--config",
-        type=str,
-        required=True,
-        help="Path to the microSALT configuration JSON file.",
-    )
-    args = parser.parse_args()
-    cfg = load_config(args.config)
-    main(args.service, cfg, args.species)

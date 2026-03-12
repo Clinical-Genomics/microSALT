@@ -22,6 +22,7 @@ from microSALT.store.database import (
     initialize_database,
 )
 from microSALT.utils.job_creator import Job_Creator
+from microSALT.utils.pubmlst.get_credentials import main as get_bigsdb_credentials_main
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.reporter import Reporter
 from microSALT.utils.scraper import Scraper
@@ -98,12 +99,6 @@ def _ensure_directories(config: MicroSALTConfig) -> None:
         if proc.returncode != 0:
             click.echo("ERROR - Database writing failed! Invalid user access detected!")
             sys.exit(-1)
-
-    log_dir = os.path.dirname(config.folders.log_file)
-    if log_dir and not pathlib.Path(log_dir).exists():
-        os.makedirs(log_dir)
-    proc = subprocess.Popen(f"touch {config.folders.log_file}".split(), stdout=subprocess.PIPE)
-    proc.communicate()
 
     folder_paths = [
         config.folders.results,
@@ -468,6 +463,15 @@ def report(config: MicroSALTConfig, sampleinfo_file, email, type, output, collec
     )
     codemonkey.report(type)
     done()
+
+
+@utils.command("get-bigsdb-credentials")
+@click.argument("service", type=click.Choice(["pubmlst", "pasteur"]))
+@click.option("--species", default=None, help="Species name (required for the 'pasteur' service)")
+@pass_config
+def get_bigsdb_credentials(config: MicroSALTConfig, service, species):
+    """Obtain and store BIGSdb OAuth credentials for SERVICE (pubmlst or pasteur)"""
+    get_bigsdb_credentials_main(service, config, species)
 
 
 @utils.command()
