@@ -112,6 +112,7 @@ class BaseClient:
                 client_secret=self.consumer_secret,
                 resource_owner_key=token,
                 resource_owner_secret=secret,
+                signature_type="query",
             )
 
             response = session.request(method.value, url)

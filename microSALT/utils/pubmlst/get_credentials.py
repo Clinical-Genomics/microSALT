@@ -23,12 +23,14 @@ def get_new_access_token(
 ) -> tuple[str, str]:
     """Obtain a new access token and secret.
 
-    BIGSdb OAuth endpoints require GET (not POST), so we use oauth.get()
-    directly rather than requests-oauthlib's fetch_request_token/fetch_access_token
-    helpers, which both default to POST.
+    BIGSdb OAuth endpoints require GET (not POST), and expect OAuth parameters
+    as query string parameters (not in the Authorization header), so we use
+    signature_type='query' and oauth.get() directly.
     """
     # Step 1: GET request token
-    oauth = OAuth1Session(client_id, client_secret=client_secret, callback_uri="oob")
+    oauth = OAuth1Session(
+        client_id, client_secret=client_secret, callback_uri="oob", signature_type="query"
+    )
     response = oauth.get(f"{base_api}/db/{db}/oauth/get_request_token")
     if not response.ok:
         print(f"Error obtaining request token: {response.text}")
@@ -51,6 +53,7 @@ def get_new_access_token(
         resource_owner_key=request_token,
         resource_owner_secret=request_secret,
         verifier=verifier,
+        signature_type="query",
     )
     response = oauth.get(f"{base_api}/db/{db}/oauth/get_access_token")
     if not response.ok:

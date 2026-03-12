@@ -63,6 +63,7 @@ class ClientAuthentication:
                 client_secret=consumer_secret,
                 resource_owner_key=access_token,
                 resource_owner_secret=access_secret,
+                signature_type="query",
             )
 
             response = session.get(url, headers={"User-Agent": "BIGSdb API downloader"})
