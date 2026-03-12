@@ -21,15 +21,21 @@ def validate_credentials(client_id, client_secret):
 def get_new_access_token(
     client_id, client_secret, db: str, base_api: str, base_web: str
 ) -> tuple[str, str]:
-    """Obtain a new access token and secret."""
-    # Step 1: fetch request token
+    """Obtain a new access token and secret.
+
+    BIGSdb OAuth endpoints require GET (not POST), so we use oauth.get()
+    directly rather than requests-oauthlib's fetch_request_token/fetch_access_token
+    helpers, which both default to POST.
+    """
+    # Step 1: GET request token
     oauth = OAuth1Session(client_id, client_secret=client_secret, callback_uri="oob")
-    response = oauth.fetch_request_token(f"{base_api}/db/{db}/oauth/get_request_token")
-    if not response:
-        print("Error obtaining request token.")
+    response = oauth.get(f"{base_api}/db/{db}/oauth/get_request_token")
+    if not response.ok:
+        print(f"Error obtaining request token: {response.text}")
         sys.exit(1)
-    request_token = response["oauth_token"]
-    request_secret = response["oauth_token_secret"]
+    token_data = response.json()
+    request_token = token_data["oauth_token"]
+    request_secret = token_data["oauth_token_secret"]
 
     print(
         "Please log in using your user account at "
@@ -38,7 +44,7 @@ def get_new_access_token(
     )
     verifier = input("Please enter verification code: ")
 
-    # Step 2: exchange for access token
+    # Step 2: GET access token
     oauth = OAuth1Session(
         client_id,
         client_secret=client_secret,
@@ -46,10 +52,11 @@ def get_new_access_token(
         resource_owner_secret=request_secret,
         verifier=verifier,
     )
-    access_data = oauth.fetch_access_token(f"{base_api}/db/{db}/oauth/get_access_token")
-    if not access_data:
-        print("Error obtaining access token.")
+    response = oauth.get(f"{base_api}/db/{db}/oauth/get_access_token")
+    if not response.ok:
+        print(f"Error obtaining access token: {response.text}")
         sys.exit(1)
+    access_data = response.json()
     return access_data["oauth_token"], access_data["oauth_token_secret"]
 
 
