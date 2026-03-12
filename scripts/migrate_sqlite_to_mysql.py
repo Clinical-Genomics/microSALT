@@ -1,0 +1,176 @@
+#!/usr/bin/env python
+"""Migrate ORM table data from an old SQLite database to a new MySQL database.
+
+Tables migrated (insertion order respects FK constraints):
+  projects → samples → seq_types → resistances → expacs
+  → reports → collections → versions → system_locks
+
+Profile/Novel tables (managed outside of the ORM declarative base) are
+intentionally excluded.
+
+Usage:
+    python scripts/migrate_sqlite_to_mysql.py \\
+        --sqlite  sqlite:////path/to/old/microsalt.db \\
+        --mysql   mysql+pymysql://user:pass@host/dbname
+
+The script is idempotent: rows already present in the target (matched by
+primary key) are skipped rather than duplicated or overwritten.
+"""
+
+import argparse
+import sys
+
+from sqlalchemy import create_engine, inspect
+from sqlalchemy.orm import Session
+
+from microSALT.store.orm_models import (
+    Base,
+    Collections,
+    Expacs,
+    Projects,
+    Reports,
+    Resistances,
+    Samples,
+    Seq_types,
+    SystemLock,
+    Versions,
+)
+
+# Tables in the order they must be inserted to satisfy FK constraints.
+TABLES: list[type] = [
+    Projects,
+    Samples,
+    Seq_types,
+    Resistances,
+    Expacs,
+    Reports,
+    Collections,
+    Versions,
+    SystemLock,
+]
+
+
+def _columns(model: type) -> list[str]:
+    """Return the list of column attribute names for an ORM model."""
+    return [c.key for c in inspect(model).mapper.column_attrs]
+
+
+def _pk_columns(model: type) -> list[str]:
+    """Return the primary key column names for an ORM model."""
+    return [col.name for col in inspect(model).mapper.primary_key]
+
+
+def migrate_table(src: Session, dst: Session, model: type) -> tuple[int, int]:
+    """Copy rows from src to dst for the given model.
+
+    Returns (inserted, skipped) counts.
+    """
+    table_name = model.__tablename__
+    cols = _columns(model)
+    pk_cols = _pk_columns(model)
+
+    inserted = 0
+    skipped = 0
+
+    rows = src.query(model).all()
+    for row in rows:
+        # Check if the row already exists in the destination by PK lookup
+        pk_filter = {col: getattr(row, col) for col in pk_cols}
+        exists = dst.get(
+            model,
+            tuple(pk_filter[c] for c in pk_cols)
+            if len(pk_cols) > 1
+            else next(iter(pk_filter.values())),
+        )
+        if exists is not None:
+            skipped += 1
+            continue
+
+        # Build a fresh detached copy so we don't accidentally modify the
+        # source session's identity map.
+        new_obj = model(**{col: getattr(row, col) for col in cols})
+        dst.add(new_obj)
+        inserted += 1
+
+    dst.flush()
+    return inserted, skipped
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Migrate microSALT ORM data from SQLite to MySQL.")
+    parser.add_argument(
+        "--sqlite",
+        required=True,
+        metavar="URI",
+        help="SQLAlchemy URI for the source SQLite DB  (e.g. sqlite:////path/to/microsalt.db)",
+    )
+    parser.add_argument(
+        "--mysql",
+        required=True,
+        metavar="URI",
+        help="SQLAlchemy URI for the target MySQL DB  (e.g. mysql+pymysql://user:pass@host/db)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Read source data and report counts without writing to MySQL.",
+    )
+    args = parser.parse_args()
+
+    print(f"Source : {args.sqlite}")
+    print(f"Target : {args.mysql}")
+    if args.dry_run:
+        print("DRY RUN — no data will be written.\n")
+
+    src_engine = create_engine(args.sqlite, pool_pre_ping=True)
+    dst_engine = create_engine(args.mysql, pool_pre_ping=True)
+
+    # Ensure all ORM tables exist in the destination
+    if not args.dry_run:
+        Base.metadata.create_all(dst_engine)
+
+    total_inserted = 0
+    total_skipped = 0
+
+    with Session(src_engine) as src_session, Session(dst_engine) as dst_session:
+        for model in TABLES:
+            table_name = model.__tablename__
+
+            # Check whether the table exists in the source at all
+            src_inspector = inspect(src_engine)
+            if table_name not in src_inspector.get_table_names():
+                print(f"  {table_name:<20} — not present in source, skipping")
+                continue
+
+            row_count = src_session.query(model).count()
+            if row_count == 0:
+                print(f"  {table_name:<20} — 0 rows in source, skipping")
+                continue
+
+            if args.dry_run:
+                print(f"  {table_name:<20} — {row_count} rows would be processed")
+                total_inserted += row_count
+                continue
+
+            try:
+                inserted, skipped = migrate_table(src_session, dst_session, model)
+                print(
+                    f"  {table_name:<20} — inserted {inserted}, skipped {skipped} (already present)"
+                )
+                total_inserted += inserted
+                total_skipped += skipped
+            except Exception as exc:
+                dst_session.rollback()
+                print(f"  {table_name:<20} — ERROR: {exc}", file=sys.stderr)
+                print("Rolling back entire transaction.", file=sys.stderr)
+                return 1
+
+        if not args.dry_run:
+            dst_session.commit()
+
+    print(f"\nDone. Inserted {total_inserted} rows, skipped {total_skipped} duplicates.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
