@@ -2,10 +2,15 @@ import os
 import sys
 from argparse import ArgumentParser
 
-from rauth import OAuth1Service
+from requests_oauthlib import OAuth1Session
 
-from microSALT.config import load_config
-from microSALT.config import Folders, PubMLSTCredentials, PasteurCredentials
+from microSALT.config import (
+    Folders,
+    PasteurCredentials,
+    PubMLSTCredentials,
+    load_config,
+    MicroSALTConfig,
+)
 from microSALT.utils.pubmlst.constants import CREDENTIALS_KEY
 from microSALT.utils.pubmlst.helpers import get_path, get_service_config
 
@@ -18,27 +23,19 @@ def validate_credentials(client_id, client_secret):
         raise ValueError("Invalid CLIENT_SECRET: It must not be empty.")
 
 
-def get_request_token(service):
-    """Handle JSON response from the request token endpoint."""
-    response = service.get_raw_request_token(params={"oauth_callback": "oob"})
-    if not response.ok:
-        print(f"Error obtaining request token: {response.text}")
-        sys.exit(1)
-    data = response.json()
-    return data["oauth_token"], data["oauth_token_secret"]
-
-
-def get_new_access_token(client_id, client_secret, db: str, base_api: str, base_web: str):
+def get_new_access_token(
+    client_id, client_secret, db: str, base_api: str, base_web: str
+) -> tuple[str, str]:
     """Obtain a new access token and secret."""
-    service = OAuth1Service(
-        name="BIGSdb_downloader",
-        consumer_key=client_id,
-        consumer_secret=client_secret,
-        request_token_url=f"{base_api}/db/{db}/oauth/get_request_token",
-        access_token_url=f"{base_api}/db/{db}/oauth/get_access_token",
-        base_url=base_api,
-    )
-    request_token, request_secret = get_request_token(service)
+    # Step 1: fetch request token
+    oauth = OAuth1Session(client_id, client_secret=client_secret, callback_uri="oob")
+    response = oauth.fetch_request_token(f"{base_api}/db/{db}/oauth/get_request_token")
+    if not response:
+        print("Error obtaining request token.")
+        sys.exit(1)
+    request_token = response["oauth_token"]
+    request_secret = response["oauth_token_secret"]
+
     print(
         "Please log in using your user account at "
         f"{base_web}?db={db}&page=authorizeClient&oauth_token={request_token} "
@@ -46,20 +43,24 @@ def get_new_access_token(client_id, client_secret, db: str, base_api: str, base_
     )
     verifier = input("Please enter verification code: ")
 
-    raw_access = service.get_raw_access_token(
-        request_token, request_secret, params={"oauth_verifier": verifier}
+    # Step 2: exchange for access token
+    oauth = OAuth1Session(
+        client_id,
+        client_secret=client_secret,
+        resource_owner_key=request_token,
+        resource_owner_secret=request_secret,
+        verifier=verifier,
     )
-    if not raw_access.ok:
-        print(f"Error obtaining access token: {raw_access.text}")
+    access_data = oauth.fetch_access_token(f"{base_api}/db/{db}/oauth/get_access_token")
+    if not access_data:
+        print("Error obtaining access token.")
         sys.exit(1)
-
-    access_data = raw_access.json()
     return access_data["oauth_token"], access_data["oauth_token_secret"]
 
 
 def save_to_credentials_py(
     client_id, client_secret, access_token, access_secret, credentials_path, credentials_file
-):
+) -> None:
     """Save tokens in the credentials.py file."""
     credentials_path.mkdir(parents=True, exist_ok=True)
 
@@ -71,7 +72,7 @@ def save_to_credentials_py(
     print(f"Tokens saved to {credentials_file}")
 
 
-def main(service, config, species=None):
+def main(service: str, config: MicroSALTConfig, species: str | None = None):
     try:
         service_config = get_service_config(service, pubmlst=config.pubmlst, pasteur=config.pasteur)
         bigsd_config = service_config["config"]
@@ -89,7 +90,7 @@ def main(service, config, species=None):
         else:
             raise ValueError(f"Unknown service: {service}")
 
-        credentials_path = get_path(config.folders, CREDENTIALS_KEY)
+        credentials_path = get_path(folders=config.folders, config_key=CREDENTIALS_KEY)
         credentials_file = os.path.join(
             credentials_path, service_config.get("auth_credentials_file_name")
         )

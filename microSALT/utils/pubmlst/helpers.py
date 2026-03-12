@@ -18,10 +18,10 @@ from microSALT.utils.pubmlst.exceptions import (
 logger = logging.getLogger("main_logger")
 
 
-def get_path(config, config_key: str):
+def get_path(folders: Folders, config_key: str) -> Path:
     """Get and expand the file path from the configuration."""
     try:
-        path = getattr(config, config_key, None)
+        path = getattr(folders, config_key, None)
         if not path:
             raise PathResolutionError(config_key)
 
@@ -34,7 +34,7 @@ def get_path(config, config_key: str):
         raise PathResolutionError(config_key) from e
 
 
-def get_service_config(service: str, pubmlst: PubMLSTCredentials = None, pasteur: PasteurCredentials = None):
+def get_service_config(service: str, pubmlst: PubMLSTCredentials | None = None, pasteur: PasteurCredentials  | None= None):
     """
     Get the configuration for the specified service (e.g., 'pubmlst' or 'pasteur').
 
