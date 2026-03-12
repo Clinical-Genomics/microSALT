@@ -15,3 +15,5 @@ USER $MAMBA_USER
 RUN micromamba install -y -n base -c conda-forge -c bioconda \
         samtools=1.13 \
     && micromamba clean -afy
+
+ENV PATH="/opt/conda/bin:$PATH"

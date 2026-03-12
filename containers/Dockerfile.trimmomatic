@@ -19,3 +19,5 @@ USER $MAMBA_USER
 RUN micromamba install -y -n base -c conda-forge -c bioconda \
         trimmomatic=0.39 \
     && micromamba clean -afy
+
+ENV PATH="/opt/conda/bin:$PATH"

@@ -19,3 +19,5 @@ RUN micromamba install -y -n base -c conda-forge -c bioconda \
         picard=2.20.3 \
         r-base=4.1.1 \
     && micromamba clean -afy
+
+ENV PATH="/opt/conda/bin:$PATH"
