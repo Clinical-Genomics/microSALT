@@ -54,8 +54,8 @@ class Samples(Base):
     date_analysis = Column(DateTime)
     date_sequencing = Column(DateTime)
     date_libprep = Column(DateTime)
-    method_sequencing = Column(String(15))
-    method_libprep = Column(String(15))
+    method_sequencing = Column(String(64))
+    method_libprep = Column(String(64))
 
 
 class Seq_types(Base):
