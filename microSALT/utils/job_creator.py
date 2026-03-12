@@ -525,7 +525,7 @@ class Job_Creator:
 
     def create_collection(self):
         """Creates collection entry in database"""
-        if self.db_pusher.exists("Collections", {"ID_collection": self.name}):
+        if self.db_pusher.read_exists("Collections", {"ID_collection": self.name}):
             self.db_pusher.purge_rec(name=self.name, type="Collections")
             for sample in self.pool:
                 self.db_pusher.add_rec(
@@ -551,7 +551,7 @@ class Job_Creator:
     def create_sample(self, name):
         """Creates sample in database"""
         try:
-            sample_col = self.db_pusher.get_columns("Samples")
+            sample_col = self.db_pusher.read_columns("Samples")
             sample_col["CG_ID_sample"] = self.sample.get("CG_ID_sample")
             sample_col["CG_ID_project"] = self.sample.get("CG_ID_project")
             sample_col["Customer_ID_sample"] = self.sample.get("Customer_ID_sample")

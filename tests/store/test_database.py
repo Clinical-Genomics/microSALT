@@ -35,8 +35,8 @@ def test_add_rec(caplog, profile_dbm):
         },
         dbm.profiles["staphylococcus_aureus"],
     )
-    assert len(dbm.query_rec(dbm.profiles["staphylococcus_aureus"], {"ST": "130"})) == 1
-    assert len(dbm.query_rec(dbm.profiles["staphylococcus_aureus"], {"ST": "-1"})) == 0
+    assert len(dbm.read_records(dbm.profiles["staphylococcus_aureus"], {"ST": "130"})) == 1
+    assert len(dbm.read_records(dbm.profiles["staphylococcus_aureus"], {"ST": "-1"})) == 0
 
     # Novel table
     dbm.add_rec(
@@ -52,18 +52,18 @@ def test_add_rec(caplog, profile_dbm):
         },
         dbm.novel["staphylococcus_aureus"],
     )
-    assert len(dbm.query_rec(dbm.novel["staphylococcus_aureus"], {"ST": "130"})) == 1
-    assert len(dbm.query_rec(dbm.novel["staphylococcus_aureus"], {"ST": "-1"})) == 0
+    assert len(dbm.read_records(dbm.novel["staphylococcus_aureus"], {"ST": "130"})) == 1
+    assert len(dbm.read_records(dbm.novel["staphylococcus_aureus"], {"ST": "-1"})) == 0
 
     # ORM tables
     dbm.add_rec({"CG_ID_sample": "ADD1234A1"}, "Samples")
-    assert len(dbm.query_rec("Samples", {"CG_ID_sample": "ADD1234A1"})) > 0
-    assert len(dbm.query_rec("Samples", {"CG_ID_sample": "XXX1234A10"})) == 0
+    assert len(dbm.read_records("Samples", {"CG_ID_sample": "ADD1234A1"})) > 0
+    assert len(dbm.read_records("Samples", {"CG_ID_sample": "XXX1234A10"})) == 0
 
     dbm.add_rec({"CG_ID_sample": "ADD1234A1", "loci": "mdh", "contig_name": "NODE_1"}, "Seq_types")
     assert (
         len(
-            dbm.query_rec(
+            dbm.read_records(
                 "Seq_types", {"CG_ID_sample": "ADD1234A1", "loci": "mdh", "contig_name": "NODE_1"}
             )
         )
@@ -71,7 +71,7 @@ def test_add_rec(caplog, profile_dbm):
     )
     assert (
         len(
-            dbm.query_rec(
+            dbm.read_records(
                 "Seq_types", {"CG_ID_sample": "XXX1234A10", "loci": "mdh", "contig_name": "NODE_1"}
             )
         )
@@ -89,7 +89,7 @@ def test_add_rec(caplog, profile_dbm):
     )
     assert (
         len(
-            dbm.query_rec(
+            dbm.read_records(
                 "Resistances",
                 {
                     "CG_ID_sample": "ADD1234A1",
@@ -103,7 +103,7 @@ def test_add_rec(caplog, profile_dbm):
     )
     assert (
         len(
-            dbm.query_rec(
+            dbm.read_records(
                 "Resistances",
                 {
                     "CG_ID_sample": "XXX1234A10",
@@ -127,7 +127,7 @@ def test_add_rec(caplog, profile_dbm):
     )
     assert (
         len(
-            dbm.query_rec(
+            dbm.read_records(
                 "Expacs",
                 {
                     "CG_ID_sample": "ADD1234A1",
@@ -141,7 +141,7 @@ def test_add_rec(caplog, profile_dbm):
     )
     assert (
         len(
-            dbm.query_rec(
+            dbm.read_records(
                 "Expacs",
                 {
                     "CG_ID_sample": "XXX1234A10",
@@ -155,17 +155,17 @@ def test_add_rec(caplog, profile_dbm):
     )
 
     dbm.add_rec({"CG_ID_project": "ADD1234"}, "Projects")
-    assert len(dbm.query_rec("Projects", {"CG_ID_project": "ADD1234"})) > 0
-    assert len(dbm.query_rec("Projects", {"CG_ID_project": "XXX1234"})) == 0
+    assert len(dbm.read_records("Projects", {"CG_ID_project": "ADD1234"})) > 0
+    assert len(dbm.read_records("Projects", {"CG_ID_project": "XXX1234"})) == 0
 
     dbm.add_rec({"CG_ID_project": "ADD1234", "version": "1"}, "Reports")
-    assert len(dbm.query_rec("Reports", {"CG_ID_project": "ADD1234", "version": "1"})) > 0
-    assert len(dbm.query_rec("Reports", {"CG_ID_project": "XXX1234", "version": "1"})) == 0
+    assert len(dbm.read_records("Reports", {"CG_ID_project": "ADD1234", "version": "1"})) > 0
+    assert len(dbm.read_records("Reports", {"CG_ID_project": "XXX1234", "version": "1"})) == 0
 
     dbm.add_rec({"CG_ID_sample": "ADD1234", "ID_collection": "MyCollectionFolder"}, "Collections")
     assert (
         len(
-            dbm.query_rec(
+            dbm.read_records(
                 "Collections", {"CG_ID_sample": "ADD1234", "ID_collection": "MyCollectionFolder"}
             )
         )
@@ -173,7 +173,7 @@ def test_add_rec(caplog, profile_dbm):
     )
     assert (
         len(
-            dbm.query_rec(
+            dbm.read_records(
                 "Collections", {"CG_ID_sample": "XXX1234", "ID_collection": "MyCollectionFolder"}
             )
         )
@@ -188,12 +188,12 @@ def test_add_rec(caplog, profile_dbm):
 @patch("sys.exit")
 def test_upd_rec(sysexit, caplog, dbm):
     dbm.add_rec({"CG_ID_sample": "UPD1234A1"}, "Samples")
-    assert len(dbm.query_rec("Samples", {"CG_ID_sample": "UPD1234A1"})) == 1
-    assert len(dbm.query_rec("Samples", {"CG_ID_sample": "UPD1234A2"})) == 0
+    assert len(dbm.read_records("Samples", {"CG_ID_sample": "UPD1234A1"})) == 1
+    assert len(dbm.read_records("Samples", {"CG_ID_sample": "UPD1234A2"})) == 0
 
     dbm.upd_rec({"CG_ID_sample": "UPD1234A1"}, "Samples", {"CG_ID_sample": "UPD1234A2"})
-    assert len(dbm.query_rec("Samples", {"CG_ID_sample": "UPD1234A1"})) == 0
-    assert len(dbm.query_rec("Samples", {"CG_ID_sample": "UPD1234A2"})) == 1
+    assert len(dbm.read_records("Samples", {"CG_ID_sample": "UPD1234A1"})) == 0
+    assert len(dbm.read_records("Samples", {"CG_ID_sample": "UPD1234A2"})) == 1
 
     dbm.upd_rec({"CG_ID_sample": "UPD1234A2"}, "Samples", {"CG_ID_sample": "UPD1234A1"})
 
@@ -215,7 +215,7 @@ def test_allele_ranker(profile_dbm, unpack_db_json):
         },
         "Samples",
     )
-    assert dbm.alleles2st("MLS1234A1") == 130
+    assert dbm.read_st("MLS1234A1") == 130
     best_alleles = {
         "arcC": {"contig_name": "NODE_1", "allele": 6},
         "aroE": {"contig_name": "NODE_1", "allele": 57},
@@ -225,13 +225,13 @@ def test_allele_ranker(profile_dbm, unpack_db_json):
         "tpi": {"contig_name": "NODE_1", "allele": 58},
         "yqiL": {"contig_name": "NODE_1", "allele": 52},
     }
-    assert dbm.bestAlleles("MLS1234A1") == best_alleles
+    assert dbm.read_best_alleles("MLS1234A1") == best_alleles
 
     for entry in unpack_db_json("sampleinfo_mlst.json"):
         entry["allele"] = 0
         entry["CG_ID_sample"] = "MLS1234A2"
         dbm.add_rec(entry, "Seq_types")
-    assert dbm.alleles2st("MLS1234A2") == -1
+    assert dbm.read_st("MLS1234A2") == -1
 
 
 def test_get_and_set_report(dbm):
@@ -242,7 +242,7 @@ def test_get_and_set_report(dbm):
 
     dbm.add_rec({"CG_ID_sample": "ADD1234A1", "method_sequencing": "1000:1"}, "Samples")
     dbm.add_rec({"CG_ID_project": "ADD1234", "version": "1"}, "Reports")
-    assert dbm.get_report("ADD1234").version == 1
+    assert dbm.read_report("ADD1234").version == 1
 
     dbm.upd_rec(
         {"CG_ID_sample": "ADD1234A1", "method_sequencing": "1000:1"},
@@ -250,7 +250,7 @@ def test_get_and_set_report(dbm):
         {"CG_ID_sample": "ADD1234A1", "method_sequencing": "1000:2"},
     )
     dbm.set_report("ADD1234")
-    assert dbm.get_report("ADD1234").version != 1
+    assert dbm.read_report("ADD1234").version != 1
 
 
 @patch("sys.exit")
@@ -266,10 +266,10 @@ def test_purge_rec(sysexit, caplog, dbm):
 def test_top_index(dbm):
     dbm.add_rec({"CG_ID_sample": "Uniq_ID_123", "total_reads": 100}, "Samples")
     dbm.add_rec({"CG_ID_sample": "Uniq_ID_321", "total_reads": 100}, "Samples")
-    ti_returned = dbm.top_index("Samples", {"total_reads": "100"}, "total_reads")
+    ti_returned = dbm.read_top_index("Samples", {"total_reads": "100"}, "total_reads")
     assert ti_returned == 100
 
-    ti_missing = dbm.top_index("Samples", {"total_reads": "99999"}, "total_reads")
+    ti_missing = dbm.read_top_index("Samples", {"total_reads": "99999"}, "total_reads")
     assert ti_missing == -1
 
 
@@ -277,19 +277,19 @@ def test_query_rec(dbm):
     dbm.add_rec({"CG_ID_sample": "QRY_001"}, "Samples")
     dbm.add_rec({"CG_ID_sample": "QRY_002"}, "Samples")
 
-    hits = dbm.query_rec("Samples", {"CG_ID_sample": "QRY_001"})
+    hits = dbm.read_records("Samples", {"CG_ID_sample": "QRY_001"})
     assert len(hits) == 1
     assert hits[0].CG_ID_sample == "QRY_001"
 
-    no_hits = dbm.query_rec("Samples", {"CG_ID_sample": "DOES_NOT_EXIST"})
+    no_hits = dbm.read_records("Samples", {"CG_ID_sample": "DOES_NOT_EXIST"})
     assert len(no_hits) == 0
 
-    multi_filter = dbm.query_rec("Samples", {"CG_ID_sample": "QRY_001", "ST": None})
+    multi_filter = dbm.read_records("Samples", {"CG_ID_sample": "QRY_001", "ST": None})
     assert len(multi_filter) == 1
 
 
 def test_get_columns(dbm):
-    cols = dbm.get_columns("Samples")
+    cols = dbm.read_columns("Samples")
     assert isinstance(cols, dict)
     assert "CG_ID_sample" in cols
     assert "organism" in cols

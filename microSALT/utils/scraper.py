@@ -63,7 +63,7 @@ class Scraper:
         if project is None:
             project = self.name
         self.db_pusher.purge_rec(project, "Projects")
-        if not self.db_pusher.exists("Projects", {"CG_ID_project": project}):
+        if not self.db_pusher.read_exists("Projects", {"CG_ID_project": project}):
             self.logger.warning(f"Replacing project {project}")
             self.job_fallback.create_project(project)
 
@@ -97,13 +97,13 @@ class Scraper:
             sample = self.name
         self.db_pusher.purge_rec(sample, "Samples")
 
-        if not self.db_pusher.exists(
+        if not self.db_pusher.read_exists(
             "Projects", {"CG_ID_project": self.sample.get("CG_ID_project")}
         ):
             self.logger.warning(f"Replacing project {self.sample.get('CG_ID_project')}")
             self.job_fallback.create_project(self.sample.get("CG_ID_project"))
 
-        if not self.db_pusher.exists("Samples", {"CG_ID_sample": sample}):
+        if not self.db_pusher.read_exists("Samples", {"CG_ID_sample": sample}):
             self.logger.info(f"Replacing sample {sample}")
             self.job_fallback.create_sample(sample)
 
@@ -202,7 +202,7 @@ class Scraper:
         organism = self.referencer.organism2reference(self.sample.get("organism"))
         if organism:
             self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", {"organism": organism})
-        res_cols = self.db_pusher.get_columns(f"{type2db}")
+        res_cols = self.db_pusher.read_columns(f"{type2db}")
 
         try:
             for file in file_list:
@@ -428,7 +428,7 @@ class Scraper:
 
         if type == "seq_type":
             try:
-                ST = self.db_pusher.alleles2st(self.name)
+                ST = self.db_pusher.read_st(self.name)
                 self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", {"ST": ST})
                 self.logger.info(f"Sample {self.name} received ST {ST}")
             except Exception as e:

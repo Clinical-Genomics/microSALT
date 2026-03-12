@@ -179,7 +179,7 @@ class Referencer:
 
     def _should_update_external(self, organ: str, entry: ET.Element) -> dict | bool:
         """Determine if the external data for an organism should be updated."""
-        currver = self.db_access.get_version(f"profile_{organ}")
+        currver = self.db_access.read_version(f"profile_{organ}")
         st_link = entry.find("./mlst/database/profiles/url").text
         service = get_service_by_url(st_link)
         if service == "pasteur":
@@ -320,7 +320,7 @@ class Referencer:
         """Manipulates samples that have an internal ST that differs from pubMLST ST"""
         if type == "list":
             # Add single sample support later
-            self.db_access.list_unresolved()
+            self.db_access.read_unresolved()
         elif type == "overwrite":
             if ignore:
                 self.db_access.rm_novel(sample=sample)
@@ -571,7 +571,7 @@ class Referencer:
         try:
             # Pull version
             extver = self.external_version(organism, subtype_href)
-            currver = self.db_access.get_version(f"profile_{organism}")
+            currver = self.db_access.read_version(f"profile_{organism}")
             if int(extver.replace("-", "")) <= int(currver.replace("-", "")) and not force:
                 self.logger.info(
                     f"Profile for {organism.replace('_', ' ').capitalize()} already at the latest version."
@@ -649,7 +649,7 @@ class Referencer:
                         seqdef_url[name] = subtype["href"]
 
         for key, val in seqdef_url.items():
-            internal_ver = self.db_access.get_version(f"profile_{key}")
+            internal_ver = self.db_access.read_version(f"profile_{key}")
             external_ver = self.external_version(key, val)
 
             if (internal_ver < external_ver) or force:
