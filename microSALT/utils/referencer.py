@@ -323,11 +323,11 @@ class Referencer:
             self.db_access.read_unresolved()
         elif type == "overwrite":
             if ignore:
-                self.db_access.rm_novel(sample=sample)
+                self.db_access.set_novel_ignored(sample=sample)
             else:
-                self.db_access.sync_novel(overwrite=True, sample=sample)
+                self.db_access.set_novel_st(overwrite=True, sample=sample)
         else:
-            self.db_access.sync_novel(overwrite=False, sample=sample)
+            self.db_access.set_novel_st(overwrite=False, sample=sample)
 
     def fetch_resistances(self, force=False):
         cwd = os.getcwd()

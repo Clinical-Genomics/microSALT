@@ -489,7 +489,7 @@ class DB_Manipulator:
                 "Reports",
             )
 
-    def sync_novel(self, overwrite=False, sample=""):
+    def set_novel_st(self, overwrite=False, sample=""):
         """Looks at each novel table. See if any record has a profile match in the profile table.
         Updates these based on parameters"""
         prequery = self.session.query(Samples)
@@ -548,7 +548,7 @@ class DB_Manipulator:
                                 {"ST": exist.ST, "pubmlst_ST": exist.ST},
                             )
 
-    def rm_novel(self, sample=""):
+    def set_novel_ignored(self, sample=""):
         """Flags a sample as pubMLST resolved by merit of ignoring it"""
         query = self.session.query(Samples).filter(Samples.CG_ID_sample == sample).all()
         if len(query) > 0:
@@ -642,7 +642,7 @@ class DB_Manipulator:
         if len(novelbkt) == 0:
             print("None!")
 
-    def setPredictor(self, cg_sid: str, pks=dict()):
+    def set_predictor(self, cg_sid: str, pks=dict()):
         """Helper function. Flags a set of seq_types as part of the final prediction.
         Uses optional pks[PK_NAME] = VALUE dictionary to distinguish in scenarios where an allele number has multiple hits
         """
@@ -678,7 +678,7 @@ class DB_Manipulator:
                 self.logger.warning(
                     f"Insufficient allele hits to establish ST for sample {cg_sid}, even without thresholds. Setting ST to -3"
                 )
-                self.setPredictor(cg_sid)
+                self.set_predictor(cg_sid)
                 return -3
 
         # Tests all allele combinations found to see if any of them result in ST
@@ -753,7 +753,7 @@ class DB_Manipulator:
                 f"Sample {cg_sid} on {organism} has an allele set but hits are low-quality and do not resolve to an ST. Setting ST to -2"
             )
             bestSet = self.read_best_alleles(cg_sid)
-            self.setPredictor(cg_sid, bestSet)
+            self.set_predictor(cg_sid, bestSet)
             return -2
 
     def read_best_st(self, cg_sid: str, st_list: list, type="profile"):
@@ -859,7 +859,7 @@ class DB_Manipulator:
                 topEval = scores[key]["eval"]
                 topCC = scores[key]["cc"]
                 topST = key
-        self.setPredictor(cg_sid, bestalleles[topST])
+        self.set_predictor(cg_sid, bestalleles[topST])
         return topST
 
     def read_best_alleles(self, cg_sid: str):
