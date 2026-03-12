@@ -84,7 +84,7 @@ class Resistances(Base):
 
     CG_ID_sample = Column(String(32), ForeignKey("samples.CG_ID_sample"), primary_key=True)
     gene = Column(String(50), primary_key=True)
-    instance = Column(String(30), primary_key=True)
+    instance = Column(String(120), primary_key=True)
     contig_name = Column(String(20), primary_key=True)
     contig_length = Column(Integer)
     contig_coverage = Column(Float(6, 2))
@@ -105,7 +105,7 @@ class Expacs(Base):
 
     CG_ID_sample = Column(String(32), ForeignKey("samples.CG_ID_sample"), primary_key=True)
     gene = Column(String(50), primary_key=True)
-    instance = Column(String(30), primary_key=True)
+    instance = Column(String(120), primary_key=True)
     contig_name = Column(String(20), primary_key=True)
     contig_length = Column(Integer)
     contig_coverage = Column(Float(6, 2))
