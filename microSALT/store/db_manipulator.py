@@ -217,6 +217,66 @@ class DB_Manipulator:
                     f"Record [{', '.join(pk_list)}]=[{', '.join(pk_values)}] in table {tablename} already exists"
                 )
 
+    # ------------------------------------------------------------------
+    # Per-model add methods
+    # ------------------------------------------------------------------
+
+    def _add_orm_record(self, model_class, data: dict, force: bool = False) -> None:
+        """Insert one row into an ORM-mapped table.
+
+        Shared implementation used by all per-model add_* helpers.
+        """
+        pk_list = list(model_class.__table__.primary_key.columns.keys())
+        pk_values = [data[item] for item in pk_list]
+        existing = self.session.get(
+            model_class, pk_values if len(pk_values) > 1 else pk_values[0]
+        )
+        if not existing or force:
+            newobj = model_class()
+            for k, v in data.items():
+                if isinstance(v, str):
+                    try:
+                        parse(v, fuzzy=False)
+                        data[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
+                    except ValueError as ve:
+                        if len(ve.args) > 0 and ve.args[0].startswith(
+                            "unconverted data remains: "
+                        ):
+                            data[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
+            for k, v in data.items():
+                setattr(newobj, k, v)
+            self.session.add(newobj)
+            self.session.commit()
+        else:
+            pks_str = ", ".join(f"{k}={v}" for k, v in zip(pk_list, pk_values))
+            self.logger.warning(
+                f"Record [{pks_str}] in table {model_class.__tablename__} already exists"
+            )
+
+    def add_sample(self, data: dict) -> None:
+        self._add_orm_record(Samples, data)
+
+    def add_project(self, data: dict) -> None:
+        self._add_orm_record(Projects, data)
+
+    def add_seq_type(self, data: dict) -> None:
+        self._add_orm_record(Seq_types, data)
+
+    def add_resistance(self, data: dict) -> None:
+        self._add_orm_record(Resistances, data)
+
+    def add_expac(self, data: dict) -> None:
+        self._add_orm_record(Expacs, data)
+
+    def add_report(self, data: dict) -> None:
+        self._add_orm_record(Reports, data)
+
+    def add_collection(self, data: dict) -> None:
+        self._add_orm_record(Collections, data)
+
+    def add_version(self, data: dict, force: bool = False) -> None:
+        self._add_orm_record(Versions, data, force=force)
+
     def upd_rec(self, req_dict: dict[str, str], tablename: str, upd_dict: dict[str, str]):
         """Updates a record to the specified table through a dict with columns as keys."""
         table = _resolve_orm_table(tablename)
@@ -241,6 +301,90 @@ class DB_Manipulator:
             query.update(upd_dict)
             self.session.commit()
         self.logger.debug(f"Updated table {tablename} with {upd_dict} for {req_dict}")
+
+    # ------------------------------------------------------------------
+    # Per-model update methods
+    # ------------------------------------------------------------------
+
+    def update_sample(self, req_dict: dict, upd_dict: dict) -> None:
+        """Update a Samples row. Cascades CG_ID_sample renames to child tables."""
+        filter_clauses = [
+            getattr(Samples, k) == v for k, v in req_dict.items() if v is not None
+        ]
+        query = self.session.query(Samples).filter(and_(*filter_clauses))
+        if len(query.all()) > 1:
+            self.logger.error("More than 1 Samples record found when updating. Exited.")
+            sys.exit()
+        if "CG_ID_sample" in upd_dict:
+            old_id = req_dict.get("CG_ID_sample")
+            new_id = upd_dict["CG_ID_sample"]
+            if old_id and old_id != new_id:
+                for child_table in (Seq_types, Resistances, Expacs, Collections):
+                    self.session.query(child_table).filter(
+                        child_table.CG_ID_sample == old_id
+                    ).update({"CG_ID_sample": new_id})
+        query.update(upd_dict)
+        self.session.commit()
+        self.logger.debug(f"Updated Samples for {req_dict} with {upd_dict}")
+
+    def update_project(self, req_dict: dict, upd_dict: dict) -> None:
+        """Update a Projects row."""
+        filter_clauses = [
+            getattr(Projects, k) == v for k, v in req_dict.items() if v is not None
+        ]
+        query = self.session.query(Projects).filter(and_(*filter_clauses))
+        if len(query.all()) > 1:
+            self.logger.error("More than 1 Projects record found when updating. Exited.")
+            sys.exit()
+        query.update(upd_dict)
+        self.session.commit()
+        self.logger.debug(f"Updated Projects for {req_dict} with {upd_dict}")
+
+    def update_version(self, req_dict: dict, upd_dict: dict) -> None:
+        """Update a Versions row."""
+        filter_clauses = [
+            getattr(Versions, k) == v for k, v in req_dict.items() if v is not None
+        ]
+        self.session.query(Versions).filter(and_(*filter_clauses)).update(upd_dict)
+        self.session.commit()
+        self.logger.debug(f"Updated Versions for {req_dict} with {upd_dict}")
+
+    # ------------------------------------------------------------------
+    # Per-model delete methods
+    # ------------------------------------------------------------------
+
+    def delete_sample(self, cg_id: str) -> None:
+        """Delete a sample and all its child rows (seq_types, resistances, expacs)."""
+        for obj in self.session.query(Expacs).filter(Expacs.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        for obj in self.session.query(Seq_types).filter(Seq_types.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        for obj in self.session.query(Resistances).filter(Resistances.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        for obj in self.session.query(Samples).filter(Samples.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        self.session.commit()
+        self.logger.info(f"Removed sample {cg_id} and its child rows")
+
+    def delete_project(self, name: str) -> None:
+        """Delete all samples (and their child rows) belonging to a project."""
+        for obj in self.session.query(Expacs).filter(Expacs.CG_ID_sample.like(f"{name}%")).all():
+            self.session.delete(obj)
+        for obj in self.session.query(Seq_types).filter(Seq_types.CG_ID_sample.like(f"{name}%")).all():
+            self.session.delete(obj)
+        for obj in self.session.query(Resistances).filter(Resistances.CG_ID_sample.like(f"{name}%")).all():
+            self.session.delete(obj)
+        for obj in self.session.query(Samples).filter(Samples.CG_ID_sample.like(f"{name}%")).all():
+            self.session.delete(obj)
+        self.session.commit()
+        self.logger.info(f"Removed all samples for project {name}")
+
+    def delete_collection(self, name: str) -> None:
+        """Delete all entries for the given collection ID."""
+        for obj in self.session.query(Collections).filter(Collections.ID_collection == name).all():
+            self.session.delete(obj)
+        self.session.commit()
+        self.logger.info(f"Removed collection {name}")
 
     def delete_records(self, name: str, type: str):
         """Removes seq_data, resistances, sample(s) and possibly project"""
