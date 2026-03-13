@@ -104,7 +104,7 @@ class Reporter:
                     copyfile(k, v)
 
     def gen_version(self, name):
-        self.db_pusher.get_report(name)
+        self.db_pusher.read_report(name)
         self.db_pusher.set_report(name)
 
     def gen_STtracker(self, customer="all", silent=False):
@@ -124,7 +124,7 @@ class Reporter:
 
     def gen_qc(self, silent=False):
         try:
-            last_version = self.db_pusher.get_report(self.name).version
+            last_version = self.db_pusher.read_report(self.name).version
         except Exception:
             self.logger.error(f"Project {self.name} does not exist")
             sys.exit(-1)
@@ -147,7 +147,7 @@ class Reporter:
 
     def gen_typing(self, silent=False):
         try:
-            last_version = self.db_pusher.get_report(self.name).version
+            last_version = self.db_pusher.read_report(self.name).version
         except Exception:
             self.logger.error(f"Project {self.name} does not exist")
             sys.exit(-1)
@@ -269,7 +269,7 @@ class Reporter:
     def gen_delivery(self):
         deliv = dict()
         deliv["files"] = list()
-        last_version = self.db_pusher.get_report(self.name).version
+        last_version = self.db_pusher.read_report(self.name).version
         output = f"{self.folders.reports}/deliverables/{self.sample.get('Customer_ID_project')}_deliverables.yaml"
         local = f"{self.output}/{self.sample.get('Customer_ID_project')}_deliverables.yaml"
 

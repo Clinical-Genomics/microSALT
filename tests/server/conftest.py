@@ -52,7 +52,6 @@ def populated_db(db_session):
     project = Projects(
         CG_ID_project="AAA1234",
         Customer_ID_project="999999",
-        date_ordered=datetime(2020, 7, 14, 15, 3, 51),
         Customer_ID="cust000",
     )
     db_session.add(project)

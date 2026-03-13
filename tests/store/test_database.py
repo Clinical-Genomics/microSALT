@@ -1,6 +1,6 @@
-import pytest
-
 from unittest.mock import patch
+
+import pytest
 from sqlalchemy import inspect as sa_inspect
 
 from microSALT.exc.exceptions import RefUpdateLockError
@@ -35,8 +35,8 @@ def test_add_rec(caplog, profile_dbm):
         },
         dbm.profiles["staphylococcus_aureus"],
     )
-    assert len(dbm.query_rec(dbm.profiles["staphylococcus_aureus"], {"ST": "130"})) == 1
-    assert len(dbm.query_rec(dbm.profiles["staphylococcus_aureus"], {"ST": "-1"})) == 0
+    assert len(dbm.read_records(dbm.profiles["staphylococcus_aureus"], {"ST": "130"})) == 1
+    assert len(dbm.read_records(dbm.profiles["staphylococcus_aureus"], {"ST": "-1"})) == 0
 
     # Novel table
     dbm.add_rec(
@@ -52,18 +52,20 @@ def test_add_rec(caplog, profile_dbm):
         },
         dbm.novel["staphylococcus_aureus"],
     )
-    assert len(dbm.query_rec(dbm.novel["staphylococcus_aureus"], {"ST": "130"})) == 1
-    assert len(dbm.query_rec(dbm.novel["staphylococcus_aureus"], {"ST": "-1"})) == 0
+    assert len(dbm.read_records(dbm.novel["staphylococcus_aureus"], {"ST": "130"})) == 1
+    assert len(dbm.read_records(dbm.novel["staphylococcus_aureus"], {"ST": "-1"})) == 0
 
     # ORM tables
-    dbm.add_rec({"CG_ID_sample": "ADD1234A1"}, "Samples")
-    assert len(dbm.query_rec("Samples", {"CG_ID_sample": "ADD1234A1"})) > 0
-    assert len(dbm.query_rec("Samples", {"CG_ID_sample": "XXX1234A10"})) == 0
+    dbm.add_to_session(dbm.add_sample(CG_ID_sample="ADD1234A1"))
+    dbm.commit_session()
+    assert len(dbm.read_records("Samples", {"CG_ID_sample": "ADD1234A1"})) > 0
+    assert len(dbm.read_records("Samples", {"CG_ID_sample": "XXX1234A10"})) == 0
 
-    dbm.add_rec({"CG_ID_sample": "ADD1234A1", "loci": "mdh", "contig_name": "NODE_1"}, "Seq_types")
+    dbm.add_to_session(dbm.add_seq_type(CG_ID_sample="ADD1234A1", loci="mdh", contig_name="NODE_1"))
+    dbm.commit_session()
     assert (
         len(
-            dbm.query_rec(
+            dbm.read_records(
                 "Seq_types", {"CG_ID_sample": "ADD1234A1", "loci": "mdh", "contig_name": "NODE_1"}
             )
         )
@@ -71,25 +73,25 @@ def test_add_rec(caplog, profile_dbm):
     )
     assert (
         len(
-            dbm.query_rec(
+            dbm.read_records(
                 "Seq_types", {"CG_ID_sample": "XXX1234A10", "loci": "mdh", "contig_name": "NODE_1"}
             )
         )
         == 0
     )
 
-    dbm.add_rec(
-        {
-            "CG_ID_sample": "ADD1234A1",
-            "gene": "Type 1",
-            "instance": "Type 1",
-            "contig_name": "NODE_1",
-        },
-        "Resistances",
+    dbm.add_to_session(
+        dbm.add_resistance(
+            CG_ID_sample="ADD1234A1",
+            gene="Type 1",
+            instance="Type 1",
+            contig_name="NODE_1",
+        )
     )
+    dbm.commit_session()
     assert (
         len(
-            dbm.query_rec(
+            dbm.read_records(
                 "Resistances",
                 {
                     "CG_ID_sample": "ADD1234A1",
@@ -103,7 +105,7 @@ def test_add_rec(caplog, profile_dbm):
     )
     assert (
         len(
-            dbm.query_rec(
+            dbm.read_records(
                 "Resistances",
                 {
                     "CG_ID_sample": "XXX1234A10",
@@ -116,18 +118,18 @@ def test_add_rec(caplog, profile_dbm):
         == 0
     )
 
-    dbm.add_rec(
-        {
-            "CG_ID_sample": "ADD1234A1",
-            "gene": "Type 1",
-            "instance": "Type 1",
-            "contig_name": "NODE_1",
-        },
-        "Expacs",
+    dbm.add_to_session(
+        dbm.add_expac(
+            CG_ID_sample="ADD1234A1",
+            gene="Type 1",
+            instance="Type 1",
+            contig_name="NODE_1",
+        )
     )
+    dbm.commit_session()
     assert (
         len(
-            dbm.query_rec(
+            dbm.read_records(
                 "Expacs",
                 {
                     "CG_ID_sample": "ADD1234A1",
@@ -141,7 +143,7 @@ def test_add_rec(caplog, profile_dbm):
     )
     assert (
         len(
-            dbm.query_rec(
+            dbm.read_records(
                 "Expacs",
                 {
                     "CG_ID_sample": "XXX1234A10",
@@ -154,18 +156,23 @@ def test_add_rec(caplog, profile_dbm):
         == 0
     )
 
-    dbm.add_rec({"CG_ID_project": "ADD1234"}, "Projects")
-    assert len(dbm.query_rec("Projects", {"CG_ID_project": "ADD1234"})) > 0
-    assert len(dbm.query_rec("Projects", {"CG_ID_project": "XXX1234"})) == 0
+    dbm.add_to_session(dbm.add_project(CG_ID_project="ADD1234"))
+    dbm.commit_session()
+    assert len(dbm.read_records("Projects", {"CG_ID_project": "ADD1234"})) > 0
+    assert len(dbm.read_records("Projects", {"CG_ID_project": "XXX1234"})) == 0
 
-    dbm.add_rec({"CG_ID_project": "ADD1234", "version": "1"}, "Reports")
-    assert len(dbm.query_rec("Reports", {"CG_ID_project": "ADD1234", "version": "1"})) > 0
-    assert len(dbm.query_rec("Reports", {"CG_ID_project": "XXX1234", "version": "1"})) == 0
+    dbm.add_to_session(dbm.add_report(CG_ID_project="ADD1234", version="1"))
+    dbm.commit_session()
+    assert len(dbm.read_records("Reports", {"CG_ID_project": "ADD1234", "version": "1"})) > 0
+    assert len(dbm.read_records("Reports", {"CG_ID_project": "XXX1234", "version": "1"})) == 0
 
-    dbm.add_rec({"CG_ID_sample": "ADD1234", "ID_collection": "MyCollectionFolder"}, "Collections")
+    dbm.add_to_session(
+        dbm.add_collection(CG_ID_sample="ADD1234", ID_collection="MyCollectionFolder")
+    )
+    dbm.commit_session()
     assert (
         len(
-            dbm.query_rec(
+            dbm.read_records(
                 "Collections", {"CG_ID_sample": "ADD1234", "ID_collection": "MyCollectionFolder"}
             )
         )
@@ -173,49 +180,47 @@ def test_add_rec(caplog, profile_dbm):
     )
     assert (
         len(
-            dbm.query_rec(
+            dbm.read_records(
                 "Collections", {"CG_ID_sample": "XXX1234", "ID_collection": "MyCollectionFolder"}
             )
         )
         == 0
     )
 
-    caplog.clear()
-    dbm.add_rec({"CG_ID_sample": "ADD1234A1"}, "An_entry_that_does_not_exist")
-    assert "Attempted to access table" in caplog.text
-
 
 @patch("sys.exit")
 def test_upd_rec(sysexit, caplog, dbm):
-    dbm.add_rec({"CG_ID_sample": "UPD1234A1"}, "Samples")
-    assert len(dbm.query_rec("Samples", {"CG_ID_sample": "UPD1234A1"})) == 1
-    assert len(dbm.query_rec("Samples", {"CG_ID_sample": "UPD1234A2"})) == 0
+    dbm.add_to_session(dbm.add_sample(CG_ID_sample="UPD1234A1"))
+    dbm.commit_session()
+    assert len(dbm.read_records("Samples", {"CG_ID_sample": "UPD1234A1"})) == 1
+    assert len(dbm.read_records("Samples", {"CG_ID_sample": "UPD1234A2"})) == 0
 
-    dbm.upd_rec({"CG_ID_sample": "UPD1234A1"}, "Samples", {"CG_ID_sample": "UPD1234A2"})
-    assert len(dbm.query_rec("Samples", {"CG_ID_sample": "UPD1234A1"})) == 0
-    assert len(dbm.query_rec("Samples", {"CG_ID_sample": "UPD1234A2"})) == 1
+    dbm.update_sample({"CG_ID_sample": "UPD1234A1"}, {"CG_ID_sample": "UPD1234A2"})
+    assert len(dbm.read_records("Samples", {"CG_ID_sample": "UPD1234A1"})) == 0
+    assert len(dbm.read_records("Samples", {"CG_ID_sample": "UPD1234A2"})) == 1
 
-    dbm.upd_rec({"CG_ID_sample": "UPD1234A2"}, "Samples", {"CG_ID_sample": "UPD1234A1"})
+    dbm.update_sample({"CG_ID_sample": "UPD1234A2"}, {"CG_ID_sample": "UPD1234A1"})
 
     caplog.clear()
-    dbm.add_rec({"CG_ID_sample": "UPD1234A1_uniq", "Customer_ID_sample": "cust000"}, "Samples")
-    dbm.add_rec({"CG_ID_sample": "UPD1234A2_uniq", "Customer_ID_sample": "cust000"}, "Samples")
-    dbm.upd_rec({"Customer_ID_sample": "cust000"}, "Samples", {"Customer_ID_sample": "cust030"})
-    dbm.upd_rec({"Customer_ID_sample": "cust000"}, "Samples", {"Customer_ID_sample": "cust030"})
-    assert "More than 1 record found" in caplog.text
+    dbm.add_to_session(dbm.add_sample(CG_ID_sample="UPD1234A1_uniq", Customer_ID_sample="cust000"))
+    dbm.add_to_session(dbm.add_sample(CG_ID_sample="UPD1234A2_uniq", Customer_ID_sample="cust000"))
+    dbm.commit_session()
+    dbm.update_sample({"Customer_ID_sample": "cust000"}, {"Customer_ID_sample": "cust030"})
+    dbm.update_sample({"Customer_ID_sample": "cust000"}, {"Customer_ID_sample": "cust030"})
+    assert "More than 1 Samples record found" in caplog.text
 
 
 def test_allele_ranker(profile_dbm, unpack_db_json):
     dbm = profile_dbm
-    dbm.add_rec(
-        {
-            "CG_ID_sample": "MLS1234A1",
-            "CG_ID_project": "MLS1234",
-            "organism": "staphylococcus_aureus",
-        },
-        "Samples",
+    dbm.add_to_session(
+        dbm.add_sample(
+            CG_ID_sample="MLS1234A1",
+            CG_ID_project="MLS1234",
+            organism="staphylococcus_aureus",
+        )
     )
-    assert dbm.alleles2st("MLS1234A1") == 130
+    dbm.commit_session()
+    assert dbm.read_st("MLS1234A1") == 130
     best_alleles = {
         "arcC": {"contig_name": "NODE_1", "allele": 6},
         "aroE": {"contig_name": "NODE_1", "allele": 57},
@@ -225,13 +230,14 @@ def test_allele_ranker(profile_dbm, unpack_db_json):
         "tpi": {"contig_name": "NODE_1", "allele": 58},
         "yqiL": {"contig_name": "NODE_1", "allele": 52},
     }
-    assert dbm.bestAlleles("MLS1234A1") == best_alleles
+    assert dbm.read_best_alleles("MLS1234A1") == best_alleles
 
     for entry in unpack_db_json("sampleinfo_mlst.json"):
         entry["allele"] = 0
         entry["CG_ID_sample"] = "MLS1234A2"
-        dbm.add_rec(entry, "Seq_types")
-    assert dbm.alleles2st("MLS1234A2") == -1
+        dbm.add_to_session(dbm.add_seq_type(**entry))
+    dbm.commit_session()
+    assert dbm.read_st("MLS1234A2") == -1
 
 
 def test_get_and_set_report(dbm):
@@ -240,71 +246,67 @@ def test_get_and_set_report(dbm):
     dbm.session.query(Samples).filter(Samples.CG_ID_sample == "ADD1234A1").delete()
     dbm.session.commit()
 
-    dbm.add_rec({"CG_ID_sample": "ADD1234A1", "method_sequencing": "1000:1"}, "Samples")
-    dbm.add_rec({"CG_ID_project": "ADD1234", "version": "1"}, "Reports")
-    assert dbm.get_report("ADD1234").version == 1
+    dbm.add_to_session(dbm.add_sample(CG_ID_sample="ADD1234A1", method_sequencing="1000:1"))
+    dbm.commit_session()
+    dbm.add_to_session(dbm.add_report(CG_ID_project="ADD1234", version="1"))
+    dbm.commit_session()
+    assert dbm.read_report("ADD1234").version == 1
 
-    dbm.upd_rec(
+    dbm.update_sample(
         {"CG_ID_sample": "ADD1234A1", "method_sequencing": "1000:1"},
-        "Samples",
         {"CG_ID_sample": "ADD1234A1", "method_sequencing": "1000:2"},
     )
     dbm.set_report("ADD1234")
-    assert dbm.get_report("ADD1234").version != 1
+    assert dbm.read_report("ADD1234").version != 1
 
 
 @patch("sys.exit")
 def test_purge_rec(sysexit, caplog, dbm):
-    dbm.add_rec({"CG_ID_sample": "UPD1234A1"}, "Samples")
-    dbm.purge_rec("UPD1234A1", "Collections")
-
-    caplog.clear()
-    dbm.purge_rec("UPD1234A1", "Not_Samples_nor_Collections")
-    assert "Incorrect type" in caplog.text
+    dbm.add_to_session(dbm.add_sample(CG_ID_sample="UPD1234A1"))
+    dbm.commit_session()
+    dbm.delete_collection("UPD1234A1")
 
 
 def test_top_index(dbm):
-    dbm.add_rec({"CG_ID_sample": "Uniq_ID_123", "total_reads": 100}, "Samples")
-    dbm.add_rec({"CG_ID_sample": "Uniq_ID_321", "total_reads": 100}, "Samples")
-    ti_returned = dbm.top_index("Samples", {"total_reads": "100"}, "total_reads")
+    dbm.add_to_session(dbm.add_sample(CG_ID_sample="Uniq_ID_123", total_reads=100))
+    dbm.add_to_session(dbm.add_sample(CG_ID_sample="Uniq_ID_321", total_reads=100))
+    dbm.commit_session()
+    ti_returned = dbm.read_top_index("Samples", {"total_reads": "100"}, "total_reads")
     assert ti_returned == 100
 
-    ti_missing = dbm.top_index("Samples", {"total_reads": "99999"}, "total_reads")
+    ti_missing = dbm.read_top_index("Samples", {"total_reads": "99999"}, "total_reads")
     assert ti_missing == -1
 
 
 def test_query_rec(dbm):
-    dbm.add_rec({"CG_ID_sample": "QRY_001"}, "Samples")
-    dbm.add_rec({"CG_ID_sample": "QRY_002"}, "Samples")
+    dbm.add_to_session(dbm.add_sample(CG_ID_sample="QRY_001"))
+    dbm.add_to_session(dbm.add_sample(CG_ID_sample="QRY_002"))
+    dbm.commit_session()
 
-    hits = dbm.query_rec("Samples", {"CG_ID_sample": "QRY_001"})
+    hits = dbm.read_records("Samples", {"CG_ID_sample": "QRY_001"})
     assert len(hits) == 1
     assert hits[0].CG_ID_sample == "QRY_001"
 
-    no_hits = dbm.query_rec("Samples", {"CG_ID_sample": "DOES_NOT_EXIST"})
+    no_hits = dbm.read_records("Samples", {"CG_ID_sample": "DOES_NOT_EXIST"})
     assert len(no_hits) == 0
 
-    multi_filter = dbm.query_rec("Samples", {"CG_ID_sample": "QRY_001", "ST": None})
+    multi_filter = dbm.read_records("Samples", {"CG_ID_sample": "QRY_001", "ST": None})
     assert len(multi_filter) == 1
 
 
 def test_get_columns(dbm):
-    cols = dbm.get_columns("Samples")
+    cols = dbm.read_columns("Samples")
     assert isinstance(cols, dict)
     assert "CG_ID_sample" in cols
     assert "organism" in cols
 
 
 def test_exists(dbm):
-    dbm.add_rec({"CG_ID_sample": "EXS_001"}, "Samples")
+    dbm.add_to_session(dbm.add_sample(CG_ID_sample="EXS_001"))
+    dbm.commit_session()
 
-    assert dbm.exists("Samples", {"CG_ID_sample": "EXS_001"}) is True
-    assert dbm.exists("Samples", {"CG_ID_sample": "DOES_NOT_EXIST"}) is False
-
-
-def test_add_rec_unknown_table(caplog, dbm):
-    dbm.add_rec({"CG_ID_sample": "ADD1234A1"}, "An_entry_that_does_not_exist")
-    assert "Attempted to access table" in caplog.text
+    assert dbm.read_exists("Samples", {"CG_ID_sample": "EXS_001"}) is True
+    assert dbm.read_exists("Samples", {"CG_ID_sample": "DOES_NOT_EXIST"}) is False
 
 
 def test_resolve_orm_table_unknown():
@@ -348,7 +350,7 @@ def test_refresh_profiletable_same_schema(tmp_profiles_dir, profile_dbm):
     # Given: a populated profile table (ST=1, ST=130) and a new file with the
     # same column layout but different data (ST=99 only).
     dbm = profile_dbm
-    new_content = "ST\tarcC\taroE\tglpF\tgmk\tpta\ttpi\tyqiL\n" "99\t3\t3\t3\t3\t3\t3\t3\n"
+    new_content = "ST\tarcC\taroE\tglpF\tgmk\tpta\ttpi\tyqiL\n99\t3\t3\t3\t3\t3\t3\t3\n"
     (tmp_profiles_dir / "staphylococcus_aureus").write_text(new_content)
 
     # When: refresh_profiletable is called with the updated file.
@@ -370,7 +372,7 @@ def test_refresh_profiletable_schema_change(tmp_profiles_dir, profile_dbm):
     # Given: a populated profile table with columns ST+7 loci (including yqiL)
     # and a new file that renames yqiL to renamedLocus within the 8-column window.
     dbm = profile_dbm
-    new_content = "ST\tarcC\taroE\tglpF\tgmk\tpta\ttpi\trenamedLocus\n" "200\t1\t2\t3\t4\t5\t6\t7\n"
+    new_content = "ST\tarcC\taroE\tglpF\tgmk\tpta\ttpi\trenamedLocus\n200\t1\t2\t3\t4\t5\t6\t7\n"
     (tmp_profiles_dir / "staphylococcus_aureus").write_text(new_content)
 
     # When: refresh_profiletable detects the schema change and does a full drop/recreate.

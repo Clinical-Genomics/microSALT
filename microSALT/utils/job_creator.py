@@ -2,7 +2,6 @@
 By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
-
 import glob
 import gzip
 import json
@@ -29,7 +28,9 @@ from microSALT.config import (
     SlurmHeader,
     Threshold,
 )
+from microSALT.exc.exceptions import JobCreationError
 from microSALT.store.db_manipulator import DB_Manipulator
+from microSALT.store.orm_models import Projects
 from microSALT.utils.referencer import Referencer
 
 
@@ -525,57 +526,68 @@ class Job_Creator:
 
     def create_collection(self):
         """Creates collection entry in database"""
-        if self.db_pusher.exists("Collections", {"ID_collection": self.name}):
-            self.db_pusher.purge_rec(name=self.name, type="Collections")
+        if self.db_pusher.read_exists("Collections", {"ID_collection": self.name}):
+            self.db_pusher.delete_collection(self.name)
             for sample in self.pool:
                 self.db_pusher.add_rec(
                     {"ID_collection": self.name, "CG_ID_sample": sample}, "Collections"
                 )
 
-        addedprojs = list()
+        addedprojs = []
         for sample in self.pool:
-            proj = re.search(r"(\w+)A(?:\w+)", sample).group(1)
-            if proj not in addedprojs:
-                self.create_project(proj)
-                addedprojs.append(proj)
+            lims_project = re.search(r"(\w+)A(?:\w+)", sample).group(1)
+            projects: Projects | None = self.db_pusher.read_report(lims_project)
+            if not projects and lims_project not in addedprojs:
+                self.create_project(lims_project)
+                addedprojs.append(lims_project)
 
-    def create_project(self, name):
+    def create_project(self, name: str):
         """Creates project in database"""
-        proj_col = dict()
-        proj_col["CG_ID_project"] = name
-        proj_col["Customer_ID_project"] = self.sample.get("Customer_ID_project")
-        proj_col["Customer_ID"] = self.sample.get("Customer_ID")
-        self.db_pusher.add_rec(proj_col, "Projects")
-        self.db_pusher.upd_rec({"CG_ID_project": name}, "Projects", proj_col)
+        if not self.sample:
+            raise JobCreationError(
+                "No sample information provided. Cannot create project in database."
+            )
+        project_data: dict[str, str] = {
+            "CG_ID_project": name,
+            "Customer_ID_project": self.sample["Customer_ID_project"],
+            "Customer_ID": self.sample["Customer_ID"],
+        }
+        self.db_pusher.add_to_session(self.db_pusher.add_project(**project_data))
+        self.db_pusher.commit_session()
 
-    def create_sample(self, name):
+    def create_sample(self):
         """Creates sample in database"""
+
         try:
-            sample_col = self.db_pusher.get_columns("Samples")
-            sample_col["CG_ID_sample"] = self.sample.get("CG_ID_sample")
-            sample_col["CG_ID_project"] = self.sample.get("CG_ID_project")
-            sample_col["Customer_ID_sample"] = self.sample.get("Customer_ID_sample")
-            sample_col["reference_genome"] = self.sample.get("reference")
-            sample_col["reference_length"] = self.sample.get("reference_length")
-            sample_col["date_analysis"] = self.dt
-            sample_col["organism"] = self.sample.get("organism")
-            sample_col["application_tag"] = self.sample.get("application_tag")
-            sample_col["priority"] = self.sample.get("priority")
-            sample_col["date_arrival"] = datetime.strptime(
-                self.sample.get("date_arrival"), "%Y-%m-%d %H:%M:%S"
-            )
-            sample_col["date_sequencing"] = datetime.strptime(
-                self.sample.get("date_sequencing"), "%Y-%m-%d %H:%M:%S"
-            )
-            sample_col["date_libprep"] = datetime.strptime(
-                self.sample.get("date_libprep"), "%Y-%m-%d %H:%M:%S"
-            )
-            sample_col["method_libprep"] = self.sample.get("method_libprep")
-            sample_col["method_sequencing"] = self.sample.get("method_sequencing")
-            # self.db_pusher.purge_rec(sample_col['CG_ID_sample'], 'sample')
-            self.db_pusher.add_rec(sample_col, "Samples")
-        except Exception:
-            self.logger.error(f"Unable to add sample {self.name} to database")
+            if not self.sample:
+                raise JobCreationError(
+                    "No sample information provided. Cannot create sample in database."
+                )
+            sample_data: dict[str, str | datetime] = {
+                "CG_ID_sample": self.sample["CG_ID_sample"],
+                "CG_ID_project": self.sample["CG_ID_project"],
+                "Customer_ID_sample": self.sample["Customer_ID_sample"],
+                "reference_genome": self.sample["reference"],
+                "reference_length": self.sample["reference_length"],
+                "date_analysis": self.dt,
+                "organism": self.sample["organism"],
+                "application_tag": self.sample["application_tag"],
+                "priority": self.sample["priority"],
+                "date_arrival": datetime.strptime(self.sample["date_arrival"], "%Y-%m-%d %H:%M:%S"),
+                "date_sequencing": datetime.strptime(
+                    self.sample["date_sequencing"], "%Y-%m-%d %H:%M:%S"
+                ),
+                "date_libprep": datetime.strptime(self.sample["date_libprep"], "%Y-%m-%d %H:%M:%S"),
+                "method_libprep": self.sample["method_libprep"],
+                "method_sequencing": self.sample["method_sequencing"],
+            }
+            self.db_pusher.add_to_session(self.db_pusher.add_sample(**sample_data))
+            self.db_pusher.commit_session()
+        except JobCreationError as e:
+            self.logger.error(f"Unable to add sample {self.name} to database: {e}")
+        except KeyError as e:
+            self.logger.error(f"Missing key {e} in sample information for sample {self.name}")
+            raise JobCreationError(f"Missing key {e} in sample information for sample {self.name}")
 
     def project_job(self, single_sample=False):
         if self.dry:
@@ -800,7 +812,7 @@ class Job_Creator:
             except Exception:
                 raise
             try:
-                self.create_sample(self.name)
+                self.create_sample()
             except Exception:
                 self.logger.error(f"Unable to access LIMS info for sample {self.name}")
         except Exception as e:

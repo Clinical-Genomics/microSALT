@@ -127,7 +127,6 @@ class Projects(Base):
 
     CG_ID_project = Column(String(32), primary_key=True, nullable=False)
     Customer_ID_project = Column(String(32))
-    date_ordered = Column(DateTime)
     Customer_ID = Column(String(32))
 
 

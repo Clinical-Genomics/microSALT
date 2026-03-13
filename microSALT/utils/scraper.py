@@ -1,5 +1,5 @@
 """Scrapes output files for data and adds them to the database
-   By: Isak Sylvin, @sylvinite"""
+By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 
@@ -10,7 +10,16 @@ import string
 import sys
 import time
 
-from microSALT.config import Folders, Threshold, SlurmHeader, Regex, PubMLSTCredentials, PasteurCredentials, Singularity, Containers
+from microSALT.config import (
+    Folders,
+    Threshold,
+    SlurmHeader,
+    Regex,
+    PubMLSTCredentials,
+    PasteurCredentials,
+    Singularity,
+    Containers,
+)
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.job_creator import Job_Creator
@@ -18,7 +27,22 @@ from microSALT.utils.job_creator import Job_Creator
 
 # TODO: Rewrite so samples use seperate objects
 class Scraper:
-    def __init__(self, log, folders: Folders, threshold: Threshold, slurm_header: SlurmHeader, regex: Regex, dry: bool, config_path: str, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials, singularity: Singularity = None, containers: Containers = None, sampleinfo={}, input=""):
+    def __init__(
+        self,
+        log,
+        folders: Folders,
+        threshold: Threshold,
+        slurm_header: SlurmHeader,
+        regex: Regex,
+        dry: bool,
+        config_path: str,
+        pubmlst: PubMLSTCredentials,
+        pasteur: PasteurCredentials,
+        singularity: Singularity = None,
+        containers: Containers = None,
+        sampleinfo={},
+        input="",
+    ):
         self.folders = folders
         self.threshold = threshold
         self.slurm_header = slurm_header
@@ -31,8 +55,29 @@ class Scraper:
         self.containers = containers or Containers()
         self.logger = log
         self.db_pusher = DB_Manipulator(log=log, folders=folders, threshold=threshold)
-        self.referencer = Referencer(log=log, folders=folders, threshold=threshold, pubmlst=pubmlst, pasteur=pasteur, singularity=self.singularity, containers=self.containers)
-        self.job_fallback = Job_Creator(log=log, folders=folders, slurm_header=slurm_header, regex=regex, dry=dry, config_path=config_path, threshold=threshold, pubmlst=pubmlst, pasteur=pasteur, singularity=self.singularity, containers=self.containers, sampleinfo=sampleinfo)
+        self.referencer = Referencer(
+            log=log,
+            folders=folders,
+            threshold=threshold,
+            pubmlst=pubmlst,
+            pasteur=pasteur,
+            singularity=self.singularity,
+            containers=self.containers,
+        )
+        self.job_fallback = Job_Creator(
+            log=log,
+            folders=folders,
+            slurm_header=slurm_header,
+            regex=regex,
+            dry=dry,
+            config_path=config_path,
+            threshold=threshold,
+            pubmlst=pubmlst,
+            pasteur=pasteur,
+            singularity=self.singularity,
+            containers=self.containers,
+            sampleinfo=sampleinfo,
+        )
         self.infolder = os.path.abspath(input)
         self.sampledir = ""
 
@@ -62,8 +107,8 @@ class Scraper:
         """Scrapes a project folder for information"""
         if project is None:
             project = self.name
-        self.db_pusher.purge_rec(project, "Projects")
-        if not self.db_pusher.exists("Projects", {"CG_ID_project": project}):
+        self.db_pusher.delete_project(project)
+        if not self.db_pusher.read_exists("Projects", {"CG_ID_project": project}):
             self.logger.warning(f"Replacing project {project}")
             self.job_fallback.create_project(project)
 
@@ -95,15 +140,15 @@ class Scraper:
         """Scrapes a sample folder for information"""
         if sample is None:
             sample = self.name
-        self.db_pusher.purge_rec(sample, "Samples")
+        self.db_pusher.delete_sample(sample)
 
-        if not self.db_pusher.exists(
+        if not self.db_pusher.read_exists(
             "Projects", {"CG_ID_project": self.sample.get("CG_ID_project")}
         ):
             self.logger.warning(f"Replacing project {self.sample.get('CG_ID_project')}")
             self.job_fallback.create_project(self.sample.get("CG_ID_project"))
 
-        if not self.db_pusher.exists("Samples", {"CG_ID_sample": sample}):
+        if not self.db_pusher.read_exists("Samples", {"CG_ID_sample": sample}):
             self.logger.info(f"Replacing sample {sample}")
             self.job_fallback.create_sample(sample)
 
@@ -138,7 +183,7 @@ class Scraper:
                     elif lsplit[0] == "N50":
                         quast["n50"] = int(lsplit[1])
 
-            self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", quast)
+            self.db_pusher.update_sample({"CG_ID_sample": self.name}, quast)
             self.logger.debug(f"Project {self.name} recieved quast stats: {quast}")
         except Exception as e:
             self.logger.warning(f"Cannot generate quast statistics for {self.name}")
@@ -161,7 +206,7 @@ class Scraper:
                         curated_line = line.strip()
                         assembly_length += len(curated_line)
                 reference_data["reference_length"] = assembly_length
-            self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", reference_data)
+            self.db_pusher.update_sample({"CG_ID_sample": self.name}, reference_data)
             self.logger.debug(f"Project {self.name} recieved quast stats: {reference_data}")
         except Exception as e:
             self.logger.warning(f"Cannot find assembly size for reference {self.name}")
@@ -188,252 +233,233 @@ class Scraper:
         return finalalleles
 
     def scrape_blast(self, type="", file_list=[]):
-        hypo = list()
-        type2db = type.capitalize() + "s"
-        if type == "expec":
-            type2db = "Expacs"
-
-        if file_list == []:
-            if type == "seq_type":
-                file_list = glob.glob(f"{self.sampledir}/blast_search/mlst/*")
-            else:
-                file_list = glob.glob(f"{self.sampledir}/blast_search/{type}/*")
-
         organism = self.referencer.organism2reference(self.sample.get("organism"))
         if organism:
-            self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", {"organism": organism})
-        res_cols = self.db_pusher.get_columns(f"{type2db}")
+            self.db_pusher.update_sample({"CG_ID_sample": self.name}, {"organism": organism})
+        type2db = "Expacs" if type == "expec" else type.capitalize() + "s"
+        if not file_list:
+            file_list = self._resolve_blast_files(type, organism)
+        hits = self._parse_blast_files(type, file_list, organism)
+        identifier = "loci" if type == "seq_type" else "gene"
+        hits = self._deduplicate_hits(hits, identifier)
+        self._persist_blast_hits(type, type2db, hits)
+        return hits
 
+    def _resolve_blast_files(self, type: str, organism: str) -> list:
+        """Resolves which blast output files to parse for a given type."""
+        if type == "seq_type":
+            return glob.glob(f"{self.sampledir}/blast_search/mlst/*")
+        return glob.glob(f"{self.sampledir}/blast_search/{type}/*")
+
+    def _resolve_ref_folder_and_suffix(self, type: str, organism: str) -> tuple:
+        """Returns the reference folder and file suffix for locilength lookup."""
+        if type == "resistance":
+            return self.folders.resistances, "fsa"
+        elif type == "expec":
+            return (
+                os.path.dirname(self.folders.expec),
+                os.path.basename(self.folders.expec).rsplit(".", 1)[1],
+            )
+        else:  # seq_type
+            return f"{self.folders.references}/{organism}", "tfa"
+
+    def _parse_common_fields(self, elem_list: list) -> dict:
+        """Parses the fields shared across all BLAST hit types from one TSV line."""
+        if int(elem_list[7]) < int(elem_list[8]):
+            contig_start, contig_end = int(elem_list[7]), int(elem_list[8])
+        else:
+            contig_start, contig_end = int(elem_list[8]), int(elem_list[7])
+        nodeinfo = elem_list[2].split("_")
+        return {
+            "CG_ID_sample": self.name,
+            "identity": elem_list[4],
+            "evalue": elem_list[5],
+            "bitscore": elem_list[6],
+            "subject_length": int(elem_list[11]),
+            "contig_start": contig_start,
+            "contig_end": contig_end,
+            "contig_name": f"{nodeinfo[0]}_{nodeinfo[1]}",
+            "contig_length": int(nodeinfo[3]),
+            "contig_coverage": nodeinfo[5],
+        }
+
+    def _parse_resistance_hit(
+        self, hit: dict, filename: str, elem_list: list, locilengths: dict
+    ) -> dict:
+        """Enriches a hit dict with resistance-specific fields."""
+        hit["instance"] = filename
+        partials = re.search(r"(?:>)*(.+)_(\d+){1,3}_(.+)", elem_list[3])
+        hit["reference"] = partials.group(3)
+        hit["gene"] = partials.group(1)
+        hit["resistance"] = self.gene2resistance.get(hit["gene"], hit["instance"].capitalize())
+        padder = [x for x in locilengths if x.startswith(f">{partials.group(1)}_")]
+        if not padder:
+            padder = [x for x in locilengths if x.startswith(f">{partials.group(1)[:-1]}_")]
+        try:
+            padder = padder[0]
+        except IndexError:
+            self.logger.warning(
+                f"In {self.name} gene {partials.group(1)} can't be resolved. Wrong resistance?"
+            )
+        hit["span"] = float(hit["subject_length"]) / locilengths[padder]
+        return hit
+
+    def _parse_expec_hit(
+        self, hit: dict, filename: str, elem_list: list, locilengths: dict
+    ) -> dict:
+        """Enriches a hit dict with ExPEC-specific fields."""
+        hit["instance"] = filename
+        # Thanks, precompiled list standards
+        if ">" in elem_list[3]:
+            partials = re.search(
+                r">*(\w+_\w+\.*\w+).+\((\w+)\).+\((\w+)\)_(\w+)_\[.+\]",
+                elem_list[3],
+            )
+        else:
+            partials = re.search(
+                r"(\w+)\(gb\|\w+\)_\((\S+)\)_(.+)_\[(\S+)_.+\]_\[\S+\]",
+                elem_list[3],
+            )
+        if not partials:
+            partials = re.search(
+                r"(\w+\.*\w+)\:*\w*_*(?:\(\w+\-\w+\))*_\((\w+)\)_([^[]+)\[\S+\]",
+                elem_list[3],
+            )
+        hit["reference"] = partials.group(1)
+        hit["gene"] = partials.group(2)
+        hit["instance"] = partials.group(3).strip("_")
+        hit["virulence"] = (
+            partials.group(4).replace("_", " ").capitalize() if len(partials.groups()) >= 4 else ""
+        )
+        hit["span"] = float(hit["subject_length"]) / locilengths[f">{elem_list[3]}"]
+        return hit
+
+    def _parse_seq_type_hit(self, hit: dict, elem_list: list, locilengths: dict) -> dict:
+        """Enriches a hit dict with seq_type (MLST) specific fields."""
+        partials = re.search(r"(.+)_(\d+){1,3}(?:_(\w+))*", elem_list[3])
+        hit["loci"] = partials.group(1)
+        hit["allele"] = int(partials.group(2))
+        padder = [x for x in locilengths if x.startswith(f">{partials[0]}")]
+        if not padder:
+            padder = [x for x in locilengths if x.startswith(f">{partials[0][:-1]}")]
+        try:
+            padder = padder[0]
+        except IndexError:
+            self.logger.warning(
+                f"In {self.name} allele {partials[0]} can't be resolved. Wrong organism?"
+            )
+        hit["span"] = float(hit["subject_length"]) / locilengths[padder]
+        return hit
+
+    def _parse_blast_files(self, type: str, file_list: list, organism: str) -> list:
+        """Parses all blast output files and returns a list of candidate hit dicts."""
+        type2db = "Expacs" if type == "expec" else type.capitalize() + "s"
+        ref_folder, suffix = self._resolve_ref_folder_and_suffix(type, organism)
+        locilengths = self.get_locilengths(ref_folder, suffix)
+        hits = []
         try:
             for file in file_list:
                 filename = os.path.basename(file).rsplit(".", 1)[0]  # Removes suffix
                 if filename == "lactam":
                     filename = "beta-lactam"
-                if type == "resistance":
-                    ref_folder = self.folders.resistances
-                    suffix = "fsa"
-                elif type == "expec":
-                    ref_folder = os.path.dirname(self.folders.expec)
-                    suffix = os.path.basename(self.folders.expec).rsplit(".", 1)[1]
-                elif type == "seq_type":
-                    ref_folder = f"{self.folders.references}/{organism}"
-                    suffix = "tfa"
-                locilengths = self.get_locilengths(ref_folder, suffix)
-
-                with open(f"{file}", "r") as sample:
-                    for line in sample:
-                        # Ignore commented fields
-                        if not line[0] == "#":
-
-                            elem_list = line.rstrip().split("\t")
-                            if not elem_list[1] == "N/A":
-                                hypo.append(dict())
-                                hypo[-1]["CG_ID_sample"] = self.name
-                                hypo[-1]["identity"] = elem_list[4]
-                                hypo[-1]["evalue"] = elem_list[5]
-                                hypo[-1]["bitscore"] = elem_list[6]
-                                if int(elem_list[7]) < int(elem_list[8]):
-                                    hypo[-1]["contig_start"] = int(elem_list[7])
-                                    hypo[-1]["contig_end"] = int(elem_list[8])
-                                else:
-                                    hypo[-1]["contig_start"] = int(elem_list[8])
-                                    hypo[-1]["contig_end"] = int(elem_list[7])
-                                hypo[-1]["subject_length"] = int(elem_list[11])
-
-                                if type == "resistance":
-                                    hypo[-1]["instance"] = filename
-                                    partials = re.search(
-                                        r"(?:>)*(.+)_(\d+){1,3}_(.+)", elem_list[3]
-                                    )
-                                    hypo[-1]["reference"] = partials.group(3)
-                                    hypo[-1]["gene"] = partials.group(1)
-                                    if hypo[-1]["gene"] in self.gene2resistance.keys():
-                                        hypo[-1]["resistance"] = self.gene2resistance[
-                                            hypo[-1]["gene"]
-                                        ]
-                                    else:
-                                        hypo[-1][f"{type}"] = hypo[-1]["instance"].capitalize()
-                                    # Ignores reference name and finds relevant resFinder entry
-
-                                    padder = [
-                                        x
-                                        for x in locilengths.keys()
-                                        if x.startswith(f">{partials[1]}_")
-                                    ]
-                                    if len(padder) == 0:
-                                        padder = [
-                                            x
-                                            for x in locilengths.keys()
-                                            if x.startswith(f">{partials[1][:-1]}_")
-                                        ]
-                                    try:
-                                        padder = padder[0]
-                                    except IndexError as e:
-                                        self.logger.warning(
-                                            f"In {self.name} gene {partials[1]} can't be resolved. Wrong resistance?"
-                                        )
-
-                                    hypo[-1]["span"] = (
-                                        float(hypo[-1]["subject_length"]) / locilengths[padder]
-                                    )
-
-                                elif type == "expec":
-                                    hypo[-1]["instance"] = filename
-                                    # Thanks, precompiled list standards
-                                    if ">" in elem_list[3]:
-                                        partials = re.search(
-                                            r">*(\w+_\w+\.*\w+).+\((\w+)\).+\((\w+)\)_(\w+)_\[.+\]",
-                                            elem_list[3],
-                                        )
-                                    else:
-                                        partials = re.search(
-                                            r"(\w+)\(gb\|\w+\)_\((\S+)\)_(.+)_\[(\S+)_.+\]_\[\S+\]",
-                                            elem_list[3],
-                                        )
-                                    if not partials:
-                                        partials = re.search(
-                                            r"(\w+\.*\w+)\:*\w*_*(?:\(\w+\-\w+\))*_\((\w+)\)_([^[]+)\[\S+\]",
-                                            elem_list[3],
-                                        )
-                                    # NC/Protein reference
-                                    hypo[-1]["reference"] = partials.group(1)
-                                    # Full gene name
-                                    hypo[-1]["gene"] = partials.group(2)
-                                    # More generic group
-                                    hypo[-1]["instance"] = partials.group(3).strip("_")
-                                    # Description
-                                    if len(partials.groups()) >= 4:
-                                        hypo[-1]["virulence"] = (
-                                            partials.group(4).replace("_", " ").capitalize()
-                                        )
-                                    else:
-                                        hypo[-1]["virulence"] = ""
-                                    # padder = [x for x in locilengths.keys() if x.startswith('>{}'.format(partials[1]))][0]
-                                    hypo[-1]["span"] = (
-                                        float(hypo[-1]["subject_length"])
-                                        / locilengths[f">{elem_list[3]}"]
-                                    )
-
-                                elif type == "seq_type":
-                                    partials = re.search(
-                                        r"(.+)_(\d+){1,3}(?:_(\w+))*", elem_list[3]
-                                    )
-                                    hypo[-1]["loci"] = partials.group(1)
-                                    hypo[-1]["allele"] = int(partials.group(2))
-                                    # Ignores reference name and finds relevant resFinder entry
-
-                                    padder = [
-                                        x
-                                        for x in locilengths.keys()
-                                        if x.startswith(f">{partials[0]}")
-                                    ]
-                                    if len(padder) == 0:
-                                        padder = [
-                                            x
-                                            for x in locilengths.keys()
-                                            if x.startswith(f">{partials[0][:-1]}")
-                                        ]
-                                    try:
-                                        padder = padder[0]
-                                    except IndexError as e:
-                                        self.logger.warning(
-                                            f"In {self.name} allele {partials[0]} can't be resolved. Wrong organism?"
-                                        )
-                                    hypo[-1]["span"] = (
-                                        float(hypo[-1]["subject_length"]) / locilengths[padder]
-                                    )
-
-                                # split elem 2 into contig node_NO, length, cov
-                                nodeinfo = elem_list[2].split("_")
-                                hypo[-1]["contig_name"] = f"{nodeinfo[0]}_{nodeinfo[1]}"
-                                hypo[-1]["contig_length"] = int(nodeinfo[3])
-                                hypo[-1]["contig_coverage"] = nodeinfo[5]
-                                self.logger.debug(f"scrape_blast scrape loop hit '{elem_list[3]}'")
-            self.logger.info(f"{len(hypo)} candidate {type2db} hits found")
+                with open(file, "r") as fh:
+                    for line in fh:
+                        if line[0] == "#":
+                            continue
+                        elem_list = line.rstrip().split("\t")
+                        if elem_list[1] == "N/A":
+                            continue
+                        hit = self._parse_common_fields(elem_list)
+                        if type == "resistance":
+                            hit = self._parse_resistance_hit(hit, filename, elem_list, locilengths)
+                        elif type == "expec":
+                            hit = self._parse_expec_hit(hit, filename, elem_list, locilengths)
+                        elif type == "seq_type":
+                            hit = self._parse_seq_type_hit(hit, elem_list, locilengths)
+                        self.logger.debug(f"scrape_blast scrape loop hit '{elem_list[3]}'")
+                        hits.append(hit)
+            self.logger.info(f"{len(hits)} candidate {type2db} hits found")
         except Exception as e:
             self.logger.error(f"Unable to process the pattern of {e!s}")
+        return hits
 
-        # Cleanup of overlapping hits
-        if type == "seq_type":
-            identifier = "loci"
-        elif type == "resistance" or type == "expec":
-            identifier = "gene"
+    def _deduplicate_hits(self, hits: list, identifier: str) -> list:
+        """Removes overlapping or duplicate BLAST hits, keeping the highest-scoring one."""
         ind = 0
-        while ind < len(hypo) - 1:
+        while ind < len(hits) - 1:
             targ = ind + 1
-            while targ < len(hypo):
+            while targ < len(hits):
                 ignore = False
                 if (
-                    hypo[ind]["contig_name"] == hypo[targ]["contig_name"]
-                    or hypo[ind][identifier] == hypo[targ][identifier]
+                    hits[ind]["contig_name"] == hits[targ]["contig_name"]
+                    or hits[ind][identifier] == hits[targ][identifier]
                 ):
-                    # Overlapping or shared gene
+                    # Overlapping or shared gene/loci
                     if (
                         (
-                            hypo[ind].get("contig_start") >= hypo[targ].get("contig_start")
-                            and hypo[ind].get("contig_start") <= hypo[targ].get("contig_end")
+                            hits[ind].get("contig_start") >= hits[targ].get("contig_start")
+                            and hits[ind].get("contig_start") <= hits[targ].get("contig_end")
                         )
                         or (
-                            hypo[ind].get("contig_end") >= hypo[targ].get("contig_start")
-                            and hypo[ind].get("contig_end") <= hypo[targ].get("contig_end")
+                            hits[ind].get("contig_end") >= hits[targ].get("contig_start")
+                            and hits[ind].get("contig_end") <= hits[targ].get("contig_end")
                         )
-                        or (hypo[ind].get(identifier) == hypo[targ].get(identifier))
+                        or (hits[ind].get(identifier) == hits[targ].get(identifier))
                     ):
+                        score_ind = float(hits[ind]["identity"]) * (1 - abs(1 - hits[ind]["span"]))
+                        score_targ = float(hits[targ]["identity"]) * (
+                            1 - abs(1 - hits[targ]["span"])
+                        )
                         # Rightmost is worse
-                        if float(hypo[ind].get("identity")) * (
-                            1 - abs(1 - hypo[ind].get("span"))
-                        ) > float(hypo[targ].get("identity")) * (
-                            1 - abs(1 - hypo[targ].get("span"))
-                        ):
-                            del hypo[targ]
+                        if score_ind > score_targ:
+                            del hits[targ]
                             ignore = True
                         # Leftmost is worse
-                        elif float(hypo[ind].get("identity")) * (
-                            1 - abs(1 - hypo[ind].get("span"))
-                        ) < float(hypo[targ].get("identity")) * (
-                            1 - abs(1 - hypo[targ].get("span"))
-                        ):
-                            del hypo[ind]
+                        elif score_ind < score_targ:
+                            del hits[ind]
                             targ = ind + 1
                             ignore = True
-                        # Identical identity and span, seperating based on contig coverage
+                        # Identical score — break tie by contig coverage
                         else:
-                            # Rightmost is worse
-                            if float(hypo[ind].get("contig_coverage")) >= float(
-                                hypo[targ].get("contig_coverage")
+                            if float(hits[ind]["contig_coverage"]) >= float(
+                                hits[targ]["contig_coverage"]
                             ):
-                                del hypo[targ]
+                                del hits[targ]
                                 ignore = True
-                            # Leftmost is worse
-                            elif float(hypo[ind].get("contig_coverage")) < float(
-                                hypo[targ].get("contig_coverage")
+                            elif float(hits[ind]["contig_coverage"]) < float(
+                                hits[targ]["contig_coverage"]
                             ):
-                                del hypo[ind]
+                                del hits[ind]
                                 targ = ind + 1
                                 ignore = True
                 if not ignore:
                     targ += 1
-                else:
-                    pass
             ind += 1
+        return hits
 
+    def _persist_blast_hits(self, type: str, type2db: str, hits: list) -> None:
+        """Writes deduplicated blast hits to the database and updates sample ST if applicable."""
+        _ADDERS = {
+            "Seq_types": self.db_pusher.add_seq_type,
+            "Resistances": self.db_pusher.add_resistance,
+            "Expacs": self.db_pusher.add_expac,
+        }
         self.logger.info(
-            f"{len(hypo)} {type} hits were added after removing overlaps and duplicate hits"
+            f"{len(hits)} {type} hits were added after removing overlaps and duplicate hits"
         )
-        for hit in hypo:
+        for hit in hits:
             self.logger.debug(
                 f"Kept {hit.get('loci')}:{hit.get('allele')} with span {hit.get('span')} and id {hit.get('identity')}"
             )
-            self.db_pusher.add_rec(hit, f"{type2db}")
-
+            self.db_pusher.add_to_session(_ADDERS[type2db](**hit))
+        self.db_pusher.commit_session()
         if type == "seq_type":
             try:
-                ST = self.db_pusher.alleles2st(self.name)
-                self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", {"ST": ST})
+                ST = self.db_pusher.read_st(self.name)
+                self.db_pusher.update_sample({"CG_ID_sample": self.name}, {"ST": ST})
                 self.logger.info(f"Sample {self.name} received ST {ST}")
             except Exception as e:
                 self.logger.warning(f"Unable to type sample {self.name} due to data value '{e!s}'")
-        return hypo
 
     def load_resistances(self):
         """Legacy function, loads common resistance names for genes from notes file"""
@@ -535,4 +561,4 @@ class Scraper:
             align_dict["duplication_rate"] = 0.0
             align_dict["average_coverage"] = 0.0
         align_dict["total_reads"] = tot_reads
-        self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", align_dict)
+        self.db_pusher.update_sample({"CG_ID_sample": self.name}, align_dict)

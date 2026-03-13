@@ -7,4 +7,11 @@ class MicroSALTError(Exception):
 
 class RefUpdateLockError(MicroSALTError):
     """Raised when an operation is attempted while a reference update is in progress."""
+
+    pass
+
+
+class JobCreationError(MicroSALTError):
+    """Raised when there is an error creating a job."""
+
     pass

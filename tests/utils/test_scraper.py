@@ -81,13 +81,24 @@ class BlastScraperContext:
         self.profile_path.unlink(missing_ok=True)
         self.combined_fsa.unlink(missing_ok=True)
 
-    def _get_blast_scaper_context(self, config: MicroSALTConfig, logger: logging.Logger, testdata: list[dict], dbm: DB_Manipulator) -> Generator["BlastScraperContext", None, None]:
+    def _get_blast_scaper_context(
+        self,
+        config: MicroSALTConfig,
+        logger: logging.Logger,
+        testdata: list[dict],
+        dbm: DB_Manipulator,
+    ) -> Generator["BlastScraperContext", None, None]:
         """Return a setup BlastScraperContext instance configured for BLAST scraping tests."""
-        self.setup_loci_fasta(Path(__file__).parent.parent / "testdata", Path(config.folders.references))
+        self.setup_loci_fasta(
+            Path(__file__).parent.parent / "testdata", Path(config.folders.references)
+        )
         self.setup_profile(Path(config.folders.profiles))
-        self.setup_resistance_fasta(Path(__file__).parent.parent / "testdata", Path(config.folders.resistances))
+        self.setup_resistance_fasta(
+            Path(__file__).parent.parent / "testdata", Path(config.folders.resistances)
+        )
 
-        dbm.add_rec({"CG_ID_sample": "AAA1234A1", "CG_ID_project": "AAA1234"}, "Samples")
+        dbm.add_to_session(dbm.add_sample(CG_ID_sample="AAA1234A1", CG_ID_project="AAA1234"))
+        dbm.commit_session()
 
         self.scraper = Scraper(
             log=logger,
@@ -105,8 +116,9 @@ class BlastScraperContext:
         )
 
         yield self
-        
+
         self.teardown()
+
 
 @pytest.fixture
 def blast_scraper_context(
@@ -123,7 +135,8 @@ def blast_scraper_context(
     ctx.setup_profile(Path(config.folders.profiles))
     ctx.setup_resistance_fasta(testdata_dir, Path(config.folders.resistances))
 
-    dbm.add_rec({"CG_ID_sample": "AAA1234A1", "CG_ID_project": "AAA1234"}, "Samples")
+    dbm.add_to_session(dbm.add_sample(CG_ID_sample="AAA1234A1", CG_ID_project="AAA1234"))
+    dbm.commit_session()
 
     ctx.scraper = Scraper(
         log=logger,
