@@ -10,9 +10,9 @@ from collections import OrderedDict
 from datetime import datetime, timezone
 
 from dateutil.parser import parse
+from sqlalchemy import DateTime as SADateTime
 from sqlalchemy import MetaData, and_, desc, or_, text
 from sqlalchemy import inspect as sa_inspect
-from sqlalchemy import DateTime as SADateTime
 
 from microSALT import __version__
 from microSALT.config import Folders, Threshold
@@ -213,9 +213,7 @@ class DB_Manipulator:
         pk_cols = list(obj.__table__.primary_key.columns.keys())
         pk_vals = [getattr(obj, c) for c in pk_cols]
         if None not in pk_vals:
-            existing = self.session.get(
-                type(obj), pk_vals if len(pk_vals) > 1 else pk_vals[0]
-            )
+            existing = self.session.get(type(obj), pk_vals if len(pk_vals) > 1 else pk_vals[0])
             if existing is not None:
                 return
         self.session.add(obj)
@@ -430,9 +428,9 @@ class DB_Manipulator:
         else:
             return version.version
 
-    def read_report(self, name: str):
+    def read_report(self, name: str) -> Reports | None:
         # Sort based on version
-        prev_report = []
+        prev_report: Reports | None = None
         prev_reports = (
             self.session.query(Reports)
             .filter(Reports.CG_ID_project == name)
@@ -445,7 +443,7 @@ class DB_Manipulator:
 
     def set_report(self, name: str):
         # Generate string
-        totalstring = list()
+        totalstring: list[str] = []
         dt = datetime.now()
         default_method = "Not in LIMS"
         samples = (
@@ -487,9 +485,7 @@ class DB_Manipulator:
         totalstring = "".join(totalstring).encode()
         hashstring = hashlib.md5(totalstring).hexdigest()
 
-        prev_report = self.read_report(name)
-        # Compare
-        if prev_report:
+        if prev_report := self.read_report(name):
             if "steps_aggregate" in dir(prev_report) and prev_report.steps_aggregate != hashstring:
                 self.add_to_session(
                     self.add_report(

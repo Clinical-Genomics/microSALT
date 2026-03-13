@@ -166,7 +166,9 @@ def test_add_rec(caplog, profile_dbm):
     assert len(dbm.read_records("Reports", {"CG_ID_project": "ADD1234", "version": "1"})) > 0
     assert len(dbm.read_records("Reports", {"CG_ID_project": "XXX1234", "version": "1"})) == 0
 
-    dbm.add_to_session(dbm.add_collection(CG_ID_sample="ADD1234", ID_collection="MyCollectionFolder"))
+    dbm.add_to_session(
+        dbm.add_collection(CG_ID_sample="ADD1234", ID_collection="MyCollectionFolder")
+    )
     dbm.commit_session()
     assert (
         len(

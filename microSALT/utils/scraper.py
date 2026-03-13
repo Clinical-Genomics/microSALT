@@ -1,5 +1,5 @@
 """Scrapes output files for data and adds them to the database
-   By: Isak Sylvin, @sylvinite"""
+By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 
@@ -10,7 +10,16 @@ import string
 import sys
 import time
 
-from microSALT.config import Folders, Threshold, SlurmHeader, Regex, PubMLSTCredentials, PasteurCredentials, Singularity, Containers
+from microSALT.config import (
+    Folders,
+    Threshold,
+    SlurmHeader,
+    Regex,
+    PubMLSTCredentials,
+    PasteurCredentials,
+    Singularity,
+    Containers,
+)
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.job_creator import Job_Creator
@@ -18,7 +27,22 @@ from microSALT.utils.job_creator import Job_Creator
 
 # TODO: Rewrite so samples use seperate objects
 class Scraper:
-    def __init__(self, log, folders: Folders, threshold: Threshold, slurm_header: SlurmHeader, regex: Regex, dry: bool, config_path: str, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials, singularity: Singularity = None, containers: Containers = None, sampleinfo={}, input=""):
+    def __init__(
+        self,
+        log,
+        folders: Folders,
+        threshold: Threshold,
+        slurm_header: SlurmHeader,
+        regex: Regex,
+        dry: bool,
+        config_path: str,
+        pubmlst: PubMLSTCredentials,
+        pasteur: PasteurCredentials,
+        singularity: Singularity = None,
+        containers: Containers = None,
+        sampleinfo={},
+        input="",
+    ):
         self.folders = folders
         self.threshold = threshold
         self.slurm_header = slurm_header
@@ -31,8 +55,29 @@ class Scraper:
         self.containers = containers or Containers()
         self.logger = log
         self.db_pusher = DB_Manipulator(log=log, folders=folders, threshold=threshold)
-        self.referencer = Referencer(log=log, folders=folders, threshold=threshold, pubmlst=pubmlst, pasteur=pasteur, singularity=self.singularity, containers=self.containers)
-        self.job_fallback = Job_Creator(log=log, folders=folders, slurm_header=slurm_header, regex=regex, dry=dry, config_path=config_path, threshold=threshold, pubmlst=pubmlst, pasteur=pasteur, singularity=self.singularity, containers=self.containers, sampleinfo=sampleinfo)
+        self.referencer = Referencer(
+            log=log,
+            folders=folders,
+            threshold=threshold,
+            pubmlst=pubmlst,
+            pasteur=pasteur,
+            singularity=self.singularity,
+            containers=self.containers,
+        )
+        self.job_fallback = Job_Creator(
+            log=log,
+            folders=folders,
+            slurm_header=slurm_header,
+            regex=regex,
+            dry=dry,
+            config_path=config_path,
+            threshold=threshold,
+            pubmlst=pubmlst,
+            pasteur=pasteur,
+            singularity=self.singularity,
+            containers=self.containers,
+            sampleinfo=sampleinfo,
+        )
         self.infolder = os.path.abspath(input)
         self.sampledir = ""
 
@@ -224,7 +269,6 @@ class Scraper:
                     for line in sample:
                         # Ignore commented fields
                         if not line[0] == "#":
-
                             elem_list = line.rstrip().split("\t")
                             if not elem_list[1] == "N/A":
                                 hypo.append(dict())

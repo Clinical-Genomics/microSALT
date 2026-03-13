@@ -81,11 +81,21 @@ class BlastScraperContext:
         self.profile_path.unlink(missing_ok=True)
         self.combined_fsa.unlink(missing_ok=True)
 
-    def _get_blast_scaper_context(self, config: MicroSALTConfig, logger: logging.Logger, testdata: list[dict], dbm: DB_Manipulator) -> Generator["BlastScraperContext", None, None]:
+    def _get_blast_scaper_context(
+        self,
+        config: MicroSALTConfig,
+        logger: logging.Logger,
+        testdata: list[dict],
+        dbm: DB_Manipulator,
+    ) -> Generator["BlastScraperContext", None, None]:
         """Return a setup BlastScraperContext instance configured for BLAST scraping tests."""
-        self.setup_loci_fasta(Path(__file__).parent.parent / "testdata", Path(config.folders.references))
+        self.setup_loci_fasta(
+            Path(__file__).parent.parent / "testdata", Path(config.folders.references)
+        )
         self.setup_profile(Path(config.folders.profiles))
-        self.setup_resistance_fasta(Path(__file__).parent.parent / "testdata", Path(config.folders.resistances))
+        self.setup_resistance_fasta(
+            Path(__file__).parent.parent / "testdata", Path(config.folders.resistances)
+        )
 
         dbm.add_to_session(dbm.add_sample(CG_ID_sample="AAA1234A1", CG_ID_project="AAA1234"))
         dbm.commit_session()
@@ -106,8 +116,9 @@ class BlastScraperContext:
         )
 
         yield self
-        
+
         self.teardown()
+
 
 @pytest.fixture
 def blast_scraper_context(
