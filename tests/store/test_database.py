@@ -1,6 +1,6 @@
-import pytest
-
 from unittest.mock import patch
+
+import pytest
 from sqlalchemy import inspect as sa_inspect
 
 from microSALT.exc.exceptions import RefUpdateLockError
@@ -331,7 +331,7 @@ def test_refresh_profiletable_same_schema(tmp_profiles_dir, profile_dbm):
     # Given: a populated profile table (ST=1, ST=130) and a new file with the
     # same column layout but different data (ST=99 only).
     dbm = profile_dbm
-    new_content = "ST\tarcC\taroE\tglpF\tgmk\tpta\ttpi\tyqiL\n" "99\t3\t3\t3\t3\t3\t3\t3\n"
+    new_content = "ST\tarcC\taroE\tglpF\tgmk\tpta\ttpi\tyqiL\n99\t3\t3\t3\t3\t3\t3\t3\n"
     (tmp_profiles_dir / "staphylococcus_aureus").write_text(new_content)
 
     # When: refresh_profiletable is called with the updated file.
@@ -353,7 +353,7 @@ def test_refresh_profiletable_schema_change(tmp_profiles_dir, profile_dbm):
     # Given: a populated profile table with columns ST+7 loci (including yqiL)
     # and a new file that renames yqiL to renamedLocus within the 8-column window.
     dbm = profile_dbm
-    new_content = "ST\tarcC\taroE\tglpF\tgmk\tpta\ttpi\trenamedLocus\n" "200\t1\t2\t3\t4\t5\t6\t7\n"
+    new_content = "ST\tarcC\taroE\tglpF\tgmk\tpta\ttpi\trenamedLocus\n200\t1\t2\t3\t4\t5\t6\t7\n"
     (tmp_profiles_dir / "staphylococcus_aureus").write_text(new_content)
 
     # When: refresh_profiletable detects the schema change and does a full drop/recreate.

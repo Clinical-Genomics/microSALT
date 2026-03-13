@@ -10,12 +10,13 @@ from collections import OrderedDict
 from datetime import datetime, timezone
 
 from dateutil.parser import parse
-from sqlalchemy import inspect as sa_inspect, MetaData, desc, or_, and_, text
+from sqlalchemy import MetaData, and_, desc, or_, text
+from sqlalchemy import inspect as sa_inspect
 
 from microSALT import __version__
 from microSALT.config import Folders, Threshold
 from microSALT.exc.exceptions import RefUpdateLockError
-from microSALT.store.database import get_session, get_engine
+from microSALT.store.database import get_engine, get_session
 from microSALT.store.models import ProfileTable
 from microSALT.store.orm_models import (
     Collections,
@@ -160,9 +161,7 @@ class DB_Manipulator:
                         parse(v, fuzzy=False)
                         data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
                     except ValueError as ve:
-                        if len(ve.args) > 0 and ve.args[0].startswith(
-                            "unconverted data remains: "
-                        ):
+                        if len(ve.args) > 0 and ve.args[0].startswith("unconverted data remains: "):
                             data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
                         else:
                             pass
@@ -181,9 +180,7 @@ class DB_Manipulator:
         """
         pk_list = list(model_class.__table__.primary_key.columns.keys())
         pk_values = [data[item] for item in pk_list]
-        existing = self.session.get(
-            model_class, pk_values if len(pk_values) > 1 else pk_values[0]
-        )
+        existing = self.session.get(model_class, pk_values if len(pk_values) > 1 else pk_values[0])
         if not existing or force:
             newobj = model_class()
             for k, v in data.items():
@@ -192,9 +189,7 @@ class DB_Manipulator:
                         parse(v, fuzzy=False)
                         data[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
                     except ValueError as ve:
-                        if len(ve.args) > 0 and ve.args[0].startswith(
-                            "unconverted data remains: "
-                        ):
+                        if len(ve.args) > 0 and ve.args[0].startswith("unconverted data remains: "):
                             data[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
             for k, v in data.items():
                 setattr(newobj, k, v)
@@ -236,9 +231,7 @@ class DB_Manipulator:
 
     def update_sample(self, req_dict: dict, upd_dict: dict) -> None:
         """Update a Samples row. Cascades CG_ID_sample renames to child tables."""
-        filter_clauses = [
-            getattr(Samples, k) == v for k, v in req_dict.items() if v is not None
-        ]
+        filter_clauses = [getattr(Samples, k) == v for k, v in req_dict.items() if v is not None]
         query = self.session.query(Samples).filter(and_(*filter_clauses))
         if len(query.all()) > 1:
             self.logger.error("More than 1 Samples record found when updating. Exited.")
@@ -257,9 +250,7 @@ class DB_Manipulator:
 
     def update_project(self, req_dict: dict, upd_dict: dict) -> None:
         """Update a Projects row."""
-        filter_clauses = [
-            getattr(Projects, k) == v for k, v in req_dict.items() if v is not None
-        ]
+        filter_clauses = [getattr(Projects, k) == v for k, v in req_dict.items() if v is not None]
         query = self.session.query(Projects).filter(and_(*filter_clauses))
         if len(query.all()) > 1:
             self.logger.error("More than 1 Projects record found when updating. Exited.")
@@ -270,9 +261,7 @@ class DB_Manipulator:
 
     def update_version(self, req_dict: dict, upd_dict: dict) -> None:
         """Update a Versions row."""
-        filter_clauses = [
-            getattr(Versions, k) == v for k, v in req_dict.items() if v is not None
-        ]
+        filter_clauses = [getattr(Versions, k) == v for k, v in req_dict.items() if v is not None]
         self.session.query(Versions).filter(and_(*filter_clauses)).update(upd_dict)
         self.session.commit()
         self.logger.debug(f"Updated Versions for {req_dict} with {upd_dict}")
@@ -298,9 +287,13 @@ class DB_Manipulator:
         """Delete all samples (and their child rows) belonging to a project."""
         for obj in self.session.query(Expacs).filter(Expacs.CG_ID_sample.like(f"{name}%")).all():
             self.session.delete(obj)
-        for obj in self.session.query(Seq_types).filter(Seq_types.CG_ID_sample.like(f"{name}%")).all():
+        for obj in (
+            self.session.query(Seq_types).filter(Seq_types.CG_ID_sample.like(f"{name}%")).all()
+        ):
             self.session.delete(obj)
-        for obj in self.session.query(Resistances).filter(Resistances.CG_ID_sample.like(f"{name}%")).all():
+        for obj in (
+            self.session.query(Resistances).filter(Resistances.CG_ID_sample.like(f"{name}%")).all()
+        ):
             self.session.delete(obj)
         for obj in self.session.query(Samples).filter(Samples.CG_ID_sample.like(f"{name}%")).all():
             self.session.delete(obj)
