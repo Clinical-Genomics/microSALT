@@ -526,7 +526,7 @@ class Job_Creator:
     def create_collection(self):
         """Creates collection entry in database"""
         if self.db_pusher.read_exists("Collections", {"ID_collection": self.name}):
-            self.db_pusher.delete_records(name=self.name, type="Collections")
+            self.db_pusher.delete_collection(self.name)
             for sample in self.pool:
                 self.db_pusher.add_rec(
                     {"ID_collection": self.name, "CG_ID_sample": sample}, "Collections"
@@ -545,8 +545,8 @@ class Job_Creator:
         proj_col["CG_ID_project"] = name
         proj_col["Customer_ID_project"] = self.sample.get("Customer_ID_project")
         proj_col["Customer_ID"] = self.sample.get("Customer_ID")
-        self.db_pusher.add_rec(proj_col, "Projects")
-        self.db_pusher.upd_rec({"CG_ID_project": name}, "Projects", proj_col)
+        self.db_pusher.add_project(proj_col)
+        self.db_pusher.update_project({"CG_ID_project": name}, proj_col)
 
     def create_sample(self, name):
         """Creates sample in database"""
@@ -573,7 +573,7 @@ class Job_Creator:
             sample_col["method_libprep"] = self.sample.get("method_libprep")
             sample_col["method_sequencing"] = self.sample.get("method_sequencing")
             # self.db_pusher.delete_records(sample_col['CG_ID_sample'], 'sample')
-            self.db_pusher.add_rec(sample_col, "Samples")
+            self.db_pusher.add_sample(sample_col)
         except Exception:
             self.logger.error(f"Unable to add sample {self.name} to database")
 

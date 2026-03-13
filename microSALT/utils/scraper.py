@@ -62,7 +62,7 @@ class Scraper:
         """Scrapes a project folder for information"""
         if project is None:
             project = self.name
-        self.db_pusher.delete_records(project, "Projects")
+        self.db_pusher.delete_project(project)
         if not self.db_pusher.read_exists("Projects", {"CG_ID_project": project}):
             self.logger.warning(f"Replacing project {project}")
             self.job_fallback.create_project(project)
@@ -95,7 +95,7 @@ class Scraper:
         """Scrapes a sample folder for information"""
         if sample is None:
             sample = self.name
-        self.db_pusher.delete_records(sample, "Samples")
+        self.db_pusher.delete_sample(sample)
 
         if not self.db_pusher.read_exists(
             "Projects", {"CG_ID_project": self.sample.get("CG_ID_project")}
@@ -138,7 +138,7 @@ class Scraper:
                     elif lsplit[0] == "N50":
                         quast["n50"] = int(lsplit[1])
 
-            self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", quast)
+            self.db_pusher.update_sample({"CG_ID_sample": self.name}, quast)
             self.logger.debug(f"Project {self.name} recieved quast stats: {quast}")
         except Exception as e:
             self.logger.warning(f"Cannot generate quast statistics for {self.name}")
@@ -161,7 +161,7 @@ class Scraper:
                         curated_line = line.strip()
                         assembly_length += len(curated_line)
                 reference_data["reference_length"] = assembly_length
-            self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", reference_data)
+            self.db_pusher.update_sample({"CG_ID_sample": self.name}, reference_data)
             self.logger.debug(f"Project {self.name} recieved quast stats: {reference_data}")
         except Exception as e:
             self.logger.warning(f"Cannot find assembly size for reference {self.name}")
@@ -201,7 +201,7 @@ class Scraper:
 
         organism = self.referencer.organism2reference(self.sample.get("organism"))
         if organism:
-            self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", {"organism": organism})
+            self.db_pusher.update_sample({"CG_ID_sample": self.name}, {"organism": organism})
         res_cols = self.db_pusher.read_columns(f"{type2db}")
 
         try:
@@ -424,12 +424,17 @@ class Scraper:
             self.logger.debug(
                 f"Kept {hit.get('loci')}:{hit.get('allele')} with span {hit.get('span')} and id {hit.get('identity')}"
             )
-            self.db_pusher.add_rec(hit, f"{type2db}")
+            _ADDERS = {
+                "Seq_types": self.db_pusher.add_seq_type,
+                "Resistances": self.db_pusher.add_resistance,
+                "Expacs": self.db_pusher.add_expac,
+            }
+            _ADDERS[type2db](hit)
 
         if type == "seq_type":
             try:
                 ST = self.db_pusher.read_st(self.name)
-                self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", {"ST": ST})
+                self.db_pusher.update_sample({"CG_ID_sample": self.name}, {"ST": ST})
                 self.logger.info(f"Sample {self.name} received ST {ST}")
             except Exception as e:
                 self.logger.warning(f"Unable to type sample {self.name} due to data value '{e!s}'")
@@ -535,4 +540,4 @@ class Scraper:
             align_dict["duplication_rate"] = 0.0
             align_dict["average_coverage"] = 0.0
         align_dict["total_reads"] = tot_reads
-        self.db_pusher.upd_rec({"CG_ID_sample": self.name}, "Samples", align_dict)
+        self.db_pusher.update_sample({"CG_ID_sample": self.name}, align_dict)

@@ -51,9 +51,9 @@ def profile_dbm(config, logger, tmp_profiles_dir, unpack_db_json):
         table.create(dbm.engine)
 
     for entry in unpack_db_json("sampleinfo_projects.json"):
-        dbm.add_rec(entry, "Projects")
+        dbm.add_project(entry)
     for entry in unpack_db_json("sampleinfo_mlst.json"):
-        dbm.add_rec(entry, "Seq_types")
+        dbm.add_seq_type(entry)
 
     return dbm
 

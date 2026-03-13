@@ -107,15 +107,15 @@ def dbm(config: MicroSALTConfig, logger: logging.Logger, unpack_db_json):
     dbm.create_tables()
 
     for entry in unpack_db_json("sampleinfo_projects.json"):
-        dbm.add_rec(entry, "Projects")
+        dbm.add_project(entry)
     for entry in unpack_db_json("sampleinfo_mlst.json"):
-        dbm.add_rec(entry, "Seq_types")
+        dbm.add_seq_type(entry)
     for entry in unpack_db_json("sampleinfo_resistance.json"):
-        dbm.add_rec(entry, "Resistances")
+        dbm.add_resistance(entry)
     for entry in unpack_db_json("sampleinfo_expec.json"):
-        dbm.add_rec(entry, "Expacs")
+        dbm.add_expac(entry)
     for entry in unpack_db_json("sampleinfo_reports.json"):
-        dbm.add_rec(entry, "Reports")
+        dbm.add_report(entry)
     return dbm
 
 

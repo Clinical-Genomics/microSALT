@@ -102,18 +102,16 @@ class DB_Manipulator:
             if not inspector.has_table(f"profile_{k}"):
                 self.profiles[k].create(self.engine)
                 self.populate_profiletable(k, v)
-                self.add_rec(
+                self.add_version(
                     {"name": f"profile_{k}", "version": "0"},
-                    "Versions",
                     force=True,
                 )
                 self.logger.info(f"Profile table profile_{k} created and populated")
         for k, v in self.novel.items():
             if not inspector.has_table(f"novel_{k}"):
                 self.novel[k].create(self.engine)
-                self.add_rec(
+                self.add_version(
                     {"name": f"novel_{k}", "version": "0"},
-                    "Versions",
                     force=True,
                 )
                 self.logger.info(f"Profile table novel_{k} initialized")
@@ -613,24 +611,22 @@ class DB_Manipulator:
         # Compare
         if prev_report:
             if "steps_aggregate" in dir(prev_report) and prev_report.steps_aggregate != hashstring:
-                self.add_rec(
+                self.add_report(
                     {
                         "CG_ID_project": name,
                         "steps_aggregate": hashstring,
                         "date": dt,
                         "version": prev_report.version + 1,
-                    },
-                    "Reports",
+                    }
                 )
         else:
-            self.add_rec(
+            self.add_report(
                 {
                     "CG_ID_project": name,
                     "steps_aggregate": hashstring,
                     "date": dt,
                     "version": 1,
-                },
-                "Reports",
+                }
             )
 
     def set_novel_st(self, overwrite=False, sample=""):
@@ -676,9 +672,8 @@ class DB_Manipulator:
                             self.logger.info(
                                 f"Update: Sample {entry.CG_ID_sample} of organism {org}; Internal ST {novel.ST} is now linked to {exist.ST} '{exist}'"
                             )
-                            self.upd_rec(
+                            self.update_sample(
                                 {"CG_ID_sample": entry.CG_ID_sample},
-                                "Samples",
                                 {"pubmlst_ST": exist.ST},
                             )
                         # overwrite
@@ -686,9 +681,8 @@ class DB_Manipulator:
                             self.logger.info(
                                 f"Replacement: Sample {entry.CG_ID_sample} of organism {org}; Internal ST {novel.ST} is now {exist.ST} '{exist}'"
                             )
-                            self.upd_rec(
+                            self.update_sample(
                                 {"CG_ID_sample": entry.CG_ID_sample},
-                                "Samples",
                                 {"ST": exist.ST, "pubmlst_ST": exist.ST},
                             )
 
@@ -699,7 +693,7 @@ class DB_Manipulator:
             self.logger.info(
                 f"Ignore: Sample {query[0].CG_ID_sample} from organism {query[0].organism} with ST {query[0].ST}; is now flagged as resolved."
             )
-            self.upd_rec({"CG_ID_sample": query[0].CG_ID_sample}, "Samples", {"pubmlst_ST": 0})
+            self.update_sample({"CG_ID_sample": query[0].CG_ID_sample}, {"pubmlst_ST": 0})
         else:
             self.logger.error(f"Sample {sample} not found in database. Verify name")
 

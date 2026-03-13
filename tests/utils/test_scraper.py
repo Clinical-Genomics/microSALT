@@ -87,7 +87,7 @@ class BlastScraperContext:
         self.setup_profile(Path(config.folders.profiles))
         self.setup_resistance_fasta(Path(__file__).parent.parent / "testdata", Path(config.folders.resistances))
 
-        dbm.add_rec({"CG_ID_sample": "AAA1234A1", "CG_ID_project": "AAA1234"}, "Samples")
+        dbm.add_sample({"CG_ID_sample": "AAA1234A1", "CG_ID_project": "AAA1234"})
 
         self.scraper = Scraper(
             log=logger,
@@ -123,7 +123,7 @@ def blast_scraper_context(
     ctx.setup_profile(Path(config.folders.profiles))
     ctx.setup_resistance_fasta(testdata_dir, Path(config.folders.resistances))
 
-    dbm.add_rec({"CG_ID_sample": "AAA1234A1", "CG_ID_project": "AAA1234"}, "Samples")
+    dbm.add_sample({"CG_ID_sample": "AAA1234A1", "CG_ID_project": "AAA1234"})
 
     ctx.scraper = Scraper(
         log=logger,
