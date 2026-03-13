@@ -315,14 +315,6 @@ def finish(
         if os.path.isdir(f"{input}/{subfolder}"):
             pool.append(subfolder)
 
-    run_settings = {
-        "input": input,
-        "track": track,
-        "dry": dry,
-        "email": config.regex.mail_recipient,
-        "skip_update": skip_update,
-    }
-
     sampleinfo = review_sampleinfo(sampleinfo_file)
     ext_refs = Referencer(
         log=logger,

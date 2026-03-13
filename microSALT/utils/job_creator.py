@@ -526,12 +526,10 @@ class Job_Creator:
 
     def create_collection(self):
         """Creates collection entry in database"""
-        if self.db_pusher.read_exists("Collections", {"ID_collection": self.name}):
+        if self.db_pusher.get_collection_by_id(self.name):
             self.db_pusher.delete_collection(self.name)
             for sample in self.pool:
-                self.db_pusher.add_rec(
-                    {"ID_collection": self.name, "CG_ID_sample": sample}, "Collections"
-                )
+                self.db_pusher.add_collection(ID_collectiuon=self.name, CG_ID_sample=sample)
 
         addedprojs = []
         for sample in self.pool:
@@ -541,8 +539,8 @@ class Job_Creator:
                 self.create_project(lims_project)
                 addedprojs.append(lims_project)
 
-    def create_project(self, name: str):
-        """Creates project in database"""
+    def create_project(self, name: str) -> None:
+        """Creates or updates a project in the database."""
         if not self.sample:
             raise JobCreationError(
                 "No sample information provided. Cannot create project in database."
@@ -552,12 +550,15 @@ class Job_Creator:
             "Customer_ID_project": self.sample["Customer_ID_project"],
             "Customer_ID": self.sample["Customer_ID"],
         }
-        self.db_pusher.add_to_session(self.db_pusher.add_project(**project_data))
-        self.db_pusher.commit_session()
+        if self.db_pusher.get_projects_by_cg_id_project(name):
+            update_data = {k: v for k, v in project_data.items() if k != "CG_ID_project"}
+            self.db_pusher.update_project({"CG_ID_project": name}, update_data)
+        else:
+            self.db_pusher.add_to_session(self.db_pusher.add_project(**project_data))
+            self.db_pusher.commit_session()
 
-    def create_sample(self):
-        """Creates sample in database"""
-
+    def create_sample(self) -> None:
+        """Creates or updates a sample in the database."""
         try:
             if not self.sample:
                 raise JobCreationError(
@@ -581,8 +582,13 @@ class Job_Creator:
                 "method_libprep": self.sample["method_libprep"],
                 "method_sequencing": self.sample["method_sequencing"],
             }
-            self.db_pusher.add_to_session(self.db_pusher.add_sample(**sample_data))
-            self.db_pusher.commit_session()
+            cg_id = self.sample["CG_ID_sample"]
+            if self.db_pusher.get_sample_by_cg_id_sample(cg_id):
+                update_data = {k: v for k, v in sample_data.items() if k != "CG_ID_sample"}
+                self.db_pusher.update_sample({"CG_ID_sample": cg_id}, update_data)
+            else:
+                self.db_pusher.add_to_session(self.db_pusher.add_sample(**sample_data))
+                self.db_pusher.commit_session()
         except JobCreationError as e:
             self.logger.error(f"Unable to add sample {self.name} to database: {e}")
         except KeyError as e:

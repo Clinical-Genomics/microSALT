@@ -279,6 +279,18 @@ class DB_Manipulator:
         self.session.commit()
         self.logger.info(f"Removed sample {cg_id} and its child rows")
 
+    def delete_sample_results(self, cg_id: str) -> None:
+        """Delete only the analysis result rows for a sample (seq_types, resistances, expacs)
+        without removing the Samples row itself."""
+        for obj in self.session.query(Expacs).filter(Expacs.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        for obj in self.session.query(Seq_types).filter(Seq_types.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        for obj in self.session.query(Resistances).filter(Resistances.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        self.session.commit()
+        self.logger.info(f"Cleared analysis results for sample {cg_id}")
+
     def delete_project(self, name: str) -> None:
         """Delete all samples (and their child rows) belonging to a project."""
         for obj in self.session.query(Expacs).filter(Expacs.CG_ID_sample.like(f"{name}%")).all():
@@ -413,16 +425,29 @@ class DB_Manipulator:
         table = _resolve_orm_table(tablename)
         return dict.fromkeys(table.__table__.columns.keys())
 
-    def read_exists(self, table: str, item: dict[str, str]):
-        """Takes a k-v pair and checks for the entrys existence in the given table"""
-        orm_table = _resolve_orm_table(table)
-        filter_clauses = [getattr(orm_table, k) == v for k, v in item.items()]
-        entry = self.session.query(orm_table).filter(and_(*filter_clauses)).scalar()
-        return entry is not None
+    def get_projects_by_cg_id_project(self, cg_id_project_name: str) -> Projects | None:
+        """Fetch a Projects record by CG_ID_project."""
+        return (
+            self.session.query(Projects)
+            .filter(Projects.CG_ID_project == cg_id_project_name)
+            .scalar()
+        )
+
+    def get_collection_by_id(self, collection_id: str) -> Collections | None:
+        return (
+            self.session.query(Collections)
+            .filter(Collections.ID_collection == collection_id)
+            .scalar()
+        )
+
+    def get_sample_by_cg_id_sample(self, cg_id_sample: str) -> Samples | None:
+        return self.session.query(Samples).filter(Samples.CG_ID_sample == cg_id_sample).scalar()
 
     def read_version(self, name: str):
         """Gets the version from a given name. Should be generalized to return any value for any input"""
-        version = self.session.query(Versions).filter(Versions.name == name).scalar()
+        version: Versions | None = (
+            self.session.query(Versions).filter(Versions.name == name).scalar()
+        )
         if version is None:
             return "0"
         else:
