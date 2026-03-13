@@ -526,12 +526,10 @@ class Job_Creator:
 
     def create_collection(self):
         """Creates collection entry in database"""
-        if self.db_pusher.read_exists("Collections", {"ID_collection": self.name}):
+        if self.db_pusher.get_collection_by_id(self.name):
             self.db_pusher.delete_collection(self.name)
             for sample in self.pool:
-                self.db_pusher.add_rec(
-                    {"ID_collection": self.name, "CG_ID_sample": sample}, "Collections"
-                )
+                self.db_pusher.add_collection(ID_collectiuon=self.name, CG_ID_sample=sample)
 
         addedprojs = []
         for sample in self.pool:
@@ -585,7 +583,7 @@ class Job_Creator:
                 "method_sequencing": self.sample["method_sequencing"],
             }
             cg_id = self.sample["CG_ID_sample"]
-            if self.db_pusher.read_exists("Samples", {"CG_ID_sample": cg_id}):
+            if self.db_pusher.get_sample_by_cg_id_sample(cg_id):
                 update_data = {k: v for k, v in sample_data.items() if k != "CG_ID_sample"}
                 self.db_pusher.update_sample({"CG_ID_sample": cg_id}, update_data)
             else:
