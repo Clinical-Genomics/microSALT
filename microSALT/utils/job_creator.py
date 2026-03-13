@@ -545,7 +545,8 @@ class Job_Creator:
         proj_col["CG_ID_project"] = name
         proj_col["Customer_ID_project"] = self.sample.get("Customer_ID_project")
         proj_col["Customer_ID"] = self.sample.get("Customer_ID")
-        self.db_pusher.add_project(proj_col)
+        self.db_pusher.add_to_session(self.db_pusher.add_project(**proj_col))
+        self.db_pusher.commit_session()
         self.db_pusher.update_project({"CG_ID_project": name}, proj_col)
 
     def create_sample(self, name):
@@ -573,7 +574,8 @@ class Job_Creator:
             sample_col["method_libprep"] = self.sample.get("method_libprep")
             sample_col["method_sequencing"] = self.sample.get("method_sequencing")
             # self.db_pusher.delete_records(sample_col['CG_ID_sample'], 'sample')
-            self.db_pusher.add_sample(sample_col)
+            self.db_pusher.add_to_session(self.db_pusher.add_sample(**sample_col))
+            self.db_pusher.commit_session()
         except Exception:
             self.logger.error(f"Unable to add sample {self.name} to database")
 

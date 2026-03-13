@@ -429,7 +429,8 @@ class Scraper:
                 "Resistances": self.db_pusher.add_resistance,
                 "Expacs": self.db_pusher.add_expac,
             }
-            _ADDERS[type2db](hit)
+            self.db_pusher.add_to_session(_ADDERS[type2db](**hit))
+        self.db_pusher.commit_session()
 
         if type == "seq_type":
             try:

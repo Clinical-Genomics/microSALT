@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from dateutil.parser import parse
 from sqlalchemy import MetaData, and_, desc, or_, text
 from sqlalchemy import inspect as sa_inspect
+from sqlalchemy import DateTime as SADateTime
 
 from microSALT import __version__
 from microSALT.config import Folders, Threshold
@@ -103,18 +104,14 @@ class DB_Manipulator:
             if not inspector.has_table(f"profile_{k}"):
                 self.profiles[k].create(self.engine)
                 self.populate_profiletable(k, v)
-                self.add_version(
-                    {"name": f"profile_{k}", "version": "0"},
-                    force=True,
-                )
+                self.add_to_session(self.add_version(name=f"profile_{k}", version="0"))
+                self.commit_session()
                 self.logger.info(f"Profile table profile_{k} created and populated")
         for k, v in self.novel.items():
             if not inspector.has_table(f"novel_{k}"):
                 self.novel[k].create(self.engine)
-                self.add_version(
-                    {"name": f"novel_{k}", "version": "0"},
-                    force=True,
-                )
+                self.add_to_session(self.add_version(name=f"novel_{k}", version="0"))
+                self.commit_session()
                 self.logger.info(f"Profile table novel_{k} initialized")
 
     def acquire_ref_lock(self):
@@ -170,60 +167,61 @@ class DB_Manipulator:
             self.logger.info(f"Added entry to table {tablename.fullname}")
 
     # ------------------------------------------------------------------
-    # Per-model add methods
+    # Per-model factory methods — construct and return an ORM object.
+    # Callers are responsible for add_to_session() and commit_session().
     # ------------------------------------------------------------------
 
-    def _add_orm_record(self, model_class, data: dict, force: bool = False) -> None:
-        """Insert one row into an ORM-mapped table.
+    def add_sample(self, **kwargs) -> Samples:
+        return Samples(**kwargs)
 
-        Shared implementation used by all per-model add_* helpers.
+    def add_project(self, **kwargs) -> Projects:
+        return Projects(**kwargs)
+
+    def add_seq_type(self, **kwargs) -> Seq_types:
+        return Seq_types(**kwargs)
+
+    def add_resistance(self, **kwargs) -> Resistances:
+        return Resistances(**kwargs)
+
+    def add_expac(self, **kwargs) -> Expacs:
+        return Expacs(**kwargs)
+
+    def add_report(self, **kwargs) -> Reports:
+        return Reports(**kwargs)
+
+    def add_collection(self, **kwargs) -> Collections:
+        return Collections(**kwargs)
+
+    def add_version(self, **kwargs) -> Versions:
+        return Versions(**kwargs)
+
+    def add_to_session(self, obj) -> None:
+        """Coerce string DateTime fields, then stage the object.
+
+        If an object with the same primary key already exists in the database
+        the insert is silently skipped (same semantics as the previous
+        _add_orm_record behaviour).
         """
-        pk_list = list(model_class.__table__.primary_key.columns.keys())
-        pk_values = [data[item] for item in pk_list]
-        existing = self.session.get(model_class, pk_values if len(pk_values) > 1 else pk_values[0])
-        if not existing or force:
-            newobj = model_class()
-            for k, v in data.items():
-                if isinstance(v, str):
+        for col in obj.__table__.columns:
+            if isinstance(col.type, SADateTime):
+                val = getattr(obj, col.name)
+                if isinstance(val, str):
                     try:
-                        parse(v, fuzzy=False)
-                        data[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
-                    except ValueError as ve:
-                        if len(ve.args) > 0 and ve.args[0].startswith("unconverted data remains: "):
-                            data[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
-            for k, v in data.items():
-                setattr(newobj, k, v)
-            self.session.add(newobj)
-            self.session.commit()
-        else:
-            pks_str = ", ".join(f"{k}={v}" for k, v in zip(pk_list, pk_values))
-            self.logger.warning(
-                f"Record [{pks_str}] in table {model_class.__tablename__} already exists"
+                        setattr(obj, col.name, datetime.strptime(val, "%Y-%m-%d %H:%M:%S"))
+                    except ValueError:
+                        setattr(obj, col.name, datetime.strptime(val, "%Y-%m-%d %H:%M:%S.%f"))
+        pk_cols = list(obj.__table__.primary_key.columns.keys())
+        pk_vals = [getattr(obj, c) for c in pk_cols]
+        if None not in pk_vals:
+            existing = self.session.get(
+                type(obj), pk_vals if len(pk_vals) > 1 else pk_vals[0]
             )
+            if existing is not None:
+                return
+        self.session.add(obj)
 
-    def add_sample(self, data: dict) -> None:
-        self._add_orm_record(Samples, data)
-
-    def add_project(self, data: dict) -> None:
-        self._add_orm_record(Projects, data)
-
-    def add_seq_type(self, data: dict) -> None:
-        self._add_orm_record(Seq_types, data)
-
-    def add_resistance(self, data: dict) -> None:
-        self._add_orm_record(Resistances, data)
-
-    def add_expac(self, data: dict) -> None:
-        self._add_orm_record(Expacs, data)
-
-    def add_report(self, data: dict) -> None:
-        self._add_orm_record(Reports, data)
-
-    def add_collection(self, data: dict) -> None:
-        self._add_orm_record(Collections, data)
-
-    def add_version(self, data: dict, force: bool = False) -> None:
-        self._add_orm_record(Versions, data, force=force)
+    def commit_session(self) -> None:
+        self.session.commit()
 
     # ------------------------------------------------------------------
     # Per-model update methods
@@ -493,23 +491,25 @@ class DB_Manipulator:
         # Compare
         if prev_report:
             if "steps_aggregate" in dir(prev_report) and prev_report.steps_aggregate != hashstring:
-                self.add_report(
-                    {
-                        "CG_ID_project": name,
-                        "steps_aggregate": hashstring,
-                        "date": dt,
-                        "version": prev_report.version + 1,
-                    }
+                self.add_to_session(
+                    self.add_report(
+                        CG_ID_project=name,
+                        steps_aggregate=hashstring,
+                        date=dt,
+                        version=prev_report.version + 1,
+                    )
                 )
+                self.commit_session()
         else:
-            self.add_report(
-                {
-                    "CG_ID_project": name,
-                    "steps_aggregate": hashstring,
-                    "date": dt,
-                    "version": 1,
-                }
+            self.add_to_session(
+                self.add_report(
+                    CG_ID_project=name,
+                    steps_aggregate=hashstring,
+                    date=dt,
+                    version=1,
+                )
             )
+            self.commit_session()
 
     def set_novel_st(self, overwrite=False, sample=""):
         """Looks at each novel table. See if any record has a profile match in the profile table.
