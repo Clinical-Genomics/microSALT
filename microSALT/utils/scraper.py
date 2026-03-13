@@ -108,9 +108,7 @@ class Scraper:
         if project is None:
             project = self.name
         self.db_pusher.delete_project(project)
-        if not self.db_pusher.read_exists("Projects", {"CG_ID_project": project}):
-            self.logger.warning(f"Replacing project {project}")
-            self.job_fallback.create_project(project)
+        self.job_fallback.create_project(project)
 
         # Scrape order matters a lot!
         for item in os.listdir(self.infolder):
@@ -140,17 +138,9 @@ class Scraper:
         """Scrapes a sample folder for information"""
         if sample is None:
             sample = self.name
-        self.db_pusher.delete_sample(sample)
-
-        if not self.db_pusher.read_exists(
-            "Projects", {"CG_ID_project": self.sample.get("CG_ID_project")}
-        ):
-            self.logger.warning(f"Replacing project {self.sample.get('CG_ID_project')}")
-            self.job_fallback.create_project(self.sample.get("CG_ID_project"))
-
-        if not self.db_pusher.read_exists("Samples", {"CG_ID_sample": sample}):
-            self.logger.info(f"Replacing sample {sample}")
-            self.job_fallback.create_sample(sample)
+        self.db_pusher.delete_sample_results(sample)
+        self.job_fallback.create_project(self.sample.get("CG_ID_project"))
+        self.job_fallback.create_sample()
 
         # Scrape order matters a lot!
         self.sampledir = self.infolder

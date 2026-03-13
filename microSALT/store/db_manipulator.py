@@ -279,6 +279,18 @@ class DB_Manipulator:
         self.session.commit()
         self.logger.info(f"Removed sample {cg_id} and its child rows")
 
+    def delete_sample_results(self, cg_id: str) -> None:
+        """Delete only the analysis result rows for a sample (seq_types, resistances, expacs)
+        without removing the Samples row itself."""
+        for obj in self.session.query(Expacs).filter(Expacs.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        for obj in self.session.query(Seq_types).filter(Seq_types.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        for obj in self.session.query(Resistances).filter(Resistances.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        self.session.commit()
+        self.logger.info(f"Cleared analysis results for sample {cg_id}")
+
     def delete_project(self, name: str) -> None:
         """Delete all samples (and their child rows) belonging to a project."""
         for obj in self.session.query(Expacs).filter(Expacs.CG_ID_sample.like(f"{name}%")).all():
@@ -412,6 +424,10 @@ class DB_Manipulator:
         """Returns all records for a given ORM table"""
         table = _resolve_orm_table(tablename)
         return dict.fromkeys(table.__table__.columns.keys())
+
+    def get_projects_by_cg_id_project(self, cg_id_project_name: str) -> Projects | None:
+        """Fetch a Projects record by CG_ID_project."""
+        return self.session.query(Projects).filter(Projects.CG_ID_project == cg_id_project_name).scalar()
 
     def read_exists(self, table: str, item: dict[str, str]):
         """Takes a k-v pair and checks for the entrys existence in the given table"""
