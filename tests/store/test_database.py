@@ -267,17 +267,6 @@ def test_purge_rec(sysexit, caplog, dbm):
     dbm.delete_collection("UPD1234A1")
 
 
-def test_top_index(dbm):
-    dbm.add_to_session(dbm.add_sample(CG_ID_sample="Uniq_ID_123", total_reads=100))
-    dbm.add_to_session(dbm.add_sample(CG_ID_sample="Uniq_ID_321", total_reads=100))
-    dbm.commit_session()
-    ti_returned = dbm.read_top_index("Samples", {"total_reads": "100"}, "total_reads")
-    assert ti_returned == 100
-
-    ti_missing = dbm.read_top_index("Samples", {"total_reads": "99999"}, "total_reads")
-    assert ti_missing == -1
-
-
 def test_query_rec(dbm):
     dbm.add_to_session(dbm.add_sample(CG_ID_sample="QRY_001"))
     dbm.add_to_session(dbm.add_sample(CG_ID_sample="QRY_002"))
@@ -301,12 +290,20 @@ def test_get_columns(dbm):
     assert "organism" in cols
 
 
-def test_exists(dbm):
+def test_get_sample_by_cg_id(dbm: DB_Manipulator):
     dbm.add_to_session(dbm.add_sample(CG_ID_sample="EXS_001"))
     dbm.commit_session()
 
-    assert dbm.read_exists("Samples", {"CG_ID_sample": "EXS_001"}) is True
-    assert dbm.read_exists("Samples", {"CG_ID_sample": "DOES_NOT_EXIST"}) is False
+    assert dbm.get_sample_by_cg_id_sample("EXS_001")
+    assert dbm.get_sample_by_cg_id_sample("DOES_NOT_EXIST") is None
+
+
+def test_get_collection_by_id(dbm: DB_Manipulator):
+    dbm.add_to_session(dbm.add_collection(CG_ID_sample="EXS_001", ID_collection="COLL_001"))
+    dbm.commit_session()
+
+    assert dbm.get_collection_by_id("COLL_001")
+    assert dbm.get_collection_by_id("DOES_NOT_EXIST") is None
 
 
 def test_resolve_orm_table_unknown():
