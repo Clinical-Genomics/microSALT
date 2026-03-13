@@ -78,14 +78,13 @@ def test_add_rec(caplog, profile_dbm):
         == 0
     )
 
-    dbm.add_rec(
+    dbm.add_resistance(
         {
             "CG_ID_sample": "ADD1234A1",
             "gene": "Type 1",
             "instance": "Type 1",
             "contig_name": "NODE_1",
-        },
-        "Resistances",
+        }
     )
     assert (
         len(
@@ -116,14 +115,13 @@ def test_add_rec(caplog, profile_dbm):
         == 0
     )
 
-    dbm.add_rec(
+    dbm.add_expac(
         {
             "CG_ID_sample": "ADD1234A1",
             "gene": "Type 1",
             "instance": "Type 1",
             "contig_name": "NODE_1",
-        },
-        "Expacs",
+        }
     )
     assert (
         len(
@@ -180,10 +178,6 @@ def test_add_rec(caplog, profile_dbm):
         == 0
     )
 
-    caplog.clear()
-    dbm.add_rec({"CG_ID_sample": "ADD1234A1"}, "An_entry_that_does_not_exist")
-    assert "Attempted to access table" in caplog.text
-
 
 @patch("sys.exit")
 def test_upd_rec(sysexit, caplog, dbm):
@@ -207,13 +201,12 @@ def test_upd_rec(sysexit, caplog, dbm):
 
 def test_allele_ranker(profile_dbm, unpack_db_json):
     dbm = profile_dbm
-    dbm.add_rec(
+    dbm.add_sample(
         {
             "CG_ID_sample": "MLS1234A1",
             "CG_ID_project": "MLS1234",
             "organism": "staphylococcus_aureus",
-        },
-        "Samples",
+        }
     )
     assert dbm.read_st("MLS1234A1") == 130
     best_alleles = {
@@ -244,9 +237,8 @@ def test_get_and_set_report(dbm):
     dbm.add_report({"CG_ID_project": "ADD1234", "version": "1"})
     assert dbm.read_report("ADD1234").version == 1
 
-    dbm.upd_rec(
+    dbm.update_sample(
         {"CG_ID_sample": "ADD1234A1", "method_sequencing": "1000:1"},
-        "Samples",
         {"CG_ID_sample": "ADD1234A1", "method_sequencing": "1000:2"},
     )
     dbm.set_report("ADD1234")
@@ -257,10 +249,6 @@ def test_get_and_set_report(dbm):
 def test_purge_rec(sysexit, caplog, dbm):
     dbm.add_sample({"CG_ID_sample": "UPD1234A1"})
     dbm.delete_collection("UPD1234A1")
-
-    caplog.clear()
-    dbm.delete_records("UPD1234A1", "Not_Samples_nor_Collections")
-    assert "Incorrect type" in caplog.text
 
 
 def test_top_index(dbm):
@@ -300,11 +288,6 @@ def test_exists(dbm):
 
     assert dbm.read_exists("Samples", {"CG_ID_sample": "EXS_001"}) is True
     assert dbm.read_exists("Samples", {"CG_ID_sample": "DOES_NOT_EXIST"}) is False
-
-
-def test_add_rec_unknown_table(caplog, dbm):
-    dbm.add_rec({"CG_ID_sample": "ADD1234A1"}, "An_entry_that_does_not_exist")
-    assert "Attempted to access table" in caplog.text
 
 
 def test_resolve_orm_table_unknown():

@@ -146,74 +146,29 @@ class DB_Manipulator:
                 "Please try again later.".format(lock.acquired_at)
             )
 
-    def add_rec(self, data_dict: dict[str, str], tablename: str, force=False):
-        """Adds a record to the specified table through a dict with columns as keys."""
-        pk_list = list()
-        # Non-orm
-        if not isinstance(tablename, str):
-            # check for existence
-            table = tablename
-            pk_list = table.primary_key.columns.keys()
-            filter_clauses = [table.c[pk] == data_dict[pk] for pk in pk_list]
-            exist = self.session.query(table).filter(or_(*filter_clauses)).all()
-            # Add record
-            if len(exist) == 0:
-                data = table.insert()
-                # Loads any dates as datetime objects
-                for k, v in data_dict.items():
-                    if isinstance(v, str):
-                        try:
-                            parse(v, fuzzy=False)
-                            data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
-                        except ValueError as ve:
-                            if len(ve.args) > 0 and ve.args[0].startswith(
-                                "unconverted data remains: "
-                            ):
-                                data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
-                            else:
-                                pass
-                self.session.execute(data, data_dict)
-                self.session.commit()
-                self.logger.info(f"Added entry to table {tablename.fullname}")
-        # ORM
-        else:
-            try:
-                table = _resolve_orm_table(tablename)
-                # Check for existing entry
-                pk_list = table.__table__.primary_key.columns.keys()
-            except KeyError:
-                self.logger.error(
-                    f"Attempted to access table {tablename} which has not been created"
-                )
-                return
-            pk_values = list()
-            for item in pk_list:
-                pk_values.append(data_dict[item])
-            existing = self.session.get(table, pk_values)
-            # Add record
-            if not existing or force:
-                newobj = table()
-                # Loads any dates as datetime objects
-                for k, v in data_dict.items():
-                    if isinstance(v, str):
-                        try:
-                            parse(v, fuzzy=False)
-                            data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
-                        except ValueError as ve:
-                            if len(ve.args) > 0 and ve.args[0].startswith(
-                                "unconverted data remains: "
-                            ):
-                                data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
-                            else:
-                                pass
-                for k, v in data_dict.items():
-                    setattr(newobj, k, v)
-                self.session.add(newobj)
-                self.session.commit()
-            else:
-                self.logger.warning(
-                    f"Record [{', '.join(pk_list)}]=[{', '.join(pk_values)}] in table {tablename} already exists"
-                )
+    def add_rec(self, data_dict: dict, tablename) -> None:
+        """Adds a record to a non-ORM (ProfileTable) table via a raw Table object."""
+        table = tablename
+        pk_list = table.primary_key.columns.keys()
+        filter_clauses = [table.c[pk] == data_dict[pk] for pk in pk_list]
+        exist = self.session.query(table).filter(or_(*filter_clauses)).all()
+        if len(exist) == 0:
+            data = table.insert()
+            for k, v in data_dict.items():
+                if isinstance(v, str):
+                    try:
+                        parse(v, fuzzy=False)
+                        data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
+                    except ValueError as ve:
+                        if len(ve.args) > 0 and ve.args[0].startswith(
+                            "unconverted data remains: "
+                        ):
+                            data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
+                        else:
+                            pass
+            self.session.execute(data, data_dict)
+            self.session.commit()
+            self.logger.info(f"Added entry to table {tablename.fullname}")
 
     # ------------------------------------------------------------------
     # Per-model add methods
@@ -274,31 +229,6 @@ class DB_Manipulator:
 
     def add_version(self, data: dict, force: bool = False) -> None:
         self._add_orm_record(Versions, data, force=force)
-
-    def upd_rec(self, req_dict: dict[str, str], tablename: str, upd_dict: dict[str, str]):
-        """Updates a record to the specified table through a dict with columns as keys."""
-        table = _resolve_orm_table(tablename)
-        self.logger.debug(f"Updating table {tablename} with {upd_dict}")
-        filter_clauses = [getattr(table, k) == v for k, v in req_dict.items() if v is not None]
-        query = self.session.query(table).filter(and_(*filter_clauses))
-        if len(query.all()) > 1:
-            self.logger.error("More than 1 record found when orm updating. Exited.")
-            sys.exit()
-        else:
-            # If the primary key CG_ID_sample is being renamed, propagate the
-            # change to child tables first (bulk query.update bypasses ORM
-            # cascade logic and would otherwise leave orphaned rows).
-            if tablename == "Samples" and "CG_ID_sample" in upd_dict:
-                old_id = req_dict.get("CG_ID_sample")
-                new_id = upd_dict["CG_ID_sample"]
-                if old_id and old_id != new_id:
-                    for child_table in (Seq_types, Resistances, Expacs, Collections):
-                        self.session.query(child_table).filter(
-                            child_table.CG_ID_sample == old_id
-                        ).update({"CG_ID_sample": new_id})
-            query.update(upd_dict)
-            self.session.commit()
-        self.logger.debug(f"Updated table {tablename} with {upd_dict} for {req_dict}")
 
     # ------------------------------------------------------------------
     # Per-model update methods
@@ -383,47 +313,6 @@ class DB_Manipulator:
             self.session.delete(obj)
         self.session.commit()
         self.logger.info(f"Removed collection {name}")
-
-    def delete_records(self, name: str, type: str):
-        """Removes seq_data, resistances, sample(s) and possibly project"""
-        entries = list()
-        if type == "Projects":
-            entries.append(
-                self.session.query(Expacs).filter(Expacs.CG_ID_sample.like(f"{name}%")).all()
-            )
-            entries.append(
-                self.session.query(Seq_types).filter(Seq_types.CG_ID_sample.like(f"{name}%")).all()
-            )
-            entries.append(
-                self.session.query(Resistances)
-                .filter(Resistances.CG_ID_sample.like(f"{name}%"))
-                .all()
-            )
-            entries.append(
-                self.session.query(Samples).filter(Samples.CG_ID_sample.like(f"{name}%")).all()
-            )
-            # entries.append(self.session.query(Projects).filter(Projects.CG_ID_project==name).all())
-        elif type == "Samples":
-            entries.append(self.session.query(Expacs).filter(Expacs.CG_ID_sample == name).all())
-            entries.append(
-                self.session.query(Seq_types).filter(Seq_types.CG_ID_sample == name).all()
-            )
-            entries.append(
-                self.session.query(Resistances).filter(Resistances.CG_ID_sample == name).all()
-            )
-            entries.append(self.session.query(Samples).filter(Samples.CG_ID_sample == name).all())
-        elif type == "Collections":
-            entries.append(
-                self.session.query(Collections).filter(Collections.ID_collection == name).all()
-            )
-        else:
-            self.logger.error(f"Incorrect type {type} specified for removal of {name}. Check code")
-            sys.exit()
-        for entry in entries:
-            for instance in entry:
-                self.session.delete(instance)
-        self.session.commit()
-        self.logger.info(f"Removed information for {name}")
 
     def read_records(self, tablename: str, filters: dict[str, str]):
         """Fetches records table, using a primary-key dict with columns as keys.
