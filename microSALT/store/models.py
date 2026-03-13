@@ -28,7 +28,7 @@ class ProfileTable:
     """
 
     def __init__(self, prefix: str, metadata, profiles_path: str, log):
-        self.tables: dict[str, Table] = dict()
+        self.tables: dict[str, Table] = {}
         self.prefix = prefix
         self.metadata = metadata
         self.profiles_path = profiles_path

@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 from dateutil.parser import parse
 from sqlalchemy import DateTime as SADateTime
-from sqlalchemy import MetaData, and_, desc, or_, text
+from sqlalchemy import MetaData, Table, and_, desc, or_, text
 from sqlalchemy import inspect as sa_inspect
 
 from microSALT import __version__
@@ -675,10 +675,105 @@ class DB_Manipulator:
                 sample.filter(and_(*filter_clauses)).update({Seq_types.st_predictor: 1})
         self.session.commit()
 
-    def read_st(self, cg_sid: str):
-        """Takes a CG_ID_sample and predicts the correct ST"""
-        threshold = True
-        organism = (
+    def _build_allele_filter_clauses(self, alleles: dict, table) -> list:
+        """Builds SQLAlchemy filter clauses for allele matching against a profile or novel table."""
+        filter_clauses = []
+        for key, val in alleles.items():
+            col = table.c[key]
+            if len(val) > 1:
+                filter_clauses.append(or_(*[col == num for num in val]))
+            else:
+                filter_clauses.append(col == val[0])
+        return filter_clauses
+
+    def _query_st_profiles(self, alleles: dict, table) -> list:
+        """Queries a profile or novel table with allele filter clauses and returns all matching rows."""
+        filter_clauses = self._build_allele_filter_clauses(alleles, table)
+        return self.session.query(table).filter(and_(*filter_clauses)).all()
+
+    def _next_novel_st(self, organism: str) -> int:
+        """Returns the next available negative novel ST: one below the current minimum, at most -10."""
+        st = -9
+        for entry in self.session.query(self.novel[organism]).all():
+            if entry.ST < st:
+                st = entry.ST
+        return st - 1
+
+    def _create_novel_st_entry(self, cg_sid: str, organism: str) -> int:
+        """Creates a new novel ST row built from the sample's best alleles. Returns the new ST number."""
+        st = self._next_novel_st(organism)
+        best_alleles = self.read_best_alleles(cg_sid)
+        new_entry: dict = {allele: columns["allele"] for allele, columns in best_alleles.items()}
+        new_entry["ST"] = st
+        self.add_rec(new_entry, self.novel[organism])
+        return st
+
+    def _allele_hit_score(self, allele) -> tuple:
+        """Returns a comparable score tuple (span*identity, -evalue, contig_coverage) for one allele hit."""
+        return (
+            float(allele.span) * float(allele.identity),
+            -float(allele.evalue),
+            float(allele.contig_coverage),
+        )
+
+    def _score_profile(self, cg_sid: str, prof) -> tuple[dict, dict]:
+        """For one profile row, fetches matching Seq_type alleles, keeps the best hit per locus,
+        and returns (contig_names, score) where score sums spanid/eval/cc across all loci."""
+        non_locus = {"ST", "clonal_complex", "species"}
+        prof_keys = list(prof._fields)
+        alleleconditions: list = []
+        alleledict: dict = {}
+        for index, allele_num in enumerate(prof):
+            col_name = prof_keys[index]
+            if col_name in non_locus:
+                continue
+            alleledict[col_name] = None
+            alleleconditions.append(
+                and_(Seq_types.loci == col_name, Seq_types.allele == allele_num)
+            )
+        all_alleles = (
+            self.session.query(Seq_types)
+            .filter(and_(Seq_types.CG_ID_sample == cg_sid, or_(*alleleconditions)))
+            .all()
+        )
+        for allele in all_alleles:
+            existing = alleledict[allele.loci]
+            if existing is None or self._allele_hit_score(allele) > self._allele_hit_score(
+                existing
+            ):
+                alleledict[allele.loci] = allele
+        score: dict = {"spanid": 0.0, "eval": 0.0, "cc": 0.0}
+        contig_names: dict = {}
+        for locus, allele in alleledict.items():
+            if allele is None:
+                continue
+            score["spanid"] += float(allele.span) * float(allele.identity)
+            score["eval"] += float(allele.evalue)
+            score["cc"] += float(allele.contig_coverage)
+            contig_names[locus] = {"contig_name": str(allele.contig_name)}
+        return contig_names, score
+
+    def _pick_top_st(self, scores: dict) -> int | str:
+        """Selects the ST with the highest composite score (spanid → eval → contig_coverage)."""
+        top_st: int | str | None = None
+        top_spanid = -1.0
+        top_eval = float("inf")
+        top_cc = -1.0
+        for st, val in scores.items():
+            if (
+                val["spanid"] > top_spanid
+                or (val["spanid"] == top_spanid and val["eval"] < top_eval)
+                or (val["spanid"] == top_spanid and val["eval"] == top_eval and val["cc"] > top_cc)
+            ):
+                top_spanid = val["spanid"]
+                top_eval = val["eval"]
+                top_cc = val["cc"]
+                top_st = st
+        return top_st
+
+    def read_st(self, cg_sid: str) -> int | str:
+        """Takes a CG_ID_sample and predicts the correct ST."""
+        organism: str | None = (
             self.session.query(Samples.organism).filter(Samples.CG_ID_sample == cg_sid).scalar()
         )
         if organism is None:
@@ -686,10 +781,12 @@ class DB_Manipulator:
                 f"No organism set for {cg_sid}. Most likely control sample. Setting ST to -1"
             )
             return -1
-        [alleles, allelediff] = self.read_unique_alleles(cg_sid, organism, threshold)
+
+        threshold = True
+        alleles, allelediff = self.read_unique_alleles(cg_sid, organism, threshold)
         if allelediff < 0:
             threshold = False
-            [alleles, allelediff] = self.read_unique_alleles(cg_sid, organism, threshold)
+            alleles, allelediff = self.read_unique_alleles(cg_sid, organism, threshold)
             if allelediff < 0:
                 self.logger.warning(
                     f"Insufficient allele hits to establish ST for sample {cg_sid}, even without thresholds. Setting ST to -3"
@@ -697,190 +794,63 @@ class DB_Manipulator:
                 self.set_predictor(cg_sid)
                 return -3
 
-        # Tests all allele combinations found to see if any of them result in ST
-        filter_clauses = []
-        for key, val in alleles.items():
-            col = self.profiles[organism].c[key]
-            if len(val) > 1:
-                filter_clauses.append(or_(*[col == num for num in val]))
-            else:
-                filter_clauses.append(col == val[0])
-        output = self.session.query(self.profiles[organism]).filter(and_(*filter_clauses)).all()
-
-        # Check for existence in profile database
-        if len(output) > 1:
-            STlist = list()
-            for st in output:
-                STlist.append(st.ST)
-            best = self.read_best_st(cg_sid, STlist, "profile")
-            if threshold:
+        # Try matching against the curated profile table
+        output = self._query_st_profiles(alleles, self.profiles[organism])
+        if output:
+            st_list = [row.ST for row in output]
+            best = self.read_best_st(cg_sid, st_list, "profile")
+            if threshold and len(st_list) > 1:
                 self.logger.warning(
-                    f"Multiple ST within threshold found for sample {cg_sid}, list: {STlist}. Established ST{best} as best hit."
+                    f"Multiple ST within threshold found for sample {cg_sid}, list: {st_list}. Established ST{best} as best hit."
                 )
             return best
-        elif len(output) == 1:
-            # Arbitary call
-            return self.read_best_st(cg_sid, [output[0].ST], "profile")
-        # Check for existence in novel database
-        elif threshold:
+
+        # Try matching against the novel ST table (only when hits are above threshold)
+        if threshold:
             self.logger.info(
                 f"Sample {cg_sid} on {organism} has novel ST reliably established. Searching for prior novel definition..."
             )
-            filter_clauses = []
-            for key, val in alleles.items():
-                col = self.novel[organism].c[key]
-                if len(val) > 1:
-                    filter_clauses.append(or_(*[col == num for num in val]))
-                else:
-                    filter_clauses.append(col == val[0])
-            output = self.session.query(self.novel[organism]).filter(and_(*filter_clauses)).all()
-
-            if len(output) > 1:
-                STlist = list()
-                for st in output:
-                    STlist.append(st.ST)
-                best = self.read_best_st(cg_sid, STlist, "novel")
-                if threshold:
+            output = self._query_st_profiles(alleles, self.novel[organism])
+            if output:
+                st_list = [row.ST for row in output]
+                best = self.read_best_st(cg_sid, st_list, "novel")
+                if len(st_list) > 1:
                     self.logger.warning(
-                        f"Multiple ST within novel threshold found for sample {cg_sid}, list: {STlist}. Established ST{best} as best hit."
+                        f"Multiple ST within novel threshold found for sample {cg_sid}, list: {st_list}. Established ST{best} as best hit."
                     )
                 return best
-            elif len(output) == 1:
-                return self.read_best_st(cg_sid, [output[0].ST], "novel")
-            else:
-                # Create new novel ST
-                # Set ST -10 per default, or one below the current min, whichever is smaller.
-                st = -9
-                query = self.session.query(self.novel[organism]).all()
-                for entry in query:
-                    if entry.ST < st:
-                        st = entry.ST
-                st = st - 1
+            # No prior novel match — create a new novel ST
+            new_st = self._create_novel_st_entry(cg_sid, organism)
+            return self.read_best_st(cg_sid, [new_st], "novel")
 
-                bestSet = self.read_best_alleles(cg_sid)
-                newEntry = dict()
-                for allele, columns in bestSet.items():
-                    newEntry[allele] = columns["allele"]
-                newEntry["ST"] = st
-                self.add_rec(newEntry, self.novel[organism])
-                return self.read_best_st(cg_sid, [st], "novel")
-        else:
-            self.logger.warning(
-                f"Sample {cg_sid} on {organism} has an allele set but hits are low-quality and do not resolve to an ST. Setting ST to -2"
-            )
-            bestSet = self.read_best_alleles(cg_sid)
-            self.set_predictor(cg_sid, bestSet)
-            return -2
+        self.logger.warning(
+            f"Sample {cg_sid} on {organism} has an allele set but hits are low-quality and do not resolve to an ST. Setting ST to -2"
+        )
+        best_set = self.read_best_alleles(cg_sid)
+        self.set_predictor(cg_sid, best_set)
+        return -2
 
-    def read_best_st(self, cg_sid: str, st_list: list, type="profile"):
-        """Takes in a list of ST and a sample.
-        Establishes which ST is most likely by criteria id*span -> eval -> contig coverage
-        & flags involved alleles"""
-        profiles = list()
-        scores = dict()
-        bestalleles = dict()
-        organism = (
+    def read_best_st(self, cg_sid: str, st_list: list, type: str = "profile") -> int | str:
+        """Establishes which ST is most likely by criteria id*span → eval → contig coverage
+        and flags the involved alleles as predictors."""
+        organism: str = (
             self.session.query(Samples.organism).filter(Samples.CG_ID_sample == cg_sid).scalar()
         )
-        for st in st_list:
-            scores[st] = dict()
-            bestalleles[st] = dict()
-            scores[st]["spanid"] = 0
-            scores[st]["eval"] = 0
-            scores[st]["cc"] = 0
-            scores[st]["span"] = 0
-            if type == "profile":
-                profiles.append(
-                    self.session.query(self.profiles[organism]).filter(text(f"ST={st}")).first()
-                )
-            elif type == "novel":
-                profiles.append(
-                    self.session.query(self.novel[organism]).filter(text(f"ST={st}")).first()
-                )
-
-        # Get values for each allele set that resolves an ST
+        table: Table = self.profiles[organism] if type == "profile" else self.novel[organism]
+        profiles = [self.session.query(table).filter(text(f"ST={st}")).first() for st in st_list]
+        scores: dict = {}
+        best_alleles: dict = {}
         for prof in profiles:
-            prof_keys = list(prof._fields)
-            alleleconditions = list()
-            alleledict = dict()
-
-            for index, allele in enumerate(prof):
-                if (
-                    "ST" not in prof_keys[index]
-                    and "clonal_complex" not in prof_keys[index]
-                    and "species" not in prof_keys[index]
-                ):
-                    alleledict[prof_keys[index]] = ""
-                    alleleconditions.append(
-                        and_(
-                            Seq_types.loci == prof_keys[index],
-                            Seq_types.allele == allele,
-                        )
-                    )
-
-            all_alleles = (
-                self.session.query(Seq_types)
-                .filter(and_(Seq_types.CG_ID_sample == cg_sid, or_(*alleleconditions)))
-                .all()
-            )
-
-            # Keep only best hit each loci
-            for allele in all_alleles:
-                if alleledict[allele.loci] == "":
-                    alleledict[allele.loci] = allele
-                else:
-                    old_al = alleledict[allele.loci]
-
-                    if allele.span * allele.identity >= old_al.span * old_al.identity:
-                        if allele.span * allele.identity > old_al.span * old_al.identity:
-                            alleledict[allele.loci] = allele
-                        elif float(allele.evalue) <= float(old_al.evalue):
-                            if float(allele.evalue) < float(old_al.evalue):
-                                alleledict[allele.loci] = allele
-                            elif allele.contig_coverage > old_al.contig_coverage:
-                                alleledict[allele.loci] = allele
-
-            # Create score dict for the ST
-            for key, allele in alleledict.items():
-                scores[prof.ST]["spanid"] += allele.span * allele.identity
-                scores[prof.ST]["eval"] += float(allele.evalue)
-                scores[prof.ST]["cc"] += allele.contig_coverage
-                if allele.loci not in bestalleles[prof.ST].keys():
-                    bestalleles[prof.ST][allele.loci] = dict()
-                if "contig_name" not in bestalleles[prof.ST][allele.loci].keys():
-                    bestalleles[prof.ST][allele.loci]["contig_name"] = str(allele.contig_name)
-
-        # Establish best ST
-        topST = ""
-        topID = 0
-        topEval = 100
-        topCC = 0
-        for key, val in scores.items():
-            if scores[key]["spanid"] > topID:
-                topID = scores[key]["spanid"]
-                topEval = scores[key]["eval"]
-                topCC = scores[key]["cc"]
-                topST = key
-            elif scores[key]["spanid"] == topID and scores[key]["eval"] < topEval:
-                topID = scores[key]["spanid"]
-                topEval = scores[key]["eval"]
-                topCC = scores[key]["cc"]
-                topST = key
-            elif (
-                scores[key]["spanid"] == topID
-                and scores[key]["eval"] == topEval
-                and scores[key]["cc"] > topCC
-            ):
-                topID = scores[key]["spanid"]
-                topEval = scores[key]["eval"]
-                topCC = scores[key]["cc"]
-                topST = key
-        self.set_predictor(cg_sid, bestalleles[topST])
-        return topST
+            contig_names, score = self._score_profile(cg_sid, prof)
+            scores[prof.ST] = score
+            best_alleles[prof.ST] = contig_names
+        top_st = self._pick_top_st(scores)
+        self.set_predictor(cg_sid, best_alleles[top_st])
+        return top_st
 
     def read_best_alleles(self, cg_sid: str):
         """Establishes which allele set (for bad samples) is most likely by criteria span* id -> eval -> contig coverage"""
-        hits = (
+        hits: list[tuple[str, str, float, float, float, float, str]] = (
             self.session.query(
                 Seq_types.contig_name,
                 Seq_types.loci,
@@ -893,20 +863,10 @@ class DB_Manipulator:
             .filter(Seq_types.CG_ID_sample == cg_sid)
             .all()
         )
-        bestHits = dict()
-        alleledict = dict()
+        bestHits: dict[str, dict[str, str]] = {}
+        alleledict: dict[str, list[float]] = {}
         for allele in hits:
-            if allele.loci not in bestHits.keys():
-                bestHits[allele.loci] = dict()
-                bestHits[allele.loci]["contig_name"] = allele.contig_name
-                bestHits[allele.loci]["allele"] = allele.allele
-                alleledict[allele.loci] = [
-                    allele.identity,
-                    allele.evalue,
-                    allele.contig_coverage,
-                    allele.span,
-                ]
-            else:
+            if allele.loci in bestHits:
                 if (
                     (
                         allele.identity * allele.span
@@ -931,14 +891,25 @@ class DB_Manipulator:
                         allele.contig_coverage,
                         allele.span,
                     ]
+            else:
+                bestHits[allele.loci] = {
+                    "contig_name": allele.contig_name,
+                    "allele": allele.allele,
+                }
+                alleledict[allele.loci] = [
+                    allele.identity,
+                    allele.evalue,
+                    allele.contig_coverage,
+                    allele.span,
+                ]
         return bestHits
 
     def read_unique_alleles(self, cg_sid: str, organism: str, threshold=True):
         """Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
-        tid = float(self.threshold.mlst_id)
         tspan = (self.threshold.mlst_span) / 100.0
         if threshold:
-            hits = (
+            tid = float(self.threshold.mlst_id)
+            hits: list[tuple[str, str]] = (
                 self.session.query(Seq_types.loci, Seq_types.allele)
                 .filter(
                     Seq_types.CG_ID_sample == cg_sid,
@@ -948,18 +919,17 @@ class DB_Manipulator:
                 .all()
             )
         else:
-            hits = (
+            hits: list[tuple[str, str]] = (
                 self.session.query(Seq_types.loci, Seq_types.allele)
                 .filter(Seq_types.CG_ID_sample == cg_sid)
                 .all()
             )
 
         # Establish number of unique hits
-        uniqueDict = dict()
+        uniqueDict: dict[str, list[str]] = {}
         for hit in hits:
             if hit.loci not in uniqueDict.keys():
-                uniqueDict[hit.loci] = list()
-                uniqueDict[hit.loci].append(hit.allele)
+                uniqueDict[hit.loci] = [hit.allele]
             elif hit.allele not in uniqueDict[hit.loci]:
                 uniqueDict[hit.loci].append(hit.allele)
         non_allele_columns = 1
