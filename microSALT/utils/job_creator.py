@@ -569,7 +569,6 @@ class Job_Creator:
                 "CG_ID_project": self.sample["CG_ID_project"],
                 "Customer_ID_sample": self.sample["Customer_ID_sample"],
                 "reference_genome": self.sample["reference"],
-                "reference_length": self.sample["reference_length"],
                 "date_analysis": self.dt,
                 "organism": self.sample["organism"],
                 "application_tag": self.sample["application_tag"],
