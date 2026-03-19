@@ -61,12 +61,11 @@ def _pk_columns(model: type) -> list[str]:
     return [col.name for col in inspect(model).mapper.primary_key]
 
 
-def migrate_table(src: Session, dst: Session, model: type) -> tuple[int, int]:
+def migrate_table(src: Session, dst: Session, model: type) -> tuple[int, int, int]:
     """Copy rows from src to dst for the given model.
 
-    Returns (inserted, skipped) counts.
+    Returns (inserted, skipped, orphaned) counts.
     """
-    table_name = model.__tablename__
     cols = _columns(model)
     pk_cols = _pk_columns(model)
 
@@ -91,12 +90,15 @@ def migrate_table(src: Session, dst: Session, model: type) -> tuple[int, int]:
         # Build a fresh detached copy so we don't accidentally modify the
         # source session's identity map.
         new_obj = model(**{col: getattr(row, col) for col in cols})
-        dst.add(new_obj)
         try:
-            dst.flush()
+            # Use a SAVEPOINT so that a FK violation rolls back only this one
+            # row — not the entire transaction (which would destroy all parent
+            # rows flushed in earlier loop iterations or earlier tables).
+            with dst.begin_nested():
+                dst.add(new_obj)
+                dst.flush()
             inserted += 1
         except IntegrityError:
-            dst.rollback()
             orphaned += 1
 
     return inserted, skipped, orphaned
@@ -173,14 +175,14 @@ def main() -> int:
                 print(f"  {table_name:<20} — {summary}")
                 total_inserted += inserted
                 total_skipped += skipped + orphaned
+                # Commit after every table so parent rows are durable before
+                # child tables run their FK-constrained inserts.
+                dst_session.commit()
             except Exception as exc:
                 dst_session.rollback()
                 print(f"  {table_name:<20} — ERROR: {exc}", file=sys.stderr)
-                print("Rolling back entire transaction.", file=sys.stderr)
+                print("Rolling back this table's changes.", file=sys.stderr)
                 return 1
-
-        if not args.dry_run:
-            dst_session.commit()
 
     print(f"\nDone. Inserted {total_inserted} rows, skipped {total_skipped} duplicates.")
     return 0
