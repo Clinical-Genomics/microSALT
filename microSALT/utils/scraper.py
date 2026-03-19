@@ -180,17 +180,11 @@ class Scraper:
 
     def scrape_reference(self) -> None:
         """Scrapes a reference assembly to calculate the size"""
-        assembly = (
-            f"{self.sampledir}/../../../references/genomes/{self.sample.get('reference')}.fasta"
-        )
-        if not os.path.exists(assembly):
-            assembly = (
-                f"{self.sampledir}/../../references/genomes/{self.sample.get('reference')}.fasta"
-            )
+        assembly = f"{self.folders.genomes}/{self.sample.get('reference')}.fasta"
         reference_data = dict()
         try:
             with open(assembly, "r") as infile:
-                assembly_length = 0
+                assembly_length: int = 0
                 for line in infile:
                     if not line.startswith(">"):
                         curated_line = line.strip()
