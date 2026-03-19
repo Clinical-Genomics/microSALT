@@ -255,12 +255,11 @@ class DB_Manipulator:
         self.session.commit()
         self.logger.debug(f"Updated Projects for {req_dict} with {upd_dict}")
 
-    def update_version(self, req_dict: dict, upd_dict: dict) -> None:
+    def update_version(self, name: str, version: str) -> None:
         """Update a Versions row."""
-        filter_clauses = [getattr(Versions, k) == v for k, v in req_dict.items() if v is not None]
-        self.session.query(Versions).filter(and_(*filter_clauses)).update(upd_dict)
+        self.session.query(Versions).filter(Versions.name == name).update({"version": version})
         self.session.commit()
-        self.logger.debug(f"Updated Versions for {req_dict} with {upd_dict}")
+        self.logger.debug(f"Updated Versions for {name} with version {version}")
 
     # ------------------------------------------------------------------
     # Per-model delete methods
@@ -443,7 +442,7 @@ class DB_Manipulator:
     def get_sample_by_cg_id_sample(self, cg_id_sample: str) -> Samples | None:
         return self.session.query(Samples).filter(Samples.CG_ID_sample == cg_id_sample).scalar()
 
-    def read_version(self, name: str):
+    def read_version(self, name: str) -> str:
         """Gets the version from a given name. Should be generalized to return any value for any input"""
         version: Versions | None = (
             self.session.query(Versions).filter(Versions.name == name).scalar()
@@ -452,6 +451,10 @@ class DB_Manipulator:
             return "0"
         else:
             return version.version
+
+    def get_version_by_name(self, name: str) -> Versions | None:
+        """Gets the Versions record for the given name."""
+        return self.session.query(Versions).filter(Versions.name == name).scalar()
 
     def read_report(self, name: str) -> Reports | None:
         # Sort based on version

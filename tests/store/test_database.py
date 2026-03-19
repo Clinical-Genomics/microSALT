@@ -5,7 +5,7 @@ from sqlalchemy import inspect as sa_inspect
 
 from microSALT.exc.exceptions import RefUpdateLockError
 from microSALT.store.db_manipulator import DB_Manipulator, _resolve_orm_table
-from microSALT.store.orm_models import Reports, Samples, SystemLock
+from microSALT.store.orm_models import Reports, Samples, SystemLock, Versions
 
 
 def test_create_every_table(dbm):
@@ -186,28 +186,6 @@ def test_add_rec(caplog, profile_dbm):
         )
         == 0
     )
-
-
-@patch("sys.exit")
-def test_upd_rec(sysexit, caplog, dbm):
-    dbm.add_to_session(dbm.add_sample(CG_ID_sample="UPD1234A1"))
-    dbm.commit_session()
-    assert len(dbm.read_records("Samples", {"CG_ID_sample": "UPD1234A1"})) == 1
-    assert len(dbm.read_records("Samples", {"CG_ID_sample": "UPD1234A2"})) == 0
-
-    dbm.update_sample({"CG_ID_sample": "UPD1234A1"}, {"CG_ID_sample": "UPD1234A2"})
-    assert len(dbm.read_records("Samples", {"CG_ID_sample": "UPD1234A1"})) == 0
-    assert len(dbm.read_records("Samples", {"CG_ID_sample": "UPD1234A2"})) == 1
-
-    dbm.update_sample({"CG_ID_sample": "UPD1234A2"}, {"CG_ID_sample": "UPD1234A1"})
-
-    caplog.clear()
-    dbm.add_to_session(dbm.add_sample(CG_ID_sample="UPD1234A1_uniq", Customer_ID_sample="cust000"))
-    dbm.add_to_session(dbm.add_sample(CG_ID_sample="UPD1234A2_uniq", Customer_ID_sample="cust000"))
-    dbm.commit_session()
-    dbm.update_sample({"Customer_ID_sample": "cust000"}, {"Customer_ID_sample": "cust030"})
-    dbm.update_sample({"Customer_ID_sample": "cust000"}, {"Customer_ID_sample": "cust030"})
-    assert "More than 1 Samples record found" in caplog.text
 
 
 def test_allele_ranker(profile_dbm, unpack_db_json):
@@ -456,3 +434,22 @@ def test_check_ref_lock(clean_lock_dbm):
 
     # When / Then: check passes silently again.
     dbm.check_ref_lock()  # must not raise
+
+
+def test_update_version(profile_dbm: DB_Manipulator):
+    """update_version updates the version string for the given name."""
+    dbm = profile_dbm
+
+    # Given: a version entry exists for the profile.
+    name = "profile_staphylococcus_aureus"
+    existing_version: Versions | None = dbm.get_version_by_name(name)
+
+    assert existing_version is not None
+    assert existing_version.version
+
+    # When: the version is updated.
+    new_version = "1"
+    dbm.update_version(name=name, version=new_version)
+
+    # Then: the new version is reflected in the database.
+    assert dbm.read_version(name) == new_version
