@@ -12,7 +12,14 @@ import xml.etree.ElementTree as ET
 
 from Bio import Entrez
 
-from microSALT.config import Folders, Threshold, PubMLSTCredentials, PasteurCredentials, Singularity, Containers
+from microSALT.config import (
+    Folders,
+    Threshold,
+    PubMLSTCredentials,
+    PasteurCredentials,
+    Singularity,
+    Containers,
+)
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.pubmlst.client import BaseClient, get_client
 from microSALT.utils.pubmlst.exceptions import InvalidURLError, PubMLSTError
@@ -20,7 +27,18 @@ from microSALT.utils.pubmlst.helpers import get_service_by_url
 
 
 class Referencer:
-    def __init__(self, log, folders: Folders, threshold: Threshold, pubmlst: PubMLSTCredentials, pasteur: PasteurCredentials, singularity: Singularity = None, containers: Containers = None, sampleinfo={}, force=False):
+    def __init__(
+        self,
+        log,
+        folders: Folders,
+        threshold: Threshold,
+        pubmlst: PubMLSTCredentials,
+        pasteur: PasteurCredentials,
+        singularity: Singularity = None,
+        containers: Containers = None,
+        sampleinfo={},
+        force=False,
+    ):
         self.folders = folders
         self.threshold = threshold
         self.pubmlst = pubmlst
@@ -55,7 +73,9 @@ class Referencer:
 
     def set_client(self, service: str, database: str = None):
         """Set the client for PubMLST API interactions."""
-        self.client: BaseClient = get_client(service, database, self.folders, self.pubmlst, self.pasteur)
+        self.client: BaseClient = get_client(
+            service, database, self.folders, self.pubmlst, self.pasteur
+        )
 
     def _singularity_exec(self, tool: str, command: str) -> str:
         """Return command wrapped with singularity exec for the given tool container."""
@@ -81,8 +101,7 @@ class Referencer:
                 if ref not in self.organisms and org not in neworgs:
                     neworgs.append(org)
                 if (
-                    f"{entry.get('reference')}.fasta"
-                    not in os.listdir(self.folders.genomes)
+                    f"{entry.get('reference')}.fasta" not in os.listdir(self.folders.genomes)
                     and entry.get("reference") not in newrefs
                 ):
                     newrefs.append(entry.get("reference"))
@@ -133,20 +152,20 @@ class Referencer:
                 try:
                     # Resistence files
                     if ".fsa" in suffix:
-                        bash_cmd = self._singularity_exec('blast',
-                            f"makeblastdb -in {full_dir}/{os.path.basename(file)} -dbtype nucl -out {os.path.basename(base)}"
+                        bash_cmd = self._singularity_exec(
+                            "blast",
+                            f"makeblastdb -in {full_dir}/{os.path.basename(file)} -dbtype nucl -out {os.path.basename(base)}",
                         )
                     # MLST locis
                     else:
-                        bash_cmd = self._singularity_exec('blast',
-                            f"makeblastdb -in {full_dir}/{os.path.basename(file)} -dbtype nucl -parse_seqids -out {os.path.basename(base)}"
+                        bash_cmd = self._singularity_exec(
+                            "blast",
+                            f"makeblastdb -in {full_dir}/{os.path.basename(file)} -dbtype nucl -parse_seqids -out {os.path.basename(base)}",
                         )
                     proc = subprocess.Popen(bash_cmd.split(), cwd=full_dir, stdout=subprocess.PIPE)
                     proc.communicate()
                 except Exception:
-                    self.logger.error(
-                        f"Unable to index requested target {file} in {full_dir}"
-                    )
+                    self.logger.error(f"Unable to index requested target {file} in {full_dir}")
         if reindexation:
             self.logger.info(f"Re-indexed contents of {full_dir}")
 
@@ -268,11 +287,7 @@ class Referencer:
         # Step 4: Create new indexes
         self.index_db(output, ".tfa")
 
-        self.db_access.upd_rec(
-            {"name": f"profile_{organ}"},
-            "Versions",
-            {"version": last_updated},
-        )
+        self.db_access.update_version(name=f"profile_{organ}", version=last_updated)
         self.db_access.reload_profiletable(organ)
 
     def fetch_external(self) -> None:
@@ -425,7 +440,7 @@ class Referencer:
             output = f"{self.folders.genomes}/{reference}.fasta"
             with open(output, "w") as f:
                 f.write(sequence)
-            bwaindex = self._singularity_exec('bwa', f"bwa index {output}")
+            bwaindex = self._singularity_exec("bwa", f"bwa index {output}")
             proc = subprocess.Popen(
                 bwaindex.split(),
                 cwd=self.folders.genomes,
@@ -433,7 +448,7 @@ class Referencer:
                 stderr=DEVNULL,
             )
             out, err = proc.communicate()
-            samindex = self._singularity_exec('samtools', f"samtools faidx {output}")
+            samindex = self._singularity_exec("samtools", f"samtools faidx {output}")
             proc = subprocess.Popen(
                 samindex.split(),
                 cwd=self.folders.genomes,
@@ -481,9 +496,7 @@ class Referencer:
                 )
             elif counter < 1.0:
                 # add external
-                raise Exception(
-                    f"Unable to find requested organism '{errorg}' in pubMLST database"
-                )
+                raise Exception(f"Unable to find requested organism '{errorg}' in pubMLST database")
             else:
                 truename = desc.lower().split(" ")
                 truename = f"{truename[0]}_{truename[1]}"
@@ -657,9 +670,5 @@ class Referencer:
                     f"pubMLST reference for {key.replace('_', ' ').capitalize()} updated to {external_ver} from {internal_ver}"
                 )
                 self.download_pubmlst(key, val, force)
-                self.db_access.upd_rec(
-                    {"name": f"profile_{key}"},
-                    "Versions",
-                    {"version": external_ver},
-                )
+                self.db_access.update_version(name=f"profile_{key}", version=external_ver)
                 self.db_access.refresh_profiletable(key)
