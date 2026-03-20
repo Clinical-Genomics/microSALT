@@ -238,13 +238,14 @@ def analyse(
     try:
         ext_refs.db_access.check_ref_lock()
     except RefUpdateLockError as e:
-        click.echo("ERROR - {}".format(e))
+        click.echo(f"ERROR - {e}")
         click.Abort()
     click.echo("INFO - Checking versions of references..")
     try:
         if not skip_update:
+            # This will pull fasta files for references in project and fasta for new ST profiles.
+            # It does cause the start to take time, but at least it does not lock the database
             ext_refs.identify_new(project=True)
-            ext_refs.update_refs()
             click.echo("INFO - Version check done. Creating sbatch jobs")
         else:
             click.echo("INFO - Skipping version check.")
