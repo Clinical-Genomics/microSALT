@@ -677,7 +677,7 @@ class Job_Creator:
         if not dry:
             self.finish_job(jobarray, single_sample)
 
-    def _write_mailjob(self, mailfile: str, report: str, custom_conf: str) -> None:
+    def _write_mailjob(self, mailfile: str, report: str) -> None:
         """Write the mailjob.sh script that runs `microsalt utils finish` after all jobs complete."""
         _ep = next(
             ep for ep in entry_points(group="console_scripts") if ep.value == "microSALT.cli:root"
@@ -690,8 +690,7 @@ class Job_Creator:
                 f"{microsalt_bin} --config {self.config_path} utils finish {self.finishdir}/sampleinfo.json "
                 f"--input {self.finishdir} "
                 f"--email {self.regex.mail_recipient} "
-                f"--report {report} "
-                f"{custom_conf}\n"
+                f"--report {report}\n"
             )
             mb.write(finish_cmd)
             mb.write(f"touch {self.finishdir}/run_complete.out\n")
@@ -701,15 +700,10 @@ class Job_Creator:
         report = "default"
         if self.qc_only:
             report = "qc"
-        custom_conf = ""
-        if self.config_path:
-            custom_conf = f"--config {self.config_path}"
 
         process = subprocess.Popen("id -un".split(), stdout=subprocess.PIPE)
         user, error = process.communicate()
         user = str(user).replace(".", " ").title()
-        # if not os.path.exists(self.finishdir):
-        #  os.makedirs(self.finishdir)
 
         startfile = f"{self.finishdir}/run_started.out"
         configfile = f"{self.finishdir}/config.log"
@@ -729,7 +723,7 @@ class Job_Creator:
             cb.write(f"ANALYSIS STARTED BY: {user}\n")
             cb.write(json.dumps(configout, indent=2, separators=(",", ":")))
 
-        self._write_mailjob(mailfile, report, custom_conf)
+        self._write_mailjob(mailfile, report)
 
         massagedJobs = list()
         final = ":".join(joblist)
