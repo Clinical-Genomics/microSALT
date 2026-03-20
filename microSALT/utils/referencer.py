@@ -464,6 +464,7 @@ class Referencer:
         """Checks pubmlst for references of given organism and downloads them"""
         # Organism must be in binomial format and only resolve to one hit
         errorg = organism
+        self.db_access.check_ref_lock()
         try:
             organism = organism.lower().replace(".", " ")
             if organism.replace(" ", "_") in self.organisms and not self.force:

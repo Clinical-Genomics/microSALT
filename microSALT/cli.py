@@ -2,7 +2,6 @@
 By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
-
 import json
 import logging
 import os
@@ -21,8 +20,9 @@ from microSALT.store.database import (
     get_scoped_session_registry,
     initialize_database,
 )
+from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.job_creator import Job_Creator
-from microSALT.utils.pubmlst.get_credentials import main as get_bigsdb_credentials_main
+from microSALT.utils.pubmlst.get_credentials import get_bigsdb_access_token
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.reporter import Reporter
 from microSALT.utils.scraper import Scraper
@@ -298,9 +298,7 @@ def refer(ctx):
 )
 @click.option("--output", help="Report output folder", default="")
 @pass_config
-def finish(
-    config: MicroSALTConfig, sampleinfo_file, input, track, dry, email, skip_update, report, output
-):
+def finish(config: MicroSALTConfig, sampleinfo_file, input, track, dry, email, report, output):
     """Sequence analysis, typing and resistance identification"""
     pool = []
     if email:
@@ -316,31 +314,12 @@ def finish(
             pool.append(subfolder)
 
     sampleinfo = review_sampleinfo(sampleinfo_file)
-    ext_refs = Referencer(
-        log=logger,
-        folders=config.folders,
-        threshold=config.threshold,
-        pubmlst=config.pubmlst,
-        pasteur=config.pasteur,
-        singularity=config.singularity,
-        containers=config.containers,
-        sampleinfo=sampleinfo,
-    )
+    db_manipulator = DB_Manipulator(log=logger, folders=config.folders, threshold=config.threshold)
     try:
-        ext_refs.db_access.check_ref_lock()
+        db_manipulator.check_ref_lock()
     except RefUpdateLockError as e:
-        click.echo("ERROR - {}".format(e))
+        click.echo(f"ERROR - {e}")
         click.Abort()
-    click.echo("INFO - Checking versions of references..")
-    try:
-        if not skip_update:
-            ext_refs.identify_new(project=True)
-            ext_refs.update_refs()
-            click.echo("INFO - Version check done. Creating sbatch jobs")
-        else:
-            click.echo("INFO - Skipping version check.")
-    except Exception as e:
-        click.echo(f"{e}")
 
     res_scraper = Scraper(
         log=logger,
@@ -463,7 +442,7 @@ def report(config: MicroSALTConfig, sampleinfo_file, email, type, output, collec
 @pass_config
 def get_bigsdb_credentials(config: MicroSALTConfig, service, species):
     """Obtain and store BIGSdb OAuth credentials for SERVICE (pubmlst or pasteur)"""
-    get_bigsdb_credentials_main(service, config, species)
+    get_bigsdb_access_token(service, config, species)
 
 
 @utils.command()
