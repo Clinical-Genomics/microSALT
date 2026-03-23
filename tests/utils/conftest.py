@@ -49,7 +49,7 @@ def init_references(config: MicroSALTConfig, logger: logging.Logger, testdata: l
         containers=config.containers,
         sampleinfo=testdata,
     )
-    ref_obj.identify_new(testdata[0].get("CG_ID_project"), project=True)
+    ref_obj.identify_new()
     ref_obj.update_refs()
 
 
