@@ -243,9 +243,8 @@ def analyse(
     click.echo("INFO - Checking versions of references..")
     try:
         if not skip_update:
-            # This will pull fasta files for references in project and fasta for new ST profiles.
-            # It does cause the start to take time, but at least it does not lock the database
-            ext_refs.identify_new(project=True)
+            new_orgs = ext_refs.identify_new(project=True)
+            ext_refs.create_new_profile_tables(new_orgs)
             click.echo("INFO - Version check done. Creating sbatch jobs")
         else:
             click.echo("INFO - Skipping version check.")

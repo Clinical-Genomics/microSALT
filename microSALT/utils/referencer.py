@@ -2,6 +2,7 @@
 By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
+from typing import cast
 import glob
 import os
 import re
@@ -85,10 +86,17 @@ class Referencer:
         bind = f"--bind {','.join(bind_list)}" if bind_list else ""
         return f"{binary} exec {bind} {sif} {command}"
 
-    def identify_new(self, cg_id="", project=False):
-        """Automatically downloads pubMLST & NCBI organisms not already downloaded"""
-        neworgs = list()
-        newrefs = list()
+    def identify_new(self) -> list[str]:
+        """Download pubMLST & NCBI resources for organisms not already present.
+
+        Returns a list of internal organism names (e.g. "staphylococcus_aureus")
+        for which profile files were successfully downloaded. These names can be
+        passed directly to create_new_profile_tables() to persist the profiles in
+        the database without performing a full reference update.
+        """
+        neworgs: list[str] = []
+        newrefs: list[str] = []
+        downloaded: list[str] = []
         try:
             if not isinstance(self.sampleinfo, list):
                 samples = [self.sampleinfo]
@@ -104,15 +112,29 @@ class Referencer:
                     f"{entry.get('reference')}.fasta" not in os.listdir(self.folders.genomes)
                     and entry.get("reference") not in newrefs
                 ):
-                    newrefs.append(entry.get("reference"))
+                    newrefs.append(cast(str, entry.get("reference")))
             for org in neworgs:
-                self.add_pubmlst(org)
+                truename = self.add_pubmlst(org)
+                if truename is not None:
+                    downloaded.append(truename)
             for org in newrefs:
                 self.download_ncbi(org)
         except Exception:
             self.logger.error(
                 "Unable to retrieve reference! Analysis using said reference will fail!"
             )
+        return downloaded
+
+    def create_new_profile_tables(self, new_organisms: list[str]) -> None:
+        """Create database profile tables for organisms downloaded by identify_new().
+
+        This is a lightweight alternative to update_refs() for the case where an
+        organism is completely new to the system. Because the tables do not exist
+        yet there is no risk of a concurrent reader seeing a partially-updated
+        table, so no lock is acquired.
+        """
+        for organism in new_organisms:
+            self.db_access.create_profile_table(organism)
 
     def update_refs(self):
         """Updates all references. Order is important, since no object is updated twice"""
@@ -407,7 +429,7 @@ class Referencer:
         """Returns list of all organisms currently added"""
         return self.organisms
 
-    def organism2reference(self, normal_organism_name):
+    def organism2reference(self, normal_organism_name) -> str | None:
         """Finds which reference contains the same words as the organism
         and returns it in a format for database calls. Returns empty string if none found"""
         orgs = os.listdir(self.folders.references)
@@ -502,11 +524,14 @@ class Referencer:
                 truename = desc.lower().split(" ")
                 truename = f"{truename[0]}_{truename[1]}"
                 self.download_pubmlst(truename, seqdef_url, force=self.force)
-                # Update organism list
+                # Update in-memory organism list so subsequent identify_new calls
+                # in the same process see the new organism immediately.
                 self.refs = self.db_access.profiles
-                self.logger.info(f"Created table profile_{truename}")
+                self.logger.info(f"Downloaded profile files for {truename}")
+                return truename
         except Exception as e:
             self.logger.warning(e.args[0])
+        return None
 
     def query_pubmlst(self):
         """Returns a json object containing all organisms available via pubmlst.org"""
