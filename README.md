@@ -20,32 +20,44 @@ the majority of functionality, the database is handled through MySQL via
 SQLAlchemy and reports are rendered through Jinja2. All analysis activity by
 microSALT requires a SLURM cluster._
 
-## Quick installation
+## Installation
+
+### Quick install
 
 > [!IMPORTANT]
 > This install requires `uv` to be installed on the system. For installation instructions, see [https://docs.astral.sh/uv/getting-started/installation/](https://docs.astral.sh/uv/getting-started/installation/).
 
-1. `bash <(curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/install.sh)`
-2. `source microSALT/.venv/bin/activate`
-3. `cp microSALT/configExample.json $HOME/.microSALT/config.json`
-4. `vim $HOME/.microSALT/config.json`
+`bash <(curl https://raw.githubusercontent.com/Clinical-Genomics/microSALT/master/install.sh)`
+
+### Manual install
+
+1. Clone the repository and enter the directory
+2. Checkout the desired branch
+3. install package using `uv pip install .`
 
 ## Configuration
 
-Copy the configuration file to microSALTs hidden home directory, _or_ copy the
-configuration file anywhere and direct the envvar MICROSALT_CONFIG to it. See
-example:
+Copy the configuration file anywhere and.
 
 `cp configExample.json $HOME/.microSALT/config.json`
 
-_or_
+> [!IMPORTANT]
+> **Then edit the fields to match your environment**.
 
-```
-cp configExample.json /MY/FAV/FOLDER/config.json
-export MICROSALT_CONFIG=/MY/FAV/FOLDER/config.json
-```
+## Installing containers
 
-**Then edit the fields to match your environment**.
+microSALT uses [Singularity](https://sylabs.io/singularity/) containers to run the various tools used in the analysis. These containers are available on Clinical Genomics' DockerHub, and can be pulled using the following command:
+
+`singularity pull docker://clinicalgenomics/microsalt-blast:latest`
+`singularity pull docker://clinicalgenomics/microsalt-bwa:latest`
+`singularity pull docker://clinicalgenomics/microsalt-picard:latest`
+`singularity pull docker://clinicalgenomics/microsalt-quast:latest`
+`singularity pull docker://clinicalgenomics/microsalt-samtools:latest`
+`singularity pull docker://clinicalgenomics/microsalt-skesa:latest`
+`singularity pull docker://clinicalgenomics/microsalt-trimmomatic:latest`
+
+> [!NOTE]
+> Remember to enter the correct path to the singularity images in the configuration file.
 
 ## Usage
 
@@ -57,12 +69,32 @@ export MICROSALT_CONFIG=/MY/FAV/FOLDER/config.json
   sample description json, manually adding new reference organisms and
   re-generating reports.
 
+## Setup
+
+Before running microSALT, the user must run the `setup` command, which will create the necessary database tables and download the necessary databases. This only needs to be run once, and can be run again if the user wants to reset the database or download new databases.
+
+The setup is also dependent on
+
+```Shell
+microsalt setup
+```
+
+## Retrieving credentials
+
+The credentials to access the [pubMLST and Pasteur](#mlst-definitions) database can be retrieved by running the following command:
+
+```Shell
+microsalt utils get_bigsdb_credentials
+```
+
+This will allow the user to specify which database they want to retrieve credentials for. Given that the user has given the correct information in the [Configuration section](#configuration), the credentials will be retrieved and stored on disk for later use.
+
 ## Databases
 
 ### MLST Definitions
 
 microSALT will automatically download & use the MLST definitions for any
-organism on [pubMLST](https://pubmlst.org/databases). Other definitions may be
+organism on [pubMLST](https://pubmlst.org/databases) or [Pasteur](https://bigsdb.pasteur.fr/). Other definitions may be
 used, as long as they retain the same format.
 
 ### Resistance genes
