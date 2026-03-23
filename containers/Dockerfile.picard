@@ -1,6 +1,6 @@
 # Picard 2.20.3 — duplicate marking and insert size metrics
 # Build: docker build -f Dockerfile.picard -t picard:2.20.3 .
-# Convert: singularity pull --name picard_2.20.3.sif docker://your-repo/picard:2.20.3
+# Convert: singularity pull --name microsalt-picard.sif docker://clinicalgenomics/microsalt-picard:latest
 #
 # The bioconda picard package installs a wrapper script that calls the JAR via
 # the bundled Java runtime; no separate openjdk install is needed.

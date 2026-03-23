@@ -1,6 +1,6 @@
 # SKESA 2.5.1 — de novo assembler
 # Build: docker build -f Dockerfile.skesa -t skesa:2.5.1 .
-# Convert: singularity pull --name skesa_2.5.1.sif docker://your-repo/skesa:2.5.1
+# Convert: singularity pull --name microsalt-skesa.sif docker://clinicalgenomics/microsalt-skesa:latest
 FROM mambaorg/micromamba:1-bookworm-slim
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1

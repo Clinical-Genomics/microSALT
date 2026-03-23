@@ -1,6 +1,6 @@
 # Trimmomatic 0.39 — quality trimming for paired-end Illumina reads
 # Build: docker build -f Dockerfile.trimmomatic -t trimmomatic:0.39 .
-# Convert: singularity pull --name trimmomatic_0.39.sif docker://your-repo/trimmomatic:0.39
+# Convert: singularity pull --name microsalt-trimmomatic.sif docker://clinicalgenomics/microsalt-trimmomatic:latest
 #
 # Adapter files are located inside the container at:
 #   /opt/conda/share/trimmomatic/adapters/

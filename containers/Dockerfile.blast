@@ -1,6 +1,6 @@
 # NCBI BLAST 2.12.0 — nucleotide BLAST search and database indexing
 # Build: docker build -f Dockerfile.blast -t blast:2.12.0 .
-# Convert: singularity pull --name blast_2.12.0.sif docker://your-repo/blast:2.12.0
+# Convert: singularity pull --name microsalt-blast.sif docker://clinicalgenomics/microsalt-blast:latest
 FROM mambaorg/micromamba:1-bookworm-slim
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1

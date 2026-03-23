@@ -1,6 +1,6 @@
 # SAMtools 1.13 — SAM/BAM processing, indexing, and statistics
 # Build: docker build -f Dockerfile.samtools -t samtools:1.13 .
-# Convert: singularity pull --name samtools_1.13.sif docker://your-repo/samtools:1.13
+# Convert: singularity pull --name microsalt-samtools.sif docker://clinicalgenomics/microsalt-samtools:latest
 FROM mambaorg/micromamba:1-bookworm-slim
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1

@@ -1,6 +1,6 @@
 # BWA 0.7.17 — short read aligner (mem mode) and reference indexing
 # Build: docker build -f Dockerfile.bwa -t bwa:0.7.17 .
-# Convert: singularity pull --name bwa_0.7.17.sif docker://your-repo/bwa:0.7.17
+# Convert: singularity pull --name microsalt-bwa.sif docker://clinicalgenomics/microsalt-bwa:latest
 FROM mambaorg/micromamba:1-bookworm-slim
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
