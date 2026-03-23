@@ -15,3 +15,9 @@ class JobCreationError(MicroSALTError):
     """Raised when there is an error creating a job."""
 
     pass
+
+
+class ProfileCreationError(MicroSALTError):
+    """Raised when there is an error creating a profile."""
+
+    pass

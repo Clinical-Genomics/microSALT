@@ -14,7 +14,7 @@ import click
 
 from microSALT import __version__, logging_levels, setup_logger
 from microSALT.config import MicroSALTConfig, load_config
-from microSALT.exc.exceptions import RefUpdateLockError
+from microSALT.exc.exceptions import ProfileCreationError, RefUpdateLockError
 from microSALT.store.database import (
     create_tables,
     get_scoped_session_registry,
@@ -235,11 +235,9 @@ def analyse(
         sampleinfo=sampleinfo,
         force=force_update,
     )
-    try:
-        ext_refs.db_access.check_ref_lock()
-    except RefUpdateLockError as e:
-        click.echo(f"ERROR - {e}")
-        click.Abort()
+
+    ext_refs.db_access.check_ref_lock()
+
     click.echo("INFO - Checking versions of references..")
     try:
         if not skip_update:
@@ -249,14 +247,11 @@ def analyse(
         else:
             click.echo("INFO - Skipping version check.")
     except Exception as e:
-        click.echo(f"{e}")
+        raise ProfileCreationError(f"{e}")
     if len(sampleinfo) > 1:
         run_creator.project_job()
     elif len(sampleinfo) == 1:
         run_creator.project_job(single_sample=True)
-    else:
-        click.Abort()
-
     done()
 
 
@@ -315,11 +310,8 @@ def finish(config: MicroSALTConfig, sampleinfo_file, input, track, dry, email, r
 
     sampleinfo = review_sampleinfo(sampleinfo_file)
     db_manipulator = DB_Manipulator(log=logger, folders=config.folders, threshold=config.threshold)
-    try:
-        db_manipulator.check_ref_lock()
-    except RefUpdateLockError as e:
-        click.echo(f"ERROR - {e}")
-        click.Abort()
+
+    db_manipulator.check_ref_lock()
 
     res_scraper = Scraper(
         log=logger,
@@ -373,8 +365,7 @@ def add(config: MicroSALTConfig, organism, force):
     try:
         referee.add_pubmlst(organism)
     except Exception as e:
-        click.echo(e.args[0])
-        click.Abort()
+        raise ProfileCreationError(f"ERROR - {e}")
     click.echo("INFO - Checking versions of all references..")
     referee = Referencer(
         log=logger,
