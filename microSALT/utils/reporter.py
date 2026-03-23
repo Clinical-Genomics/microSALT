@@ -27,7 +27,17 @@ from microSALT.store.db_manipulator import DB_Manipulator
 
 
 class Reporter:
-    def __init__(self, log, folders: Folders, threshold: Threshold, regex: Regex, sampleinfo={}, name="", output="", collection=False):
+    def __init__(
+        self,
+        log,
+        folders: Folders,
+        threshold: Threshold,
+        regex: Regex,
+        sampleinfo={},
+        name="",
+        output="",
+        collection=False,
+    ):
         self.folders = folders
         self.threshold = threshold
         self.regex = regex
@@ -69,6 +79,7 @@ class Reporter:
         os.makedirs(f"{self.folders.reports}/analysis", exist_ok=True)
 
     def report(self, type="default", customer="all"):
+        self.db_pusher.check_ref_lock()
         self.create_subfolders()
         if type in ["default", "typing", "qc"]:
             # Only typing and qc reports are version controlled
@@ -152,7 +163,12 @@ class Reporter:
             self.logger.error(f"Project {self.name} does not exist")
             sys.exit(-1)
         try:
-            content = typing_page(self.name, "all", threshold=self.threshold, verified_organisms=self.regex.verified_organisms)
+            content = typing_page(
+                self.name,
+                "all",
+                threshold=self.threshold,
+                verified_organisms=self.regex.verified_organisms,
+            )
             outfile = f"{self.sample.get('Customer_ID_project')}_Typing_{last_version}.html"
             local = f"{self.output}/{outfile}"
             output = f"{self.folders.reports}/analysis/{outfile}"

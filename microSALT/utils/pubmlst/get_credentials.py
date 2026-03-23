@@ -77,7 +77,7 @@ def save_to_credentials_py(
     print(f"Tokens saved to {credentials_file}")
 
 
-def main(service: str, config: MicroSALTConfig, species: str | None = None):
+def get_bigsdb_access_token(service: str, config: MicroSALTConfig, species: str | None = None):
     try:
         service_config = get_service_config(service, pubmlst=config.pubmlst, pasteur=config.pasteur)
         bigsd_config = service_config["config"]

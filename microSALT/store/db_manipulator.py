@@ -394,6 +394,33 @@ class DB_Manipulator:
             )
             self.reload_profiletable(organism)
 
+    def create_profile_table(self, organism: str) -> None:
+        """Create and populate a profile table for a newly downloaded organism.
+
+        Intended for use after add_pubmlst() has written the profile CSV and loci
+        files to disk for an organism that does not yet have a DB table. Silently
+        skips if the table already exists, so it is safe to call speculatively.
+        """
+        inspector = sa_inspect(self.engine)
+        if inspector.has_table(f"profile_{organism}"):
+            self.logger.info(f"Profile table profile_{organism} already exists, skipping.")
+            return
+        fresh_metadata = MetaData()
+        fresh_profiles = ProfileTable(
+            "profile_", fresh_metadata, self.folders.profiles, self.logger
+        ).tables
+        if organism not in fresh_profiles:
+            self.logger.warning(
+                f"Profile file for {organism} not found on disk, cannot create table."
+            )
+            return
+        table = fresh_profiles[organism]
+        table.create(self.engine)
+        self.populate_profiletable(organism, table)
+        self.add_to_session(self.add_version(name=f"profile_{organism}", version="0"))
+        self.commit_session()
+        self.logger.info(f"Created and populated profile table for {organism}")
+
     def populate_profiletable(self, filename: str, table) -> None:
         """Bulk-inserts all data rows from a profile file into an already-created *table*."""
         file_path = f"{self.folders.profiles}/{filename}"
