@@ -243,7 +243,7 @@ def analyse(
     click.echo("INFO - Checking versions of references..")
     try:
         if not skip_update:
-            new_orgs = ext_refs.identify_new(project=True)
+            new_orgs = ext_refs.identify_new()
             ext_refs.create_new_profile_tables(new_orgs)
             click.echo("INFO - Version check done. Creating sbatch jobs")
         else:
