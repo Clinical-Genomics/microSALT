@@ -230,7 +230,7 @@ def gen_add_info(sample_info=dict(), threshold: Optional[Threshold] = None):
                         s.threshold = "Failed"
 
             if near_hits > 0 and s.threshold == "Passed":
-                s.ST_status = f"Okänd ({near_hits} allele[r])"
+                s.ST_status = f"Ok&auml;nd ({near_hits} allele[r])"
         else:
             s.threshold = "Failed"
 
@@ -238,7 +238,7 @@ def gen_add_info(sample_info=dict(), threshold: Optional[Threshold] = None):
             if s.ST == -1:
                 s.ST_status = "Data saknas"
             elif s.ST <= -4 or s.ST == -2:
-                s.ST_status = "Okänd (Novel ST, Novel allele[r])"
+                s.ST_status = "Ok&auml;nd (Novel ST, Novel allele[r])"
             else:
                 s.ST_status = "None"
 
