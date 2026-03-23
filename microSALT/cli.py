@@ -285,7 +285,6 @@ def refer(ctx):
     is_flag=True,
 )
 @click.option("--email", default="", help="Forced e-mail recipient")
-@click.option("--skip_update", default=False, help="Skips downloading of references", is_flag=True)
 @click.option(
     "--report",
     default="default",
