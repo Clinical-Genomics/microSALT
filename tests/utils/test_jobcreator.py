@@ -203,7 +203,7 @@ def test_write_mailjob_uses_existing_executable(config, logger, testdata, tmp_pa
     jc = _make_jc(config, logger, testdata, tmp_path)
     mailfile = str(tmp_path / "mailjob.sh")
 
-    jc._write_mailjob(mailfile, "default", "")
+    jc._write_mailjob(mailfile, "default")
 
     content = pathlib.Path(mailfile).read_text()
     # Extract the first token of the finish command (the binary path)
@@ -221,7 +221,7 @@ def test_write_mailjob_contains_finish_command(config, logger, testdata, tmp_pat
     jc = _make_jc(config, logger, testdata, tmp_path)
     mailfile = str(tmp_path / "mailjob.sh")
 
-    jc._write_mailjob(mailfile, "qc", "")
+    jc._write_mailjob(mailfile, "qc")
 
     content = pathlib.Path(mailfile).read_text()
     assert "utils finish" in content
