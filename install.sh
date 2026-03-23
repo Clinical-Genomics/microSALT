@@ -9,14 +9,14 @@ default_branch=${1-master}
 
 echo "Welcome to the microSALT installation script. Q to exit"
 while true; do
-    echo "Would you like a 'release' or 'source' (development) environment ['release']?"
+    echo "Would you like a 'production' or 'stage' (development) environment ['production']?"
     read input
     if [[ $input = "q" ]] || [[ $input = "Q" ]]; then
         exit 0
     elif [[ $input = "y" ]] || [[ $input = "yes" ]] || [[ $input = "" ]]; then
-        type="release"
+        type="production"
         break
-    elif [[ $input == "source" ]] || [[ $input == "release" ]]; then
+    elif [[ $input == "stage" ]] || [[ $input == "production" ]]; then
         type=$input
         break
     fi
@@ -39,15 +39,25 @@ done
 echo "Thank you, installing branch $branch!"
 
 if [ -d microSALT ]; then
-    rm -rf microSALT
+    while true; do
+        echo "Directory microSALT already exists. Do you want to delete it and continue? [y/N]"
+        read input
+        if [[ $input = "y" ]] || [[ $input = "yes" ]]; then
+            rm -rf microSALT
+            break
+        elif [[ $input = "n" ]] || [[ $input = "no" ]] || [[ $input = "" ]]; then
+            echo "Exiting installation"
+            exit 0
+        fi
+    done
 fi
 
 git clone https://github.com/Clinical-Genomics/microSALT
 cd microSALT && git checkout $branch
 
-if [[ $type == "release" ]]; then
+if [[ $type == "production" ]]; then
     uv sync
-elif [[ $type == "source" ]]; then
+elif [[ $type == "stage" ]]; then
     uv sync --group dev
 fi
 
