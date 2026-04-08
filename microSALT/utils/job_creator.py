@@ -677,22 +677,26 @@ class Job_Creator:
         if not dry:
             self.finish_job(jobarray, single_sample)
 
-    def _write_mailjob(self, mailfile: str, report: str) -> None:
-        """Write the mailjob.sh script that runs `microsalt utils finish` after all jobs complete."""
+    def _build_finish_cmd(self, report: str) -> str:
+        """Return the fully-qualified microsalt CLI command for `utils finish`."""
         _ep = next(
             ep for ep in entry_points(group="console_scripts") if ep.value == "microSALT.cli:root"
         )
         microsalt_bin = Path(sys.executable).parent / _ep.name
+        return (
+            f"{microsalt_bin} --config {self.config_path} utils finish {self.finishdir}/sampleinfo.json "
+            f"--input {self.finishdir} "
+            f"--email {self.regex.mail_recipient} "
+            f"--report {report}"
+        )
+
+    def _write_mailjob(self, mailfile: str, report: str) -> None:
+        """Write the mailjob.sh script that runs `microsalt utils finish` after all jobs complete."""
+        finish_cmd = self._build_finish_cmd(report)
         with open(mailfile, "w+") as mb:
             mb.write("#!/usr/bin/env bash\n\n")
             mb.write("set -euo pipefail\n\n")
             mb.write("#Uploading of results to database and production of report\n")
-            finish_cmd = (
-                f"{microsalt_bin} --config {self.config_path} utils finish {self.finishdir}/sampleinfo.json "
-                f"--input {self.finishdir} "
-                f"--email {self.regex.mail_recipient} "
-                f"--report {report}"
-            )
             mb.write(f"if {finish_cmd}; then\n")
             mb.write(f"    touch {self.finishdir}/run_complete.out\n")
             mb.write("else\n")
