@@ -299,8 +299,7 @@ def finish(config: MicroSALTConfig, sampleinfo_file, input, track, dry, email, r
         config.regex.mail_recipient = email
     config.dry = dry
     if not os.path.isdir(input):
-        click.echo(f"ERROR - Sequence data folder {input} does not exist.")
-        click.Abort()
+        raise click.ClickException(f"Sequence data folder {input} does not exist.")
     if output == "":
         output = input
     for subfolder in os.listdir(input):
@@ -327,21 +326,25 @@ def finish(config: MicroSALTConfig, sampleinfo_file, input, track, dry, email, r
         sampleinfo=sampleinfo,
         input=input,
     )
-    if isinstance(sampleinfo, list) and len(sampleinfo) > 1:
-        res_scraper.scrape_project()
-    else:
-        res_scraper.scrape_sample()
+    try:
+        if isinstance(sampleinfo, list) and len(sampleinfo) > 1:
+            res_scraper.scrape_project()
+        else:
+            res_scraper.scrape_sample()
 
-    codemonkey = Reporter(
-        log=logger,
-        folders=config.folders,
-        threshold=config.threshold,
-        regex=config.regex,
-        sampleinfo=sampleinfo,
-        output=output,
-        collection=True,
-    )
-    codemonkey.report(report)
+        codemonkey = Reporter(
+            log=logger,
+            folders=config.folders,
+            threshold=config.threshold,
+            regex=config.regex,
+            sampleinfo=sampleinfo,
+            output=output,
+            collection=True,
+        )
+        codemonkey.report(report)
+    except Exception as e:
+        logger.error(f"ERROR - finish command failed: {e}")
+        raise click.ClickException(f"finish command failed: {e}") from e
     done()
 
 

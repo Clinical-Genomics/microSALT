@@ -685,15 +685,23 @@ class Job_Creator:
         microsalt_bin = Path(sys.executable).parent / _ep.name
         with open(mailfile, "w+") as mb:
             mb.write("#!/usr/bin/env bash\n\n")
+            mb.write("set -euo pipefail\n\n")
             mb.write("#Uploading of results to database and production of report\n")
             finish_cmd = (
                 f"{microsalt_bin} --config {self.config_path} utils finish {self.finishdir}/sampleinfo.json "
                 f"--input {self.finishdir} "
                 f"--email {self.regex.mail_recipient} "
-                f"--report {report}\n"
+                f"--report {report}"
             )
-            mb.write(finish_cmd)
-            mb.write(f"touch {self.finishdir}/run_complete.out\n")
+            mb.write(f"if {finish_cmd}; then\n")
+            mb.write(f"    touch {self.finishdir}/run_complete.out\n")
+            mb.write("else\n")
+            mb.write(
+                '    echo "ERROR - microsalt finish failed with exit code $? for project '
+                f'{self.name}. run_complete.out will NOT be created." >&2\n'
+            )
+            mb.write("    exit 1\n")
+            mb.write("fi\n")
 
     def finish_job(self, joblist, single_sample=False):
         """Uploads data and sends an email once all analysis jobs are complete."""
