@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
@@ -127,3 +128,74 @@ def test_setup_command_creates_tables(setup_config: MicroSALTConfig, setup_confi
     created = inspect(engine).get_table_names()
     expected = set(Base.metadata.tables.keys())
     assert expected == set(created), f"Missing tables: {expected - set(created)}"
+
+
+def test_finish_exits_nonzero_when_scraper_raises(
+    config: MicroSALTConfig, config_file: Path, tmp_path: Path
+):
+    """finish must exit with a non-zero code when the scraper raises an exception.
+
+    A non-zero exit code causes the mailjob's ``if finish_cmd`` condition to be
+    false, preventing ``run_complete.out`` from being created.
+    """
+    sampleinfo = tmp_path / "sampleinfo.json"
+    sampleinfo.write_text(
+        json.dumps(
+            [
+                {
+                    "CG_ID_project": "TST0001",
+                    "CG_ID_sample": "TST0001A1",
+                    "Customer_ID_project": "100100",
+                    "Customer_ID_sample": "10XY123456",
+                    "Customer_ID": "cust000",
+                    "application_tag": "SOMTIN100",
+                    "date_arrival": "0001-01-01 00:00:00",
+                    "date_libprep": "0001-01-01 00:00:00",
+                    "date_sequencing": "0001-01-01 00:00:00",
+                    "method_libprep": "Not in LIMS",
+                    "method_sequencing": "Not in LIMS",
+                    "organism": "Staphylococcus aureus",
+                    "priority": "standard",
+                    "reference": "None",
+                }
+            ]
+        )
+    )
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+
+    with patch("microSALT.cli.Scraper") as mock_scraper_cls:
+        mock_scraper_cls.return_value.scrape_sample.side_effect = RuntimeError("scraper failed")
+        result = invoke_root(
+            config_file,
+            "utils",
+            "finish",
+            str(sampleinfo),
+            "--input",
+            str(input_dir),
+        )
+
+    assert result.exit_code != 0, "finish should exit non-zero when scraper raises"
+
+
+def test_finish_exits_nonzero_when_input_missing(
+    config: MicroSALTConfig, config_file: Path, tmp_path: Path
+):
+    """finish must exit non-zero when the input folder does not exist.
+
+    Mirrors the mailjob scenario where a bad path would otherwise silently
+    succeed and write ``run_complete.out``.
+    """
+    sampleinfo = tmp_path / "sampleinfo.json"
+    sampleinfo.write_text(json.dumps({"CG_ID_sample": "TST0001A1", "CG_ID_project": "TST0001"}))
+
+    result = invoke_root(
+        config_file,
+        "utils",
+        "finish",
+        str(sampleinfo),
+        "--input",
+        str(tmp_path / "does_not_exist"),
+    )
+
+    assert result.exit_code != 0, "finish should exit non-zero for a missing input folder"
