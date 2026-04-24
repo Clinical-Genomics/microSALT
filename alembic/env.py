@@ -1,8 +1,8 @@
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import create_engine
 
+from alembic import context
 from microSALT.store.orm_models import Base
 
 config = context.config
