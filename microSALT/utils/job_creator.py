@@ -5,6 +5,7 @@ By: Isak Sylvin, @sylvinite"""
 import glob
 import gzip
 import json
+import logging
 import os
 import re
 import shutil
@@ -112,10 +113,11 @@ class Job_Creator:
 
         if run_settings.get("finishdir") is None:
             self.finishdir = f"{folders.results}/{self.name}_{self.now}"
-        self.db_pusher = DB_Manipulator(log=log, folders=folders, threshold=threshold)
+        self.logger = self._setup_logger(log)
+        self.db_pusher = DB_Manipulator(log=self.logger, folders=folders, threshold=threshold)
         self.concat_files = dict()
         self.ref_resolver = Referencer(
-            log=log,
+            log=self.logger,
             folders=folders,
             threshold=threshold,
             pubmlst=pubmlst,
@@ -131,6 +133,29 @@ class Job_Creator:
     def get_headerargs(self):
         headerline = f"-A {self.slurm_header.project} -p {self.slurm_header.type} -n {self.slurm_header.threads} -t {self.slurm_header.time} -J {self.slurm_header.job_prefix}_{self.name} --qos {self.slurm_header.qos} --output {self.finishdir}/slurm_{self.name}.log"
         return headerline
+
+    def _setup_logger(self, log: logging.Logger) -> logging.Logger:
+        """Create a Job_Creator-specific logger that writes to stdout and finishdir/job_creator.log."""
+        logger_name = f"job_creator.{self.name}"
+        jc_logger = logging.getLogger(logger_name)
+        level = log.level or logging.INFO
+        jc_logger.setLevel(level)
+        jc_logger.propagate = False
+        if not jc_logger.handlers:
+            formatter = logging.Formatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                "%Y-%m-%d %H:%M:%S",
+            )
+            ch = logging.StreamHandler()
+            ch.setLevel(level)
+            ch.setFormatter(formatter)
+            jc_logger.addHandler(ch)
+            os.makedirs(self.finishdir, exist_ok=True)
+            fh = logging.FileHandler(os.path.join(self.finishdir, "job_creator.log"))
+            fh.setLevel(level)
+            fh.setFormatter(formatter)
+            jc_logger.addHandler(fh)
+        return jc_logger
 
     def _singularity_exec(self, tool: str, command: str) -> str:
         """Return command wrapped with singularity exec for the given tool container."""
