@@ -135,7 +135,13 @@ class Job_Creator:
         return headerline
 
     def _setup_logger(self, log: logging.Logger) -> logging.Logger:
-        """Create a Job_Creator-specific logger that writes to stdout and finishdir/job_creator.log."""
+        """Create a Job_Creator-specific logger that writes to stdout and finishdir/job_creator.log.
+
+        If the incoming logger is already a Job_Creator logger (i.e. from a parent instance),
+        reuse it directly so all child-sample logs flow into the same project-level log file.
+        """
+        if log.name.startswith("job_creator."):
+            return log
         logger_name = f"job_creator.{self.name}"
         jc_logger = logging.getLogger(logger_name)
         level = log.level or logging.INFO
