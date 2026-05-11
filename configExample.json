@@ -21,8 +21,6 @@
     "results": "/tmp/MLST/results/",
     "_comment": "Report collection folder",
     "reports": "/tmp/MLST/reports/",
-    "_comment": "Log file position and name",
-    "log_file": "/tmp/microsalt.log",
     "_comment": "Root folder for input fasta sequencing data",
     "seqdata": "/tmp/projects/",
     "_comment": "ST profiles. Each ST profile file under 'profiles' have an identicial folder under references",
@@ -69,12 +67,6 @@
     "bp_50x_warn": 50,
     "bp_100x_warn": 20
   },
-  "_comment": "Genologics temporary configuration file",
-  "genologics": {
-    "baseuri": "https://lims.facility.se/",
-    "username": "limsuser",
-    "password": "mypassword"
-  },
   "_comment": "Credentials",
   "pubmlst": {
     "client_id": "",
@@ -83,5 +75,24 @@
   "pasteur": {
     "client_id": "",
     "client_secret": ""
+  },
+  "_comment": "Singularity runtime configuration",
+  "singularity": {
+    "binary": "/usr/bin/singularity",
+    "_comment": "Paths that must be visible inside every container (passed as --bind)",
+    "bind_paths": ["/data"],
+    "_comment": "Adapter path inside the trimmomatic container (bioconda default)",
+    "trimmomatic_adapters": "/opt/conda/share/trimmomatic/adapters/"
+  },
+  "_comment": "Absolute paths to pre-built Singularity SIF images on the cluster",
+  "containers": {
+    "skesa": "/fs1/resources/containers/skesa_2.5.1.sif",
+    "blast": "/fs1/resources/containers/blast_2.12.0.sif",
+    "bwa": "/fs1/resources/containers/bwa_0.7.17.sif",
+    "samtools": "/fs1/resources/containers/samtools_1.13.sif",
+    "picard": "/fs1/resources/containers/picard_2.20.3.sif",
+    "trimmomatic": "/fs1/resources/containers/trimmomatic_0.39.sif",
+    "quast": "/fs1/resources/containers/quast_5.3.0.sif"
   }
 }
+

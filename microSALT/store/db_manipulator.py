@@ -1,25 +1,25 @@
-""" Delivers and fetches data from the database
-   By: Isak Sylvin, @sylvinite"""
+"""Delivers and fetches data from the database
+By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 
 import hashlib
 import sys
 import warnings
-
 from collections import OrderedDict
 from datetime import datetime, timezone
-from sqlalchemy import *
-from sqlalchemy.orm import sessionmaker
-from dateutil.parser import parse
 
-# maintain the same connection per thread
-from sqlalchemy.pool import SingletonThreadPool
-from typing import Dict, List
+from dateutil.parser import parse
+from sqlalchemy import DateTime as SADateTime
+from sqlalchemy import MetaData, Table, and_, desc, or_, text
+from sqlalchemy import inspect as sa_inspect
 
 from microSALT import __version__
+from microSALT.config import Folders, Threshold
+from microSALT.exc.exceptions import RefUpdateLockError
+from microSALT.store.database import get_engine, get_session
+from microSALT.store.models import ProfileTable
 from microSALT.store.orm_models import (
-    app,
     Collections,
     Expacs,
     Projects,
@@ -27,23 +27,44 @@ from microSALT.store.orm_models import (
     Resistances,
     Samples,
     Seq_types,
+    SystemLock,
     Versions,
 )
-from microSALT.store.models import Profiles, Novel
+
+# Maps string table names (as passed by callers) to ORM classes.
+_ORM_TABLES = {
+    "Collections": Collections,
+    "Expacs": Expacs,
+    "Projects": Projects,
+    "Reports": Reports,
+    "Resistances": Resistances,
+    "Samples": Samples,
+    "Seq_types": Seq_types,
+    "Versions": Versions,
+}
+
+
+def _resolve_orm_table(tablename: str):
+    """Return the ORM class for *tablename*, raising KeyError on unknown names."""
+    if tablename not in _ORM_TABLES:
+        raise KeyError(f"Unknown ORM table: {tablename!r}")
+    return _ORM_TABLES[tablename]
 
 
 class DB_Manipulator:
-    def __init__(self, config, log):
-        self.config = config
+    def __init__(self, log, folders: Folders, threshold: Threshold):
+        self.folders = folders
+        self.threshold = threshold
         self.logger = log
-        self.engine = create_engine(
-            app.config["SQLALCHEMY_DATABASE_URI"], poolclass=SingletonThreadPool
-        )
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
-        self.metadata = MetaData(self.engine)
-        self.profiles = Profiles(self.metadata, self.config, self.logger).tables
-        self.novel = Novel(self.metadata, self.config, self.logger).tables
+        self.session = get_session()
+        self.engine = get_engine()
+        self.metadata = MetaData()
+        self.profiles = ProfileTable(
+            "profile_", self.metadata, self.folders.profiles, self.logger
+        ).tables
+        self.novel = ProfileTable(
+            "novel_", self.metadata, self.folders.profiles, self.logger
+        ).tables
         # Turns off pymysql deprecation warnings until they can update their code
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -51,302 +72,420 @@ class DB_Manipulator:
 
     def create_tables(self):
         """Creates all tables individually. A bit more control than usual"""
-        if not self.engine.dialect.has_table(self.engine, "projects"):
+        inspector = sa_inspect(self.engine)
+        if not inspector.has_table("projects"):
             Projects.__table__.create(self.engine)
             self.logger.info("Created projects table")
-        if not self.engine.dialect.has_table(self.engine, "samples"):
+        if not inspector.has_table("samples"):
             Samples.__table__.create(self.engine)
             self.logger.info("Created samples table")
-        if not self.engine.dialect.has_table(self.engine, "versions"):
+        if not inspector.has_table("versions"):
             Versions.__table__.create(self.engine)
             self.logger.info("Created versions table")
-        if not self.engine.dialect.has_table(self.engine, "seq_types"):
+        if not inspector.has_table("seq_types"):
             Seq_types.__table__.create(self.engine)
             self.logger.info("Created sequencing types table")
-        if not self.engine.dialect.has_table(self.engine, "resistances"):
+        if not inspector.has_table("resistances"):
             Resistances.__table__.create(self.engine)
             self.logger.info("Created resistance table")
-        if not self.engine.dialect.has_table(self.engine, "reports"):
+        if not inspector.has_table("reports"):
             Reports.__table__.create(self.engine)
             self.logger.info("Created reports table")
-        if not self.engine.dialect.has_table(self.engine, "collections"):
+        if not inspector.has_table("collections"):
             Collections.__table__.create(self.engine)
             self.logger.info("Created collections table")
-        if not self.engine.dialect.has_table(self.engine, "expacs"):
+        if not inspector.has_table("expacs"):
             Expacs.__table__.create(self.engine)
             self.logger.info("Created ExPEC table")
+        if not inspector.has_table("system_locks"):
+            SystemLock.__table__.create(self.engine)
+            self.logger.info("Created system_locks table")
         for k, v in self.profiles.items():
-            if not self.engine.dialect.has_table(self.engine, "profile_{}".format(k)):
-                self.profiles[k].create()
-                self.init_profiletable(k, v)
-                self.add_rec(
-                    {"name": "profile_{}".format(k), "version": "0"},
-                    "Versions",
-                    force=True,
-                )
-                self.logger.info("Profile table profile_{} initialized".format(k))
+            if not inspector.has_table(f"profile_{k}"):
+                self.profiles[k].create(self.engine)
+                self.populate_profiletable(k, v)
+                self.add_to_session(self.add_version(name=f"profile_{k}", version="0"))
+                self.commit_session()
+                self.logger.info(f"Profile table profile_{k} created and populated")
         for k, v in self.novel.items():
-            if not self.engine.dialect.has_table(self.engine, "novel_{}".format(k)):
-                self.novel[k].create()
-                self.add_rec(
-                    {"name": "novel_{}".format(k), "version": "0"},
-                    "Versions",
-                    force=True,
-                )
-                self.logger.info("Profile table novel_{} initialized".format(k))
+            if not inspector.has_table(f"novel_{k}"):
+                self.novel[k].create(self.engine)
+                self.add_to_session(self.add_version(name=f"novel_{k}", version="0"))
+                self.commit_session()
+                self.logger.info(f"Profile table novel_{k} initialized")
 
-    def add_rec(self, data_dict: Dict[str, str], tablename: str, force=False):
-        """Adds a record to the specified table through a dict with columns as keys."""
-        pk_list = list()
-        # Non-orm
-        if not isinstance(tablename, str):
-            # check for existence
-            table = tablename
-            pk_list = table.primary_key.columns.keys()
-            args = list()
-            for pk in pk_list:
-                args.append("table.c.{}=={}".format(pk, data_dict[pk]))
-            args = "or_(" + ",".join(args) + ")"
-            exist = self.session.query(table).filter(eval(args)).all()
-            # Add record
-            if len(exist) == 0:
-                data = table.insert()
-                # Loads any dates as datetime objects
-                for k, v in data_dict.items():
-                    if isinstance(v, str):
-                        try:
-                            parse(v, fuzzy=False)
-                            data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
-                        except ValueError as ve:
-                            if len(ve.args) > 0 and ve.args[0].startswith(
-                                "unconverted data remains: "
-                            ):
-                                data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
-                            else:
-                                pass
-                data.execute(data_dict)
-                self.logger.info("Added entry to table {}".format(tablename.fullname))
-        # ORM
-        else:
-            try:
-                table = eval(tablename)
-                # Check for existing entry
-                pk_list = table.__table__.primary_key.columns.keys()
-            except Exception as e:
-                self.logger.error(
-                    "Attempted to access table {} which has not been created".format(tablename)
-                )
-            pk_values = list()
-            for item in pk_list:
-                pk_values.append(data_dict[item])
-            existing = self.session.query(table).get(pk_values)
-            # Add record
-            if not existing or force:
-                newobj = table()
-                # Loads any dates as datetime objects
-                for k, v in data_dict.items():
-                    if isinstance(v, str):
-                        try:
-                            parse(v, fuzzy=False)
-                            data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
-                        except ValueError as ve:
-                            if len(ve.args) > 0 and ve.args[0].startswith(
-                                "unconverted data remains: "
-                            ):
-                                data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
-                            else:
-                                pass
-                for k, v in data_dict.items():
-                    setattr(newobj, k, v)
-                self.session.add(newobj)
-                self.session.commit()
-            else:
-                self.logger.warning(
-                    "Record [{}]=[{}] in table {} already exists".format(
-                        ", ".join(pk_list), ", ".join(pk_values), tablename
-                    )
-                )
+    def acquire_ref_lock(self):
+        """Acquire the reference-update exclusive lock.
 
-    def upd_rec(self, req_dict: Dict[str, str], tablename: str, upd_dict: Dict[str, str]):
-        """Updates a record to the specified table through a dict with columns as keys."""
-        table = eval(tablename)
-        self.logger.debug(f"Updating table {tablename} with {upd_dict}")
-        argy = list()
-        for k, v in req_dict.items():
-            if v != None:
-                argy.append(".filter(table.{}=='{}')".format(k, v))
-        filter = "".join(argy)
-        megastring = "self.session.query(table){}".format(filter)
-        if len(eval(megastring + ".all()")) > 1:
-            self.logger.error("More than 1 record found when orm updating. Exited.")
-            sys.exit()
-        else:
-            eval(megastring + ".update(upd_dict)")
+        Raises RefUpdateLockError if the lock is already held by another process.
+        """
+        existing = self.session.query(SystemLock).filter_by(lock_name="ref_update").scalar()
+        if existing:
+            raise RefUpdateLockError(
+                "A reference update is already in progress (lock acquired at {}). "
+                "Please try again later.".format(existing.acquired_at)
+            )
+        self.session.add(SystemLock(lock_name="ref_update", acquired_at=datetime.now(timezone.utc)))
+        self.session.commit()
+        self.logger.info("Reference update lock acquired")
+
+    def release_ref_lock(self):
+        """Release the reference-update exclusive lock."""
+        self.session.query(SystemLock).filter_by(lock_name="ref_update").delete()
+        self.session.commit()
+        self.logger.info("Reference update lock released")
+
+    def check_ref_lock(self):
+        """Raise RefUpdateLockError if a reference update is currently in progress."""
+        lock = self.session.query(SystemLock).filter_by(lock_name="ref_update").scalar()
+        if lock:
+            raise RefUpdateLockError(
+                "The reference database is currently being updated (started at {}). "
+                "Please try again later.".format(lock.acquired_at)
+            )
+
+    def add_rec(self, data_dict: dict, tablename) -> None:
+        """Adds a record to a non-ORM (ProfileTable) table via a raw Table object."""
+        table = tablename
+        pk_list = table.primary_key.columns.keys()
+        filter_clauses = [table.c[pk] == data_dict[pk] for pk in pk_list]
+        exist = self.session.query(table).filter(or_(*filter_clauses)).all()
+        if len(exist) == 0:
+            data = table.insert()
+            for k, v in data_dict.items():
+                if isinstance(v, str):
+                    try:
+                        parse(v, fuzzy=False)
+                        data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
+                    except ValueError as ve:
+                        if len(ve.args) > 0 and ve.args[0].startswith("unconverted data remains: "):
+                            data_dict[k] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
+                        else:
+                            pass
+            self.session.execute(data, data_dict)
             self.session.commit()
-        self.logger.debug(f"Updated table {tablename} with {upd_dict} for {req_dict}")
+            self.logger.info(f"Added entry to table {tablename.fullname}")
 
-    def purge_rec(self, name: str, type: str):
-        """Removes seq_data, resistances, sample(s) and possibly project"""
-        entries = list()
-        if type == "Projects":
-            entries.append(
-                self.session.query(Expacs)
-                .filter(Expacs.CG_ID_sample.like("{}%".format(name)))
-                .all()
-            )
-            entries.append(
-                self.session.query(Seq_types)
-                .filter(Seq_types.CG_ID_sample.like("{}%".format(name)))
-                .all()
-            )
-            entries.append(
-                self.session.query(Resistances)
-                .filter(Resistances.CG_ID_sample.like("{}%".format(name)))
-                .all()
-            )
-            entries.append(
-                self.session.query(Samples)
-                .filter(Samples.CG_ID_sample.like("{}%".format(name)))
-                .all()
-            )
-            # entries.append(self.session.query(Projects).filter(Projects.CG_ID_project==name).all())
-        elif type == "Samples":
-            entries.append(self.session.query(Expacs).filter(Expacs.CG_ID_sample == name).all())
-            entries.append(
-                self.session.query(Seq_types).filter(Seq_types.CG_ID_sample == name).all()
-            )
-            entries.append(
-                self.session.query(Resistances).filter(Resistances.CG_ID_sample == name).all()
-            )
-            entries.append(self.session.query(Samples).filter(Samples.CG_ID_sample == name).all())
-        elif type == "Collections":
-            entries.append(
-                self.session.query(Collections).filter(Collections.ID_collection == name).all()
-            )
-        else:
-            self.logger.error(
-                "Incorrect type {} specified for removal of {}. Check code".format(type, name)
-            )
+    # ------------------------------------------------------------------
+    # Per-model factory methods — construct and return an ORM object.
+    # Callers are responsible for add_to_session() and commit_session().
+    # ------------------------------------------------------------------
+
+    def add_sample(self, **kwargs) -> Samples:
+        return Samples(**kwargs)
+
+    def add_project(self, **kwargs) -> Projects:
+        return Projects(**kwargs)
+
+    def add_seq_type(self, **kwargs) -> Seq_types:
+        return Seq_types(**kwargs)
+
+    def add_resistance(self, **kwargs) -> Resistances:
+        return Resistances(**kwargs)
+
+    def add_expac(self, **kwargs) -> Expacs:
+        return Expacs(**kwargs)
+
+    def add_report(self, **kwargs) -> Reports:
+        return Reports(**kwargs)
+
+    def add_collection(self, **kwargs) -> Collections:
+        return Collections(**kwargs)
+
+    def add_version(self, **kwargs) -> Versions:
+        return Versions(**kwargs)
+
+    def add_to_session(self, obj) -> None:
+        """Coerce string DateTime fields, then stage the object.
+
+        If an object with the same primary key already exists in the database
+        the insert is silently skipped (same semantics as the previous
+        _add_orm_record behaviour).
+        """
+        for col in obj.__table__.columns:
+            if isinstance(col.type, SADateTime):
+                val = getattr(obj, col.name)
+                if isinstance(val, str):
+                    try:
+                        setattr(obj, col.name, datetime.strptime(val, "%Y-%m-%d %H:%M:%S"))
+                    except ValueError:
+                        setattr(obj, col.name, datetime.strptime(val, "%Y-%m-%d %H:%M:%S.%f"))
+        pk_cols = list(obj.__table__.primary_key.columns.keys())
+        pk_vals = [getattr(obj, c) for c in pk_cols]
+        if None not in pk_vals:
+            existing = self.session.get(type(obj), pk_vals if len(pk_vals) > 1 else pk_vals[0])
+            if existing is not None:
+                return
+        self.session.add(obj)
+
+    def commit_session(self) -> None:
+        self.session.commit()
+
+    # ------------------------------------------------------------------
+    # Per-model update methods
+    # ------------------------------------------------------------------
+
+    def update_sample(self, req_dict: dict, upd_dict: dict) -> None:
+        """Update a Samples row. Cascades CG_ID_sample renames to child tables."""
+        filter_clauses = [getattr(Samples, k) == v for k, v in req_dict.items() if v is not None]
+        query = self.session.query(Samples).filter(and_(*filter_clauses))
+        if len(query.all()) > 1:
+            self.logger.error("More than 1 Samples record found when updating. Exited.")
             sys.exit()
-        for entry in entries:
-            for instance in entry:
-                self.session.delete(instance)
-                self.session.commit()
-        self.logger.info("Removed information for {}".format(name))
+        if "CG_ID_sample" in upd_dict:
+            old_id = req_dict.get("CG_ID_sample")
+            new_id = upd_dict["CG_ID_sample"]
+            if old_id and old_id != new_id:
+                for child_table in (Seq_types, Resistances, Expacs, Collections):
+                    self.session.query(child_table).filter(
+                        child_table.CG_ID_sample == old_id
+                    ).update({"CG_ID_sample": new_id})
+        query.update(upd_dict)
+        self.session.commit()
+        self.logger.debug(f"Updated Samples for {req_dict} with {upd_dict}")
 
-    def query_rec(self, tablename: str, filters: Dict[str, str]):
+    def update_project(self, req_dict: dict, upd_dict: dict) -> None:
+        """Update a Projects row."""
+        filter_clauses = [getattr(Projects, k) == v for k, v in req_dict.items() if v is not None]
+        query = self.session.query(Projects).filter(and_(*filter_clauses))
+        if len(query.all()) > 1:
+            self.logger.error("More than 1 Projects record found when updating. Exited.")
+            sys.exit()
+        query.update(upd_dict)
+        self.session.commit()
+        self.logger.debug(f"Updated Projects for {req_dict} with {upd_dict}")
+
+    def update_version(self, name: str, version: str) -> None:
+        """Update a Versions row."""
+        self.session.query(Versions).filter(Versions.name == name).update({"version": version})
+        self.session.commit()
+        self.logger.debug(f"Updated Versions for {name} with version {version}")
+
+    # ------------------------------------------------------------------
+    # Per-model delete methods
+    # ------------------------------------------------------------------
+
+    def delete_sample(self, cg_id: str) -> None:
+        """Delete a sample and all its child rows (seq_types, resistances, expacs)."""
+        for obj in self.session.query(Expacs).filter(Expacs.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        for obj in self.session.query(Seq_types).filter(Seq_types.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        for obj in self.session.query(Resistances).filter(Resistances.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        for obj in self.session.query(Samples).filter(Samples.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        self.session.commit()
+        self.logger.info(f"Removed sample {cg_id} and its child rows")
+
+    def delete_sample_results(self, cg_id: str) -> None:
+        """Delete only the analysis result rows for a sample (seq_types, resistances, expacs)
+        without removing the Samples row itself."""
+        for obj in self.session.query(Expacs).filter(Expacs.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        for obj in self.session.query(Seq_types).filter(Seq_types.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        for obj in self.session.query(Resistances).filter(Resistances.CG_ID_sample == cg_id).all():
+            self.session.delete(obj)
+        self.session.commit()
+        self.logger.info(f"Cleared analysis results for sample {cg_id}")
+
+    def delete_project(self, name: str) -> None:
+        """Delete all samples (and their child rows) belonging to a project."""
+        for obj in self.session.query(Expacs).filter(Expacs.CG_ID_sample.like(f"{name}%")).all():
+            self.session.delete(obj)
+        for obj in (
+            self.session.query(Seq_types).filter(Seq_types.CG_ID_sample.like(f"{name}%")).all()
+        ):
+            self.session.delete(obj)
+        for obj in (
+            self.session.query(Resistances).filter(Resistances.CG_ID_sample.like(f"{name}%")).all()
+        ):
+            self.session.delete(obj)
+        for obj in self.session.query(Samples).filter(Samples.CG_ID_sample.like(f"{name}%")).all():
+            self.session.delete(obj)
+        self.session.commit()
+        self.logger.info(f"Removed all samples for project {name}")
+
+    def delete_collection(self, name: str) -> None:
+        """Delete all entries for the given collection ID."""
+        for obj in self.session.query(Collections).filter(Collections.ID_collection == name).all():
+            self.session.delete(obj)
+        self.session.commit()
+        self.logger.info(f"Removed collection {name}")
+
+    def read_records(self, tablename: str, filters: dict[str, str]):
         """Fetches records table, using a primary-key dict with columns as keys.
         Non-PK are ignored"""
         # Non-orm
         if not isinstance(tablename, str):
-            # check for existence
             table = tablename
-            pk_list = table.primary_key.columns.keys()
-            args = list()
-            for k, v in filters.items():
-                args.append("table.c.{}=={}".format(k, v))
-            args = "or_(" + ",".join(args) + ")"
-            exist = self.session.query(table).filter(eval(args)).all()
-            return exist
+            filter_clauses = [table.c[k] == v for k, v in filters.items()]
+            return self.session.query(table).filter(or_(*filter_clauses)).all()
         # ORM
         else:
-            table = eval(tablename)
-            args = list()
-            for k, v in filters.items():
-                if v != None:
-                    args.append("table.{}=='{}'".format(k, v))
-            filter = " and ".join(args)
-            entries = self.session.query(table).filter(eval(filter)).all()
-            return entries
+            table = _resolve_orm_table(tablename)
+            filter_clauses = [getattr(table, k) == v for k, v in filters.items() if v is not None]
+            return self.session.query(table).filter(and_(*filter_clauses)).all()
 
-    def top_index(self, table_str: str, filters: Dict[str, str], column: str):
+    def read_top_index(self, table_str: str, filters: dict[str, str], column: str):
         """Fetches the top index from column of table, by applying a dict with columns as keys."""
-        table = eval(table_str)
-        args = list()
-        for k, v in filters.items():
-            if v != None:
-                args.append("table.{}=='{}'".format(k, v))
-        filter = " and ".join(args)
+        table = _resolve_orm_table(table_str)
+        filter_clauses = [getattr(table, k) == v for k, v in filters.items() if v is not None]
         entry = (
             self.session.query(table)
-            .filter(eval(filter))
-            .order_by(desc(eval("{}.{}".format(table_str, column))))
+            .filter(and_(*filter_clauses))
+            .order_by(desc(getattr(table, column)))
             .limit(1)
             .all()
         )
         if entry == []:
             return int(-1)
         else:
-            return eval("entry[0].{}".format(column))
+            return getattr(entry[0], column)
 
     def reload_profiletable(self, organism: str):
-        """Drop the named non-orm table, then load it with fresh data"""
-        table = self.profiles[organism]
+        """Drop the named profile table, rebuild schema from disk, and reload with fresh data.
+
+        The Python Table object is rebuilt from the current file on disk before the DB
+        table is recreated, so schema changes (new or renamed loci columns) are picked up.
+        """
         self.logger.debug(f"Reloading profile table for {organism}")
-        self.profiles[organism].drop()
+        self.profiles[organism].drop(self.engine)
         self.logger.debug(f"Dropped profile table for {organism}")
-        self.profiles[organism].create()
+        # Rebuild the Table object from the file currently on disk (schema may have changed).
+        fresh_metadata = MetaData()
+        fresh = ProfileTable("profile_", fresh_metadata, self.folders.profiles, self.logger).tables
+        if organism in fresh:
+            self.profiles[organism] = fresh[organism]
+        self.profiles[organism].create(self.engine)
         self.logger.debug(f"Recreated profile table for {organism}")
-        self.init_profiletable(organism, table)
-        self.logger.debug(f"Initialized profile table for {organism}")
+        self.populate_profiletable(organism, self.profiles[organism])
+        self.logger.debug(f"Populated profile table for {organism}")
 
-    def init_profiletable(self, filename: str, table):
-        """Creates profile tables by looping, since a lot of infiles exist"""
-        data = table.insert()
-        linedict = dict.fromkeys(table.c.keys())
-        file_path = f"{self.config['folders']['profiles']}/{filename}"
-        self.logger.debug(f"Opening profile file: {file_path}")
+    def refresh_profiletable(self, organism: str):
+        """Reload profile table content without dropping the table when possible.
+
+        Reads the downloaded CSV header and compares it against the current
+        table's columns (first 8). If the schema is unchanged, the table is
+        truncated and reloaded in place. If the loci scheme has changed (new
+        or renamed columns) the method falls back to a full drop/recreate via
+        reload_profiletable() so the schema stays in sync with the CSV.
+        """
+        table = self.profiles[organism]
+        file_path = f"{self.folders.profiles}/{organism}"
+
         with open(file_path, "r") as fh:
-            # Skips header
-            head = fh.readline()
-            head = head.rstrip().split("\t")
-            self.logger.debug(f"Header columns: {head}")
-            line_num = 0
-            for line in fh:
-                line_num += 1
-                line = line.rstrip().split("\t")
-                self.logger.debug(f"Processing line {line_num}: {line}")
-                index = 0
-                while index < len(line):
-                    linedict[head[index]] = line[index]
-                    index = index + 1
-                self.logger.debug(f"Linedict before insert: {linedict}")
-                try:
-                    data.execute(linedict)
-                    self.logger.debug(f"Inserted line {line_num} into table")
-                except Exception as e:
-                    self.logger.error(f"Failed to insert line {line_num}: {e}")
-        self.logger.debug(f"Initialized profile table for {filename} with {line_num} entries")
+            csv_cols = fh.readline().rstrip().split("\t")[:8]
 
-    def get_columns(self, tablename: str):
+        current_cols = list(table.c.keys())
+
+        if csv_cols == current_cols:
+            self.logger.info(
+                f"Schema unchanged for {organism}, truncating and reloading profile table"
+            )
+            self.session.execute(table.delete())
+            self.session.commit()
+            self.populate_profiletable(organism, table)
+        else:
+            self.logger.info(
+                f"Schema changed for {organism} ({current_cols} -> {csv_cols}), "
+                f"dropping and recreating profile table"
+            )
+            self.reload_profiletable(organism)
+
+    def create_profile_table(self, organism: str) -> None:
+        """Create and populate a profile table for a newly downloaded organism.
+
+        Intended for use after add_pubmlst() has written the profile CSV and loci
+        files to disk for an organism that does not yet have a DB table. Silently
+        skips if the table already exists, so it is safe to call speculatively.
+        """
+        inspector = sa_inspect(self.engine)
+        if inspector.has_table(f"profile_{organism}"):
+            self.logger.info(f"Profile table profile_{organism} already exists, skipping.")
+            return
+        fresh_metadata = MetaData()
+        fresh_profiles = ProfileTable(
+            "profile_", fresh_metadata, self.folders.profiles, self.logger
+        ).tables
+        if organism not in fresh_profiles:
+            self.logger.warning(
+                f"Profile file for {organism} not found on disk, cannot create table."
+            )
+            return
+        table = fresh_profiles[organism]
+        table.create(self.engine)
+        self.populate_profiletable(organism, table)
+        self.add_to_session(self.add_version(name=f"profile_{organism}", version="0"))
+        self.commit_session()
+        self.logger.info(f"Created and populated profile table for {organism}")
+
+    def populate_profiletable(self, filename: str, table) -> None:
+        """Bulk-inserts all data rows from a profile file into an already-created *table*."""
+        file_path = f"{self.folders.profiles}/{filename}"
+        self.logger.debug(f"Opening profile file: {file_path}")
+        keys = list(table.c.keys())
+        rows = []
+        with open(file_path, "r") as fh:
+            head = fh.readline().rstrip().split("\t")
+            for raw_line in fh:
+                values = raw_line.rstrip().split("\t")
+                row = {col: None for col in keys}
+                for i, val in enumerate(values[: len(keys)]):
+                    row[head[i]] = val
+                rows.append(row)
+        if not rows:
+            self.logger.warning(f"No data rows found in profile file {filename}")
+            return
+        try:
+            self.session.execute(table.insert(), rows)
+            self.session.commit()
+            self.logger.debug(f"Inserted {len(rows)} rows into profile table for {filename}")
+        except Exception as e:
+            self.session.rollback()
+            self.logger.error(f"Failed to bulk-insert profile data for {filename}: {e}")
+
+    def read_columns(self, tablename: str):
         """Returns all records for a given ORM table"""
-        table = eval(tablename)
+        table = _resolve_orm_table(tablename)
         return dict.fromkeys(table.__table__.columns.keys())
 
-    def exists(self, table, item: Dict[str, str]):
-        """Takes a k-v pair and checks for the entrys existence in the given table"""
-        filterstring = ""
-        for k, v in item.items():
-            filterstring += "{}.{}=='{}',".format(table, k, v)
-        filterstring = filterstring[:-1]
-        table = eval(table)
-        entry = self.session.query(table).filter(eval(filterstring)).scalar()
-        if entry is None:
-            return False
-        else:
-            return True
+    def get_projects_by_cg_id_project(self, cg_id_project_name: str) -> Projects | None:
+        """Fetch a Projects record by CG_ID_project."""
+        return (
+            self.session.query(Projects)
+            .filter(Projects.CG_ID_project == cg_id_project_name)
+            .scalar()
+        )
 
-    def get_version(self, name: str):
+    def get_collection_by_id(self, collection_id: str) -> Collections | None:
+        return (
+            self.session.query(Collections)
+            .filter(Collections.ID_collection == collection_id)
+            .scalar()
+        )
+
+    def get_sample_by_cg_id_sample(self, cg_id_sample: str) -> Samples | None:
+        return self.session.query(Samples).filter(Samples.CG_ID_sample == cg_id_sample).scalar()
+
+    def read_version(self, name: str) -> str:
         """Gets the version from a given name. Should be generalized to return any value for any input"""
-        version = self.session.query(Versions).filter(Versions.name == name).scalar()
+        version: Versions | None = (
+            self.session.query(Versions).filter(Versions.name == name).scalar()
+        )
         if version is None:
             return "0"
         else:
             return version.version
 
-    def get_report(self, name: str):
+    def get_version_by_name(self, name: str) -> Versions | None:
+        """Gets the Versions record for the given name."""
+        return self.session.query(Versions).filter(Versions.name == name).scalar()
+
+    def read_report(self, name: str) -> Reports | None:
         # Sort based on version
-        prev_report = []
+        prev_report: Reports | None = None
         prev_reports = (
             self.session.query(Reports)
             .filter(Reports.CG_ID_project == name)
@@ -359,7 +498,7 @@ class DB_Manipulator:
 
     def set_report(self, name: str):
         # Generate string
-        totalstring = list()
+        totalstring: list[str] = []
         dt = datetime.now()
         default_method = "Not in LIMS"
         samples = (
@@ -401,31 +540,29 @@ class DB_Manipulator:
         totalstring = "".join(totalstring).encode()
         hashstring = hashlib.md5(totalstring).hexdigest()
 
-        prev_report = self.get_report(name)
-        # Compare
-        if prev_report:
+        if prev_report := self.read_report(name):
             if "steps_aggregate" in dir(prev_report) and prev_report.steps_aggregate != hashstring:
-                self.add_rec(
-                    {
-                        "CG_ID_project": name,
-                        "steps_aggregate": hashstring,
-                        "date": dt,
-                        "version": prev_report.version + 1,
-                    },
-                    "Reports",
+                self.add_to_session(
+                    self.add_report(
+                        CG_ID_project=name,
+                        steps_aggregate=hashstring,
+                        date=dt,
+                        version=prev_report.version + 1,
+                    )
                 )
+                self.commit_session()
         else:
-            self.add_rec(
-                {
-                    "CG_ID_project": name,
-                    "steps_aggregate": hashstring,
-                    "date": dt,
-                    "version": 1,
-                },
-                "Reports",
+            self.add_to_session(
+                self.add_report(
+                    CG_ID_project=name,
+                    steps_aggregate=hashstring,
+                    date=dt,
+                    version=1,
+                )
             )
+            self.commit_session()
 
-    def sync_novel(self, overwrite=False, sample=""):
+    def set_novel_st(self, overwrite=False, sample=""):
         """Looks at each novel table. See if any record has a profile match in the profile table.
         Updates these based on parameters"""
         prequery = self.session.query(Samples)
@@ -436,14 +573,12 @@ class DB_Manipulator:
             profile_list = self.session.query(self.profiles[org]).all()
             # Filter
             for novel in novel_list:
-                args = list()
-                for key in org_keys:
-                    if key != "ST" and key != "clonal_complex" and key != "species":
-                        args.append(
-                            "self.profiles[org].c.{}=={}".format(key, eval("novel.{}".format(key)))
-                        )
-                args = "and_(" + ",".join(args) + ")"
-                exist = self.session.query(self.profiles[org]).filter(eval(args)).all()
+                filter_clauses = [
+                    self.profiles[org].c[key] == getattr(novel, key)
+                    for key in org_keys
+                    if key not in ("ST", "clonal_complex", "species")
+                ]
+                exist = self.session.query(self.profiles[org]).filter(and_(*filter_clauses)).all()
 
                 if exist:
                     exist = exist[0]
@@ -468,42 +603,34 @@ class DB_Manipulator:
                         # review
                         if entry.pubmlst_ST == -1 and not overwrite:
                             self.logger.info(
-                                "Update: Sample {} of organism {}; Internal ST {} is now linked to {} '{}'".format(
-                                    entry.CG_ID_sample, org, novel.ST, exist.ST, exist
-                                )
+                                f"Update: Sample {entry.CG_ID_sample} of organism {org}; Internal ST {novel.ST} is now linked to {exist.ST} '{exist}'"
                             )
-                            self.upd_rec(
+                            self.update_sample(
                                 {"CG_ID_sample": entry.CG_ID_sample},
-                                "Samples",
                                 {"pubmlst_ST": exist.ST},
                             )
                         # overwrite
                         elif overwrite:
                             self.logger.info(
-                                "Replacement: Sample {} of organism {}; Internal ST {} is now {} '{}'".format(
-                                    entry.CG_ID_sample, org, novel.ST, exist.ST, exist
-                                )
+                                f"Replacement: Sample {entry.CG_ID_sample} of organism {org}; Internal ST {novel.ST} is now {exist.ST} '{exist}'"
                             )
-                            self.upd_rec(
+                            self.update_sample(
                                 {"CG_ID_sample": entry.CG_ID_sample},
-                                "Samples",
                                 {"ST": exist.ST, "pubmlst_ST": exist.ST},
                             )
 
-    def rm_novel(self, sample=""):
+    def set_novel_ignored(self, sample=""):
         """Flags a sample as pubMLST resolved by merit of ignoring it"""
         query = self.session.query(Samples).filter(Samples.CG_ID_sample == sample).all()
         if len(query) > 0:
             self.logger.info(
-                "Ignore: Sample {} from organism {} with ST {}; is now flagged as resolved.".format(
-                    query[0].CG_ID_sample, query[0].organism, query[0].ST
-                )
+                f"Ignore: Sample {query[0].CG_ID_sample} from organism {query[0].organism} with ST {query[0].ST}; is now flagged as resolved."
             )
-            self.upd_rec({"CG_ID_sample": query[0].CG_ID_sample}, "Samples", {"pubmlst_ST": 0})
+            self.update_sample({"CG_ID_sample": query[0].CG_ID_sample}, {"pubmlst_ST": 0})
         else:
-            self.logger.error("Sample {} not found in database. Verify name".format(sample))
+            self.logger.error(f"Sample {sample} not found in database. Verify name")
 
-    def list_unresolved(self):
+    def read_unresolved(self):
         """Lists all novel samples that current havent been flagged as resolved"""
         # ST currently not updated at all
         novelbkt = OrderedDict()
@@ -513,9 +640,9 @@ class DB_Manipulator:
             .all()
         )
         for entry in prequery:
-            if not entry.organism in novelbkt:
+            if entry.organism not in novelbkt:
                 novelbkt[entry.organism] = dict()
-            if not entry.ST in novelbkt[entry.organism]:
+            if entry.ST not in novelbkt[entry.organism]:
                 novelbkt[entry.organism][entry.ST] = list()
             novelbkt[entry.organism][entry.ST].append(entry.CG_ID_sample)
         novelbkt = OrderedDict(sorted(novelbkt.items(), key=lambda t: t[0]))
@@ -528,9 +655,9 @@ class DB_Manipulator:
             .all()
         )
         for entry in postquery:
-            if not entry.organism in novelbkt2:
+            if entry.organism not in novelbkt2:
                 novelbkt2[entry.organism] = dict()
-            if not entry.ST in novelbkt2[entry.organism]:
+            if entry.ST not in novelbkt2[entry.organism]:
                 novelbkt2[entry.organism][entry.ST] = list()
             novelbkt2[entry.organism][entry.ST].append(entry.CG_ID_sample)
 
@@ -542,9 +669,9 @@ class DB_Manipulator:
             .all()
         )
         for entry in naquery:
-            if not entry.ST in novelbkt3:
+            if entry.ST not in novelbkt3:
                 novelbkt3[entry.ST] = dict()
-            if not entry.organism in novelbkt3[entry.ST]:
+            if entry.organism not in novelbkt3[entry.ST]:
                 novelbkt3[entry.ST][entry.organism] = list()
             novelbkt3[entry.ST][entry.organism].append(entry.CG_ID_sample)
         novelbkt3 = OrderedDict(sorted(novelbkt3.items(), key=lambda t: t[0], reverse=True))
@@ -558,17 +685,11 @@ class DB_Manipulator:
 
         print("\n####Unresolved samples and their respective error flags:####\n")
         for k, v in novelbkt3.items():
-            print("\n##Code {} - {}##".format(k, codetrans[k]))
+            print(f"\n##Code {k} - {codetrans[k]}##")
             for x, y in v.items():
                 if x is not None:
                     x = x.replace("_", " ").capitalize()
-                print(
-                    "{} ({} samples):\n{}".format(
-                        x,
-                        len(y),
-                        sorted(y),
-                    )
-                )
+                print(f"{x} ({len(y)} samples):\n{sorted(y)}")
         if len(novelbkt3) == 0:
             print("None!")
 
@@ -576,9 +697,9 @@ class DB_Manipulator:
         for k, v in novelbkt2.items():
             if k is not None:
                 k = k.replace("_", " ").capitalize()
-            print("Organism {} ({}):".format(k, len(v)))
+            print(f"Organism {k} ({len(v)}):")
             for x, y in v.items():
-                print("{}:{} ({} ST)".format(x, sorted(y), len(y)))
+                print(f"{x}:{sorted(y)} ({len(y)} ST)")
         if len(novelbkt2) == 0:
             print("None!")
 
@@ -586,13 +707,13 @@ class DB_Manipulator:
         for k, v in novelbkt.items():
             if k is not None:
                 k = k.replace("_", " ").capitalize()
-            print("Organism {} ({}):".format(k, len(v)))
+            print(f"Organism {k} ({len(v)}):")
             for x, y in v.items():
-                print("{}:{} ({} novel ST)".format(x, sorted(y), len(y)))
+                print(f"{x}:{sorted(y)} ({len(y)} novel ST)")
         if len(novelbkt) == 0:
             print("None!")
 
-    def setPredictor(self, cg_sid: str, pks=dict()):
+    def set_predictor(self, cg_sid: str, pks=dict()):
         """Helper function. Flags a set of seq_types as part of the final prediction.
         Uses optional pks[PK_NAME] = VALUE dictionary to distinguish in scenarios where an allele number has multiple hits
         """
@@ -605,241 +726,186 @@ class DB_Manipulator:
             sample.update({Seq_types.st_predictor: None})
             # Set subset
             for loci, columns in pks.items():
-                arglist = list()
-                for key, val in columns.items():
-                    arglist.append("Seq_types.{}=='{}'".format(key, val))
-                    args = "and_(" + ", ".join(arglist) + ")"
-                sample.filter(eval(args)).update({Seq_types.st_predictor: 1})
+                filter_clauses = [getattr(Seq_types, key) == val for key, val in columns.items()]
+                sample.filter(and_(*filter_clauses)).update({Seq_types.st_predictor: 1})
         self.session.commit()
 
-    def alleles2st(self, cg_sid: str):
-        """Takes a CG_ID_sample and predicts the correct ST"""
-        threshold = True
-        organism = (
+    def _build_allele_filter_clauses(self, alleles: dict, table) -> list:
+        """Builds SQLAlchemy filter clauses for allele matching against a profile or novel table."""
+        filter_clauses = []
+        for key, val in alleles.items():
+            col = table.c[key]
+            if len(val) > 1:
+                filter_clauses.append(or_(*[col == num for num in val]))
+            else:
+                filter_clauses.append(col == val[0])
+        return filter_clauses
+
+    def _query_st_profiles(self, alleles: dict, table) -> list:
+        """Queries a profile or novel table with allele filter clauses and returns all matching rows."""
+        filter_clauses = self._build_allele_filter_clauses(alleles, table)
+        return self.session.query(table).filter(and_(*filter_clauses)).all()
+
+    def _next_novel_st(self, organism: str) -> int:
+        """Returns the next available negative novel ST: one below the current minimum, at most -10."""
+        st = -9
+        for entry in self.session.query(self.novel[organism]).all():
+            if entry.ST < st:
+                st = entry.ST
+        return st - 1
+
+    def _create_novel_st_entry(self, cg_sid: str, organism: str) -> int:
+        """Creates a new novel ST row built from the sample's best alleles. Returns the new ST number."""
+        st = self._next_novel_st(organism)
+        best_alleles = self.read_best_alleles(cg_sid)
+        new_entry: dict = {allele: columns["allele"] for allele, columns in best_alleles.items()}
+        new_entry["ST"] = st
+        self.add_rec(new_entry, self.novel[organism])
+        return st
+
+    def _allele_hit_score(self, allele) -> tuple:
+        """Returns a comparable score tuple (span*identity, -evalue, contig_coverage) for one allele hit."""
+        return (
+            float(allele.span) * float(allele.identity),
+            -float(allele.evalue),
+            float(allele.contig_coverage),
+        )
+
+    def _score_profile(self, cg_sid: str, prof) -> tuple[dict, dict]:
+        """For one profile row, fetches matching Seq_type alleles, keeps the best hit per locus,
+        and returns (contig_names, score) where score sums spanid/eval/cc across all loci."""
+        non_locus = {"ST", "clonal_complex", "species"}
+        prof_keys = list(prof._fields)
+        alleleconditions: list = []
+        alleledict: dict = {}
+        for index, allele_num in enumerate(prof):
+            col_name = prof_keys[index]
+            if col_name in non_locus:
+                continue
+            alleledict[col_name] = None
+            alleleconditions.append(
+                and_(Seq_types.loci == col_name, Seq_types.allele == allele_num)
+            )
+        all_alleles = (
+            self.session.query(Seq_types)
+            .filter(and_(Seq_types.CG_ID_sample == cg_sid, or_(*alleleconditions)))
+            .all()
+        )
+        for allele in all_alleles:
+            existing = alleledict[allele.loci]
+            if existing is None or self._allele_hit_score(allele) > self._allele_hit_score(
+                existing
+            ):
+                alleledict[allele.loci] = allele
+        score: dict = {"spanid": 0.0, "eval": 0.0, "cc": 0.0}
+        contig_names: dict = {}
+        for locus, allele in alleledict.items():
+            if allele is None:
+                continue
+            score["spanid"] += float(allele.span) * float(allele.identity)
+            score["eval"] += float(allele.evalue)
+            score["cc"] += float(allele.contig_coverage)
+            contig_names[locus] = {"contig_name": str(allele.contig_name)}
+        return contig_names, score
+
+    def _pick_top_st(self, scores: dict) -> int | str:
+        """Selects the ST with the highest composite score (spanid → eval → contig_coverage)."""
+        top_st: int | str | None = None
+        top_spanid = -1.0
+        top_eval = float("inf")
+        top_cc = -1.0
+        for st, val in scores.items():
+            if (
+                val["spanid"] > top_spanid
+                or (val["spanid"] == top_spanid and val["eval"] < top_eval)
+                or (val["spanid"] == top_spanid and val["eval"] == top_eval and val["cc"] > top_cc)
+            ):
+                top_spanid = val["spanid"]
+                top_eval = val["eval"]
+                top_cc = val["cc"]
+                top_st = st
+        return top_st
+
+    def read_st(self, cg_sid: str) -> int | str:
+        """Takes a CG_ID_sample and predicts the correct ST."""
+        organism: str | None = (
             self.session.query(Samples.organism).filter(Samples.CG_ID_sample == cg_sid).scalar()
         )
         if organism is None:
             self.logger.warning(
-                "No organism set for {}. Most likely control sample. Setting ST to -1".format(
-                    cg_sid
-                )
+                f"No organism set for {cg_sid}. Most likely control sample. Setting ST to -1"
             )
             return -1
-        [alleles, allelediff] = self.get_unique_alleles(cg_sid, organism, threshold)
+
+        threshold = True
+        alleles, allelediff = self.read_unique_alleles(cg_sid, organism, threshold)
         if allelediff < 0:
             threshold = False
-            [alleles, allelediff] = self.get_unique_alleles(cg_sid, organism, threshold)
+            alleles, allelediff = self.read_unique_alleles(cg_sid, organism, threshold)
             if allelediff < 0:
                 self.logger.warning(
-                    "Insufficient allele hits to establish ST for sample {}, even without thresholds. Setting ST to -3".format(
-                        cg_sid, organism
-                    )
+                    f"Insufficient allele hits to establish ST for sample {cg_sid}, even without thresholds. Setting ST to -3"
                 )
-                self.setPredictor(cg_sid)
+                self.set_predictor(cg_sid)
                 return -3
 
-        # Tests all allele combinations found to see if any of them result in ST
-        filter = list()
-        for key, val in alleles.items():
-            subfilter = list()
-            for num in val:
-                subfilter.append(" self.profiles[organism].c.{}=={} ".format(key, num))
-            subfilter = ",".join(subfilter)
-            if len(val) > 1:
-                subfilter = "or_({})".format(subfilter)
-            filter.append(subfilter)
-        filter = ",".join(filter)
-        filter = "and_({})".format(filter)
-        output = self.session.query(self.profiles[organism]).filter(eval(filter)).all()
-
-        # Check for existence in profile database
-        if len(output) > 1:
-            STlist = list()
-            for st in output:
-                STlist.append(st.ST)
-            best = self.bestST(cg_sid, STlist, "profile")
-            if threshold:
+        # Try matching against the curated profile table
+        output = self._query_st_profiles(alleles, self.profiles[organism])
+        if output:
+            st_list = [row.ST for row in output]
+            best = self.read_best_st(cg_sid, st_list, "profile")
+            if threshold and len(st_list) > 1:
                 self.logger.warning(
-                    "Multiple ST within threshold found for sample {}, list: {}. Established ST{} as best hit.".format(
-                        cg_sid, STlist, best
-                    )
+                    f"Multiple ST within threshold found for sample {cg_sid}, list: {st_list}. Established ST{best} as best hit."
                 )
             return best
-        elif len(output) == 1:
-            # Arbitary call
-            return self.bestST(cg_sid, [output[0].ST], "profile")
-        # Check for existence in novel database
-        elif threshold:
-            self.logger.info(
-                "Sample {} on {} has novel ST reliably established. Searching for prior novel definition...".format(
-                    cg_sid, organism
-                )
-            )
-            filter = list()
-            for key, val in alleles.items():
-                subfilter = list()
-                for num in val:
-                    subfilter.append(" self.novel[organism].c.{}=={} ".format(key, num))
-                subfilter = ",".join(subfilter)
-                if len(val) > 1:
-                    subfilter = "or_({})".format(subfilter)
-                filter.append(subfilter)
-            filter = ",".join(filter)
-            filter = "and_({})".format(filter)
-            output = self.session.query(self.novel[organism]).filter(eval(filter)).all()
 
-            if len(output) > 1:
-                STlist = list()
-                for st in output:
-                    STlist.append(st.ST)
-                best = self.bestST(cg_sid, STlist, "novel")
-                if threshold:
+        # Try matching against the novel ST table (only when hits are above threshold)
+        if threshold:
+            self.logger.info(
+                f"Sample {cg_sid} on {organism} has novel ST reliably established. Searching for prior novel definition..."
+            )
+            output = self._query_st_profiles(alleles, self.novel[organism])
+            if output:
+                st_list = [row.ST for row in output]
+                best = self.read_best_st(cg_sid, st_list, "novel")
+                if len(st_list) > 1:
                     self.logger.warning(
-                        "Multiple ST within novel threshold found for sample {}, list: {}. Established ST{} as best hit.".format(
-                            cg_sid, STlist, best
-                        )
+                        f"Multiple ST within novel threshold found for sample {cg_sid}, list: {st_list}. Established ST{best} as best hit."
                     )
                 return best
-            elif len(output) == 1:
-                return self.bestST(cg_sid, [output[0].ST], "novel")
-            else:
-                # Create new novel ST
-                # Set ST -10 per default, or one below the current min, whichever is smaller.
-                st = -9
-                query = self.session.query(self.novel[organism]).all()
-                for entry in query:
-                    if entry.ST < st:
-                        st = entry.ST
-                st = st - 1
+            # No prior novel match — create a new novel ST
+            new_st = self._create_novel_st_entry(cg_sid, organism)
+            return self.read_best_st(cg_sid, [new_st], "novel")
 
-                bestSet = self.bestAlleles(cg_sid)
-                newEntry = dict()
-                for allele, columns in bestSet.items():
-                    newEntry[allele] = columns["allele"]
-                newEntry["ST"] = st
-                self.add_rec(newEntry, self.novel[organism])
-                return self.bestST(cg_sid, [st], "novel")
-        else:
-            self.logger.warning(
-                "Sample {} on {} has an allele set but hits are low-quality and\
- do not resolve to an ST. Setting ST to -2".format(
-                    cg_sid, organism
-                )
-            )
-            bestSet = self.bestAlleles(cg_sid)
-            self.setPredictor(cg_sid, bestSet)
-            return -2
+        self.logger.warning(
+            f"Sample {cg_sid} on {organism} has an allele set but hits are low-quality and do not resolve to an ST. Setting ST to -2"
+        )
+        best_set = self.read_best_alleles(cg_sid)
+        self.set_predictor(cg_sid, best_set)
+        return -2
 
-    def bestST(self, cg_sid: str, st_list: List, type="profile"):
-        """Takes in a list of ST and a sample.
-        Establishes which ST is most likely by criteria id*span -> eval -> contig coverage
-        & flags involved alleles"""
-        profiles = list()
-        scores = dict()
-        bestalleles = dict()
-        organism = (
+    def read_best_st(self, cg_sid: str, st_list: list, type: str = "profile") -> int | str:
+        """Establishes which ST is most likely by criteria id*span → eval → contig coverage
+        and flags the involved alleles as predictors."""
+        organism: str = (
             self.session.query(Samples.organism).filter(Samples.CG_ID_sample == cg_sid).scalar()
         )
-        for st in st_list:
-            scores[st] = dict()
-            bestalleles[st] = dict()
-            scores[st]["spanid"] = 0
-            scores[st]["eval"] = 0
-            scores[st]["cc"] = 0
-            scores[st]["span"] = 0
-            if type == "profile":
-                profiles.append(
-                    self.session.query(self.profiles[organism])
-                    .filter(text("ST={}".format(st)))
-                    .first()
-                )
-            elif type == "novel":
-                profiles.append(
-                    self.session.query(self.novel[organism])
-                    .filter(text("ST={}".format(st)))
-                    .first()
-                )
-
-        # Get values for each allele set that resolves an ST
+        table: Table = self.profiles[organism] if type == "profile" else self.novel[organism]
+        profiles = [self.session.query(table).filter(text(f"ST={st}")).first() for st in st_list]
+        scores: dict = {}
+        best_alleles: dict = {}
         for prof in profiles:
-            alleleconditions = list()
-            alleledict = dict()
-            allconditions = ["Seq_types.CG_ID_sample=='{}'".format(cg_sid)]
+            contig_names, score = self._score_profile(cg_sid, prof)
+            scores[prof.ST] = score
+            best_alleles[prof.ST] = contig_names
+        top_st = self._pick_top_st(scores)
+        self.set_predictor(cg_sid, best_alleles[top_st])
+        return top_st
 
-            for index, allele in enumerate(prof):
-                if (
-                    "ST" not in prof.keys()[index]
-                    and "clonal_complex" not in prof.keys()[index]
-                    and "species" not in prof.keys()[index]
-                ):
-                    condition = "Seq_types.loci=='{}' , Seq_types.allele=='{}'".format(
-                        prof.keys()[index], allele
-                    )
-                    alleledict[prof.keys()[index]] = ""
-                    alleleconditions.append("and_({})".format(condition))
-
-            alleleconditions = "or_({})".format(",".join(alleleconditions))
-            allconditions.append(alleleconditions)
-            allconditions = "and_({})".format(",".join(allconditions))
-            all_alleles = self.session.query(Seq_types).filter(eval(allconditions)).all()
-
-            # Keep only best hit each loci
-            for allele in all_alleles:
-                if alleledict[allele.loci] == "":
-                    alleledict[allele.loci] = allele
-                else:
-                    old_al = alleledict[allele.loci]
-
-                    if allele.span * allele.identity >= old_al.span * old_al.identity:
-                        if allele.span * allele.identity > old_al.span * old_al.identity:
-                            alleledict[allele.loci] = allele
-                        elif float(allele.evalue) <= float(old_al.evalue):
-                            if float(allele.evalue) < float(old_al.evalue):
-                                alleledict[allele.loci] = allele
-                            elif allele.contig_coverage > old_al.contig_coverage:
-                                alleledict[allele.loci] = allele
-
-            # Create score dict for the ST
-            for key, allele in alleledict.items():
-                scores[prof.ST]["spanid"] += allele.span * allele.identity
-                scores[prof.ST]["eval"] += float(allele.evalue)
-                scores[prof.ST]["cc"] += allele.contig_coverage
-                if not allele.loci in bestalleles[prof.ST].keys():
-                    bestalleles[prof.ST][allele.loci] = dict()
-                if not "contig_name" in bestalleles[prof.ST][allele.loci].keys():
-                    bestalleles[prof.ST][allele.loci]["contig_name"] = str(allele.contig_name)
-
-        # Establish best ST
-        topST = ""
-        topID = 0
-        topEval = 100
-        topCC = 0
-        for key, val in scores.items():
-            if scores[key]["spanid"] > topID:
-                topID = scores[key]["spanid"]
-                topEval = scores[key]["eval"]
-                topCC = scores[key]["cc"]
-                topST = key
-            elif scores[key]["spanid"] == topID and scores[key]["eval"] < topEval:
-                topID = scores[key]["spanid"]
-                topEval = scores[key]["eval"]
-                topCC = scores[key]["cc"]
-                topST = key
-            elif (
-                scores[key]["spanid"] == topID
-                and scores[key]["eval"] == topEval
-                and scores[key]["cc"] > topCC
-            ):
-                topID = scores[key]["spanid"]
-                topEval = scores[key]["eval"]
-                topCC = scores[key]["cc"]
-                topST = key
-        self.setPredictor(cg_sid, bestalleles[topST])
-        return topST
-
-    def bestAlleles(self, cg_sid: str):
+    def read_best_alleles(self, cg_sid: str):
         """Establishes which allele set (for bad samples) is most likely by criteria span* id -> eval -> contig coverage"""
-        hits = (
+        hits: list[tuple[str, str, float, float, float, float, str]] = (
             self.session.query(
                 Seq_types.contig_name,
                 Seq_types.loci,
@@ -852,20 +918,10 @@ class DB_Manipulator:
             .filter(Seq_types.CG_ID_sample == cg_sid)
             .all()
         )
-        bestHits = dict()
-        alleledict = dict()
+        bestHits: dict[str, dict[str, str]] = {}
+        alleledict: dict[str, list[float]] = {}
         for allele in hits:
-            if allele.loci not in bestHits.keys():
-                bestHits[allele.loci] = dict()
-                bestHits[allele.loci]["contig_name"] = allele.contig_name
-                bestHits[allele.loci]["allele"] = allele.allele
-                alleledict[allele.loci] = [
-                    allele.identity,
-                    allele.evalue,
-                    allele.contig_coverage,
-                    allele.span,
-                ]
-            else:
+            if allele.loci in bestHits:
                 if (
                     (
                         allele.identity * allele.span
@@ -890,14 +946,25 @@ class DB_Manipulator:
                         allele.contig_coverage,
                         allele.span,
                     ]
+            else:
+                bestHits[allele.loci] = {
+                    "contig_name": allele.contig_name,
+                    "allele": allele.allele,
+                }
+                alleledict[allele.loci] = [
+                    allele.identity,
+                    allele.evalue,
+                    allele.contig_coverage,
+                    allele.span,
+                ]
         return bestHits
 
-    def get_unique_alleles(self, cg_sid: str, organism: str, threshold=True):
+    def read_unique_alleles(self, cg_sid: str, organism: str, threshold=True):
         """Returns a dict containing all unique alleles at every loci, and allele difference from expected"""
-        tid = float(self.config["threshold"]["mlst_id"])
-        tspan = (self.config["threshold"]["mlst_span"]) / 100.0
+        tspan = (self.threshold.mlst_span) / 100.0
         if threshold:
-            hits = (
+            tid = float(self.threshold.mlst_id)
+            hits: list[tuple[str, str]] = (
                 self.session.query(Seq_types.loci, Seq_types.allele)
                 .filter(
                     Seq_types.CG_ID_sample == cg_sid,
@@ -907,18 +974,17 @@ class DB_Manipulator:
                 .all()
             )
         else:
-            hits = (
+            hits: list[tuple[str, str]] = (
                 self.session.query(Seq_types.loci, Seq_types.allele)
                 .filter(Seq_types.CG_ID_sample == cg_sid)
                 .all()
             )
 
         # Establish number of unique hits
-        uniqueDict = dict()
+        uniqueDict: dict[str, list[str]] = {}
         for hit in hits:
             if hit.loci not in uniqueDict.keys():
-                uniqueDict[hit.loci] = list()
-                uniqueDict[hit.loci].append(hit.allele)
+                uniqueDict[hit.loci] = [hit.allele]
             elif hit.allele not in uniqueDict[hit.loci]:
                 uniqueDict[hit.loci].append(hit.allele)
         non_allele_columns = 1

@@ -1,0 +1,30 @@
+# Picard 2.20.3 — duplicate marking and insert size metrics
+# Build: docker build -f Dockerfile.picard -t picard:2.20.3 .
+# Convert: singularity pull --name microsalt-picard.sif docker://clinicalgenomics/microsalt-picard:latest
+#
+# The bioconda picard package installs a wrapper script that calls the JAR via
+# the bundled Java runtime; no separate openjdk install is needed.
+FROM mambaorg/micromamba:1-bookworm-slim
+
+ARG MAMBA_DOCKERFILE_ACTIVATE=1
+
+USER root
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends locales \
+    && sed -i 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \
+    && locale-gen \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+USER $MAMBA_USER
+
+ENV LANG=en_US.UTF-8 \
+    LANGUAGE=en_US:en \
+    LC_ALL=en_US.UTF-8
+
+RUN micromamba install -y -n base -c conda-forge -c bioconda \
+        picard=2.20.3 \
+        r-base=4.1.1 \
+    && micromamba clean -afy
+
+ENV PATH="/opt/conda/bin:$PATH"

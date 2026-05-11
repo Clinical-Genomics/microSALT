@@ -10,7 +10,7 @@
               <img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" \
               alt="MicroSALT Logo" align="left" \
               style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
-              {% if 'MW' in topsample.application_tag %}
+              {% if topsample.application_tag and 'MW' in topsample.application_tag %}
                 <img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/swedac.jpg?raw=true" alt="Swedac Logo" align="right" style="display:flex;">
               {% endif %}
               <h2 class="page-header">
@@ -167,7 +167,7 @@
                           {% endif %}
                           {% if sample.organism is not none %}
                             {% if sample.priority == 'standard' and sample.organism.replace('_', ' ').capitalize() in verified_organisms %}
-                              <td><i>✔︎</i></td>
+                              <td><i>&#10004;</i></td>
                             {% else %}
                               <td><i>-</i></td>
                             {% endif %}
@@ -282,7 +282,7 @@
         	    </tr>
         	    <tr>
         	      <th scope="row" >Analys datum</th>
-        	      <td>{{sample.date_analysis.date()}}</td>
+        	      <td>{% if sample.date_analysis is not none %}{{sample.date_analysis.date()}}{% endif %}</td>
         	    </tr>
         	    <tr>
         	      <th scope="row" >Organism</th>

@@ -1,9 +1,10 @@
 from urllib.parse import urlencode
+import logging
 import requests
 from werkzeug.exceptions import NotFound
-from rauth import OAuth1Session
+from requests_oauthlib import OAuth1Session
 
-from microSALT import logger
+from microSALT.config import Folders, PubMLSTCredentials, PasteurCredentials
 from microSALT.utils.pubmlst.authentication import ClientAuthentication
 from microSALT.utils.pubmlst.constants import HTTPMethod, RequestType, ResponseHandler
 from microSALT.utils.pubmlst.exceptions import (
@@ -20,19 +21,31 @@ from microSALT.utils.pubmlst.helpers import (
     should_skip_endpoint,
 )
 
+logger = logging.getLogger("main_logger")
+
 
 class BaseClient:
     """Base client for interacting with authenticated APIs."""
 
-    def __init__(self, service: str, database: str = None):
+    def __init__(
+        self,
+        service: str,
+        database: str = None,
+        folders: Folders = None,
+        pubmlst: PubMLSTCredentials = None,
+        pasteur: PasteurCredentials = None,
+    ):
         """Initialize the client with the specified service."""
         try:
             self.service = service
+            self.folders = folders
+            self.pubmlst = pubmlst
+            self.pasteur = pasteur
             self.consumer_key, self.consumer_secret, self.access_token, self.access_secret = (
-                load_auth_credentials(service)
+                load_auth_credentials(service, folders, pubmlst, pasteur)
             )
-            self.client_auth = ClientAuthentication(service)
-            service_config = get_service_config(service)
+            self.client_auth = ClientAuthentication(service, folders, pubmlst, pasteur)
+            service_config = get_service_config(service, pubmlst=pubmlst, pasteur=pasteur)
             self.base_api = service_config["base_api"]
             self.database = database or service_config["database"]
             self.base_api_host = service_config["base_api_host"]
@@ -85,7 +98,8 @@ class BaseClient:
             if request_type == RequestType.DB:
                 token, secret = (
                     self.client_auth.load_session_credentials(db)
-                    if db else (self.session_token, self.session_secret)
+                    if db
+                    else (self.session_token, self.session_secret)
                 )
             elif request_type == RequestType.AUTH:
                 token, secret = self.access_token, self.access_secret
@@ -94,10 +108,11 @@ class BaseClient:
 
             # Create session with OAuth1
             session = OAuth1Session(
-                self.consumer_key,
-                self.consumer_secret,
-                access_token=token,
-                access_token_secret=secret,
+                client_key=self.consumer_key,
+                client_secret=self.consumer_secret,
+                resource_owner_key=token,
+                resource_owner_secret=secret,
+                signature_type="query",
             )
 
             response = session.request(method.value, url)
@@ -197,24 +212,43 @@ class BaseClient:
 class PubMLSTClient(BaseClient):
     """Client for interacting with the PubMLST authenticated API."""
 
-    def __init__(self):
+    def __init__(
+        self,
+        folders: Folders = None,
+        pubmlst: PubMLSTCredentials = None,
+        pasteur: PasteurCredentials = None,
+    ):
         """Initialize the PubMLST client."""
-        super().__init__(service="pubmlst")
+        super().__init__(service="pubmlst", folders=folders, pubmlst=pubmlst, pasteur=pasteur)
 
 
 class PasteurClient(BaseClient):
     """Client for interacting with the Pasteur authenticated API."""
 
-    def __init__(self, database: str):
+    def __init__(
+        self,
+        database: str,
+        folders: Folders = None,
+        pubmlst: PubMLSTCredentials = None,
+        pasteur: PasteurCredentials = None,
+    ):
         """Initialize the Pasteur client."""
-        super().__init__(service="pasteur", database=database)
+        super().__init__(
+            service="pasteur", database=database, folders=folders, pubmlst=pubmlst, pasteur=pasteur
+        )
 
 
-def get_client(service: str, database: str = None):
+def get_client(
+    service: str,
+    database: str = None,
+    folders: Folders = None,
+    pubmlst: PubMLSTCredentials = None,
+    pasteur: PasteurCredentials = None,
+):
     """Get the appropriate client for the specified service."""
     if service == "pasteur":
-        return PasteurClient(database=database)
+        return PasteurClient(database=database, folders=folders, pubmlst=pubmlst, pasteur=pasteur)
     elif service == "pubmlst":
-        return PubMLSTClient()
+        return PubMLSTClient(folders=folders, pubmlst=pubmlst, pasteur=pasteur)
     else:
         raise ValueError(f"Unknown service: {service}")

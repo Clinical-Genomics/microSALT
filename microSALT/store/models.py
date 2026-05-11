@@ -1,84 +1,55 @@
-"""Table definitions for profiles databases. Bit special since it spawns multiple tables.
-   By: Isak Sylvin, @sylvinite"""
+"""Table definitions for profile databases.
+
+Profile tables (profile_* and novel_*) cannot use the declarative ORM because
+their names and column sets are determined at runtime by scanning the profiles
+folder on disk.  SQLAlchemy Core Table objects are used instead.
+
+By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 
 import os
-from sqlalchemy import *
+from sqlalchemy import Column, SmallInteger, Table
 
 
-class Profiles:
-    def __init__(self, metadata, config, log):
-        self.tables = dict()
+class ProfileTable:
+    """Builds a dict of SQLAlchemy Core Table objects from the profiles folder.
+
+    Each file in the folder produces one table whose name is
+    ``{prefix}{filename}``.  The first eight tab-separated fields of the
+    file header become the column names; the column named ``ST`` is used as
+    the primary key.
+
+    Args:
+        prefix: Table name prefix, e.g. ``"profile_"`` or ``"novel_"``.
+        metadata: The shared SQLAlchemy MetaData instance.
+        profiles_path: Path to the folder containing ST profile files.
+        log: Logger instance.
+    """
+
+    def __init__(self, prefix: str, metadata, profiles_path: str, log):
+        self.tables: dict[str, Table] = {}
+        self.prefix = prefix
         self.metadata = metadata
-        self.config = config
+        self.profiles_path = profiles_path
         self.logger = log
         try:
-            indata = os.listdir(self.config["folders"]["profiles"])
-            for file in indata:
-                self.add_table(file)
-        except Exception as e:
+            for filename in os.listdir(self.profiles_path):
+                self._add_table(filename)
+        except Exception:
             self.logger.error(
-                "Unable to open profile folder {}".format(self.config["folders"]["profiles"])
+                f"Unable to open profile folder {self.profiles_path}"
             )
 
-    def add_table(self, file):
+    def _add_table(self, filename: str) -> None:
         try:
-            with open("{}/{}".format(self.config["folders"]["profiles"], file), "r") as fh:
-                # Sets profile_* headers
-                head = fh.readline()
-                head = head.rstrip().split("\t")[:8]  # Only consider the first 8 elements
-                index = 0
-
-                header = "Table('profile_{}'.format(file), self.metadata,".format(file)
-                while index < len(head):
-                    # Set ST as PK
-                    if head[index] == "ST":
-                        header += "Column(head[{}], SmallInteger, primary_key=True),".format(index)
-                    else:
-                        header += "Column(head[{}], SmallInteger),".format(index)
-                    index = index + 1
-                header += ")"
-                p = eval(header)
-                self.tables[file] = p
-        except Exception as e:
-            self.logger.error("Unable to open profile file {}".format(file))
-
-
-class Novel:
-    def __init__(self, metadata, config, log):
-        self.tables = dict()
-        self.metadata = metadata
-        self.config = config
-        self.logger = log
-        try:
-            indata = os.listdir(self.config["folders"]["profiles"])
-            for file in indata:
-                self.add_table(file)
-        except Exception as e:
-            self.logger.error(
-                "Unable to open profile folder {}".format(self.config["folders"]["profiles"])
-            )
-
-    def add_table(self, file):
-        try:
-            with open("{}/{}".format(self.config["folders"]["profiles"], file), "r") as fh:
-                # Sets profile_* headers
-                head = fh.readline()
-                head = head.rstrip().split("\t")[:8]  # Only consider the first 8 elements
-                index = 0
-
-                header = "Table('novel_{}'.format(file), self.metadata,".format(file)
-                while index < len(head):
-                    # Set ST as PK
-                    if head[index] == "ST":
-                        header += "Column(head[{}], SmallInteger, primary_key=True),".format(index)
-                    # Set Clonal complex as string
-                    else:
-                        header += "Column(head[{}], SmallInteger),".format(index)
-                    index = index + 1
-                header += ")"
-                p = eval(header)
-                self.tables[file] = p
-        except Exception as e:
-            self.logger.error("Unable to open profile file {}".format(file))
+            with open(f"{self.profiles_path}/{filename}", "r") as fh:
+                head = fh.readline().rstrip().split("\t")[:8]
+            columns = [
+                Column(col, SmallInteger, primary_key=(col == "ST"))
+                for col in head
+            ]
+            table = Table(f"{self.prefix}{filename}", self.metadata, *columns)
+            self.tables[filename] = table
+        except Exception:
+            self.logger.error(f"Unable to open profile file {filename}")

@@ -1,0 +1,19 @@
+# NCBI BLAST 2.12.0 — nucleotide BLAST search and database indexing
+# Build: docker build -f Dockerfile.blast -t blast:2.12.0 .
+# Convert: singularity pull --name microsalt-blast.sif docker://clinicalgenomics/microsalt-blast:latest
+FROM mambaorg/micromamba:1-bookworm-slim
+
+ARG MAMBA_DOCKERFILE_ACTIVATE=1
+
+USER root
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+USER $MAMBA_USER
+
+RUN micromamba install -y -n base -c conda-forge -c bioconda \
+        blast=2.12.0 \
+    && micromamba clean -afy
+
+ENV PATH="/opt/conda/bin:$PATH"
