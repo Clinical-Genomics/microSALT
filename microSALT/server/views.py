@@ -8,14 +8,14 @@ from jinja2 import Environment, FileSystemLoader
 
 from microSALT import __version__
 from microSALT.config import Threshold
+from microSALT.server.utils import MICROSALT_LOGO_PATH, SWEDAC_LOGO_PATH, read_png
+from microSALT.store.database import get_session
 from microSALT.store.orm_models import (
     Collections,
     Reports,
     Samples,
     Versions,
 )
-
-from microSALT.store.database import get_session
 
 # Removes server start messages
 log = logging.getLogger("werkzeug")
@@ -48,6 +48,10 @@ def render_template(template_folder, template_name, **context):
     """Renders a template using Jinja2 directly to avoid Flask overhead"""
     template_loader = FileSystemLoader(searchpath=str(template_folder))
     jinja_env = Environment(loader=template_loader)
+    jinja_env.globals["read_png"] = read_png
+    jinja_env.globals["microsalt_logo_path"] = MICROSALT_LOGO_PATH
+    jinja_env.globals["swedac_logo_path"] = SWEDAC_LOGO_PATH
+
     template = jinja_env.get_template(template_name)
     if "url_for" not in context:
         context["url_for"] = _make_url_for()
@@ -93,7 +97,13 @@ def render_alignment_page(project, threshold: Threshold, template_folder: Path =
     return alignment_page(project, threshold=threshold, template_folder=template_folder)
 
 
-def typing_page(project, organism_group, threshold: Threshold, verified_organisms: list, template_folder: Path = TEMPLATE_FOLDER):
+def typing_page(
+    project,
+    organism_group,
+    threshold: Threshold,
+    verified_organisms: list,
+    template_folder: Path = TEMPLATE_FOLDER,
+):
     sample_info = gen_reportdata(project, organism_group, threshold=threshold)
 
     return render_template(
@@ -111,8 +121,20 @@ def typing_page(project, organism_group, threshold: Threshold, verified_organism
     )
 
 
-def render_typing_page(project, organism_group, threshold: Threshold, verified_organisms: list, template_folder: Path = TEMPLATE_FOLDER):
-    return typing_page(project, organism_group, threshold=threshold, verified_organisms=verified_organisms, template_folder=template_folder)
+def render_typing_page(
+    project,
+    organism_group,
+    threshold: Threshold,
+    verified_organisms: list,
+    template_folder: Path = TEMPLATE_FOLDER,
+):
+    return typing_page(
+        project,
+        organism_group,
+        threshold=threshold,
+        verified_organisms=verified_organisms,
+        template_folder=template_folder,
+    )
 
 
 def STtracker_page(customer, threshold: Threshold, template_folder: Path = TEMPLATE_FOLDER):
@@ -123,7 +145,7 @@ def STtracker_page(customer, threshold: Threshold, template_folder: Path = TEMPL
             if s.pubmlst_ST != -1 and s.ST < 0:
                 final_samples.append(s)
 
-    final_samples = sorted(final_samples, key=lambda sample: (sample.CG_ID_sample))
+    final_samples = sorted(final_samples, key=lambda sample: sample.CG_ID_sample)
 
     return render_template(
         template_folder=template_folder,
@@ -219,8 +241,7 @@ def gen_add_info(sample_info=dict(), threshold: Optional[Threshold] = None):
                         seq_type.st_predictor
                         and seq_type.identity >= threshold.mlst_novel_id
                         and threshold.mlst_id > seq_type.identity
-                        and 1 - abs(1 - seq_type.span)
-                        >= (threshold.mlst_span / 100.0)
+                        and 1 - abs(1 - seq_type.span) >= (threshold.mlst_span / 100.0)
                     ):
                         near_hits = near_hits + 1
                     elif (
@@ -245,18 +266,12 @@ def gen_add_info(sample_info=dict(), threshold: Optional[Threshold] = None):
         # Resistence filter
         if threshold is not None:
             for r in s.resistances:
-                if (
-                    r.identity >= threshold.motif_id
-                    and r.span >= threshold.motif_span / 100.0
-                ):
+                if r.identity >= threshold.motif_id and r.span >= threshold.motif_span / 100.0:
                     r.threshold = "Passed"
                 else:
                     r.threshold = "Failed"
             for v in s.expacs:
-                if (
-                    v.identity >= threshold.motif_id
-                    and v.span >= threshold.motif_span / 100.0
-                ):
+                if v.identity >= threshold.motif_id and v.span >= threshold.motif_span / 100.0:
                     v.threshold = "Passed"
                 else:
                     v.threshold = "Failed"
