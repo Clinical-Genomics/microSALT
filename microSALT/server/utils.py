@@ -19,8 +19,8 @@ MICROSALT_LOGO_PATH = Path(
 )
 
 
-def read_png(file_path: Path) -> str:
+def read_jpg(file_path: Path) -> str:
     """Return base64 encoding of a PNG image."""
-    with open(file_path, "rb") as png_file:
-        encoded_string: str = base64.b64encode(png_file.read()).decode("utf-8")
-    return f"data:image/png;base64,{encoded_string}"
+    with open(file_path, "rb") as jpg_file:
+        encoded_string: str = base64.b64encode(jpg_file.read()).decode("utf-8")
+    return f"data:image/jpeg;base64,{encoded_string}"

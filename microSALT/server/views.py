@@ -8,7 +8,7 @@ from jinja2 import Environment, FileSystemLoader
 
 from microSALT import __version__
 from microSALT.config import Threshold
-from microSALT.server.utils import MICROSALT_LOGO_PATH, SWEDAC_LOGO_PATH, read_png
+from microSALT.server.utils import MICROSALT_LOGO_PATH, SWEDAC_LOGO_PATH, read_jpg
 from microSALT.store.database import get_session
 from microSALT.store.orm_models import (
     Collections,
@@ -48,7 +48,7 @@ def render_template(template_folder, template_name, **context):
     """Renders a template using Jinja2 directly to avoid Flask overhead"""
     template_loader = FileSystemLoader(searchpath=str(template_folder))
     jinja_env = Environment(loader=template_loader)
-    jinja_env.globals["read_png"] = read_png
+    jinja_env.globals["read_jpg"] = read_jpg
     jinja_env.globals["microsalt_logo_path"] = MICROSALT_LOGO_PATH
     jinja_env.globals["swedac_logo_path"] = SWEDAC_LOGO_PATH
 
