@@ -44,7 +44,7 @@ include = ["microSALT*"]
 
 [dependency-groups]
 dev = [
-    "black>=23.0",
+    "black>=26.3.1",
     "flake8>=6.0",
     "gitlint>=0.19.1",
     "pytest>=7.4",
