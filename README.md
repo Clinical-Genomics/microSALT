@@ -1,5 +1,5 @@
 [![Build status](https://github.com/clinical-genomics/microsalt/actions/workflows/run_tests.yml/badge.svg)](https://github.com/clinical-genomics/microsalt/actions/workflows/run_tests.yml)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4026043.svg)](https://doi.org/10.5281/zenodo.4026043)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.4026043-blue)](https://doi.org/10.5281/zenodo.4026043)
 
 <p align="center">
   <a href="https://github.com/Clinical-Genomics/microSALT">
@@ -32,8 +32,8 @@ microSALT requires a SLURM cluster._
 ### Manual install
 
 1. Clone the repository and enter the directory
-2. Checkout the desired branch
-3. install package using `uv pip install .`
+1. Checkout the desired branch
+1. install package using `uv pip install .`
 
 ## Configuration
 
@@ -48,13 +48,15 @@ Copy the configuration file anywhere and.
 
 microSALT uses [Singularity](https://sylabs.io/singularity/) containers to run the various tools used in the analysis. These containers are available on Clinical Genomics' DockerHub, and can be pulled using the following command:
 
-`singularity pull docker://clinicalgenomics/microsalt-blast:latest`
-`singularity pull docker://clinicalgenomics/microsalt-bwa:latest`
-`singularity pull docker://clinicalgenomics/microsalt-picard:latest`
-`singularity pull docker://clinicalgenomics/microsalt-quast:latest`
-`singularity pull docker://clinicalgenomics/microsalt-samtools:latest`
-`singularity pull docker://clinicalgenomics/microsalt-skesa:latest`
-`singularity pull docker://clinicalgenomics/microsalt-trimmomatic:latest`
+```Console
+singularity pull docker://clinicalgenomics/microsalt-blast:latest
+singularity pull docker://clinicalgenomics/microsalt-bwa:latest
+singularity pull docker://clinicalgenomics/microsalt-picard:latest
+singularity pull docker://clinicalgenomics/microsalt-quast:latest
+singularity pull docker://clinicalgenomics/microsalt-samtools:latest
+singularity pull docker://clinicalgenomics/microsalt-skesa:latest
+singularity pull docker://clinicalgenomics/microsalt-trimmomatic:latest
+```
 
 > [!NOTE]
 > Remember to enter the correct path to the singularity images in the configuration file.
@@ -62,12 +64,12 @@ microSALT uses [Singularity](https://sylabs.io/singularity/) containers to run t
 ## Usage
 
 - `microsalt analyse` contains functions to start sbatch job(s) & produce
-  output to `folders['results']`. Afterwards the parsed results are uploaded
-  to the SQL back-end and produce reports (HTML), which are then automatically
-  e-mailed to the user.
+    output to `folders['results']`. Afterwards the parsed results are uploaded
+    to the SQL back-end and produce reports (HTML), which are then automatically
+    e-mailed to the user.
 - `microsalt utils` contains various functionality, including generating the
-  sample description json, manually adding new reference organisms and
-  re-generating reports.
+    sample description JSON, manually adding new reference organisms and
+    re-generating reports.
 
 ## Setup
 
