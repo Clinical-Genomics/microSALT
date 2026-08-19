@@ -1,10 +1,5 @@
 import base64
 from importlib.resources import files
-from pathlib import Path
-
-
-import base64
-from importlib.resources import files
 from importlib.resources.abc import Traversable
 
 SWEDAC_LOGO_PATH: Traversable = files("microSALT").joinpath("artwork", "swedac.jpg")
