@@ -7,11 +7,11 @@
           <footer>
             <div class="panel"><div class="panel-body">
               <a href="https://github.com/Clinical-Genomics/microSALT">
-              <img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/microsalt.jpg?raw=true" \
+                <img src="{{read_jpg(file_path=microsalt_logo_path)}}" \
               alt="MicroSALT Logo" align="left" \
               style="position:absolute;left:15px;width:400px;height:100px;display:flex;"></a>
               {% if topsample.application_tag and 'MW' in topsample.application_tag %}
-                <img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/swedac.jpg?raw=true" alt="Swedac Logo" align="right" style="display:flex;">
+              <img src="{{read_jpg(file_path=swedac_logo_path)}}" alt="Swedac Logo" align="right" style="display:flex;">
               {% endif %}
               <h2 class="page-header">
                 <small><br><br><br>Typningsrapport</small>
@@ -263,7 +263,7 @@
         	  <h2 class="page-header"><div class="row"></div>Detaljresultat
                   {% if sample.organism is not none %}
                     {% if sample.priority == 'standard' and sample.organism.replace('_', ' ').capitalize() in verified_organisms %}
-                      <img src="https://github.com/Clinical-Genomics/microSALT/blob/master/artwork/swedac.jpg?raw=true" alt="Swedac Logo" \
+                      <img src="{{read_jpg(file_path=swedac_logo_path)}}" alt="Swedac Logo" \
                       align="right" style="width:40px;height:60px;display:flex;">
                     {% endif %}
                   {% endif %}
