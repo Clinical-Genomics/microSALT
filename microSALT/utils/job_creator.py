@@ -135,33 +135,47 @@ class Job_Creator:
         return headerline
 
     def _setup_logger(self, log: logging.Logger) -> logging.Logger:
-        """Create a Job_Creator-specific logger that writes to stdout and finishdir/job_creator.log.
+        """Return a Job_Creator-specific logger that writes to stdout.
 
         If the incoming logger is already a Job_Creator logger (i.e. from a parent instance),
         reuse it directly so all child-sample logs flow into the same project-level log file.
+
+        The FileHandler for finishdir/job_creator.log is attached separately by project_job()
+        once the directory has been created, keeping logger setup free of filesystem side-effects.
         """
         if log.name.startswith("job_creator."):
             return log
-        logger_name = f"job_creator.{self.name}"
-        jc_logger = logging.getLogger(logger_name)
+        jc_logger = logging.Logger(f"job_creator.{self.name}")
         level = log.level or logging.INFO
         jc_logger.setLevel(level)
         jc_logger.propagate = False
-        if not jc_logger.handlers:
-            formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                "%Y-%m-%d %H:%M:%S",
-            )
-            ch = logging.StreamHandler()
-            ch.setLevel(level)
-            ch.setFormatter(formatter)
-            jc_logger.addHandler(ch)
-            os.makedirs(self.finishdir, exist_ok=True)
-            fh = logging.FileHandler(os.path.join(self.finishdir, "job_creator.log"))
-            fh.setLevel(level)
-            fh.setFormatter(formatter)
-            jc_logger.addHandler(fh)
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            "%Y-%m-%d %H:%M:%S",
+        )
+        ch = logging.StreamHandler()
+        ch.setLevel(level)
+        ch.setFormatter(formatter)
+        jc_logger.addHandler(ch)
         return jc_logger
+
+    def _attach_log_file(self) -> None:
+        """Attach a FileHandler writing to finishdir/job_creator.log.
+
+        Must be called after finishdir has been created.  Skipped when the logger already
+        has a FileHandler (i.e. the parent project instance already set one up).
+        """
+        if any(isinstance(h, logging.FileHandler) for h in self.logger.handlers):
+            return
+        level = self.logger.level or logging.INFO
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            "%Y-%m-%d %H:%M:%S",
+        )
+        fh = logging.FileHandler(os.path.join(self.finishdir, "job_creator.log"))
+        fh.setLevel(level)
+        fh.setFormatter(formatter)
+        self.logger.addHandler(fh)
 
     def _singularity_exec(self, tool: str, command: str) -> str:
         """Return command wrapped with singularity exec for the given tool container."""
@@ -633,6 +647,7 @@ class Job_Creator:
         jobarray = list()
         if not os.path.exists(self.finishdir):
             os.makedirs(self.finishdir)
+        self._attach_log_file()
         self.create_version_file(finishdir=self.finishdir)
         # Loads project level info.
         try:
@@ -881,6 +896,7 @@ class Job_Creator:
         """Writes a SNP calling job for a set of samples"""
         if not os.path.exists(self.finishdir):
             os.makedirs(self.finishdir)
+        self._attach_log_file()
 
         self.batchfile = f"{self.finishdir}/runfile.sbatch"
         batchfile = open(self.batchfile, "w+")

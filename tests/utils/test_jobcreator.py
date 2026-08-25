@@ -220,3 +220,123 @@ def test_build_finish_cmd_contains_expected_arguments(config, logger, testdata, 
     assert "utils finish" in cmd
     assert "--report qc" in cmd
     assert str(tmp_path) in cmd
+
+
+def test_setup_logger_creates_one_log_for_project(config, logger, testdata, tmp_path):
+    """project_job creates exactly one job_creator.log in finishdir via _attach_log_file;
+    construction alone must not touch the filesystem.
+    """
+    jc = Job_Creator(
+        log=logger,
+        folders=config.folders,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
+        sampleinfo=testdata,
+        run_settings={"input": "/tmp/", "finishdir": str(tmp_path)},
+    )
+    assert jc.logger.name.startswith("job_creator.")
+    assert not (tmp_path / "job_creator.log").exists(), (
+        "log file must not be created during construction"
+    )
+    jc._attach_log_file()
+    assert (tmp_path / "job_creator.log").exists()
+
+
+def test_setup_logger_sample_reuses_project_logger(config, logger, testdata, tmp_path):
+    """Sample-level Job_Creator receiving a job_creator.* logger must reuse it without
+    creating an extra directory or log file.
+    """
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    sample_dir = tmp_path / "sample1"
+
+    project_jc = Job_Creator(
+        log=logger,
+        folders=config.folders,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
+        sampleinfo=testdata,
+        run_settings={"input": "/tmp/", "finishdir": str(project_dir)},
+    )
+
+    # Sample instance receives the project's job_creator logger
+    sample_jc = Job_Creator(
+        log=project_jc.logger,
+        folders=config.folders,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
+        sampleinfo=testdata,
+        run_settings={"input": "/tmp/", "finishdir": str(sample_dir)},
+    )
+
+    assert sample_jc.logger is project_jc.logger
+    assert not sample_dir.exists(), "sample_dir must not be created by _setup_logger"
+    assert not (sample_dir / "job_creator.log").exists()
+
+
+def test_setup_logger_each_project_gets_fresh_logger(config, logger, testdata, tmp_path):
+    """Two distinct project-level instances must each get their own fresh logger that writes
+    to their own finishdir, even when run in the same process (no stale global-cache handler).
+    """
+    dir_a = tmp_path / "run_a"
+    dir_b = tmp_path / "run_b"
+    dir_a.mkdir()
+    dir_b.mkdir()
+
+    jc_a = Job_Creator(
+        log=logger,
+        folders=config.folders,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
+        sampleinfo=testdata,
+        run_settings={"input": "/tmp/", "finishdir": str(dir_a)},
+    )
+    jc_b = Job_Creator(
+        log=logger,
+        folders=config.folders,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
+        sampleinfo=testdata,
+        run_settings={"input": "/tmp/", "finishdir": str(dir_b)},
+    )
+
+    assert jc_a.logger is not jc_b.logger
+    jc_a._attach_log_file()
+    jc_b._attach_log_file()
+    assert (dir_a / "job_creator.log").exists()
+    assert (dir_b / "job_creator.log").exists()
