@@ -6,23 +6,20 @@ By: Isak Sylvin, @sylvinite"""
 import glob
 import os
 import re
-import string
-import sys
-import time
 
 from microSALT.config import (
-    Folders,
-    Threshold,
-    SlurmHeader,
-    Regex,
-    PubMLSTCredentials,
-    PasteurCredentials,
-    Singularity,
     Containers,
+    Folders,
+    PasteurCredentials,
+    PubMLSTCredentials,
+    Regex,
+    Singularity,
+    SlurmHeader,
+    Threshold,
 )
 from microSALT.store.db_manipulator import DB_Manipulator
-from microSALT.utils.referencer import Referencer
 from microSALT.utils.job_creator import Job_Creator
+from microSALT.utils.referencer import Referencer
 
 
 # TODO: Rewrite so samples use seperate objects
@@ -168,7 +165,7 @@ class Scraper:
 
             self.db_pusher.update_sample({"CG_ID_sample": self.name}, trim)
             self.logger.debug(f"Project {self.name} recieved trimmomatic stats: {trim}")
-        except Exception as e:
+        except Exception:
             self.logger.warning(f"Cannot generate trimmomatic statistics for {self.name}")
 
     def scrape_quast(self, filename=""):
@@ -194,7 +191,7 @@ class Scraper:
 
             self.db_pusher.update_sample({"CG_ID_sample": self.name}, quast)
             self.logger.debug(f"Project {self.name} recieved quast stats: {quast}")
-        except Exception as e:
+        except Exception:
             self.logger.warning(f"Cannot generate quast statistics for {self.name}")
 
     def scrape_reference(self) -> None:
@@ -211,7 +208,7 @@ class Scraper:
                 reference_data["reference_length"] = assembly_length
             self.db_pusher.update_sample({"CG_ID_sample": self.name}, reference_data)
             self.logger.debug(f"Project {self.name} recieved quast stats: {reference_data}")
-        except Exception as e:
+        except Exception:
             self.logger.warning(f"Cannot find assembly size for reference {self.name}")
 
     def get_locilengths(self, foldername, suffix):
@@ -504,13 +501,13 @@ class Scraper:
                     if type == "raw":
                         try:
                             tot_reads = int(lsplit[0])
-                        except Exception as e:
+                        except Exception:
                             pass
                     elif type == "ins":
                         if len(lsplit) >= 18 and lsplit[-12] in ["FF", "FR"]:
                             try:
                                 median_ins = int(lsplit[0])
-                            except Exception as e:
+                            except Exception:
                                 pass
                     elif type == "cov":
                         cov_dict[lsplit[1]] = int(lsplit[2])
@@ -521,7 +518,7 @@ class Scraper:
                         if lsplit[0] == "Unknown Library":
                             try:
                                 duprate = float(lsplit[8])
-                            except Exception as e:
+                            except Exception:
                                 duprate = -1.0
                     elif type == "map":
                         dsplit = line.rstrip().split(" ")
