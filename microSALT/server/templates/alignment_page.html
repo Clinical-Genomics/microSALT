@@ -118,8 +118,8 @@
                                                         <th>Applikationstag</th>
                                                         <th>Organism (*)</th>
                                                         <th>Referensgenom (*)</th>
-                                                        <th>Totalt antal l&auml;sningar (***)</th>
-                                                        <th>L&auml;sningar efter filtrering (**)</th>
+                                                        <th>Totalt antal l&auml;sningar (\*\\*)</th>
+                                                        <th>L&auml;sningar efter filtrering (\*\*\*)</th>
                                                         <th>Mappningsgrad %</th>
                                                         <th>Duplikationsgrad %</th>
                                                         <th>Insert Storlek (Median)</th>
@@ -144,13 +144,9 @@
                                                     {% else %}<td>Ok&auml;nd</td>{% endif %}
                                                     <td>{{ sample.reference_genome }}</td>
                                                     {% if sample.raw_reads is none or sample.raw_reads < 1 %}
-                                                        <td class="text-right">
-                                                            0
-                                                        </td>
+                                                        <td class="text-right">0</td>
                                                     {% else %}
-                                                        <td class="text-right">
-                                                            {{ '{0:,}'.format(sample.raw_reads) |replace(","," ")}}
-                                                        </td>
+                                                        <td class="text-right">{{ '{0:,}'.format(sample.raw_reads) |replace(","," ")}}</td>
                                                     {% endif %}
                                                     {% if sample.total_reads is none %}
                                                         <td class="text-right">
@@ -278,9 +274,9 @@
                                             </div>
                                             (*) Information om prover som kommer fr&aring;n kund
                                             <br />
-                                            (**) L&auml;sningar efter adapter-trimming och filtrering av l&auml;spar
+                                            (\*\*) Totalt antal l&auml;sningar f&ouml;re adapter-trimming och filtrering
                                             <br />
-                                            (***) Totalt antal l&auml;sningar f&ouml;re adapter-trimming och filtrering
+                                            (\*\*\*) L&auml;sningar efter adapter-trimming och filtrering av l&auml;spar
                                             <br />
                                         </div>
                                     </div>
