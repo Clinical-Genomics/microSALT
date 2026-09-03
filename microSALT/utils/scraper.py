@@ -149,8 +149,27 @@ class Scraper:
         if self.referencer.organism2reference(self.sample.get("organism")) == "escherichia_coli":
             self.scrape_blast(type="expec")
         self.scrape_alignment()
+        self.scrape_trimmomatic()
         self.scrape_quast()
         self.scrape_reference()
+
+    def scrape_trimmomatic(self, filename=""):
+        """Scrapes a trimmomatic summary for the raw (pre-filtering) read count"""
+        if filename == "":
+            filename = f"{self.sampledir}/trimmed/{self.name}_trim_summary.txt"
+
+        trim = dict()
+        try:
+            with open(filename, "r") as infile:
+                for line in infile:
+                    lsplit = line.rstrip().split(": ")
+                    if len(lsplit) == 2 and lsplit[0] == "Input Read Pairs":
+                        trim["raw_reads"] = int(lsplit[1]) * 2
+
+            self.db_pusher.update_sample({"CG_ID_sample": self.name}, trim)
+            self.logger.debug(f"Project {self.name} recieved trimmomatic stats: {trim}")
+        except Exception as e:
+            self.logger.warning(f"Cannot generate trimmomatic statistics for {self.name}")
 
     def scrape_quast(self, filename=""):
         """Scrapes a quast report for assembly information"""
