@@ -371,7 +371,7 @@
                                                     Virologisk helgenomssekvensering, med krav p&aring; minst 1 miljon l&auml;spar.
                                                     MiniCovid kit tagmentation preparation.
                                                 {% elif topsample.application_tag == "MWSMCTR003" %}
-                                                    Mikrobiell helgenomssekvensering, med krav p&aring; minst 3 miljoner l&auml;spar.
+                                                    Mikrobiell helgenomssekvensering, med krav p&aring; generering av minst 3 miljoner l&auml;spar.
                                                     MiniCovid kit tagmentation preparation.
                                                 {% endif %}
                                             </p>
@@ -382,6 +382,30 @@
                                             <p>
                                                 Tillf&ouml;rlitligheten hos resultaten f&ouml;ruts&auml;tter att informationen som bifogats fr&aring;n kund &auml;r korrekt.
                                             </p>
+                                            {% if topsample.application_tag == "MWSMCTR003" %}
+                                                <p>
+                                                    F&ouml;r denna applikationstagg omfattas leveransen av ackrediterad sekvensdata, se avsnittet
+                                                    &quot;Ackreditering&quot; nedan f&ouml;r vad ackrediteringen omfattar och g&auml;llande krav p&aring; utbyte.
+                                                </p>
+                                            {% endif %}
+                                            {% if topsample.application_tag == "MWSMCTR003" %}
+                                                <h3>
+                                                    Ackreditering
+                                                    <br>
+                                                </h3>
+                                                <p>
+                                                    Clinical Genomics &auml;r ackrediterade f&ouml;r leverans av sekvensdata f&ouml;r mikrobiella
+                                                    prov under applikationstaggen MWSMCTR003. Ackrediteringen omfattar generering av sekvensdata samt
+                                                    kvalitetskontroll av denna. Den omfattar d&auml;remot inte tillf&ouml;rlitligheten i kartl&auml;ggningen
+                                                    (mappningen) mot referensgenomet, vilket &auml;r kundens ansvar.
+                                                </p>
+                                                <p>
+                                                    M&aring;lv&auml;rdet f&ouml;r utbyte &auml;r 3 miljoner r&aring;a l&auml;spar per prov, med ett l&auml;gsta
+                                                    godtagbara utbyte om 2,25 miljoner r&aring;a l&auml;spar. Ger ett prov f&auml;rre &auml;n 2,25 miljoner
+                                                    r&aring;a l&auml;spar levereras data &auml;nd&aring;, under f&ouml;ruts&auml;ttning att bristen bed&ouml;ms
+                                                    bero p&aring; provets kvalitet.
+                                                </p>
+                                            {% endif %}
                                             <h3>
                                                 F&ouml;rb&auml;ttringsf&ouml;rslag
                                                 <br>
