@@ -38,6 +38,7 @@ class Samples(Base):
     priority = Column(String(20))
 
     total_reads = Column(Integer)  # Fetch from bcl2fastq
+    raw_reads = Column(Integer)  # Input read pairs * 2, from trimmomatic summary
     insert_size = Column(Integer)
     duplication_rate = Column(Float)
     mapped_rate = Column(Float)

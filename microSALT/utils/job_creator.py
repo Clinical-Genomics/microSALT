@@ -460,13 +460,15 @@ class Job_Creator:
             fu = f"{trimdir}/{outfile}_trim_front_unpair.fastq.gz"
             rp = f"{trimdir}/{outfile}_trim_rev_pair.fastq.gz"
             ru = f"{trimdir}/{outfile}_trim_rev_unpair.fastq.gz"
+            summary = f"{trimdir}/{self.name}_trim_summary.txt"
             batchfile.write("##Trimming section\n")
             batchfile.write(
                 self._singularity_exec(
                     "trimmomatic",
                     (
                         f"trimmomatic PE -threads {self.slurm_header.threads}"
-                        f" -phred33 {self.concat_files.get('f')} {self.concat_files.get('r')}"
+                        f" -phred33 -summary {summary}"
+                        f" {self.concat_files.get('f')} {self.concat_files.get('r')}"
                         f" {fp} {fu} {rp} {ru}"
                         f" ILLUMINACLIP:{self.singularity.trimmomatic_adapters}/NexteraPE-PE.fa:2:30:10"
                         " LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36"

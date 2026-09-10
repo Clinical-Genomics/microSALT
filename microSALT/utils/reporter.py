@@ -521,6 +521,7 @@ class Reporter:
             t["insert_size"] = "" if s.insert_size is None or s.insert_size < 1 else s.insert_size
             t["duplication_rate"] = "" if s.duplication_rate is None else s.duplication_rate
             t["total_reads"] = "" if s.total_reads is None or s.total_reads < 1 else s.total_reads
+            t["raw_reads"] = "" if s.raw_reads is None or s.raw_reads < 1 else s.raw_reads
             t["mapped_rate"] = "" if s.mapped_rate is None or s.mapped_rate < 0.1 else s.mapped_rate
             t["average_coverage"] = (
                 "" if s.average_coverage is None or s.average_coverage < 0.1 else s.average_coverage
@@ -561,6 +562,7 @@ class Reporter:
             }
             report[s.CG_ID_sample]["microsalt_samtools_stats"] = {
                 "total_reads": t["total_reads"],
+                "raw_reads": t["raw_reads"],
                 "mapped_rate": t["mapped_rate"],
                 "average_coverage": t["average_coverage"],
                 "coverage_10x": t["coverage_10x"],

@@ -118,7 +118,8 @@
                                                         <th>Applikationstag</th>
                                                         <th>Organism (*)</th>
                                                         <th>Referensgenom (*)</th>
-                                                        <th>Antal Reads (**)</th>
+                                                        <th>Totalt antal l&auml;sningar (&dagger;)</th>
+                                                        <th>L&auml;sningar efter filtrering (&Dagger;)</th>
                                                         <th>Mappningsgrad %</th>
                                                         <th>Duplikationsgrad %</th>
                                                         <th>Insert Storlek (Median)</th>
@@ -142,39 +143,52 @@
                                                                 <td>{{ sample.organism.replace('_', ' ').capitalize() }}</td>
                                                     {% else %}<td>Ok&auml;nd</td>{% endif %}
                                                     <td>{{ sample.reference_genome }}</td>
-                                                    {% if sample.total_reads is none %}
+                                                    {% if sample.raw_reads is none or sample.raw_reads < 1 %}
                                                         <td class="text-right">
                                                             0
                                                     {% else %}
                                                         {% if sample.application_tag and sample.application_tag[-1:]|float != 0 %}
-                                                            {% set bp_perc = ((sample.total_reads*100/((sample.application_tag[-1:]|float)*2000000))|round(2)) %}
+                                                            {% set bp_perc = ((sample.raw_reads*100/((sample.application_tag[-1:]|float)*2000000))|round(2)) %}
                                                         {% else %}
                                                             {% set bp_perc = 0.0 %}
                                                         {% endif %}
                                                         {% if 'Kontroll' in sample.ST_status %}
                                                             {% if bp_perc > threshold.NTC_total_reads_fail %}
                                                                 <td class="text-right" bgcolor="#fa8072">
-                                                                    {{ '{0:,}'.format(sample.total_reads) |replace(","," ")}} ({{ bp_perc }}%)
+                                                                    {{ '{0:,}'.format(sample.raw_reads) |replace(","," ")}} ({{ bp_perc }}%)
                                                             {% elif bp_perc > threshold.NTC_total_reads_warn %}
                                                                 <td class="text-right" bgcolor="#fffacd">
-                                                                    {{ '{0:,}'.format(sample.total_reads) |replace(","," ")}} ({{ bp_perc }}%)
+                                                                    {{ '{0:,}'.format(sample.raw_reads) |replace(","," ")}} ({{ bp_perc }}%)
                                                             {% else %}
                                                                 <td class="text-right">
-                                                                    {{ '{0:,}'.format(sample.total_reads) |replace(","," ")}} ({{ bp_perc }}%)
+                                                                    {{ '{0:,}'.format(sample.raw_reads) |replace(","," ")}} ({{ bp_perc }}%)
                                                             {% endif %}
                                                         {% else %}
                                                             {% if bp_perc < threshold.total_reads_fail %}
                                                                 <td class="text-right" bgcolor="#fa8072">
-                                                                    {{ '{0:,}'.format(sample.total_reads) |replace(","," ")}} ({{ bp_perc }}%)
+                                                                    {{ '{0:,}'.format(sample.raw_reads) |replace(","," ")}} ({{ bp_perc }}%)
                                                             {% elif bp_perc < threshold.total_reads_warn %}
                                                                 <td class="text-right" bgcolor="#fffacd">
-                                                                    {{ '{0:,}'.format(sample.total_reads) |replace(","," ")}} ({{ bp_perc }}%)
+                                                                    {{ '{0:,}'.format(sample.raw_reads) |replace(","," ")}} ({{ bp_perc }}%)
                                                             {% else %}
                                                                 <td class="text-right">
-                                                                    {{ '{0:,}'.format(sample.total_reads) |replace(","," ")}} ({{ bp_perc }}%)
+                                                                    {{ '{0:,}'.format(sample.raw_reads) |replace(","," ")}} ({{ bp_perc }}%)
                                                             {% endif %}
                                                         {% endif %}
                                                     {% endif %}
+                                                        </td>
+                                                        {% if sample.total_reads is none or sample.total_reads < 1 %}
+                                                            <td class="text-right">
+                                                                0
+                                                        {% else %}
+                                                            {% if sample.application_tag and sample.application_tag[-1:]|float != 0 %}
+                                                                {% set bp_perc_post_filter = ((sample.total_reads*100/((sample.application_tag[-1:]|float)*2000000))|round(2)) %}
+                                                            {% else %}
+                                                                {% set bp_perc_post_filter = 0.0 %}
+                                                            {% endif %}
+                                                            <td class="text-right">
+                                                                {{ '{0:,}'.format(sample.total_reads) |replace(","," ")}} ({{ bp_perc_post_filter }}%)
+                                                        {% endif %}
                                                         </td>
                                                         {% if sample.mapped_rate is none or sample.mapped_rate == 0 %}
                                                             <td class="text-right">
@@ -268,7 +282,9 @@
                                             </div>
                                             (*) Information om prover som kommer fr&aring;n kund
                                             <br />
-                                            (**) Antal reads efter adapter-trimming och filtrering av l&auml;spar
+                                            (&dagger;) Totalt antal l&auml;sningar f&ouml;re adapter-trimming och filtrering
+                                            <br />
+                                            (&Dagger;) L&auml;sningar efter adapter-trimming och filtrering av l&auml;spar. Det &auml;r dessa l&auml;sningar som anv&auml;nds i analysen.
                                             <br />
                                         </div>
                                     </div>
@@ -355,7 +371,7 @@
                                                     Virologisk helgenomssekvensering, med krav p&aring; minst 1 miljon l&auml;spar.
                                                     MiniCovid kit tagmentation preparation.
                                                 {% elif topsample.application_tag == "MWSMCTR003" %}
-                                                    Mikrobiell helgenomssekvensering, med krav p&aring; minst 3 miljoner l&auml;spar.
+                                                    Mikrobiell helgenomssekvensering, med krav p&aring; generering av minst 3 miljoner l&auml;spar.
                                                     MiniCovid kit tagmentation preparation.
                                                 {% endif %}
                                             </p>
@@ -366,6 +382,30 @@
                                             <p>
                                                 Tillf&ouml;rlitligheten hos resultaten f&ouml;ruts&auml;tter att informationen som bifogats fr&aring;n kund &auml;r korrekt.
                                             </p>
+                                            {% if topsample.application_tag == "MWSMCTR003" %}
+                                                <p>
+                                                    F&ouml;r denna applikationstagg omfattas leveransen av ackrediterad sekvensdata, se avsnittet
+                                                    &quot;Ackreditering&quot; nedan f&ouml;r vad ackrediteringen omfattar och g&auml;llande krav p&aring; utbyte.
+                                                </p>
+                                            {% endif %}
+                                            {% if topsample.application_tag == "MWSMCTR003" %}
+                                                <h3>
+                                                    Ackreditering
+                                                    <br>
+                                                </h3>
+                                                <p>
+                                                    Clinical Genomics &auml;r ackrediterade f&ouml;r leverans av sekvensdata f&ouml;r mikrobiella
+                                                    prov under applikationstaggen MWSMCTR003. Ackrediteringen omfattar generering av sekvensdata samt
+                                                    kvalitetskontroll av denna. Den omfattar d&auml;remot inte tillf&ouml;rlitligheten i kartl&auml;ggningen
+                                                    (mappningen) mot referensgenomet, vilket &auml;r kundens ansvar.
+                                                </p>
+                                                <p>
+                                                    M&aring;lv&auml;rdet f&ouml;r leverans &auml;r 3 miljoner r&aring;a l&auml;spar per prov, med ett l&auml;gsta
+                                                    godtagbara leverans om 2,25 miljoner r&aring;a l&auml;spar. Ger ett prov f&auml;rre &auml;n 2,25 miljoner
+                                                    r&aring;a l&auml;spar levereras data &auml;nd&aring;, under f&ouml;ruts&auml;ttning att bristen bed&ouml;ms
+                                                    bero p&aring; provets kvalitet.
+                                                </p>
+                                            {% endif %}
                                             <h3>
                                                 F&ouml;rb&auml;ttringsf&ouml;rslag
                                                 <br>
