@@ -194,3 +194,12 @@ def test_alignment_scraping(scraper: Scraper, testdata_prefix: str) -> None:
     init_references is NOT needed: scrape_alignment only reads local .stats.* files.
     """
     scraper.scrape_alignment(file_list=glob.glob(f"{testdata_prefix}/*.stats.*"))
+
+
+def test_trimmomatic_scraping(scraper: Scraper, testdata_prefix: str) -> None:
+    """Scraping a trimmomatic summary file should compute raw_reads as Input Read Pairs * 2."""
+    scraper.scrape_trimmomatic(filename=f"{testdata_prefix}/trim_summary.txt")
+
+    sample = scraper.db_pusher.get_sample_by_cg_id_sample(scraper.name)
+    assert sample.raw_reads == 6508868 * 2
+
