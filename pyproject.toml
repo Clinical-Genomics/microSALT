@@ -48,6 +48,6 @@ dev = [
     "flake8>=6.0",
     "gitlint>=0.19.1",
     "pytest>=9.0.3",
-    "pylint>=3.0",
+    "pylint>=4.0.9",
     "yamllint>=1.32",
 ]
