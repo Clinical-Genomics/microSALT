@@ -325,6 +325,7 @@ def finish(config: MicroSALTConfig, sampleinfo_file, input, track, dry, email, r
         containers=config.containers,
         sampleinfo=sampleinfo,
         input=input,
+        qc_only=track == "qc",
     )
     try:
         if isinstance(sampleinfo, list) and len(sampleinfo) > 1:

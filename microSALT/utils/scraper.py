@@ -39,8 +39,10 @@ class Scraper:
         containers: Containers = None,
         sampleinfo={},
         input="",
+        qc_only: bool = False,
     ):
         self.folders = folders
+        self.qc_only = qc_only
         self.threshold = threshold
         self.slurm_header = slurm_header
         self.regex = regex
@@ -126,6 +128,7 @@ class Scraper:
                         pasteur=self.pasteur,
                         sampleinfo=local_param,
                         input=sampledir,
+                        qc_only=self.qc_only,
                     )
                     sample_scraper.scrape_sample()
                 else:
@@ -141,10 +144,16 @@ class Scraper:
 
         # Scrape order matters a lot!
         self.sampledir = self.infolder
-        self.scrape_blast(type="seq_type")
-        self.scrape_blast(type="resistance")
-        if self.referencer.organism2reference(self.sample.get("organism")) == "escherichia_coli":
-            self.scrape_blast(type="expec")
+        if self.qc_only:
+            self.logger.info(f"QC-only track: skipping typing/resistance scraping for {self.name}")
+        else:
+            self.scrape_blast(type="seq_type")
+            self.scrape_blast(type="resistance")
+            if (
+                self.referencer.organism2reference(self.sample.get("organism"))
+                == "escherichia_coli"
+            ):
+                self.scrape_blast(type="expec")
         self.scrape_alignment()
         self.scrape_trimmomatic()
         self.scrape_quast()

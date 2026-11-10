@@ -6,6 +6,7 @@ import logging
 import shutil
 from pathlib import Path
 from typing import Generator
+from unittest.mock import patch
 
 import pytest
 
@@ -203,3 +204,53 @@ def test_trimmomatic_scraping(scraper: Scraper, testdata_prefix: str) -> None:
     sample = scraper.db_pusher.get_sample_by_cg_id_sample(scraper.name)
     assert sample.raw_reads == 6508868 * 2
 
+
+
+def _make_scraper(config, logger, sampleinfo, input_dir, qc_only=False) -> Scraper:
+    return Scraper(
+        log=logger,
+        folders=config.folders,
+        threshold=config.threshold,
+        slurm_header=config.slurm_header,
+        regex=config.regex,
+        dry=False,
+        config_path=config.config_path,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
+        sampleinfo=sampleinfo,
+        input=str(input_dir),
+        qc_only=qc_only,
+    )
+
+
+def test_scrape_sample_qc_only_skips_typing_for_unknown_organism(
+    config: MicroSALTConfig, logger: logging.Logger, testdata: list[dict], tmp_path: Path
+) -> None:
+    """With qc_only, an organism without an MLST reference must not crash the scraping."""
+    sampleinfo = {**testdata[0], "organism": "other"}
+    input_dir = tmp_path / sampleinfo["CG_ID_sample"]
+    input_dir.mkdir()
+    qc_scraper = _make_scraper(config, logger, sampleinfo, input_dir, qc_only=True)
+
+    with patch.object(Scraper, "scrape_blast", wraps=qc_scraper.scrape_blast) as blast:
+        qc_scraper.scrape_sample()
+
+    blast.assert_not_called()
+
+
+def test_scrape_sample_default_runs_typing(
+    config: MicroSALTConfig, logger: logging.Logger, testdata: list[dict], tmp_path: Path
+) -> None:
+    """Without qc_only, the BLAST typing/resistance scraping still runs."""
+    input_dir = tmp_path / testdata[0]["CG_ID_sample"]
+    input_dir.mkdir()
+    default_scraper = _make_scraper(config, logger, testdata[0], input_dir)
+
+    with patch.object(Scraper, "scrape_blast") as blast:
+        default_scraper.scrape_sample()
+
+    called_types = [c.kwargs.get("type") for c in blast.call_args_list]
+    assert "seq_type" in called_types
+    assert "resistance" in called_types
