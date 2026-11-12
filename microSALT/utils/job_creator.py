@@ -35,7 +35,7 @@ from microSALT.exc.exceptions import AnalysisSetupError, JobCreationError
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.store.orm_models import Projects
 from microSALT.utils.referencer import Referencer
-from microSALT.utils.preflight import verify_fastq
+from microSALT.utils.validation import verify_fastq
 
 
 class Job_Creator:
@@ -850,10 +850,15 @@ class Job_Creator:
         batchfile = open(self.batchfile, "a+")
         batchfile.write(f"mkdir -p {self.finishdir}/blast_search\n")
         batchfile.close()
-        self.blast_subset(
-            "mlst",
-            f"{self.folders.references}/{reforganism}/*.tfa",
-        )
+        if reforganism is not None:
+            self.blast_subset(
+                "mlst",
+                f"{self.folders.references}/{reforganism}/*.tfa",
+            )
+        else:
+            self.logger.warning(
+                f"No MLST scheme for {self.sample.get('organism')}; skipping MLST search"
+            )
         self.blast_subset("resistance", f"{self.folders.resistances}/*.fsa")
         if reforganism == "escherichia_coli":
             ss = f"{os.path.dirname(self.folders.expec)}/*{os.path.splitext(self.folders.expec)[1]}"

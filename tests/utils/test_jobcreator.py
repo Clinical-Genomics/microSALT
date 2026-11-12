@@ -414,6 +414,18 @@ def test_empty_analysis_job_list_never_submits_report(config, logger, testdata, 
     submit.assert_not_called()
 
 
+def test_unknown_organism_skips_mlst_search_but_keeps_resistance(
+    config, logger, testdata, tmp_path
+):
+    jc = _make_jc(config, logger, [{**testdata[0], "organism": "Unknown organism"}], tmp_path)
+    with (
+        patch.object(jc.ref_resolver, "organism2reference", return_value=None),
+        patch.object(jc, "blast_subset") as blast,
+    ):
+        jc.create_blast_search()
+    blast.assert_called_once_with("resistance", f"{config.folders.resistances}/*.fsa")
+
+
 def test_setup_logger_creates_one_log_for_project(config, logger, testdata, tmp_path):
     """project_job creates exactly one job_creator.log in finishdir via _attach_log_file;
     construction alone must not touch the filesystem.

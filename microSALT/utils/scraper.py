@@ -144,15 +144,24 @@ class Scraper:
 
         # Scrape order matters a lot!
         self.sampledir = self.infolder
+        reforganism = (
+            None
+            if self.qc_only
+            else self.referencer.organism2reference(self.sample.get("organism"))
+        )
+        if reforganism is None:
+            self.db_pusher.update_sample({"CG_ID_sample": self.name}, {"ST": -1, "pubmlst_ST": -1})
         if self.qc_only:
             self.logger.info(f"QC-only track: skipping typing/resistance scraping for {self.name}")
         else:
-            self.scrape_blast(type="seq_type")
+            if reforganism is not None:
+                self.scrape_blast(type="seq_type")
+            else:
+                self.logger.warning(
+                    f"No MLST scheme for {self.sample.get('organism')}; skipping MLST scraping"
+                )
             self.scrape_blast(type="resistance")
-            if (
-                self.referencer.organism2reference(self.sample.get("organism"))
-                == "escherichia_coli"
-            ):
+            if reforganism == "escherichia_coli":
                 self.scrape_blast(type="expec")
         self.scrape_alignment()
         self.scrape_trimmomatic()

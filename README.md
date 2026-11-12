@@ -85,7 +85,7 @@ typing/resistance scraping and generating only the QC report. A configured
 reference genome is still required for alignment. Without this flag, the full
 analysis and reports are unchanged.
 
-### Analysis preflight checks
+### Analysis validation checks
 
 Before submitting any SLURM jobs, `analyse` checks sample metadata, paired gzip
 FASTQ inputs, reference genome FASTA files and indexes, and (for full analysis)
@@ -114,6 +114,14 @@ You can also install a valid local `<reference>.fasta` in `folders.genomes`.
 `--skip_update` disables reference downloading and indexing, **not validation**:
 all required reference files and current indexes must already exist. QC-only
 runs still require an alignment genome, but do not require typing resources.
+
+An organism without a published MLST database or scheme is not a setup error.
+microSALT warns and skips MLST searches and scraping for that organism, while
+retaining assembly, resistance analysis and QC. Missing MLST version dates only
+disable version comparison; available schemes can still be downloaded. Network,
+download, indexing and corrupt cached-resource failures still block submission.
+With `--skip_update`, an organism with no cached scheme is likewise analysed
+without MLST rather than requiring an online availability check.
 
 If SLURM rejects a submission after setup succeeds, the command reports the
 failure and any already accepted analysis job IDs. This is distinct from a
