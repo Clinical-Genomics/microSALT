@@ -109,6 +109,36 @@ def test_config_fields_propagated(config: MicroSALTConfig, config_file: Path):
     assert loaded.slurm_header.project == config.slurm_header.project
 
 
+@pytest.mark.parametrize("qc_option", [None, "--qc-only", "--qc_only"])
+@pytest.mark.parametrize("sample_count", [1, 2])
+def test_analyse_passes_qc_only_to_job_creator(config_file, tmp_path, qc_option, sample_count):
+    """QC-only is opt-in and reaches the job creator for samples and projects."""
+    sampleinfo = tmp_path / "sampleinfo.json"
+    sampleinfo.write_text(
+        json.dumps(
+            [
+                {"CG_ID_sample": f"TST0001A{i}", "CG_ID_project": "TST0001", "organism": "other"}
+                for i in range(1, sample_count + 1)
+            ]
+        )
+    )
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    args = ["analyse", str(sampleinfo), "--input", str(input_dir), "--dry"]
+    if qc_option:
+        args.append(qc_option)
+
+    with patch("microSALT.cli.Job_Creator") as creator, patch("microSALT.cli.Referencer"):
+        result = invoke_root(config_file, *args)
+
+    assert result.exit_code == 0, result.output
+    assert creator.call_args.kwargs["run_settings"]["qc_only"] is (qc_option is not None)
+    if sample_count == 1:
+        creator.return_value.project_job.assert_called_once_with(single_sample=True)
+    else:
+        creator.return_value.project_job.assert_called_once_with()
+
+
 def test_setup_command(setup_config: MicroSALTConfig, setup_config_file: Path):
     """setup command creates the configured directories and reports success."""
     result = invoke_root(setup_config_file, "setup")
