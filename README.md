@@ -87,12 +87,16 @@ analysis and reports are unchanged.
 
 ### Analysis validation checks
 
-Before submitting any SLURM jobs, `analyse` checks sample metadata, paired gzip
-FASTQ inputs, reference genome FASTA files and indexes, and (for full analysis)
+Before submitting any SLURM jobs, `analyse` checks sample metadata, FASTQ filenames,
+mate pairs and file access, reference genome FASTA files and indexes, and (for full analysis)
 MLST and resistance resources. It then prepares every sample script and the
 reporting inputs. Setup errors are collected across samples and references and
 reported together; any setup error exits nonzero without submitting sample or
 reporting jobs. `--dry` uses the same checks but never submits jobs.
+
+FASTQ contents are not read or decompressed during setup on the login node.
+Record-level and gzip-integrity checks are left to the analysis tools running
+on compute nodes. Reference FASTA validation remains part of setup.
 
 Whitespace is removed from sample-info `reference` values before lookup,
 downloading and job generation. The original sample-info file is not modified;

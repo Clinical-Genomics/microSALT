@@ -191,7 +191,7 @@ class Job_Creator:
         return f"{binary} exec {bind} {sif} {command}"
 
     def verify_fastq(self):
-        """Validate complete paired FASTQ inputs before constructing a job."""
+        """Validate paired input paths without reading FASTQ contents."""
         return verify_fastq(self.indir, self.regex.file_pattern)
 
     @staticmethod
