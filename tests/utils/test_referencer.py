@@ -5,11 +5,12 @@ import os
 import subprocess
 from urllib.error import HTTPError
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-from microSALT.exc.exceptions import ReferenceSetupError
+from microSALT.exc.exceptions import MLSTUnavailableError, ReferenceSetupError
+from microSALT.utils.pubmlst.exceptions import PubMLSTError
 from microSALT.utils.referencer import Referencer
 
 
@@ -369,7 +370,9 @@ def test_blast_index_failure_is_not_swallowed(referencer, tmp_path):
 
 def test_full_analysis_collects_mlst_and_resistance_failures(referencer, tmp_path):
     referencer.folders.resistances = str(tmp_path / "missing-resistance")
-    with patch.object(referencer, "add_pubmlst", return_value=None) as download:
+    with patch.object(
+        referencer, "add_pubmlst", side_effect=ReferenceSetupError("download failed")
+    ) as download:
         errors = referencer.prepare_references(
             [
                 {"CG_ID_sample": "A1", "organism": "Unknown one"},
@@ -380,6 +383,138 @@ def test_full_analysis_collects_mlst_and_resistance_failures(referencer, tmp_pat
     assert len(errors) == 3
     assert "A1" in errors[0] and "A2" in errors[1]
     assert "missing-resistance" in errors[2]
+
+
+def test_full_analysis_without_published_mlst_scheme_warns_and_continues(referencer, tmp_path):
+    resistance = tmp_path / "resistance"
+    resistance.mkdir()
+    (resistance / "gene.fsa").write_text(">gene\nACGT\n")
+    referencer.folders.resistances = str(resistance)
+    with (
+        patch.object(
+            referencer, "add_pubmlst", side_effect=MLSTUnavailableError("No published scheme")
+        ),
+        patch.object(referencer, "_prepare_blast_indexes") as indexes,
+        patch.object(referencer.logger, "warning") as warning,
+    ):
+        errors = referencer.prepare_references(
+            [{"CG_ID_sample": "A1", "organism": "Unknown organism"}]
+        )
+    assert not errors
+    indexes.assert_called_once_with(resistance, ".fsa", False)
+    assert "skipping MLST" in warning.call_args.args[0]
+
+
+def test_skip_update_without_cached_mlst_keeps_other_analyses(referencer, tmp_path):
+    resistance = tmp_path / "resistance"
+    resistance.mkdir()
+    (resistance / "gene.fsa").write_text(">gene\nACGT\n")
+    referencer.folders.resistances = str(resistance)
+    with (
+        patch.object(referencer, "add_pubmlst") as download,
+        patch.object(referencer, "_prepare_blast_indexes"),
+    ):
+        errors = referencer.prepare_references(
+            [{"CG_ID_sample": "A1", "organism": "Unknown organism"}], skip_update=True
+        )
+    assert not errors
+    download.assert_not_called()
+
+
+def test_absent_organism_is_distinct_from_failed_lookup(referencer):
+    with patch.object(referencer, "query_pubmlst", return_value=[]):
+        with pytest.raises(MLSTUnavailableError, match="No pubMLST database"):
+            referencer.add_pubmlst("Unknown organism")
+    with patch.object(referencer, "query_pubmlst", side_effect=PubMLSTError("connection failed")):
+        with pytest.raises(ReferenceSetupError, match="connection failed"):
+            referencer.add_pubmlst("Unknown organism")
+
+
+@pytest.fixture
+def mlst_client(referencer, tmp_path):
+    referencer.folders.profiles = str(tmp_path / "profiles")
+    referencer.folders.references = str(tmp_path / "loci")
+    Path(referencer.folders.profiles).mkdir()
+    Path(referencer.folders.references).mkdir()
+    client = Mock()
+    client.parse_url.return_value = {"db": "example_seqdef", "scheme_id": 1}
+    client.retrieve_scheme_info.return_value = {
+        "description": "MLST",
+        "loci": ["https://example.test/loci/locus"],
+    }
+    client.download_profiles_csv.return_value = "ST\tlocus\n1\t1\n"
+    client.download_locus.return_value = ">locus_1\nACGT\n"
+    referencer.client = client
+    return client
+
+
+def test_available_mlst_without_version_date_can_be_downloaded(referencer, mlst_client):
+    with (
+        patch.object(referencer.db_access, "read_version", return_value="0"),
+        patch.object(referencer, "index_db"),
+    ):
+        version = referencer.download_pubmlst(
+            "Example species", "https://example.test/db/example_seqdef"
+        )
+    assert version is None
+    assert (Path(referencer.folders.profiles) / "example_species").is_file()
+    assert (Path(referencer.folders.references) / "example_species/locus.tfa").is_file()
+
+
+def test_add_pubmlst_accepts_successful_download_without_version_date(referencer):
+    catalog = [
+        {
+            "databases": [
+                {
+                    "description": "Example species sequence definitions",
+                    "href": "https://example.test/db/example_seqdef",
+                }
+            ]
+        }
+    ]
+    with (
+        patch.object(referencer, "query_pubmlst", return_value=catalog),
+        patch.object(referencer, "download_pubmlst", return_value=None),
+    ):
+        assert referencer.add_pubmlst("Example species") == "example_species"
+
+
+def test_no_mlst_scheme_is_not_a_download_failure(referencer, mlst_client):
+    mlst_client.retrieve_scheme_info.return_value = {"description": "Other scheme"}
+    mlst_client.list_schemes.return_value = {"schemes": []}
+    with patch.object(referencer.db_access, "read_version", return_value="0"):
+        with pytest.raises(MLSTUnavailableError, match="No MLST scheme is available"):
+            referencer.download_pubmlst("Example species", "https://example.test/db/example_seqdef")
+    mlst_client.download_profiles_csv.assert_not_called()
+
+
+def test_mlst_version_lookup_connection_failure_remains_fatal(referencer, mlst_client):
+    mlst_client.retrieve_scheme_info.side_effect = PubMLSTError("connection failed")
+    with pytest.raises(ReferenceSetupError, match="connection failed"):
+        referencer.download_pubmlst("Example species", "https://example.test/db/example_seqdef")
+
+
+@pytest.mark.parametrize("force", [False, True])
+def test_cached_mlst_without_external_version_never_compares_or_stores_none(referencer, force):
+    referencer.organisms = ["example_species"]
+    url = "https://example.test/db/example_seqdef"
+    catalog = [
+        {"databases": [{"description": "Example species sequence definitions", "href": url}]}
+    ]
+    with (
+        patch.object(referencer, "query_pubmlst", return_value=catalog),
+        patch.object(referencer, "external_version", return_value=None),
+        patch.object(referencer.db_access, "read_version", return_value="2025-01-01"),
+        patch.object(referencer, "download_pubmlst") as download,
+        patch.object(referencer.db_access, "update_version") as update,
+        patch.object(referencer.db_access, "refresh_profiletable"),
+    ):
+        referencer.fetch_pubmlst(force=force)
+    if force:
+        download.assert_called_once_with("example_species", url, True)
+    else:
+        download.assert_not_called()
+    update.assert_not_called()
 
 
 def test_full_analysis_accepts_valid_cached_typing_resources(referencer, tmp_path):

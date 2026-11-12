@@ -294,7 +294,7 @@ def test_analyse_saves_normalized_reference_for_finish(config_file, tmp_path):
 
 
 def test_analyse_valid_qc_run_prepares_scripts_and_submits(config, config_file, tmp_path):
-    reference = Path(config.folders.genomes) / "PREFLIGHT_TEST.fasta"
+    reference = Path(config.folders.genomes) / "VALIDATION_TEST.fasta"
     reference.write_text(">chromosome\nACGT\n")
     for suffix in (".amb", ".ann", ".bwt", ".pac", ".sa", ".fai"):
         Path(f"{reference}{suffix}").write_text("index")
@@ -302,7 +302,7 @@ def test_analyse_valid_qc_run_prepares_scripts_and_submits(config, config_file, 
         **default_sampleinfo,
         "CG_ID_sample": "QCINT001A1",
         "CG_ID_project": "QCINT001",
-        "reference": " PREFLIGHT_TEST\n",
+        "reference": " VALIDATION_TEST\n",
         "organism": "other",
     }
     sampleinfo = tmp_path / "sampleinfo.json"
@@ -328,10 +328,10 @@ def test_analyse_valid_qc_run_prepares_scripts_and_submits(config, config_file, 
     assert popen.call_count == 2  # Sample, then reporting job; no reference subprocesses.
     run_dir = next(Path(config.folders.results).glob("QCINT001A1_*"))
     script = (run_dir / "runfile.sbatch").read_text()
-    assert "PREFLIGHT_TEST.fasta" in script
+    assert "VALIDATION_TEST.fasta" in script
     assert "blastn" not in script and "skesa" not in script
     assert "--track qc" in (run_dir / "mailjob.sh").read_text()
-    assert json.loads((run_dir / "sampleinfo.json").read_text())["reference"] == "PREFLIGHT_TEST"
+    assert json.loads((run_dir / "sampleinfo.json").read_text())["reference"] == "VALIDATION_TEST"
 
 
 def test_setup_command(setup_config: MicroSALTConfig, setup_config_file: Path):

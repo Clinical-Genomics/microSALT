@@ -27,7 +27,7 @@ from microSALT.config import (
     Containers,
 )
 from microSALT.store.db_manipulator import DB_Manipulator
-from microSALT.exc.exceptions import ReferenceSetupError
+from microSALT.exc.exceptions import MLSTUnavailableError, ReferenceSetupError
 from microSALT.utils.pubmlst.client import BaseClient, get_client
 from microSALT.utils.pubmlst.exceptions import InvalidURLError, PubMLSTError
 from microSALT.utils.pubmlst.helpers import get_service_by_url
@@ -189,6 +189,12 @@ class Referencer:
                 needs_expec = needs_expec or ref == "escherichia_coli"
                 if ref not in self.db_access.profiles:
                     if skip_update:
+                        if ref is None:
+                            self.logger.warning(
+                                f"Samples {', '.join(names)}, organism {organism}: "
+                                "no cached MLST scheme and downloads are disabled; skipping MLST"
+                            )
+                            continue
                         raise ReferenceSetupError("missing MLST profile; downloads are disabled")
                     ref = self.add_pubmlst(organism)
                     if not ref:
@@ -204,6 +210,15 @@ class Referencer:
                 for path in files:
                     self.validate_fasta(path)
                 self._prepare_blast_indexes(loci, ".tfa", skip_update)
+            except MLSTUnavailableError as error:
+                if ref is not None:
+                    errors.append(
+                        f"Samples {', '.join(names)}, organism {organism}: incomplete cached MLST resources; {error}"
+                    )
+                else:
+                    self.logger.warning(
+                        f"Samples {', '.join(names)}, organism {organism}: {error}; skipping MLST"
+                    )
             except Exception as error:
                 self.db_access.session.rollback()
                 errors.append(f"Samples {', '.join(names)}, organism {organism}: {error}")
@@ -690,7 +705,7 @@ class Referencer:
             organism = organism.lower().replace(".", " ")
             if organism.replace(" ", "_") in self.organisms and not self.force:
                 self.logger.info(f"Organism {organism} already stored in microSALT")
-                return
+                return organism.replace(" ", "_")
             db_query = self.query_pubmlst()
 
             # Doublecheck organism name is correct and unique
@@ -717,18 +732,20 @@ class Referencer:
                     f"Reference '{errorg}' resolved to {int(counter / 2)} organisms. Please be more stringent"
                 )
             elif counter < 1.0:
-                # add external
-                raise Exception(f"Unable to find requested organism '{errorg}' in pubMLST database")
+                raise MLSTUnavailableError(
+                    f"No pubMLST database is available for organism '{errorg}'"
+                )
             else:
                 truename = desc.lower().split(" ")
                 truename = f"{truename[0]}_{truename[1]}"
-                if self.download_pubmlst(truename, seqdef_url, force=self.force) is None:
-                    raise ReferenceSetupError(f"Failed to download MLST resources for {truename}")
+                self.download_pubmlst(truename, seqdef_url, force=self.force)
                 # Update in-memory organism list so subsequent identify_new calls
                 # in the same process see the new organism immediately.
                 self.refs = self.db_access.profiles
                 self.logger.info(f"Downloaded profile files for {truename}")
                 return truename
+        except MLSTUnavailableError:
+            raise
         except Exception as e:
             raise ReferenceSetupError(f"Unable to prepare MLST resources for {errorg}: {e}") from e
 
@@ -744,18 +761,19 @@ class Referencer:
             parsed_data = self.client.parse_url(url=subtype_href)
             db = parsed_data.get("db")
             if not db:
-                self.logger.warning(f"Could not extract database name from URL: {subtype_href}")
-                return None
+                raise ReferenceSetupError(
+                    f"Could not extract database name from URL: {subtype_href}"
+                )
 
             # First, check scheme 1
             scheme_query_1 = self.client.retrieve_scheme_info(db, 1)
             mlst = None
-            if "MLST" in scheme_query_1.get("description", ""):
+            if "MLST" in (scheme_query_1 or {}).get("description", ""):
                 mlst = f"{subtype_href}/schemes/1"
             else:
                 # If scheme 1 isn't MLST, list all schemes and find the one with 'description' == 'MLST'
                 record_query = self.client.list_schemes(db)
-                for scheme in record_query.get("schemes", []):
+                for scheme in (record_query or {}).get("schemes", []):
                     if scheme.get("description") == "MLST":
                         mlst = scheme.get("scheme")
                         break
@@ -767,8 +785,9 @@ class Referencer:
                 self.logger.warning(f"Could not find MLST data at {subtype_href}")
                 return None
         except Exception as e:
-            self.logger.warning(e)
-            return None
+            raise ReferenceSetupError(
+                f"Unable to look up MLST schemes at {subtype_href}: {e}"
+            ) from e
 
     def external_version(self, organism, subtype_href):
         """Returns the version (date) of the data available on pubMLST"""
@@ -781,12 +800,13 @@ class Referencer:
             db = parsed_data.get("db")
             scheme_id = parsed_data.get("scheme_id")
             if not db or not scheme_id:
-                self.logger.warning(
+                raise ReferenceSetupError(
                     f"Could not extract database name or scheme ID from MLST URL: {mlst_href}"
                 )
-                return None
 
             scheme_info = self.client.retrieve_scheme_info(db, scheme_id)
+            if scheme_info is None:
+                raise MLSTUnavailableError(f"MLST scheme is no longer available at {mlst_href}")
             last_updated = scheme_info.get("last_updated")
             if last_updated:
                 self.logger.debug(
@@ -798,23 +818,29 @@ class Referencer:
                     f"No 'last_updated' field found for db: {db}, scheme_id: {scheme_id}"
                 )
                 return None
+        except MLSTUnavailableError:
+            raise
         except Exception as e:
-            self.logger.warning(f"Could not determine pubMLST version for {organism}")
-            self.logger.warning(e)
-            return None
+            raise ReferenceSetupError(
+                f"Unable to determine pubMLST version for {organism}: {e}"
+            ) from e
 
     def download_pubmlst(self, organism, subtype_href, force=False):
-        """Downloads ST and loci for a given organism stored on pubMLST if it is more recent. Returns update date"""
+        """Download an available MLST scheme; return its version date when supplied."""
         organism = organism.lower().replace(" ", "_")
         try:
             # Pull version
             extver = self.external_version(organism, subtype_href)
             if not extver:
-                raise ReferenceSetupError(
-                    f"Could not determine external MLST version for {organism}"
+                self.logger.warning(
+                    f"No external MLST version date for {organism}; skipping version comparison"
                 )
             currver = self.db_access.read_version(f"profile_{organism}")
-            if int(extver.replace("-", "")) <= int(currver.replace("-", "")) and not force:
+            if (
+                extver
+                and int(extver.replace("-", "")) <= int(currver.replace("-", ""))
+                and not force
+            ):
                 self.logger.info(
                     f"Profile for {organism.replace('_', ' ').capitalize()} already at the latest version."
                 )
@@ -823,7 +849,7 @@ class Referencer:
             # Retrieve the MLST scheme URL
             mlst_href = self.get_mlst_scheme(subtype_href)
             if not mlst_href:
-                raise ReferenceSetupError(f"MLST scheme not found for URL: {subtype_href}")
+                raise MLSTUnavailableError(f"No MLST scheme is available at {subtype_href}")
 
             # Parse the database name and scheme ID
             parsed_data = self.client.parse_url(url=mlst_href)
@@ -851,6 +877,8 @@ class Referencer:
 
             # Step 2: Fetch scheme information to get loci
             scheme_info = self.client.retrieve_scheme_info(db, scheme_id)
+            if scheme_info is None:
+                raise MLSTUnavailableError(f"MLST scheme is no longer available at {mlst_href}")
             loci_list = scheme_info.get("loci", [])
 
             # Step 3: Download loci FASTA files
@@ -870,6 +898,8 @@ class Referencer:
             self.index_db(output, ".tfa")
 
             return extver
+        except MLSTUnavailableError:
+            raise
         except Exception as e:
             raise ReferenceSetupError(f"Failed to download data for {organism}: {e}") from e
 
@@ -889,12 +919,21 @@ class Referencer:
 
         for key, val in seqdef_url.items():
             internal_ver = self.db_access.read_version(f"profile_{key}")
-            external_ver = self.external_version(key, val)
+            try:
+                external_ver = self.external_version(key, val)
 
-            if (internal_ver < external_ver) or force:
-                self.logger.info(
-                    f"pubMLST reference for {key.replace('_', ' ').capitalize()} updated to {external_ver} from {internal_ver}"
-                )
-                self.download_pubmlst(key, val, force)
-                self.db_access.update_version(name=f"profile_{key}", version=external_ver)
-                self.db_access.refresh_profiletable(key)
+                if external_ver is None and not force:
+                    self.logger.warning(
+                        f"No external MLST version date for {key}; keeping cached resources"
+                    )
+                    continue
+                if force or (internal_ver < external_ver):
+                    self.logger.info(
+                        f"pubMLST reference for {key.replace('_', ' ').capitalize()} updated to {external_ver} from {internal_ver}"
+                    )
+                    self.download_pubmlst(key, val, force)
+                    if external_ver is not None:
+                        self.db_access.update_version(name=f"profile_{key}", version=external_ver)
+                    self.db_access.refresh_profiletable(key)
+            except MLSTUnavailableError as error:
+                self.logger.warning(f"{error}; keeping cached MLST resources for {key}")

@@ -27,6 +27,10 @@ class ReferenceSetupError(MicroSALTError):
     """A required reference could not be fetched, validated or indexed."""
 
 
+class MLSTUnavailableError(MicroSALTError):
+    """An organism has no published MLST database or scheme; other analyses may proceed."""
+
+
 class AnalysisSetupError(MicroSALTError):
     """Collected setup failures that must prevent SLURM submission."""
 

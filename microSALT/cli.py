@@ -22,7 +22,7 @@ from microSALT.store.database import (
 )
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.job_creator import Job_Creator
-from microSALT.utils.preflight import validate_sampleinfo
+from microSALT.utils.validation import validate_sampleinfo
 from microSALT.utils.pubmlst.get_credentials import get_bigsdb_access_token
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.reporter import Reporter
