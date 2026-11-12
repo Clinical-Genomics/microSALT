@@ -11,21 +11,6 @@ import pytest
 
 from microSALT.exc.exceptions import MLSTUnavailableError, ReferenceSetupError
 from microSALT.utils.pubmlst.exceptions import PubMLSTError
-from microSALT.utils.referencer import Referencer
-
-
-@pytest.fixture
-def referencer(config, logger, tmp_path):
-    folders = config.folders.model_copy(update={"genomes": str(tmp_path)})
-    return Referencer(
-        log=logger,
-        folders=folders,
-        threshold=config.threshold,
-        pubmlst=config.pubmlst,
-        pasteur=config.pasteur,
-        singularity=config.singularity,
-        containers=config.containers,
-    )
 
 
 def write_indexes(path):
