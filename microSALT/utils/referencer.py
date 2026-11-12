@@ -31,6 +31,7 @@ from microSALT.exc.exceptions import MLSTUnavailableError, ReferenceSetupError
 from microSALT.utils.pubmlst.client import BaseClient, get_client
 from microSALT.utils.pubmlst.exceptions import InvalidURLError, PubMLSTError
 from microSALT.utils.pubmlst.helpers import get_service_by_url
+from microSALT.utils.validation import is_safe_identifier
 
 
 class Referencer:
@@ -144,100 +145,140 @@ class Referencer:
 
     def prepare_references(self, samples, qc_only=False, skip_update=False) -> list[str]:
         """Check every required resource, collecting failures rather than hiding them."""
-        errors = []
-        references = {}
-        organisms = {}
-        needs_expec = False
-        for sample in samples:
-            name = str(sample.get("CG_ID_sample", "unknown sample"))
-            reference = sample.get("reference")
-            if (
-                isinstance(reference, str)
-                and reference
-                and reference.lower() not in {"none", "null"}
-            ):
-                references.setdefault(reference, []).append(name)
-            organism = sample.get("organism")
-            if not qc_only and isinstance(organism, str) and organism:
-                organisms.setdefault(organism, []).append(name)
+        references = self._group_samples_by_resource(
+            samples, "reference", excluded=("none", "null")
+        )
+        errors = self._prepare_genome_references(references, skip_update)
+        if qc_only:
+            return errors
+        organisms = self._group_samples_by_resource(samples, "organism")
+        needs_expec, mlst_errors = self._prepare_mlst_references(organisms, skip_update)
+        errors.extend(mlst_errors)
+        errors.extend(self._prepare_typing_references(needs_expec, skip_update))
+        return errors
 
+    @staticmethod
+    def _group_samples_by_resource(
+        samples: list[dict], field: str, excluded: tuple[str, ...] = ()
+    ) -> dict[str, list[str]]:
+        """Group sample labels so shared resources are prepared and reported only once."""
+        resources = {}
+        for sample in samples:
+            value = sample.get(field)
+            if not isinstance(value, str) or not value or value.lower() in excluded:
+                continue
+            name = str(sample.get("CG_ID_sample", "unknown sample"))
+            resources.setdefault(value, []).append(name)
+        return resources
+
+    def _prepare_genome_references(
+        self, references: dict[str, list[str]], skip_update: bool
+    ) -> list[str]:
+        """Collect failures independently for each requested genome."""
+        errors = []
         for reference, names in references.items():
             try:
-                if not re.fullmatch(r"[\w.-]+", reference) or reference in {".", ".."}:
-                    raise ReferenceSetupError("invalid reference identifier")
-                path = Path(self.folders.genomes) / f"{reference}.fasta"
-                if not path.exists():
-                    if skip_update:
-                        raise ReferenceSetupError(
-                            f"missing reference {path}; downloads are disabled"
-                        )
-                    self.download_ncbi(reference)
-                self.validate_fasta(path)
-                missing = self._missing_genome_indexes(path)
-                if missing:
-                    if skip_update:
-                        raise ReferenceSetupError(
-                            f"missing or stale genome indexes: {', '.join(missing)}"
-                        )
-                    self._index_genome(path)
+                self._prepare_genome_reference(reference, skip_update)
             except Exception as error:
                 errors.append(f"Samples {', '.join(names)}, reference {reference}: {error}")
+        return errors
 
+    def _prepare_genome_reference(self, reference: str, skip_update: bool) -> None:
+        """Fetch one missing genome, validate its FASTA and ensure usable indexes."""
+        if not is_safe_identifier(reference):
+            raise ReferenceSetupError("invalid reference identifier")
+        path = Path(self.folders.genomes) / f"{reference}.fasta"
+        if not path.exists():
+            if skip_update:
+                raise ReferenceSetupError(f"missing reference {path}; downloads are disabled")
+            self.download_ncbi(reference)
+        self.validate_fasta(path)
+        self._prepare_genome_indexes(path, skip_update)
+
+    def _prepare_genome_indexes(self, path: Path, skip_update: bool) -> None:
+        """Keep valid indexes, rebuilding missing/stale ones only when permitted."""
+        missing = self._missing_genome_indexes(path)
+        if not missing:
+            return
+        if skip_update:
+            raise ReferenceSetupError(f"missing or stale genome indexes: {', '.join(missing)}")
+        self._index_genome(path)
+
+    def _prepare_mlst_references(
+        self, organisms: dict[str, list[str]], skip_update: bool
+    ) -> tuple[bool, list[str]]:
+        """Collect MLST failures/warnings and retain independent ExPEC requirements."""
+        errors = []
+        needs_expec = False
         for organism, names in organisms.items():
             try:
                 ref = self.organism2reference(organism)
                 needs_expec = needs_expec or ref == "escherichia_coli"
-                if ref not in self.db_access.profiles:
-                    if skip_update:
-                        if ref is None:
-                            self.logger.warning(
-                                f"Samples {', '.join(names)}, organism {organism}: "
-                                "no cached MLST scheme and downloads are disabled; skipping MLST"
-                            )
-                            continue
-                        raise ReferenceSetupError("missing MLST profile; downloads are disabled")
-                    ref = self.add_pubmlst(organism)
-                    if not ref:
-                        raise ReferenceSetupError("could not retrieve MLST resources")
-                    self.create_new_profile_tables([ref])
+                ref = self._prepare_mlst_profile(organism, ref, skip_update)
                 needs_expec = needs_expec or ref == "escherichia_coli"
-                loci = Path(self.folders.references) / ref
-                files = sorted(loci.glob("*.tfa"))
-                if not files:
-                    raise ReferenceSetupError(f"no MLST loci in {loci}")
-                if not (Path(self.folders.profiles) / ref).is_file():
-                    raise ReferenceSetupError(f"missing MLST profile file for {ref}")
-                for path in files:
-                    self.validate_fasta(path)
-                self._prepare_blast_indexes(loci, ".tfa", skip_update)
+                self._validate_mlst_reference(ref, skip_update)
             except MLSTUnavailableError as error:
-                if ref is not None:
-                    errors.append(
-                        f"Samples {', '.join(names)}, organism {organism}: incomplete cached MLST resources; {error}"
-                    )
-                else:
-                    self.logger.warning(
-                        f"Samples {', '.join(names)}, organism {organism}: {error}; skipping MLST"
-                    )
+                self.logger.warning(
+                    f"Samples {', '.join(names)}, organism {organism}: {error}; skipping MLST"
+                )
             except Exception as error:
                 self.db_access.session.rollback()
                 errors.append(f"Samples {', '.join(names)}, organism {organism}: {error}")
+        return needs_expec, errors
 
-        if not qc_only:
-            targets = [(Path(self.folders.resistances), ".fsa")]
-            if needs_expec:
-                targets.append((Path(self.folders.expec).parent, Path(self.folders.expec).suffix))
-            for directory, suffix in targets:
-                try:
-                    files = sorted(directory.glob(f"*{suffix}"))
-                    if not files:
-                        raise ReferenceSetupError(f"no reference sequences in {directory}")
-                    for path in files:
-                        self.validate_fasta(path)
-                    self._prepare_blast_indexes(directory, suffix, skip_update)
-                except Exception as error:
-                    errors.append(f"Typing resources {directory}: {error}")
+    def _prepare_mlst_profile(self, organism: str, reference: str | None, skip_update: bool) -> str:
+        """Resolve a usable profile, distinguishing absent schemes from broken caches."""
+        if reference in self.db_access.profiles:
+            return reference
+        if skip_update:
+            if reference is None:
+                raise MLSTUnavailableError("no cached MLST scheme and downloads are disabled")
+            raise ReferenceSetupError("missing MLST profile; downloads are disabled")
+        try:
+            downloaded = self.add_pubmlst(organism)
+        except MLSTUnavailableError as error:
+            if reference is not None:
+                raise ReferenceSetupError(f"incomplete cached MLST resources; {error}") from error
+            raise
+        if not downloaded:
+            raise ReferenceSetupError("could not retrieve MLST resources")
+        self.create_new_profile_tables([downloaded])
+        return downloaded
+
+    def _validate_mlst_reference(self, reference: str, skip_update: bool) -> None:
+        """Check one profile's loci, profile file and BLAST indexes."""
+        loci = Path(self.folders.references) / reference
+        files = sorted(loci.glob("*.tfa"))
+        if not files:
+            raise ReferenceSetupError(f"no MLST loci in {loci}")
+        if not (Path(self.folders.profiles) / reference).is_file():
+            raise ReferenceSetupError(f"missing MLST profile file for {reference}")
+        for path in files:
+            self.validate_fasta(path)
+        self._prepare_blast_indexes(loci, ".tfa", skip_update)
+
+    def _prepare_typing_references(self, needs_expec: bool, skip_update: bool) -> list[str]:
+        """Collect resistance and optional ExPEC resource failures independently."""
+        targets = [(Path(self.folders.resistances), ".fsa")]
+        if needs_expec:
+            expec = Path(self.folders.expec)
+            targets.append((expec.parent, expec.suffix))
+        errors = []
+        for directory, suffix in targets:
+            try:
+                self._prepare_blast_reference(directory, suffix, skip_update)
+            except Exception as error:
+                errors.append(f"Typing resources {directory}: {error}")
         return errors
+
+    def _prepare_blast_reference(self, directory: Path, suffix: str, skip_update: bool) -> None:
+        """Validate one shared FASTA directory and prepare its BLAST indexes."""
+        files = sorted(directory.glob(f"*{suffix}"))
+        if not files:
+            raise ReferenceSetupError(f"no reference sequences in {directory}")
+        for path in files:
+            self.validate_fasta(path)
+        self._prepare_blast_indexes(directory, suffix, skip_update)
 
     def _prepare_blast_indexes(self, directory: Path, suffix: str, skip_update: bool):
         if not skip_update:
