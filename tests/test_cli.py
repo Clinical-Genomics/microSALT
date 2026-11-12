@@ -1,6 +1,7 @@
 """Tests for the CLI entry point — verifies config loading and propagation."""
 
 import json
+import gzip
 from pathlib import Path
 from unittest.mock import patch
 
@@ -8,7 +9,7 @@ import pytest
 from click.testing import CliRunner
 from sqlalchemy import create_engine, inspect
 
-from microSALT.cli import root
+from microSALT.cli import default_sampleinfo, root
 from microSALT.config import (
     Containers,
     Database,
@@ -117,13 +118,25 @@ def test_analyse_passes_qc_only_to_job_creator(config_file, tmp_path, qc_option,
     sampleinfo.write_text(
         json.dumps(
             [
-                {"CG_ID_sample": f"TST0001A{i}", "CG_ID_project": "TST0001", "organism": "other"}
+                {
+                    **default_sampleinfo,
+                    "CG_ID_sample": f"TST0001A{i}",
+                    "CG_ID_project": "TST0001",
+                    "organism": "other",
+                    "reference": "NC_000913.3",
+                }
                 for i in range(1, sample_count + 1)
             ]
         )
     )
     input_dir = tmp_path / "input"
     input_dir.mkdir()
+    for i in range(1, sample_count + 1):
+        directory = input_dir / f"TST0001A{i}" if sample_count > 1 else input_dir
+        directory.mkdir(exist_ok=True)
+        for mate in (1, 2):
+            with gzip.open(directory / f"TST0001A{i}_HVMHWDSXX_L1_{mate}.fastq.gz", "wt") as stream:
+                stream.write("@read\nACGT\n+\nIIII\n")
     args = ["analyse", str(sampleinfo), "--input", str(input_dir), "--dry"]
     if qc_option:
         args.append(qc_option)
@@ -137,6 +150,188 @@ def test_analyse_passes_qc_only_to_job_creator(config_file, tmp_path, qc_option,
         creator.return_value.project_job.assert_called_once_with(single_sample=True)
     else:
         creator.return_value.project_job.assert_called_once_with()
+
+
+def test_analyse_collects_input_and_reference_errors_without_submitting(config_file, tmp_path):
+    samples = [
+        {**default_sampleinfo, "CG_ID_sample": "TST0001A1", "reference": "NC_1"},
+        {
+            **default_sampleinfo,
+            "CG_ID_sample": "TST0001A2",
+            "reference": "NC_2",
+            "date_arrival": "bad date",
+        },
+    ]
+    sampleinfo = tmp_path / "sampleinfo.json"
+    sampleinfo.write_text(json.dumps(samples))
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    with (
+        patch("microSALT.cli.Referencer") as referencer,
+        patch("microSALT.cli.Job_Creator") as creator,
+        patch("microSALT.utils.job_creator.subprocess.Popen") as popen,
+    ):
+        referencer.return_value.prepare_references.return_value = [
+            "Sample TST0001A1: reference NC_1 has invalid FASTA",
+            "Sample TST0001A2: reference NC_2 could not be fetched",
+        ]
+        result = invoke_root(config_file, "analyse", str(sampleinfo), "--input", str(input_dir))
+    assert result.exit_code != 0
+    assert "No SLURM jobs were submitted" in result.output
+    assert "TST0001A1" in result.output and "TST0001A2" in result.output
+    assert "date_arrival" in result.output
+    assert "invalid FASTA" in result.output and "could not be fetched" in result.output
+    creator.assert_not_called()
+    popen.assert_not_called()
+
+
+def test_analyse_rejects_http_200_error_and_missing_mate(config_file, tmp_path):
+    import io
+
+    samples = [
+        {**default_sampleinfo, "CG_ID_sample": f"TST0001A{i}", "reference": "NC_000913.3"}
+        for i in (1, 2)
+    ]
+    sampleinfo = tmp_path / "sampleinfo.json"
+    sampleinfo.write_text(json.dumps(samples))
+    input_dir = tmp_path / "input"
+    for sample in samples:
+        directory = input_dir / sample["CG_ID_sample"]
+        directory.mkdir(parents=True)
+        with gzip.open(
+            directory / f"{sample['CG_ID_sample']}_HVMHWDSXX_L1_1.fastq.gz", "wt"
+        ) as stream:
+            stream.write("@read\nACGT\n+\nIIII\n")
+    with (
+        patch(
+            "microSALT.utils.referencer.Entrez.efetch",
+            return_value=io.StringIO("Error: Failed to understand id"),
+        ) as fetch,
+        patch("microSALT.utils.job_creator.subprocess.Popen") as popen,
+    ):
+        result = invoke_root(
+            config_file, "analyse", str(sampleinfo), "--input", str(input_dir), "--qc-only"
+        )
+    assert result.exit_code != 0
+    assert "No SLURM jobs were submitted" in result.output
+    assert "missing FASTQ mate" in result.output
+    assert "invalid nucleotide FASTA" in result.output
+    assert "TST0001A1, TST0001A2" in result.output
+    fetch.assert_called_once()
+    popen.assert_not_called()
+
+
+def test_analyse_collects_assembly_resolution_failure_without_submitting(config_file, tmp_path):
+    import io
+
+    samples = [
+        {**default_sampleinfo, "CG_ID_sample": f"TST0001A{i}", "reference": "GCF_000262545.1"}
+        for i in (1, 2)
+    ]
+    sampleinfo = tmp_path / "sampleinfo.json"
+    sampleinfo.write_text(json.dumps(samples))
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    with (
+        patch(
+            "microSALT.utils.referencer.Entrez.esearch",
+            return_value=io.StringIO(json.dumps({"esearchresult": {"count": "0", "idlist": []}})),
+        ) as search,
+        patch("microSALT.utils.job_creator.subprocess.Popen") as popen,
+    ):
+        result = invoke_root(
+            config_file,
+            "analyse",
+            str(sampleinfo),
+            "--input",
+            str(input_dir),
+            "--qc-only",
+        )
+    assert result.exit_code != 0
+    assert "No SLURM jobs were submitted" in result.output
+    assert "TST0001A1, TST0001A2" in result.output
+    assert "did not resolve to exactly one NCBI Assembly record" in result.output
+    search.assert_called_once()
+    popen.assert_not_called()
+
+
+def test_analyse_saves_normalized_reference_for_finish(config_file, tmp_path):
+    from microSALT.utils.job_creator import Job_Creator
+
+    source = {**default_sampleinfo, "reference": " NC_ 000913.3\n"}
+    sampleinfo = tmp_path / "sampleinfo.json"
+    sampleinfo.write_text(json.dumps(source))
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    for mate in (1, 2):
+        with gzip.open(input_dir / f"XXX0000A1_HVMHWDSXX_L1_{mate}.fastq.gz", "wt") as stream:
+            stream.write("@read\nACGT\n+\nIIII\n")
+    output = []
+
+    def prepare_sample(instance):
+        path = Path(instance.finishdir)
+        path.mkdir(parents=True, exist_ok=True)
+        instance.batchfile = str(path / "runfile.sbatch")
+        Path(instance.batchfile).write_text("#!/bin/sh\n")
+        output.append(path)
+
+    with (
+        patch("microSALT.cli.Referencer") as referencer,
+        patch.object(Job_Creator, "sample_job", autospec=True, side_effect=prepare_sample),
+        patch.object(Job_Creator, "create_project"),
+        patch("microSALT.utils.job_creator.subprocess.Popen") as popen,
+    ):
+        referencer.return_value.prepare_references.return_value = []
+        result = invoke_root(
+            config_file, "analyse", str(sampleinfo), "--input", str(input_dir), "--qc-only", "--dry"
+        )
+    assert result.exit_code == 0, result.output
+    normalized = referencer.return_value.prepare_references.call_args.args[0]
+    assert normalized[0]["reference"] == "NC_000913.3"
+    assert json.loads((output[0] / "sampleinfo.json").read_text())["reference"] == "NC_000913.3"
+    assert json.loads(sampleinfo.read_text())["reference"] == source["reference"]
+    popen.assert_not_called()
+
+
+def test_analyse_valid_qc_run_prepares_scripts_and_submits(config, config_file, tmp_path):
+    reference = Path(config.folders.genomes) / "PREFLIGHT_TEST.fasta"
+    reference.write_text(">chromosome\nACGT\n")
+    for suffix in (".amb", ".ann", ".bwt", ".pac", ".sa", ".fai"):
+        Path(f"{reference}{suffix}").write_text("index")
+    source = {
+        **default_sampleinfo,
+        "CG_ID_sample": "QCINT001A1",
+        "CG_ID_project": "QCINT001",
+        "reference": " PREFLIGHT_TEST\n",
+        "organism": "other",
+    }
+    sampleinfo = tmp_path / "sampleinfo.json"
+    sampleinfo.write_text(json.dumps(source))
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    for mate in (1, 2):
+        with gzip.open(input_dir / f"QCINT001A1_HVMHWDSXX_L1_{mate}.fastq.gz", "wt") as stream:
+            stream.write("@read\nACGT\n+\nIIII\n")
+    with patch("microSALT.utils.job_creator.subprocess.Popen") as popen:
+        popen.return_value.communicate.return_value = (b"Submitted batch job 12345", b"")
+        popen.return_value.returncode = 0
+        result = invoke_root(
+            config_file,
+            "analyse",
+            str(sampleinfo),
+            "--input",
+            str(input_dir),
+            "--qc-only",
+            "--skip_update",
+        )
+    assert result.exit_code == 0, result.output
+    assert popen.call_count == 2  # Sample, then reporting job; no reference subprocesses.
+    run_dir = next(Path(config.folders.results).glob("QCINT001A1_*"))
+    script = (run_dir / "runfile.sbatch").read_text()
+    assert "PREFLIGHT_TEST.fasta" in script
+    assert "blastn" not in script and "skesa" not in script
+    assert "--track qc" in (run_dir / "mailjob.sh").read_text()
+    assert json.loads((run_dir / "sampleinfo.json").read_text())["reference"] == "PREFLIGHT_TEST"
 
 
 def test_setup_command(setup_config: MicroSALTConfig, setup_config_file: Path):

@@ -3,13 +3,18 @@ By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 from typing import cast
-import glob
+import gzip
+import json
 import os
 import re
 import shutil
+import shlex
 import subprocess
+import tempfile
 import urllib.request
+from urllib.parse import urlsplit
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 from Bio import Entrez
 
@@ -22,6 +27,7 @@ from microSALT.config import (
     Containers,
 )
 from microSALT.store.db_manipulator import DB_Manipulator
+from microSALT.exc.exceptions import ReferenceSetupError
 from microSALT.utils.pubmlst.client import BaseClient, get_client
 from microSALT.utils.pubmlst.exceptions import InvalidURLError, PubMLSTError
 from microSALT.utils.pubmlst.helpers import get_service_by_url
@@ -136,6 +142,106 @@ class Referencer:
         for organism in new_organisms:
             self.db_access.create_profile_table(organism)
 
+    def prepare_references(self, samples, qc_only=False, skip_update=False) -> list[str]:
+        """Check every required resource, collecting failures rather than hiding them."""
+        errors = []
+        references = {}
+        organisms = {}
+        needs_expec = False
+        for sample in samples:
+            name = str(sample.get("CG_ID_sample", "unknown sample"))
+            reference = sample.get("reference")
+            if (
+                isinstance(reference, str)
+                and reference
+                and reference.lower() not in {"none", "null"}
+            ):
+                references.setdefault(reference, []).append(name)
+            organism = sample.get("organism")
+            if not qc_only and isinstance(organism, str) and organism:
+                organisms.setdefault(organism, []).append(name)
+
+        for reference, names in references.items():
+            try:
+                if not re.fullmatch(r"[\w.-]+", reference) or reference in {".", ".."}:
+                    raise ReferenceSetupError("invalid reference identifier")
+                path = Path(self.folders.genomes) / f"{reference}.fasta"
+                if not path.exists():
+                    if skip_update:
+                        raise ReferenceSetupError(
+                            f"missing reference {path}; downloads are disabled"
+                        )
+                    self.download_ncbi(reference)
+                self.validate_fasta(path)
+                missing = self._missing_genome_indexes(path)
+                if missing:
+                    if skip_update:
+                        raise ReferenceSetupError(
+                            f"missing or stale genome indexes: {', '.join(missing)}"
+                        )
+                    self._index_genome(path)
+            except Exception as error:
+                errors.append(f"Samples {', '.join(names)}, reference {reference}: {error}")
+
+        for organism, names in organisms.items():
+            try:
+                ref = self.organism2reference(organism)
+                needs_expec = needs_expec or ref == "escherichia_coli"
+                if ref not in self.db_access.profiles:
+                    if skip_update:
+                        raise ReferenceSetupError("missing MLST profile; downloads are disabled")
+                    ref = self.add_pubmlst(organism)
+                    if not ref:
+                        raise ReferenceSetupError("could not retrieve MLST resources")
+                    self.create_new_profile_tables([ref])
+                needs_expec = needs_expec or ref == "escherichia_coli"
+                loci = Path(self.folders.references) / ref
+                files = sorted(loci.glob("*.tfa"))
+                if not files:
+                    raise ReferenceSetupError(f"no MLST loci in {loci}")
+                if not (Path(self.folders.profiles) / ref).is_file():
+                    raise ReferenceSetupError(f"missing MLST profile file for {ref}")
+                for path in files:
+                    self.validate_fasta(path)
+                self._prepare_blast_indexes(loci, ".tfa", skip_update)
+            except Exception as error:
+                self.db_access.session.rollback()
+                errors.append(f"Samples {', '.join(names)}, organism {organism}: {error}")
+
+        if not qc_only:
+            targets = [(Path(self.folders.resistances), ".fsa")]
+            if needs_expec:
+                targets.append((Path(self.folders.expec).parent, Path(self.folders.expec).suffix))
+            for directory, suffix in targets:
+                try:
+                    files = sorted(directory.glob(f"*{suffix}"))
+                    if not files:
+                        raise ReferenceSetupError(f"no reference sequences in {directory}")
+                    for path in files:
+                        self.validate_fasta(path)
+                    self._prepare_blast_indexes(directory, suffix, skip_update)
+                except Exception as error:
+                    errors.append(f"Typing resources {directory}: {error}")
+        return errors
+
+    def _prepare_blast_indexes(self, directory: Path, suffix: str, skip_update: bool):
+        if not skip_update:
+            self.index_db(str(directory), suffix)
+        for path in directory.glob(f"*{suffix}"):
+            for index in self._missing_blast_indexes(path):
+                raise ReferenceSetupError(f"missing or stale BLAST index {index}")
+
+    @staticmethod
+    def _missing_blast_indexes(path: Path) -> list[Path]:
+        indexes = [Path(f"{path.with_suffix('')}{suffix}") for suffix in (".nhr", ".nin", ".nsq")]
+        return [
+            index
+            for index in indexes
+            if not index.is_file()
+            or not index.stat().st_size
+            or index.stat().st_mtime < path.stat().st_mtime
+        ]
+
     def update_refs(self):
         """Updates all references. Order is important, since no object is updated twice"""
         self.db_access.acquire_ref_lock()
@@ -151,45 +257,21 @@ class Referencer:
             self.db_access.release_ref_lock()
 
     def index_db(self, full_dir, suffix):
-        """Check for indexation, makeblastdb job if not enough of them."""
-        reindexation = False
-        files = os.listdir(full_dir)
-        sufx_files = glob.glob(f"{full_dir}/*{suffix}")  # List of source files
-        for file in sufx_files:
-            subsuf = f"\\{suffix}$"
-            base = re.sub(subsuf, "", file)
-
-            bases = 0
-            newer = 0
-            for elem in files:
-                # Number of files with same base name (7)
-                if os.path.basename(base) == elem[: elem.rfind(".")]:
-                    bases = bases + 1
-                    # Number of index files fresher than source (6)
-                    if os.stat(file).st_mtime < os.stat(f"{full_dir}/{elem}").st_mtime:
-                        newer = newer + 1
-            # 7 for parse_seqids, 4 for not.
-            if not (bases == 7 or newer == 6) and not (bases == 4 and newer == 3):
-                reindexation = True
-                try:
-                    # Resistence files
-                    if ".fsa" in suffix:
-                        bash_cmd = self._singularity_exec(
-                            "blast",
-                            f"makeblastdb -in {full_dir}/{os.path.basename(file)} -dbtype nucl -out {os.path.basename(base)}",
-                        )
-                    # MLST locis
-                    else:
-                        bash_cmd = self._singularity_exec(
-                            "blast",
-                            f"makeblastdb -in {full_dir}/{os.path.basename(file)} -dbtype nucl -parse_seqids -out {os.path.basename(base)}",
-                        )
-                    proc = subprocess.Popen(bash_cmd.split(), cwd=full_dir, stdout=subprocess.PIPE)
-                    proc.communicate()
-                except Exception:
-                    self.logger.error(f"Unable to index requested target {file} in {full_dir}")
-        if reindexation:
-            self.logger.info(f"Re-indexed contents of {full_dir}")
+        """Rebuild missing/stale BLAST indexes and propagate indexing failures."""
+        for path in sorted(Path(full_dir).glob(f"*{suffix}")):
+            if not self._missing_blast_indexes(path):
+                continue
+            parse_ids = "" if suffix == ".fsa" else " -parse_seqids"
+            command = self._singularity_exec(
+                "blast",
+                f"makeblastdb -in {shlex.quote(str(path))} -dbtype nucl{parse_ids} "
+                f"-out {shlex.quote(path.stem)}",
+            )
+            self._run_index(command, full_dir)
+            if self._missing_blast_indexes(path):
+                raise ReferenceSetupError(
+                    f"Indexing did not produce usable BLAST indexes for {path}"
+                )
 
     def _parse_external_xml(
         self, url: str = "https://pubmlst.org/static/data/dbases.xml"
@@ -452,35 +534,152 @@ class Referencer:
                 f"Unable to find existing reference for {organism}, strain {normal_organism_name} has no reference match\nSource: {e}"
             )
 
-    def download_ncbi(self, reference):
-        """Checks available references, downloads from NCBI if not present"""
+    @staticmethod
+    def validate_fasta(path: Path) -> None:
+        """Reject error responses and malformed/empty nucleotide FASTA records."""
+        records = 0
+        length = 0
+        with open(path) as stream:
+            for number, line in enumerate(stream, 1):
+                line = line.strip()
+                if not line:
+                    continue
+                if line.startswith(">"):
+                    if not line[1:].strip() or (records and not length):
+                        raise ReferenceSetupError(
+                            f"{path}: empty FASTA header or sequence at line {number}"
+                        )
+                    records += 1
+                    length = 0
+                elif not records or not re.fullmatch(r"[ACGTRYSWKMBDHVNacgtryswkmbdhvn]+", line):
+                    raise ReferenceSetupError(
+                        f"{path}: invalid nucleotide FASTA at line {number}: {line[:160]}"
+                    )
+                else:
+                    length += len(line)
+        if not records or not length:
+            raise ReferenceSetupError(f"{path}: no non-empty FASTA sequences")
+
+    @staticmethod
+    def _missing_genome_indexes(path: Path) -> list[str]:
+        missing = []
+        for suffix in (".amb", ".ann", ".bwt", ".pac", ".sa", ".fai"):
+            index = Path(f"{path}{suffix}")
+            if (
+                not index.is_file()
+                or not index.stat().st_size
+                or index.stat().st_mtime < path.stat().st_mtime
+            ):
+                missing.append(str(index))
+        return missing
+
+    @staticmethod
+    def _run_index(command: str, directory: str):
         try:
-            DEVNULL = open(os.devnull, "wb")
+            subprocess.run(
+                shlex.split(command), cwd=directory, check=True, capture_output=True, text=True
+            )
+        except subprocess.CalledProcessError as error:
+            raise ReferenceSetupError(
+                f"Index command failed (exit {error.returncode}): {command}: "
+                f"{(error.stderr or error.stdout or '').strip()}"
+            ) from error
+
+    def _index_genome(self, path: Path):
+        for tool, command in (("bwa", "bwa index"), ("samtools", "samtools faidx")):
+            self._run_index(
+                self._singularity_exec(tool, f"{command} {shlex.quote(str(path))}"),
+                self.folders.genomes,
+            )
+        missing = self._missing_genome_indexes(path)
+        if missing:
+            raise ReferenceSetupError(
+                f"Indexing did not produce usable files: {', '.join(missing)}"
+            )
+
+    def _assembly_fasta_url(self, reference: str) -> str:
+        """Resolve the requested RefSeq/GenBank assembly, without substituting versions."""
+        if not re.fullmatch(r"GC[AF]_\d+(?:\.\d+)?", reference):
+            raise ReferenceSetupError(f"Invalid assembly accession {reference!r}")
+        with Entrez.esearch(
+            db="assembly", term=f"{reference}[Assembly Accession]", retmax=2, retmode="json"
+        ) as handle:
+            search = json.load(handle).get("esearchresult", {})
+        identifiers = search.get("idlist", [])
+        if int(search.get("count", 0)) != 1 or len(identifiers) != 1:
+            raise ReferenceSetupError(
+                f"Assembly accession {reference} did not resolve to exactly one NCBI Assembly record; "
+                "check the accession and specify its version"
+            )
+        identifier = str(identifiers[0])
+        with Entrez.esummary(db="assembly", id=identifier, retmode="json") as handle:
+            summary = json.load(handle).get("result", {}).get(identifier, {})
+        source = "refseq" if reference.startswith("GCF_") else "genbank"
+        accession = summary.get("synonym", {}).get(source) or summary.get("assemblyaccession", "")
+        matches = (
+            accession == reference if "." in reference else accession.split(".")[0] == reference
+        )
+        if not matches:
+            raise ReferenceSetupError(
+                f"NCBI Assembly returned {accession!r} instead of requested accession {reference}"
+            )
+        location = summary.get(f"ftppath_{source}", "")
+        if not location:
+            raise ReferenceSetupError(
+                f"No {source} genomic FASTA download is available for assembly {reference}"
+            )
+        parsed = urlsplit(location.rstrip("/"))
+        directory = parsed.path.rsplit("/", 1)[-1]
+        if (
+            parsed.scheme not in {"ftp", "https"}
+            or parsed.netloc != "ftp.ncbi.nlm.nih.gov"
+            or not parsed.path.startswith("/genomes/all/")
+            or parsed.query
+            or parsed.fragment
+            or not directory.startswith(f"{accession}_")
+        ):
+            raise ReferenceSetupError(
+                f"Unexpected NCBI Assembly download path for {reference}: {location}"
+            )
+        return f"https://ftp.ncbi.nlm.nih.gov{parsed.path}/{directory}_genomic.fna.gz"
+
+    def download_ncbi(self, reference):
+        """Fetch a nucleotide or assembly genome, validate and index before publishing."""
+        reference = "".join(reference.split())
+        if not re.fullmatch(r"[\w.-]+", reference) or reference in {".", ".."}:
+            raise ReferenceSetupError(f"Invalid reference identifier {reference!r}")
+        try:
             Entrez.email = "2@2.com"
-            record = Entrez.efetch(db="nucleotide", id=reference, rettype="fasta", retmod="text")
-            sequence = record.read()
-            output = f"{self.folders.genomes}/{reference}.fasta"
-            with open(output, "w") as f:
-                f.write(sequence)
-            bwaindex = self._singularity_exec("bwa", f"bwa index {output}")
-            proc = subprocess.Popen(
-                bwaindex.split(),
-                cwd=self.folders.genomes,
-                stdout=DEVNULL,
-                stderr=DEVNULL,
-            )
-            out, err = proc.communicate()
-            samindex = self._singularity_exec("samtools", f"samtools faidx {output}")
-            proc = subprocess.Popen(
-                samindex.split(),
-                cwd=self.folders.genomes,
-                stdout=DEVNULL,
-                stderr=DEVNULL,
-            )
-            out, err = proc.communicate()
+            with tempfile.TemporaryDirectory(
+                prefix=".genome-", dir=self.folders.genomes
+            ) as directory:
+                staged = Path(directory) / f"{reference}.fasta"
+                if reference.startswith(("GCF_", "GCA_")):
+                    url = self._assembly_fasta_url(reference)
+                    with (
+                        urllib.request.urlopen(url, timeout=60) as response,
+                        gzip.GzipFile(fileobj=response) as genome,
+                        staged.open("wb") as target,
+                    ):
+                        shutil.copyfileobj(genome, target)
+                else:
+                    with (
+                        Entrez.efetch(
+                            db="nucleotide", id=reference, rettype="fasta", retmode="text"
+                        ) as record,
+                        staged.open("w") as target,
+                    ):
+                        shutil.copyfileobj(record, target)
+                self.validate_fasta(staged)
+                self._index_genome(staged)
+                output = Path(self.folders.genomes) / staged.name
+                # Publish the FASTA last: a failed fetch/index never replaces a cached genome.
+                for suffix in (".amb", ".ann", ".bwt", ".pac", ".sa", ".fai"):
+                    Path(f"{staged}{suffix}").replace(f"{output}{suffix}")
+                staged.replace(output)
             self.logger.info(f"Downloaded reference {reference}")
-        except Exception:
-            self.logger.warning(f"Unable to download genome '{reference}' from NCBI")
+        except Exception as error:
+            raise ReferenceSetupError(f"Unable to prepare genome '{reference}': {error}") from error
 
     def add_pubmlst(self, organism: str):
         """Checks pubmlst for references of given organism and downloads them"""
@@ -523,15 +722,15 @@ class Referencer:
             else:
                 truename = desc.lower().split(" ")
                 truename = f"{truename[0]}_{truename[1]}"
-                self.download_pubmlst(truename, seqdef_url, force=self.force)
+                if self.download_pubmlst(truename, seqdef_url, force=self.force) is None:
+                    raise ReferenceSetupError(f"Failed to download MLST resources for {truename}")
                 # Update in-memory organism list so subsequent identify_new calls
                 # in the same process see the new organism immediately.
                 self.refs = self.db_access.profiles
                 self.logger.info(f"Downloaded profile files for {truename}")
                 return truename
         except Exception as e:
-            self.logger.warning(e.args[0])
-        return None
+            raise ReferenceSetupError(f"Unable to prepare MLST resources for {errorg}: {e}") from e
 
     def query_pubmlst(self):
         """Returns a json object containing all organisms available via pubmlst.org"""
@@ -610,6 +809,10 @@ class Referencer:
         try:
             # Pull version
             extver = self.external_version(organism, subtype_href)
+            if not extver:
+                raise ReferenceSetupError(
+                    f"Could not determine external MLST version for {organism}"
+                )
             currver = self.db_access.read_version(f"profile_{organism}")
             if int(extver.replace("-", "")) <= int(currver.replace("-", "")) and not force:
                 self.logger.info(
@@ -620,18 +823,16 @@ class Referencer:
             # Retrieve the MLST scheme URL
             mlst_href = self.get_mlst_scheme(subtype_href)
             if not mlst_href:
-                self.logger.warning(f"MLST scheme not found for URL: {subtype_href}")
-                return None
+                raise ReferenceSetupError(f"MLST scheme not found for URL: {subtype_href}")
 
             # Parse the database name and scheme ID
             parsed_data = self.client.parse_url(url=mlst_href)
             db = parsed_data.get("db")
             scheme_id = parsed_data.get("scheme_id")
             if not db or not scheme_id:
-                self.logger.warning(
+                raise ReferenceSetupError(
                     f"Could not extract database name or scheme ID from MLST URL: {mlst_href}"
                 )
-                return None
 
             # Step 1: Download the profiles CSV
             st_target = f"{self.folders.profiles}/{organism}"
@@ -670,8 +871,7 @@ class Referencer:
 
             return extver
         except Exception as e:
-            self.logger.error(f"Failed to download data for {organism}: {e}")
-            return None
+            raise ReferenceSetupError(f"Failed to download data for {organism}: {e}") from e
 
     def fetch_pubmlst(self, force=False):
         """Updates reference for data that is stored on pubMLST"""
