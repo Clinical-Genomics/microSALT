@@ -175,6 +175,13 @@ def setup(config: MicroSALTConfig):
     is_flag=True,
 )
 @click.option("--untrimmed", help="Use untrimmed input data", default=False, is_flag=True)
+@click.option(
+    "--qc-only",
+    "--qc_only",
+    help="Run only read/alignment QC and generate a QC report, without assembly or typing.",
+    default=False,
+    is_flag=True,
+)
 @pass_config
 def analyse(
     config: MicroSALTConfig,
@@ -185,6 +192,7 @@ def analyse(
     skip_update,
     force_update,
     untrimmed,
+    qc_only,
 ):
     """Sequence analysis, typing and resistance identification"""
     pool = []
@@ -204,6 +212,7 @@ def analyse(
         "email": config.regex.mail_recipient,
         "skip_update": skip_update,
         "trimmed": not untrimmed,
+        "qc_only": qc_only,
         "pool": pool,
     }
 

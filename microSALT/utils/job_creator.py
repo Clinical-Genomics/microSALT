@@ -731,11 +731,12 @@ class Job_Creator:
             ep for ep in entry_points(group="console_scripts") if ep.value == "microSALT.cli:root"
         )
         microsalt_bin = Path(sys.executable).parent / _ep.name
+        track_option = " --track qc" if self.qc_only else ""
         return (
             f"{microsalt_bin} --config {self.config_path} utils finish {self.finishdir}/sampleinfo.json "
             f"--input {self.finishdir} "
             f"--email {self.regex.mail_recipient} "
-            f"--report {report}"
+            f"--report {report}{track_option}"
         )
 
     def _write_mailjob(self, mailfile: str, report: str) -> None:
