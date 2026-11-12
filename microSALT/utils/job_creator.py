@@ -3,14 +3,16 @@ By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 import glob
-import gzip
+import getpass
 import json
 import logging
 import os
 import re
 import shutil
+import shlex
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime
 from importlib.metadata import entry_points
@@ -29,10 +31,11 @@ from microSALT.config import (
     SlurmHeader,
     Threshold,
 )
-from microSALT.exc.exceptions import JobCreationError
+from microSALT.exc.exceptions import AnalysisSetupError, JobCreationError
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.store.orm_models import Projects
 from microSALT.utils.referencer import Referencer
+from microSALT.utils.validation import verify_fastq
 
 
 class Job_Creator:
@@ -188,66 +191,8 @@ class Job_Creator:
         return f"{binary} exec {bind} {sif} {command}"
 
     def verify_fastq(self):
-        """Uses arg indir to return a dict of PE fastq tuples fulfilling naming convention"""
-        verified_files = list()
-        files = os.listdir(self.indir)
-        if files == []:
-            raise Exception(f"Directory {self.indir} lacks fastq files.")
-        for file in files:
-            file_match = re.match(self.regex.file_pattern, file)
-            if file_match:
-                # Check that symlinks resolve
-                path = f"{self.indir}/{file}"
-                if os.path.islink(path):
-                    if not os.path.exists(os.readlink(path)):
-                        raise Exception(
-                            f"Some fastq files are unresolved symlinks in directory {self.indir}."
-                        )
-
-                # Make sure both mates exist
-                if (
-                    file_match[1] == "1"
-                    or file_match[1] == "2"
-                    or file_match[1] == "forward"
-                    or file_match[1] == "reverse"
-                ):
-                    if file_match[1] == "forward" or file_match[1] == "reverse":
-                        pairno = "forward"
-                        if "forward" in file_match[1]:
-                            pairno = "reverse"
-                        pairname = file_match[0].replace(file_match[1], pairno)
-                    else:
-                        pairno = 2 - 1 % int(file_match[1])  # 1->2, 2->1
-                        # Construct mate name
-                        pairname = f"{file_match.string[: file_match.end(1) - 1]}{pairno}{file_match.string[file_match.end(1) : file_match.end()]}"
-                    if pairname in files:
-                        files.pop(files.index(pairname))
-                        verified_files.append(file_match[0])
-                        verified_files.append(pairname)
-                else:
-                    raise Exception(f"Some fastq files have no mate in directory {self.indir}.")
-        if verified_files == []:
-            raise Exception(
-                f"No files in directory {self.indir} match file_pattern '{self.regex.file_pattern}'."
-            )
-
-        # Warn about file sizes
-        for vfile in verified_files:
-            try:
-                bsize = os.stat(f"{self.indir}/{vfile}").st_size
-                bsize = bsize >> 20
-                if bsize > 1000:
-                    self.logger.warning(f"Input fastq {vfile} exceeds 1000MB")
-            except Exception:
-                self.logger.warning(f"Unable to verify size of input file {self.indir}/{vfile}")
-
-        # Warn about invalid fastq files
-        for vfile in verified_files:
-            f = gzip.open(f"{self.indir}/{vfile}", "r")
-            lines = f.read().splitlines()
-            if len(lines) < 2 or "+" not in str(lines[-2]):
-                self.logger.warning(f"Input fastq {vfile} does not seem to end properly")
-        return sorted(verified_files)
+        """Validate paired input paths without reading FASTQ contents."""
+        return verify_fastq(self.indir, self.regex.file_pattern)
 
     @staticmethod
     def create_version_file(finishdir):
@@ -637,60 +582,39 @@ class Job_Creator:
                 self.db_pusher.commit_session()
         except JobCreationError as e:
             self.logger.error(f"Unable to add sample {self.name} to database: {e}")
+            raise
         except KeyError as e:
             self.logger.error(f"Missing key {e} in sample information for sample {self.name}")
             raise JobCreationError(f"Missing key {e} in sample information for sample {self.name}")
 
     def project_job(self, single_sample=False):
-        if self.dry:
-            dry = True
-        else:
-            dry = False
-        jobarray = list()
-        if not os.path.exists(self.finishdir):
-            os.makedirs(self.finishdir)
-        self._attach_log_file()
-        self.create_version_file(finishdir=self.finishdir)
-        # Loads project level info.
+        """Prepare every job successfully before submitting the first SLURM job."""
+        errors = []
+        prepared = []
         try:
+            os.makedirs(self.finishdir, exist_ok=True)
+            self._attach_log_file()
+            self.create_version_file(finishdir=self.finishdir)
             if single_sample:
                 self.create_project(self.sample.get("CG_ID_project"))
             elif self.pool:
                 self.create_collection()
             else:
                 self.create_project(self.name)
-        except Exception:
-            self.logger.error(f"LIMS interaction failed. Unable to read/write project {self.name}")
-        # Writes the job creation sbatch
-        if single_sample:
+        except Exception as error:
+            self.db_pusher.session.rollback()
+            errors.append(f"Project {self.name}: {error}")
+
+        samples = [self.sample] if single_sample else self.sampleinfo
+        for sample in samples:
+            name = sample["CG_ID_sample"]
             try:
-                self.sample_job()
-                headerargs = self.get_headerargs()
-                outfile = self.get_sbatch()
-                bash_cmd = f"sbatch {headerargs} {outfile}"
-                if not dry and outfile != "":
-                    samproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
-                    output, error = samproc.communicate()
-                    jobno = re.search(r"(\d+)", str(output)).group(0)
-                    jobarray.append(jobno)
+                if single_sample:
+                    sample_instance = self
                 else:
-                    self.logger.info(f"Suppressed command: {bash_cmd}")
-            except Exception:
-                self.logger.error(f"Unable to analyze single sample {self.name}")
-        else:
-            for ldir in glob.glob(f"{self.indir}/*/"):
-                ldir = os.path.basename(os.path.normpath(ldir))
-                try:
-                    sample_in = f"{self.indir}/{ldir}"
-                    sample_out = f"{self.finishdir}/{ldir}"
-                    local_sampleinfo = [p for p in self.sampleinfo if p["CG_ID_sample"] == ldir]
-                    if local_sampleinfo == []:
-                        raise Exception(f"Sample {ldir} has no counterpart in json file")
-                    else:
-                        local_sampleinfo = local_sampleinfo[0]
                     sample_settings = dict(self.run_settings)
-                    sample_settings["input"] = sample_in
-                    sample_settings["finishdir"] = sample_out
+                    sample_settings["input"] = f"{self.indir}/{name}"
+                    sample_settings["finishdir"] = f"{self.finishdir}/{name}"
                     sample_settings["timestamp"] = self.now
                     sample_instance = Job_Creator(
                         log=self.logger,
@@ -704,26 +628,52 @@ class Job_Creator:
                         pasteur=self.pasteur,
                         singularity=self.singularity,
                         containers=self.containers,
-                        sampleinfo=local_sampleinfo,
+                        sampleinfo=sample,
                         run_settings=sample_settings,
                     )
-                    sample_instance.sample_job()
-                    headerargs = sample_instance.get_headerargs()
-                    outfile = ""
-                    if os.path.isfile(sample_instance.get_sbatch()):
-                        outfile = sample_instance.get_sbatch()
-                    bash_cmd = f"sbatch {headerargs} {outfile}"
-                    if not dry and outfile != "":
-                        projproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
-                        output, error = projproc.communicate()
-                        jobno = re.search(r"(\d+)", str(output)).group(0)
-                        jobarray.append(jobno)
-                    else:
-                        self.logger.info(f"Suppressed command: {bash_cmd}")
-                except Exception:
-                    pass
-        if not dry:
-            self.finish_job(jobarray, single_sample)
+                sample_instance.sample_job()
+                if not os.path.isfile(sample_instance.get_sbatch()):
+                    raise JobCreationError(f"Missing job script {sample_instance.get_sbatch()}")
+                prepared.append(sample_instance)
+            except Exception as error:
+                self.db_pusher.session.rollback()
+                errors.append(f"Sample {name}: {error}")
+        try:
+            self._prepare_finish_job()
+        except Exception as error:
+            errors.append(f"Reporting job: {error}")
+        if errors:
+            raise AnalysisSetupError(errors)
+
+        jobarray = []
+        for sample_instance in prepared:
+            command = f"sbatch {sample_instance.get_headerargs()} {sample_instance.get_sbatch()}"
+            if self.dry:
+                self.logger.info(f"Suppressed command: {command}")
+                continue
+            try:
+                jobarray.append(self._submit_sbatch(command))
+            except Exception as error:
+                raise JobCreationError(
+                    f"SLURM submission failed for {sample_instance.name}: {error}. "
+                    f"Already submitted job IDs: {', '.join(jobarray) or 'none'}. "
+                    "The reporting job was not submitted."
+                ) from error
+        if not self.dry:
+            self.finish_job(jobarray, single_sample, prepared=True)
+
+    @staticmethod
+    def _submit_sbatch(command: str) -> str:
+        process = subprocess.Popen(
+            shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        output, error = process.communicate()
+        match = re.search(r"Submitted batch job (\d+)", output.decode())
+        if process.returncode or not match:
+            raise JobCreationError(
+                f"SLURM rejected submission: {error.decode().strip()} {output.decode().strip()}"
+            )
+        return match[1]
 
     def _build_finish_cmd(self, report: str) -> str:
         """Return the fully-qualified microsalt CLI command for `utils finish`."""
@@ -756,15 +706,13 @@ class Job_Creator:
             mb.write("    exit 1\n")
             mb.write("fi\n")
 
-    def finish_job(self, joblist, single_sample=False):
-        """Uploads data and sends an email once all analysis jobs are complete."""
+    def _prepare_finish_job(self):
+        """Write reporting inputs and script before any jobs are submitted."""
         report = "default"
         if self.qc_only:
             report = "qc"
 
-        process = subprocess.Popen("id -un".split(), stdout=subprocess.PIPE)
-        user, error = process.communicate()
-        user = str(user).replace(".", " ").title()
+        user = getpass.getuser().replace(".", " ").title()
 
         startfile = f"{self.finishdir}/run_started.out"
         configfile = f"{self.finishdir}/config.log"
@@ -785,6 +733,19 @@ class Job_Creator:
             cb.write(json.dumps(configout, indent=2, separators=(",", ":")))
 
         self._write_mailjob(mailfile, report)
+        trailblazer = Path(self.folders.reports) / "trailblazer"
+        trailblazer.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryFile(dir=trailblazer):
+            pass
+
+    def finish_job(self, joblist, single_sample=False, prepared=False):
+        """Submit reporting only after all analysis jobs have been accepted."""
+        if not joblist:
+            raise JobCreationError("No analysis job IDs; refusing to submit a reporting job")
+        if not prepared:
+            self._prepare_finish_job()
+        startfile = f"{self.finishdir}/run_started.out"
+        mailfile = f"{self.finishdir}/mailjob.sh"
 
         massagedJobs = list()
         final = ":".join(joblist)
@@ -802,9 +763,12 @@ class Job_Creator:
                 if massagedJobs.index(entry) < len(massagedJobs) - 1:
                     head = f"-A {self.slurm_header.project} -p core -n 1 -t 00:00:10 -J {self.slurm_header.job_prefix}_{self.name}_SUBTRACKER --qos {self.slurm_header.qos} --dependency=afterany:{entry}"
                     bash_cmd = f"sbatch {head} {startfile}"
-                    mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
-                    output, error = mailproc.communicate()
-                    jobno = re.search(r"(\d+)", str(output)).group(0)
+                    try:
+                        jobno = self._submit_sbatch(bash_cmd)
+                    except Exception as error:
+                        raise JobCreationError(
+                            f"Tracker submission failed: {error}. Already submitted analysis job IDs: {', '.join(joblist)}"
+                        ) from error
                     massagedJobs[massagedJobs.index(entry) + 1] += f":{jobno}"
                 else:
                     final = entry
@@ -817,14 +781,14 @@ class Job_Creator:
             f"--dependency=afterany:{final} --output {self.finishdir}/mailjob.out"
         )
         bash_cmd = f"sbatch {head} {mailfile}"
-        mailproc = subprocess.Popen(bash_cmd.split(), stdout=subprocess.PIPE)
-        output, error = mailproc.communicate()
-
         try:
-            jobno = str(re.search(r"(\d+)", str(output)).group(0))
+            jobno = self._submit_sbatch(bash_cmd)
             joblist.append(jobno)
-        except Exception:
-            self.logger.info(f"Unable to grab SLURMID for {self.name}")
+        except Exception as error:
+            raise JobCreationError(
+                f"Reporting job submission failed: {error}. "
+                f"Already submitted analysis job IDs: {', '.join(joblist)}"
+            ) from error
 
         try:
             # Generates file with all slurm ids
@@ -875,9 +839,9 @@ class Job_Creator:
                 self.create_sample()
             except Exception:
                 self.logger.error(f"Unable to access LIMS info for sample {self.name}")
+                raise
         except Exception as e:
             self.logger.error(f"Unable to create job for sample {self.name}\nSource: {e!s}")
-            shutil.rmtree(self.finishdir, ignore_errors=True)
             raise
 
     def create_blast_search(self):
@@ -886,10 +850,15 @@ class Job_Creator:
         batchfile = open(self.batchfile, "a+")
         batchfile.write(f"mkdir -p {self.finishdir}/blast_search\n")
         batchfile.close()
-        self.blast_subset(
-            "mlst",
-            f"{self.folders.references}/{reforganism}/*.tfa",
-        )
+        if reforganism is not None:
+            self.blast_subset(
+                "mlst",
+                f"{self.folders.references}/{reforganism}/*.tfa",
+            )
+        else:
+            self.logger.warning(
+                f"No MLST scheme for {self.sample.get('organism')}; skipping MLST search"
+            )
         self.blast_subset("resistance", f"{self.folders.resistances}/*.fsa")
         if reforganism == "escherichia_coli":
             ss = f"{os.path.dirname(self.folders.expec)}/*{os.path.splitext(self.folders.expec)[1]}"

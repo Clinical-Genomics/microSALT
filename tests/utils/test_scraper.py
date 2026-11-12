@@ -205,7 +205,6 @@ def test_trimmomatic_scraping(scraper: Scraper, testdata_prefix: str) -> None:
     assert sample.raw_reads == 6508868 * 2
 
 
-
 def _make_scraper(config, logger, sampleinfo, input_dir, qc_only=False) -> Scraper:
     return Scraper(
         log=logger,
@@ -248,9 +247,33 @@ def test_scrape_sample_default_runs_typing(
     input_dir.mkdir()
     default_scraper = _make_scraper(config, logger, testdata[0], input_dir)
 
-    with patch.object(Scraper, "scrape_blast") as blast:
+    with (
+        patch.object(
+            default_scraper.referencer, "organism2reference", return_value="staphylococcus_aureus"
+        ),
+        patch.object(Scraper, "scrape_blast") as blast,
+    ):
         default_scraper.scrape_sample()
 
     called_types = [c.kwargs.get("type") for c in blast.call_args_list]
     assert "seq_type" in called_types
     assert "resistance" in called_types
+
+
+def test_scrape_sample_without_mlst_scheme_keeps_other_analysis(
+    config: MicroSALTConfig, logger: logging.Logger, testdata: list[dict], tmp_path: Path
+) -> None:
+    sampleinfo = {**testdata[0], "organism": "Unknown organism"}
+    input_dir = tmp_path / sampleinfo["CG_ID_sample"]
+    input_dir.mkdir()
+    res_scraper = _make_scraper(config, logger, sampleinfo, input_dir)
+    res_scraper.job_fallback.create_project(sampleinfo["CG_ID_project"])
+    res_scraper.job_fallback.create_sample()
+    res_scraper.db_pusher.update_sample(
+        {"CG_ID_sample": res_scraper.name}, {"ST": 42, "pubmlst_ST": 42}
+    )
+    with patch.object(res_scraper, "scrape_blast", wraps=res_scraper.scrape_blast) as blast:
+        res_scraper.scrape_sample()
+    assert [call.kwargs["type"] for call in blast.call_args_list] == ["resistance"]
+    sample = res_scraper.db_pusher.get_sample_by_cg_id_sample(res_scraper.name)
+    assert sample.ST == sample.pubmlst_ST == -1
