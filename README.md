@@ -85,6 +85,40 @@ typing/resistance scraping and generating only the QC report. A configured
 reference genome is still required for alignment. Without this flag, the full
 analysis and reports are unchanged.
 
+### Analysis preflight checks
+
+Before submitting any SLURM jobs, `analyse` checks sample metadata, paired gzip
+FASTQ inputs, reference genome FASTA files and indexes, and (for full analysis)
+MLST and resistance resources. It then prepares every sample script and the
+reporting inputs. Setup errors are collected across samples and references and
+reported together; any setup error exits nonzero without submitting sample or
+reporting jobs. `--dry` uses the same checks but never submits jobs.
+
+Whitespace is removed from sample-info `reference` values before lookup,
+downloading and job generation. The original sample-info file is not modified;
+the run's saved sample info contains the normalized reference values.
+
+Downloaded genomes must contain valid, non-empty nucleotide FASTA records and
+index successfully before they are published. Existing cached FASTA files are
+also validated, so an older NCBI error response saved as `.fasta` blocks the run
+with an actionable error. Inspect and repair that file before retrying.
+NCBI assembly accessions (`GCF_...` / `GCA_...`) are looked up in the Assembly
+database. microSALT downloads the complete genomic FASTA (including all contigs
+and plasmids) from the matching RefSeq or GenBank assembly directory over HTTPS.
+Versioned accessions must match the requested version; microSALT does not silently
+substitute a newer version or the paired assembly. Nucleotide accessions still use
+the nucleotide database. Both download paths use the same validation and indexing
+checks, and keep the supplied accession as the cached `<reference>.fasta` filename.
+You can also install a valid local `<reference>.fasta` in `folders.genomes`.
+
+`--skip_update` disables reference downloading and indexing, **not validation**:
+all required reference files and current indexes must already exist. QC-only
+runs still require an alignment genome, but do not require typing resources.
+
+If SLURM rejects a submission after setup succeeds, the command reports the
+failure and any already accepted analysis job IDs. This is distinct from a
+setup failure: those accepted jobs may already be running.
+
 ## Setup
 
 Before running microSALT, the user must run the `setup` command, which will create the necessary database tables and download the necessary databases. This only needs to be run once, and can be run again if the user wants to reset the database or download new databases.
