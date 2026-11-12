@@ -1,4 +1,6 @@
 import gzip
+from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -7,9 +9,8 @@ from microSALT.utils.validation import (
     find_fastq_files,
     is_safe_identifier,
     normalize_sample,
-    validate_fastq_file,
     validate_fastq_mate,
-    validate_fastq_record,
+    validate_input_file,
     validate_input_folders,
     validate_required_fields,
     validate_sample_dates,
@@ -68,31 +69,46 @@ def test_validate_fastq_mate_requires_a_captured_identifier(pattern):
         validate_fastq_mate("sample_R1.fastq.gz", ["sample_R1.fastq.gz"], pattern)
 
 
-@pytest.mark.parametrize("ending", ["\n", "\r\n"])
-def test_validate_fastq_record_accepts_line_endings(ending):
-    validate_fastq_record(f"@read{ending}", f"ACGT{ending}", f"+{ending}", f"IIII{ending}", 1)
+def test_validate_input_file_checks_access_without_reading(fastq_pair):
+    with patch.object(Path, "open") as open_file:
+        validate_input_file(fastq_pair / "sample_R1.fastq.gz")
+    open_file.assert_called_once_with("rb")
+    handle = open_file.return_value.__enter__.return_value
+    handle.read.assert_not_called()
+    handle.readline.assert_not_called()
+    handle.readlines.assert_not_called()
+    handle.__iter__.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    "record",
-    [
-        ("read\n", "ACGT\n", "+\n", "IIII\n"),
-        ("@read\n", "ACGT\n", "separator\n", "IIII\n"),
-        ("@read\n", "\n", "+\n", "\n"),
-        ("@read\n", "ACGT\n", "+\n", "III\n"),
-    ],
-)
-def test_validate_fastq_record_reports_record_number(record):
-    with pytest.raises(ValueError, match="invalid FASTQ record 7"):
-        validate_fastq_record(*record, number=7)
+@pytest.mark.parametrize("entry_type", ["missing", "directory"])
+def test_validate_input_file_rejects_non_files(tmp_path, entry_type):
+    path = tmp_path / "sample_R1.fastq.gz"
+    if entry_type == "directory":
+        path.mkdir()
+    with pytest.raises(ValueError, match="not a regular file"):
+        validate_input_file(path)
 
 
-def test_validate_fastq_file_checks_later_records(fastq_pair):
-    path = fastq_pair / "sample_R1.fastq.gz"
-    with gzip.open(path, "at") as stream:
-        stream.write("@second\nACGT\n+\nIII\n")
-    with pytest.raises(ValueError, match="invalid FASTQ record 2"):
-        validate_fastq_file(path)
+def test_unreadable_inputs_are_reported_for_both_mates(fastq_pair):
+    with patch.object(Path, "open", side_effect=PermissionError("permission denied")):
+        with pytest.raises(ValueError) as failure:
+            verify_fastq(str(fastq_pair), r"sample_R(\d).fastq.gz")
+    assert "sample_R1.fastq.gz" in str(failure.value)
+    assert "sample_R2.fastq.gz" in str(failure.value)
+    assert "permission denied" in str(failure.value)
+
+
+def test_sample_validation_never_decompresses_fastq_inputs(fastq_pair):
+    sampleinfo = {**default_sampleinfo, "reference": "NC_123"}
+    with patch(
+        "gzip.open", side_effect=AssertionError("FASTQ decompression on login node")
+    ) as decompress:
+        samples, errors = validate_sampleinfo(
+            sampleinfo, default_sampleinfo, str(fastq_pair), r"sample_R(\d).fastq.gz"
+        )
+    assert not errors
+    assert len(samples) == 1
+    decompress.assert_not_called()
 
 
 def test_normalize_sample_preserves_other_fields():
@@ -267,12 +283,13 @@ def test_missing_fastq_mate_is_fatal(fastq_pair):
         verify_fastq(str(fastq_pair), r"sample_R(\d).fastq.gz")
 
 
-@pytest.mark.parametrize("content", ["", "@read\nACGT\n+\nIII\n", "@read\nACGT\n+"])
-def test_invalid_fastq_is_fatal(fastq_pair, content):
-    with gzip.open(fastq_pair / "sample_R1.fastq.gz", "wt") as stream:
-        stream.write(content)
-    with pytest.raises(ValueError, match="sample_R1"):
-        verify_fastq(str(fastq_pair), r"sample_R(\d).fastq.gz")
+@pytest.mark.parametrize("content", [b"", b"not gzip", gzip.compress(b"@read\nACGT\n+\nIII\n")])
+def test_fastq_content_validation_is_left_to_analysis(fastq_pair, content):
+    (fastq_pair / "sample_R1.fastq.gz").write_bytes(content)
+    assert verify_fastq(str(fastq_pair), r"sample_R(\d).fastq.gz") == [
+        "sample_R1.fastq.gz",
+        "sample_R2.fastq.gz",
+    ]
 
 
 def test_broken_symlink_is_fatal(fastq_pair):
@@ -290,11 +307,10 @@ def test_relative_symlink_is_supported(fastq_pair):
     assert len(verify_fastq(str(fastq_pair), r"sample_R(\d).fastq.gz")) == 2
 
 
-def test_gzip_corruption_is_fatal(fastq_pair):
+def test_gzip_corruption_is_left_to_analysis(fastq_pair):
     path = fastq_pair / "sample_R1.fastq.gz"
     path.write_bytes(path.read_bytes()[:-5])
-    with pytest.raises(ValueError, match="sample_R1"):
-        verify_fastq(str(fastq_pair), r"sample_R(\d).fastq.gz")
+    assert len(verify_fastq(str(fastq_pair), r"sample_R(\d).fastq.gz")) == 2
 
 
 def test_missing_input_does_not_inspect_working_directory():

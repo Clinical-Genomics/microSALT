@@ -1,6 +1,5 @@
 """Validate analysis inputs without submitting jobs or modifying source metadata."""
 
-import gzip
 import re
 from collections.abc import Collection, Iterable
 from datetime import datetime
@@ -30,37 +29,16 @@ def validate_fastq_mate(name: str, files: Collection[str], file_pattern: str) ->
         raise ValueError(f"{name}: missing FASTQ mate {partner}")
 
 
-def validate_fastq_record(
-    header: str, sequence: str, separator: str, quality: str, number: int
-) -> None:
-    """Check a four-line record's markers and matching sequence/quality lengths."""
-    sequence = sequence.rstrip("\r\n")
-    quality = quality.rstrip("\r\n")
-    if (
-        not header.startswith("@")
-        or not separator.startswith("+")
-        or not sequence
-        or len(sequence) != len(quality)
-    ):
-        raise ValueError(f"invalid FASTQ record {number}")
-
-
-def validate_fastq_file(path: Path) -> None:
-    """Stream all records, checking gzip integrity and rejecting empty files."""
-    with gzip.open(path, "rt") as stream:
-        count = 0
-        while header := stream.readline():
-            sequence = stream.readline()
-            separator = stream.readline()
-            quality = stream.readline()
-            count += 1
-            validate_fastq_record(header, sequence, separator, quality, count)
-        if not count:
-            raise ValueError("empty FASTQ file")
+def validate_input_file(path: Path) -> None:
+    """Check file type, symlink resolution and read access without reading contents."""
+    if not path.is_file():
+        raise ValueError("not a regular file or symlink target is missing")
+    with path.open("rb"):
+        pass
 
 
 def verify_fastq(indir: str, file_pattern: str) -> list[str]:
-    """Collect mate and content errors across all matching FASTQ inputs."""
+    """Collect filename, mate and accessibility errors without decompressing inputs."""
     directory = Path(indir)
     files = find_fastq_files(directory, file_pattern)
     errors = []
@@ -71,8 +49,8 @@ def verify_fastq(indir: str, file_pattern: str) -> list[str]:
             errors.append(str(error))
         path = directory / name
         try:
-            validate_fastq_file(path)
-        except (OSError, EOFError, UnicodeError, ValueError) as error:
+            validate_input_file(path)
+        except (OSError, ValueError) as error:
             errors.append(f"{path}: {error}")
     if errors:
         raise ValueError("; ".join(errors))
