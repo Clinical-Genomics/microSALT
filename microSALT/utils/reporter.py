@@ -25,6 +25,10 @@ from microSALT.server.views import (
 from microSALT.config import Folders, Threshold, Regex
 from microSALT.store.db_manipulator import DB_Manipulator
 
+# Outputs not produced by QC-only runs (no assembly, QUAST, typing or resistance analysis)
+QC_ONLY_EXCLUDED_DELIVERABLE_TAGS = frozenset({"microsalt-type", "assembly", "quast-results"})
+QC_ONLY_EXCLUDED_JSON_ANALYSES = ("blast_pubmlst", "quast_assembly", "blast_resfinder_resistence")
+
 
 class Reporter:
     def __init__(
@@ -37,8 +41,10 @@ class Reporter:
         name="",
         output="",
         collection=False,
+        qc_only: bool = False,
     ):
         self.folders = folders
+        self.qc_only = qc_only
         self.threshold = threshold
         self.regex = regex
         self.db_pusher = DB_Manipulator(log=log, folders=folders, threshold=threshold)
@@ -94,6 +100,9 @@ class Reporter:
                 self.gen_typing()
             elif type == "qc":
                 self.gen_qc()
+                if self.qc_only:
+                    self.gen_json(silent=True)
+                    self.gen_delivery()
             elif type == "st_update":
                 self.gen_STtracker(customer)
         elif type in ["json_dump", "motif_overview"]:
@@ -471,6 +480,11 @@ class Reporter:
                 }
             )
 
+        if self.qc_only:
+            deliv["files"] = [
+                f for f in deliv["files"] if f["tag"] not in QC_ONLY_EXCLUDED_DELIVERABLE_TAGS
+            ]
+
         with open(output, "w") as delivfile:
             documents = yaml.dump(deliv, delivfile)
 
@@ -577,6 +591,10 @@ class Reporter:
                     and r.threshold == "Passed"
                 ):
                     report[s.CG_ID_sample]["blast_resfinder_resistence"].append(r.gene)
+
+            if self.qc_only:
+                for a in QC_ONLY_EXCLUDED_JSON_ANALYSES:
+                    report[s.CG_ID_sample].pop(a, None)
 
         # json.dumps(report) #Dumps the json directly
         try:

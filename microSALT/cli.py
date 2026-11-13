@@ -340,6 +340,7 @@ def finish(config: MicroSALTConfig, sampleinfo_file, input, track, dry, email, r
             sampleinfo=sampleinfo,
             output=output,
             collection=True,
+            qc_only=track == "qc",
         )
         codemonkey.report(report)
     except Exception as e:
