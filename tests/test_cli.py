@@ -199,3 +199,29 @@ def test_finish_exits_nonzero_when_input_missing(
     )
 
     assert result.exit_code != 0, "finish should exit non-zero for a missing input folder"
+
+
+@pytest.mark.parametrize("track, expected_qc_only", [("qc", True), ("default", False)])
+def test_finish_track_sets_scraper_qc_only(
+    config: MicroSALTConfig, config_file: Path, tmp_path: Path, track: str, expected_qc_only: bool
+):
+    """finish --track qc must build the Scraper in QC-only mode."""
+    sampleinfo = tmp_path / "sampleinfo.json"
+    sampleinfo.write_text(json.dumps({"CG_ID_sample": "TST0001A1", "CG_ID_project": "TST0001"}))
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+
+    with patch("microSALT.cli.Scraper") as mock_scraper_cls, patch("microSALT.cli.Reporter"):
+        result = invoke_root(
+            config_file,
+            "utils",
+            "finish",
+            str(sampleinfo),
+            "--input",
+            str(input_dir),
+            "--track",
+            track,
+        )
+
+    assert result.exit_code == 0, result.output
+    assert mock_scraper_cls.call_args.kwargs["qc_only"] is expected_qc_only
