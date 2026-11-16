@@ -96,6 +96,16 @@ def test_reporter_sample_ids_follow_current_sample_info(reporter):
     assert reporter._sample_ids() == ["AAA1234A1", "AAA1234A2"]
 
 
+def test_gen_version_passes_current_sample_info_to_versioning(reporter):
+    with (
+        patch.object(reporter.db_pusher, "read_report"),
+        patch.object(reporter.db_pusher, "set_report") as set_report,
+    ):
+        reporter.gen_version(reporter.name)
+
+    set_report.assert_called_once_with(reporter.name, sampleinfo=reporter.sampleinfo)
+
+
 @pytest.mark.parametrize("qc_only", [False, True])
 def test_report_qc_generates_json_and_deliverables_only_when_qc_only(reporter, qc_only):
     """A QC-only `qc` report also writes JSON + deliverables; a plain `qc` report does not."""
