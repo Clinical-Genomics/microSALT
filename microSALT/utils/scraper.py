@@ -153,7 +153,7 @@ class Scraper:
             if self.qc_only
             else self.referencer.organism2reference(self.sample.get("organism"))
         )
-        if reforganism is None:
+        if not self.qc_only and reforganism is None:
             self.db_pusher.update_sample({"CG_ID_sample": self.name}, {"ST": -1, "pubmlst_ST": -1})
         if self.qc_only:
             self.logger.info(f"QC-only track: skipping typing/resistance scraping for {self.name}")
