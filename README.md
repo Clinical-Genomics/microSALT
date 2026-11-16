@@ -70,6 +70,12 @@ singularity pull docker://clinicalgenomics/microsalt-trimmomatic:latest
 - `microsalt utils` contains various functionality, including generating the
     sample description JSON, manually adding new reference organisms and
     re-generating reports.
+- `microsalt utils finish --qc-only` finalises a QC-only run by
+    writing the QC report, a JSON report (alignment metrics only) and a
+    deliverables file. Assembly, QUAST and typing outputs are left out of both,
+    since QC-only runs do not produce them. `--track qc` remains supported.
+    `--report qc` on its own selects only the QC HTML from a full analysis;
+    it does not mark the analysis as QC-only.
 
 ### QC-only analysis
 

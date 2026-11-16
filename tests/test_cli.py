@@ -426,17 +426,29 @@ def test_finish_exits_nonzero_when_input_missing(
     assert result.exit_code != 0, "finish should exit non-zero for a missing input folder"
 
 
-@pytest.mark.parametrize("track, expected_qc_only", [("qc", True), ("default", False)])
-def test_finish_track_sets_scraper_qc_only(
-    config: MicroSALTConfig, config_file: Path, tmp_path: Path, track: str, expected_qc_only: bool
-):
-    """finish --track qc must build the Scraper in QC-only mode."""
+@pytest.mark.parametrize(
+    "options, expected_qc_only",
+    [
+        ([], False),
+        (["--track", "qc"], True),
+        (["--qc-only"], True),
+        (["--qc_only"], True),
+        (["--qc-only", "--track", "qc"], True),
+    ],
+)
+@pytest.mark.parametrize("report", ["default", "qc"])
+def test_finish_passes_qc_only_to_scraper_and_reporter(config_file, tmp_path, options, expected_qc_only, report):
+    """Both QC-only interfaces must agree on scraping and report filtering."""
     sampleinfo = tmp_path / "sampleinfo.json"
     sampleinfo.write_text(json.dumps({"CG_ID_sample": "TST0001A1", "CG_ID_project": "TST0001"}))
     input_dir = tmp_path / "input"
     input_dir.mkdir()
 
-    with patch("microSALT.cli.Scraper") as mock_scraper_cls, patch("microSALT.cli.Reporter"):
+    with (
+        patch("microSALT.cli.Scraper") as scraper_cls,
+        patch("microSALT.cli.DB_Manipulator"),
+        patch("microSALT.cli.Reporter") as reporter_cls,
+    ):
         result = invoke_root(
             config_file,
             "utils",
@@ -444,9 +456,11 @@ def test_finish_track_sets_scraper_qc_only(
             str(sampleinfo),
             "--input",
             str(input_dir),
-            "--track",
-            track,
+            *options,
+            *(["--report", report] if report != "default" else []),
         )
 
     assert result.exit_code == 0, result.output
-    assert mock_scraper_cls.call_args.kwargs["qc_only"] is expected_qc_only
+    assert scraper_cls.call_args.kwargs["qc_only"] is expected_qc_only
+    assert reporter_cls.call_args.kwargs["qc_only"] is expected_qc_only
+    reporter_cls.return_value.report.assert_called_once_with(report)

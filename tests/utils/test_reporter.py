@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 import glob
+import json
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
+import yaml
 
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.reporter import Reporter
@@ -33,6 +37,112 @@ def test_jsonreport(config, dbm, reporter):
     reporter.create_subfolders()
     reporter.gen_json()
     assert len(glob.glob(f"{config.folders.reports}/json/AAA1234.json")) > 0
+
+
+@pytest.mark.parametrize("qc_only", [False, True])
+def test_deliveryreport_qc_only_filters_unproduced_files(config, dbm, reporter, qc_only):
+    """QC-only deliverables must not list assembly, QUAST or typing outputs."""
+    reporter.qc_only = qc_only
+    reporter.create_subfolders()
+    reporter.gen_delivery()
+
+    with open(f"{config.folders.reports}/deliverables/999999_deliverables.yaml") as fh:
+        tags = {f["tag"] for f in yaml.safe_load(fh)["files"]}
+
+    excluded = {"microsalt-type", "assembly", "quast-results"}
+    assert tags.isdisjoint(excluded) is qc_only
+    assert {"microsalt-qc", "microsalt-json", "reference-alignment-deduplicated"} <= tags
+
+
+@pytest.mark.parametrize("qc_only", [False, True])
+def test_jsonreport_qc_only_omits_typing_and_assembly(config, reporter, qc_only):
+    """QC-only JSON keeps alignment metrics and drops typing/assembly/resistance sections."""
+    metrics = (
+        "genome_length reference_length gc_percentage n50 contigs insert_size duplication_rate "
+        "total_reads raw_reads mapped_rate average_coverage coverage_10x coverage_30x "
+        "coverage_50x coverage_100x"
+    ).split()
+    sample = SimpleNamespace(
+        CG_ID_sample="AAA1234A1",
+        ST=-1,
+        ST_status="Data saknas",
+        threshold="-",
+        resistances=[],
+        **dict.fromkeys(metrics),
+    )
+    reporter.qc_only = qc_only
+    reporter.create_subfolders()
+    with patch(
+        "microSALT.utils.reporter.gen_reportdata", return_value={"samples": [sample]}
+    ) as report_data:
+        reporter.gen_json()
+
+    with open(f"{config.folders.reports}/json/{reporter.name}.json") as fh:
+        analyses = json.load(fh)["AAA1234A1"]
+
+    assert {"picard_markduplicate", "microsalt_samtools_stats"} <= analyses.keys()
+    excluded = {"blast_pubmlst", "quast_assembly", "blast_resfinder_resistence"}
+    assert analyses.keys().isdisjoint(excluded) is qc_only
+    assert report_data.call_args.kwargs["sample_ids"] == (
+        ["AAA1234A1"] if qc_only else None
+    )
+
+
+def test_reporter_sample_ids_follow_current_sample_info(reporter):
+    reporter.sampleinfo = [
+        {"CG_ID_sample": "AAA1234A1"},
+        {"CG_ID_sample": "AAA1234A2"},
+    ]
+    assert reporter._sample_ids() == ["AAA1234A1", "AAA1234A2"]
+
+
+def test_gen_version_passes_current_sample_info_to_versioning(reporter):
+    with (
+        patch.object(reporter.db_pusher, "read_report"),
+        patch.object(reporter.db_pusher, "set_report") as set_report,
+    ):
+        reporter.gen_version(reporter.name)
+
+    set_report.assert_called_once_with(reporter.name, sampleinfo=reporter.sampleinfo)
+
+
+@pytest.mark.parametrize("qc_only", [False, True])
+def test_report_qc_generates_json_and_deliverables_only_when_qc_only(reporter, qc_only):
+    """A QC-only `qc` report also writes JSON + deliverables; a plain `qc` report does not."""
+    reporter.qc_only = qc_only
+    with (
+        patch.object(reporter, "db_pusher"),
+        patch.object(reporter, "gen_qc") as gen_qc,
+        patch.object(reporter, "gen_json") as gen_json,
+        patch.object(reporter, "gen_delivery") as gen_delivery,
+        patch.object(reporter, "gen_typing") as gen_typing,
+        patch.object(reporter, "mail"),
+    ):
+        reporter.report(type="qc")
+
+    gen_qc.assert_called_once_with()
+    gen_typing.assert_not_called()
+    assert gen_json.call_count == gen_delivery.call_count == int(qc_only)
+
+
+@pytest.mark.parametrize("qc_only", [False, True])
+def test_default_report_skips_typing_for_qc_only(reporter, qc_only):
+    reporter.qc_only = qc_only
+    with (
+        patch.object(reporter, "db_pusher"),
+        patch.object(reporter, "gen_qc") as gen_qc,
+        patch.object(reporter, "gen_json") as gen_json,
+        patch.object(reporter, "gen_delivery") as gen_delivery,
+        patch.object(reporter, "gen_typing") as gen_typing,
+        patch.object(reporter, "mail") as mail,
+    ):
+        reporter.report()
+
+    assert gen_typing.call_count == int(not qc_only)
+    gen_qc.assert_called_once_with()
+    gen_json.assert_called_once_with(silent=True)
+    gen_delivery.assert_called_once_with()
+    mail.assert_called_once_with()
 
 
 def test_gen_qc_name_does_not_exist(dbm, reporter):
