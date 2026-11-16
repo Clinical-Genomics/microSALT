@@ -26,8 +26,8 @@ from microSALT.config import Folders, Threshold, Regex
 from microSALT.store.db_manipulator import DB_Manipulator
 
 # Outputs not produced by QC-only runs (no assembly, QUAST, typing or resistance analysis)
-QC_ONLY_EXCLUDED_DELIVERABLE_TAGS = frozenset({"microsalt-type", "assembly", "quast-results"})
-QC_ONLY_EXCLUDED_JSON_ANALYSES = ("blast_pubmlst", "quast_assembly", "blast_resfinder_resistence")
+TYPING_ASSEMBLY_DELIVERABLE_TAGS = frozenset({"microsalt-type", "assembly", "quast-results"})
+TYPING_ASSEMBLY_RESISTANCE_JSON_ANALYSES = ("blast_pubmlst", "quast_assembly", "blast_resfinder_resistence")
 
 
 class Reporter:
@@ -101,7 +101,8 @@ class Reporter:
             self.gen_version(self.name)
         if type in ["default", "typing", "qc", "st_update"]:
             if type == "default":
-                self.gen_typing()
+                if not self.qc_only:
+                    self.gen_typing()
                 self.gen_qc()
                 self.gen_json(silent=True)
                 self.gen_delivery()
@@ -495,7 +496,7 @@ class Reporter:
 
         if self.qc_only:
             deliv["files"] = [
-                f for f in deliv["files"] if f["tag"] not in QC_ONLY_EXCLUDED_DELIVERABLE_TAGS
+                f for f in deliv["files"] if f["tag"] not in TYPING_ASSEMBLY_DELIVERABLE_TAGS
             ]
 
         with open(output, "w") as delivfile:
@@ -610,7 +611,7 @@ class Reporter:
                     report[s.CG_ID_sample]["blast_resfinder_resistence"].append(r.gene)
 
             if self.qc_only:
-                for a in QC_ONLY_EXCLUDED_JSON_ANALYSES:
+                for a in TYPING_ASSEMBLY_RESISTANCE_JSON_ANALYSES:
                     report[s.CG_ID_sample].pop(a, None)
 
         # json.dumps(report) #Dumps the json directly

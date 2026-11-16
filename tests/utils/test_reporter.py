@@ -125,6 +125,26 @@ def test_report_qc_generates_json_and_deliverables_only_when_qc_only(reporter, q
     assert gen_json.call_count == gen_delivery.call_count == int(qc_only)
 
 
+@pytest.mark.parametrize("qc_only", [False, True])
+def test_default_report_skips_typing_for_qc_only(reporter, qc_only):
+    reporter.qc_only = qc_only
+    with (
+        patch.object(reporter, "db_pusher"),
+        patch.object(reporter, "gen_qc") as gen_qc,
+        patch.object(reporter, "gen_json") as gen_json,
+        patch.object(reporter, "gen_delivery") as gen_delivery,
+        patch.object(reporter, "gen_typing") as gen_typing,
+        patch.object(reporter, "mail") as mail,
+    ):
+        reporter.report()
+
+    assert gen_typing.call_count == int(not qc_only)
+    gen_qc.assert_called_once_with()
+    gen_json.assert_called_once_with(silent=True)
+    gen_delivery.assert_called_once_with()
+    mail.assert_called_once_with()
+
+
 def test_gen_qc_name_does_not_exist(dbm, reporter):
     reporter.name = "name_that_do_not_exist"
     with pytest.raises(SystemExit):

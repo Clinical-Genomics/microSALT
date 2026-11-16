@@ -201,9 +201,19 @@ def test_finish_exits_nonzero_when_input_missing(
     assert result.exit_code != 0, "finish should exit non-zero for a missing input folder"
 
 
-@pytest.mark.parametrize("track, expected_qc_only", [("default", False), ("qc", True)])
-def test_finish_passes_qc_only_to_reporter(config_file, tmp_path, track, expected_qc_only):
-    """`finish --track qc` must make the reporter filter its QC-only outputs."""
+@pytest.mark.parametrize(
+    "options, expected_qc_only",
+    [
+        ([], False),
+        (["--track", "qc"], True),
+        (["--qc-only"], True),
+        (["--qc_only"], True),
+        (["--qc-only", "--track", "qc"], True),
+    ],
+)
+@pytest.mark.parametrize("report", ["default", "qc"])
+def test_finish_passes_qc_only_to_reporter(config_file, tmp_path, options, expected_qc_only, report):
+    """Both QC-only interfaces filter outputs with the default or QC report."""
     sampleinfo = tmp_path / "sampleinfo.json"
     sampleinfo.write_text(json.dumps({"CG_ID_sample": "TST0001A1", "CG_ID_project": "TST0001"}))
     input_dir = tmp_path / "input"
@@ -221,12 +231,10 @@ def test_finish_passes_qc_only_to_reporter(config_file, tmp_path, track, expecte
             str(sampleinfo),
             "--input",
             str(input_dir),
-            "--track",
-            track,
-            "--report",
-            "qc",
+            *options,
+            *(["--report", report] if report != "default" else []),
         )
 
     assert result.exit_code == 0, result.output
     assert reporter_cls.call_args.kwargs["qc_only"] is expected_qc_only
-    reporter_cls.return_value.report.assert_called_once_with("qc")
+    reporter_cls.return_value.report.assert_called_once_with(report)

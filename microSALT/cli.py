@@ -273,6 +273,13 @@ def refer(ctx):
 @click.argument("sampleinfo_file")
 @click.option("--input", help="Full path to project folder", default="")
 @click.option(
+    "--qc-only",
+    "--qc_only",
+    help="Finalise read/alignment QC only, without assembly or typing outputs.",
+    is_flag=True,
+    default=False,
+)
+@click.option(
     "--track",
     help="Run a specific analysis track",
     default="default",
@@ -292,7 +299,7 @@ def refer(ctx):
 )
 @click.option("--output", help="Report output folder", default="")
 @pass_config
-def finish(config: MicroSALTConfig, sampleinfo_file, input, track, dry, email, report, output):
+def finish(config: MicroSALTConfig, sampleinfo_file, input, track, dry, email, report, output, qc_only):
     """Sequence analysis, typing and resistance identification"""
     pool = []
     if email:
@@ -340,7 +347,7 @@ def finish(config: MicroSALTConfig, sampleinfo_file, input, track, dry, email, r
             sampleinfo=sampleinfo,
             output=output,
             collection=True,
-            qc_only=track == "qc",
+            qc_only=qc_only or track == "qc",
         )
         codemonkey.report(report)
     except Exception as e:
