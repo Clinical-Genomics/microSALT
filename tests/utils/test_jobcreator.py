@@ -3,6 +3,8 @@
 from unittest import mock
 from unittest.mock import patch
 
+import pytest
+
 from microSALT.utils.job_creator import Job_Creator
 
 
@@ -220,6 +222,62 @@ def test_build_finish_cmd_contains_expected_arguments(config, logger, testdata, 
     assert "utils finish" in cmd
     assert "--report qc" in cmd
     assert str(tmp_path) in cmd
+
+
+@pytest.mark.parametrize("qc_only", [False, True])
+def test_finish_job_propagates_qc_track_and_report(config, logger, testdata, tmp_path, qc_only):
+    """The submitted finish script must select QC scraping as well as the QC report."""
+    jc = _make_jc(config, logger, testdata, tmp_path)
+    jc.qc_only = qc_only
+    with patch("microSALT.utils.job_creator.subprocess.Popen") as popen:
+        popen.return_value.communicate.return_value = (b"12345", b"")
+        jc.finish_job(["123"])
+
+    script = (tmp_path / "mailjob.sh").read_text()
+    assert f"--report {'qc' if qc_only else 'default'}" in script
+    assert ("--track qc" in script) is qc_only
+
+
+@pytest.mark.parametrize("qc_only", [False, True])
+def test_sample_job_qc_only_skips_assembly_and_typing(config, logger, testdata, tmp_path, qc_only):
+    """Read/alignment QC is retained; assembly and BLAST are full-analysis only."""
+    jc = _make_jc(config, logger, testdata, tmp_path)
+    jc.qc_only = qc_only
+    with (
+        patch.object(jc, "create_preprocsection") as preproc,
+        patch.object(jc, "create_variantsection") as alignment,
+        patch.object(jc, "create_assemblysection") as assembly,
+        patch.object(jc, "create_assemblystats_section") as quast,
+        patch.object(jc, "create_blast_search") as blast,
+        patch.object(jc, "create_sample"),
+    ):
+        jc.sample_job()
+
+    preproc.assert_called_once_with()
+    alignment.assert_called_once_with()
+    assert assembly.call_count == quast.call_count == blast.call_count == int(not qc_only)
+
+
+@pytest.mark.parametrize("qc_only", [False, True])
+def test_project_job_passes_qc_only_to_samples(config, logger, testdata, tmp_path, qc_only):
+    """Every child job inherits the project's QC-only setting."""
+    jc = _make_jc(config, logger, testdata, tmp_path)
+    jc.run_settings["qc_only"] = qc_only
+    jc.dry = True
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    for sample in testdata:
+        (input_dir / sample["CG_ID_sample"]).mkdir()
+    jc.indir = str(input_dir)
+
+    with (
+        patch.object(Job_Creator, "sample_job", autospec=True) as sample_job,
+        patch.object(jc, "create_project"),
+    ):
+        jc.project_job()
+
+    assert sample_job.call_count == len(testdata)
+    assert all(call.args[0].qc_only is qc_only for call in sample_job.call_args_list)
 
 
 def test_setup_logger_creates_one_log_for_project(config, logger, testdata, tmp_path):

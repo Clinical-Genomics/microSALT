@@ -71,6 +71,20 @@ singularity pull docker://clinicalgenomics/microsalt-trimmomatic:latest
     sample description JSON, manually adding new reference organisms and
     re-generating reports.
 
+### QC-only analysis
+
+To run read/alignment QC without assembly, MLST, resistance or ExPEC analysis:
+
+```Shell
+microsalt --config /path/to/config.json analyse --qc-only --input /path/to/fastq sampleinfo.json
+```
+
+`--qc_only` is also accepted. This applies to both single-sample and project runs.
+The final job automatically uses `utils finish --track qc --report qc`, skipping
+typing/resistance scraping and generating only the QC report. A configured
+reference genome is still required for alignment. Without this flag, the full
+analysis and reports are unchanged.
+
 ## Setup
 
 Before running microSALT, the user must run the `setup` command, which will create the necessary database tables and download the necessary databases. This only needs to be run once, and can be run again if the user wants to reset the database or download new databases.
