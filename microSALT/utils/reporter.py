@@ -84,6 +84,15 @@ class Reporter:
         os.makedirs(f"{self.folders.reports}/json", exist_ok=True)
         os.makedirs(f"{self.folders.reports}/analysis", exist_ok=True)
 
+    def _sample_ids(self) -> list[str]:
+        """Return sample IDs from the sample-info records used for this report."""
+        records = (
+            self.sampleinfo if isinstance(self.sampleinfo, list) else [self.sampleinfo]
+        )
+        return [
+            sample_id for record in records if (sample_id := record.get("CG_ID_sample"))
+        ]
+
     def report(self, type="default", customer="all"):
         self.db_pusher.check_ref_lock()
         self.create_subfolders()
@@ -149,7 +158,11 @@ class Reporter:
             self.logger.error(f"Project {self.name} does not exist")
             sys.exit(-1)
         try:
-            content = alignment_page(self.name, threshold=self.threshold)
+            content = alignment_page(
+                self.name,
+                threshold=self.threshold,
+                sample_ids=self._sample_ids() if self.qc_only else None,
+            )
             outfile = f"{self.sample.get('Customer_ID_project')}_QC_{last_version}.html"
             local = f"{self.output}/{outfile}"
             output = f"{self.folders.reports}/analysis/{outfile}"
@@ -503,7 +516,11 @@ class Reporter:
         local = f"{self.output}/{self.name}.json"
         output = f"{self.folders.reports}/json/{self.name}.json"
 
-        sample_info = gen_reportdata(self.name, threshold=self.threshold)
+        sample_info = gen_reportdata(
+            self.name,
+            threshold=self.threshold,
+            sample_ids=self._sample_ids() if self.qc_only else None,
+        )
         analyses = [
             "blast_pubmlst",
             "quast_assembly",

@@ -76,8 +76,13 @@ def project_page(project, template_folder: Path = TEMPLATE_FOLDER):
     )
 
 
-def alignment_page(project, threshold: Threshold, template_folder: Path = TEMPLATE_FOLDER):
-    sample_info = gen_reportdata(project, threshold=threshold)
+def alignment_page(
+    project,
+    threshold: Threshold,
+    template_folder: Path = TEMPLATE_FOLDER,
+    sample_ids: Optional[list[str]] = None,
+):
+    sample_info = gen_reportdata(project, threshold=threshold, sample_ids=sample_ids)
 
     return render_template(
         template_folder=template_folder,
@@ -165,7 +170,12 @@ def gen_collectiondata(collect_id=[], threshold: Optional[Threshold] = None):
     return sample_info
 
 
-def gen_reportdata(project_id="all", organism_group="all", threshold: Optional[Threshold] = None):
+def gen_reportdata(
+    project_id="all",
+    organism_group="all",
+    threshold: Optional[Threshold] = None,
+    sample_ids: Optional[list[str]] = None,
+):
     """Queries database for all necessary information for the reports"""
     session = get_session()
     if project_id == "all" and organism_group == "all":
@@ -178,6 +188,9 @@ def gen_reportdata(project_id="all", organism_group="all", threshold: Optional[T
         sample_info = session.query(Samples).filter(
             Samples.CG_ID_project == project_id, Samples.organism == organism_group
         )
+
+    if sample_ids is not None:
+        sample_info = sample_info.filter(Samples.CG_ID_sample.in_(sample_ids))
 
     sample_info = gen_add_info(sample_info, threshold=threshold)
 

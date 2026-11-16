@@ -72,7 +72,9 @@ def test_jsonreport_qc_only_omits_typing_and_assembly(config, reporter, qc_only)
     )
     reporter.qc_only = qc_only
     reporter.create_subfolders()
-    with patch("microSALT.utils.reporter.gen_reportdata", return_value={"samples": [sample]}):
+    with patch(
+        "microSALT.utils.reporter.gen_reportdata", return_value={"samples": [sample]}
+    ) as report_data:
         reporter.gen_json()
 
     with open(f"{config.folders.reports}/json/{reporter.name}.json") as fh:
@@ -81,6 +83,17 @@ def test_jsonreport_qc_only_omits_typing_and_assembly(config, reporter, qc_only)
     assert {"picard_markduplicate", "microsalt_samtools_stats"} <= analyses.keys()
     excluded = {"blast_pubmlst", "quast_assembly", "blast_resfinder_resistence"}
     assert analyses.keys().isdisjoint(excluded) is qc_only
+    assert report_data.call_args.kwargs["sample_ids"] == (
+        ["AAA1234A1"] if qc_only else None
+    )
+
+
+def test_reporter_sample_ids_follow_current_sample_info(reporter):
+    reporter.sampleinfo = [
+        {"CG_ID_sample": "AAA1234A1"},
+        {"CG_ID_sample": "AAA1234A2"},
+    ]
+    assert reporter._sample_ids() == ["AAA1234A1", "AAA1234A2"]
 
 
 @pytest.mark.parametrize("qc_only", [False, True])
