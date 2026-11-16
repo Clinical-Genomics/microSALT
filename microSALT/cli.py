@@ -14,7 +14,7 @@ import click
 
 from microSALT import __version__, logging_levels, setup_logger
 from microSALT.config import MicroSALTConfig, load_config
-from microSALT.exc.exceptions import ProfileCreationError, RefUpdateLockError
+from microSALT.exc.exceptions import AnalysisSetupError, JobCreationError, ProfileCreationError
 from microSALT.store.database import (
     create_tables,
     get_scoped_session_registry,
@@ -22,6 +22,7 @@ from microSALT.store.database import (
 )
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.job_creator import Job_Creator
+from microSALT.utils.validation import validate_sampleinfo
 from microSALT.utils.pubmlst.get_credentials import get_bigsdb_access_token
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.reporter import Reporter
@@ -175,6 +176,13 @@ def setup(config: MicroSALTConfig):
     is_flag=True,
 )
 @click.option("--untrimmed", help="Use untrimmed input data", default=False, is_flag=True)
+@click.option(
+    "--qc-only",
+    "--qc_only",
+    help="Run only read/alignment QC and generate a QC report, without assembly or typing.",
+    default=False,
+    is_flag=True,
+)
 @pass_config
 def analyse(
     config: MicroSALTConfig,
@@ -185,18 +193,43 @@ def analyse(
     skip_update,
     force_update,
     untrimmed,
+    qc_only,
 ):
     """Sequence analysis, typing and resistance identification"""
-    pool = []
     if email:
         config.regex.mail_recipient = email
     config.dry = dry
-    if not os.path.isdir(input):
-        click.echo(f"ERROR - Sequence data folder {input} does not exist.")
-        click.Abort()
-    for subfolder in os.listdir(input):
-        if os.path.isdir(f"{input}/{subfolder}"):
-            pool.append(subfolder)
+    input = os.path.abspath(input) if input else ""
+    try:
+        with open(sampleinfo_file) as stream:
+            data = json.load(stream)
+    except (OSError, ValueError) as error:
+        raise click.ClickException(
+            str(AnalysisSetupError([f"Sample info {sampleinfo_file}: {error}"]))
+        ) from error
+    sampleinfo, errors = validate_sampleinfo(
+        data, default_sampleinfo, input, config.regex.file_pattern
+    )
+    click.echo("INFO - Validating analysis inputs and references..")
+    try:
+        ext_refs = Referencer(
+            log=logger,
+            folders=config.folders,
+            threshold=config.threshold,
+            pubmlst=config.pubmlst,
+            pasteur=config.pasteur,
+            singularity=config.singularity,
+            containers=config.containers,
+            force=force_update,
+        )
+        ext_refs.db_access.check_ref_lock()
+        errors.extend(
+            ext_refs.prepare_references(sampleinfo, qc_only=qc_only, skip_update=skip_update)
+        )
+    except Exception as error:
+        errors.append(f"Reference setup: {error}")
+    if errors:
+        raise click.ClickException(str(AnalysisSetupError(errors)))
 
     run_settings = {
         "input": input,
@@ -204,54 +237,35 @@ def analyse(
         "email": config.regex.mail_recipient,
         "skip_update": skip_update,
         "trimmed": not untrimmed,
-        "pool": pool,
+        "qc_only": qc_only,
+        "pool": [sample["CG_ID_sample"] for sample in sampleinfo] if len(sampleinfo) > 1 else [],
     }
 
-    sampleinfo = review_sampleinfo(sampleinfo_file)
-    run_creator = Job_Creator(
-        log=logger,
-        folders=config.folders,
-        slurm_header=config.slurm_header,
-        regex=config.regex,
-        dry=config.dry,
-        config_path=config.config_path,
-        threshold=config.threshold,
-        pubmlst=config.pubmlst,
-        pasteur=config.pasteur,
-        singularity=config.singularity,
-        containers=config.containers,
-        sampleinfo=sampleinfo,
-        run_settings=run_settings,
-    )
-
-    ext_refs = Referencer(
-        log=logger,
-        folders=config.folders,
-        threshold=config.threshold,
-        pubmlst=config.pubmlst,
-        pasteur=config.pasteur,
-        singularity=config.singularity,
-        containers=config.containers,
-        sampleinfo=sampleinfo,
-        force=force_update,
-    )
-
-    ext_refs.db_access.check_ref_lock()
-
-    click.echo("INFO - Checking versions of references..")
     try:
-        if not skip_update:
-            new_orgs = ext_refs.identify_new()
-            ext_refs.create_new_profile_tables(new_orgs)
-            click.echo("INFO - Version check done. Creating sbatch jobs")
+        run_creator = Job_Creator(
+            log=logger,
+            folders=config.folders,
+            slurm_header=config.slurm_header,
+            regex=config.regex,
+            dry=config.dry,
+            config_path=config.config_path,
+            threshold=config.threshold,
+            pubmlst=config.pubmlst,
+            pasteur=config.pasteur,
+            singularity=config.singularity,
+            containers=config.containers,
+            sampleinfo=sampleinfo,
+            run_settings=run_settings,
+        )
+    except Exception as error:
+        raise click.ClickException(str(AnalysisSetupError([f"Job setup: {error}"]))) from error
+    try:
+        if len(sampleinfo) > 1:
+            run_creator.project_job()
         else:
-            click.echo("INFO - Skipping version check.")
-    except Exception as e:
-        raise ProfileCreationError(f"{e}")
-    if len(sampleinfo) > 1:
-        run_creator.project_job()
-    elif len(sampleinfo) == 1:
-        run_creator.project_job(single_sample=True)
+            run_creator.project_job(single_sample=True)
+    except (AnalysisSetupError, JobCreationError) as error:
+        raise click.ClickException(str(error)) from error
     done()
 
 
@@ -301,6 +315,7 @@ def refer(ctx):
 @pass_config
 def finish(config: MicroSALTConfig, sampleinfo_file, input, track, dry, email, report, output, qc_only):
     """Sequence analysis, typing and resistance identification"""
+    qc_only = qc_only or track == "qc"
     pool = []
     if email:
         config.regex.mail_recipient = email
@@ -332,6 +347,7 @@ def finish(config: MicroSALTConfig, sampleinfo_file, input, track, dry, email, r
         containers=config.containers,
         sampleinfo=sampleinfo,
         input=input,
+        qc_only=qc_only,
     )
     try:
         if isinstance(sampleinfo, list) and len(sampleinfo) > 1:
@@ -347,7 +363,7 @@ def finish(config: MicroSALTConfig, sampleinfo_file, input, track, dry, email, r
             sampleinfo=sampleinfo,
             output=output,
             collection=True,
-            qc_only=qc_only or track == "qc",
+            qc_only=qc_only,
         )
         codemonkey.report(report)
     except Exception as e:

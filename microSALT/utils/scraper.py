@@ -39,8 +39,10 @@ class Scraper:
         containers: Containers = None,
         sampleinfo={},
         input="",
+        qc_only: bool = False,
     ):
         self.folders = folders
+        self.qc_only = qc_only
         self.threshold = threshold
         self.slurm_header = slurm_header
         self.regex = regex
@@ -104,7 +106,8 @@ class Scraper:
         """Scrapes a project folder for information"""
         if project is None:
             project = self.name
-        self.db_pusher.delete_project(project)
+        if not self.qc_only:
+            self.db_pusher.delete_project(project)
         self.job_fallback.create_project(project)
 
         # Scrape order matters a lot!
@@ -126,6 +129,7 @@ class Scraper:
                         pasteur=self.pasteur,
                         sampleinfo=local_param,
                         input=sampledir,
+                        qc_only=self.qc_only,
                     )
                     sample_scraper.scrape_sample()
                 else:
@@ -135,16 +139,34 @@ class Scraper:
         """Scrapes a sample folder for information"""
         if sample is None:
             sample = self.name
-        self.db_pusher.delete_sample_results(sample)
+        if not self.qc_only:
+            self.db_pusher.delete_sample_results(sample)
         self.job_fallback.create_project(self.sample.get("CG_ID_project"))
-        self.job_fallback.create_sample()
+        existing_sample = self.db_pusher.get_sample_by_cg_id_sample(sample)
+        if not self.qc_only or existing_sample is None:
+            self.job_fallback.create_sample()
 
         # Scrape order matters a lot!
         self.sampledir = self.infolder
-        self.scrape_blast(type="seq_type")
-        self.scrape_blast(type="resistance")
-        if self.referencer.organism2reference(self.sample.get("organism")) == "escherichia_coli":
-            self.scrape_blast(type="expec")
+        reforganism = (
+            None
+            if self.qc_only
+            else self.referencer.organism2reference(self.sample.get("organism"))
+        )
+        if not self.qc_only and reforganism is None:
+            self.db_pusher.update_sample({"CG_ID_sample": self.name}, {"ST": -1, "pubmlst_ST": -1})
+        if self.qc_only:
+            self.logger.info(f"QC-only track: skipping typing/resistance scraping for {self.name}")
+        else:
+            if reforganism is not None:
+                self.scrape_blast(type="seq_type")
+            else:
+                self.logger.warning(
+                    f"No MLST scheme for {self.sample.get('organism')}; skipping MLST scraping"
+                )
+            self.scrape_blast(type="resistance")
+            if reforganism == "escherichia_coli":
+                self.scrape_blast(type="expec")
         self.scrape_alignment()
         self.scrape_trimmomatic()
         self.scrape_quast()

@@ -20,6 +20,20 @@ def testdata(unpack_db_json) -> list[dict]:
 
 
 @pytest.fixture
+def referencer(config: MicroSALTConfig, logger: logging.Logger, tmp_path: Path) -> Referencer:
+    folders = config.folders.model_copy(update={"genomes": str(tmp_path)})
+    return Referencer(
+        log=logger,
+        folders=folders,
+        threshold=config.threshold,
+        pubmlst=config.pubmlst,
+        pasteur=config.pasteur,
+        singularity=config.singularity,
+        containers=config.containers,
+    )
+
+
+@pytest.fixture
 def scraper(config: MicroSALTConfig, logger: logging.Logger, testdata: list[dict]) -> Scraper:
     return Scraper(
         log=logger,
