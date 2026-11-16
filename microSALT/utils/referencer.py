@@ -3,13 +3,18 @@ By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 from typing import cast
-import glob
+import gzip
+import json
 import os
 import re
 import shutil
+import shlex
 import subprocess
+import tempfile
 import urllib.request
+from urllib.parse import urlsplit
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 from Bio import Entrez
 
@@ -22,9 +27,11 @@ from microSALT.config import (
     Containers,
 )
 from microSALT.store.db_manipulator import DB_Manipulator
+from microSALT.exc.exceptions import MLSTUnavailableError, ReferenceSetupError
 from microSALT.utils.pubmlst.client import BaseClient, get_client
 from microSALT.utils.pubmlst.exceptions import InvalidURLError, PubMLSTError
 from microSALT.utils.pubmlst.helpers import get_service_by_url
+from microSALT.utils.validation import is_safe_identifier
 
 
 class Referencer:
@@ -136,6 +143,161 @@ class Referencer:
         for organism in new_organisms:
             self.db_access.create_profile_table(organism)
 
+    def prepare_references(self, samples, qc_only=False, skip_update=False) -> list[str]:
+        """Check every required resource, collecting failures rather than hiding them."""
+        references = self._group_samples_by_resource(
+            samples, "reference", excluded=("none", "null")
+        )
+        errors = self._prepare_genome_references(references, skip_update)
+        if qc_only:
+            return errors
+        organisms = self._group_samples_by_resource(samples, "organism")
+        needs_expec, mlst_errors = self._prepare_mlst_references(organisms, skip_update)
+        errors.extend(mlst_errors)
+        errors.extend(self._prepare_typing_references(needs_expec, skip_update))
+        return errors
+
+    @staticmethod
+    def _group_samples_by_resource(
+        samples: list[dict], field: str, excluded: tuple[str, ...] = ()
+    ) -> dict[str, list[str]]:
+        """Group sample labels so shared resources are prepared and reported only once."""
+        resources = {}
+        for sample in samples:
+            value = sample.get(field)
+            if not isinstance(value, str) or not value or value.lower() in excluded:
+                continue
+            name = str(sample.get("CG_ID_sample", "unknown sample"))
+            resources.setdefault(value, []).append(name)
+        return resources
+
+    def _prepare_genome_references(
+        self, references: dict[str, list[str]], skip_update: bool
+    ) -> list[str]:
+        """Collect failures independently for each requested genome."""
+        errors = []
+        for reference, names in references.items():
+            try:
+                self._prepare_genome_reference(reference, skip_update)
+            except Exception as error:
+                errors.append(f"Samples {', '.join(names)}, reference {reference}: {error}")
+        return errors
+
+    def _prepare_genome_reference(self, reference: str, skip_update: bool) -> None:
+        """Fetch one missing genome, validate its FASTA and ensure usable indexes."""
+        if not is_safe_identifier(reference):
+            raise ReferenceSetupError("invalid reference identifier")
+        path = Path(self.folders.genomes) / f"{reference}.fasta"
+        if not path.exists():
+            if skip_update:
+                raise ReferenceSetupError(f"missing reference {path}; downloads are disabled")
+            self.download_ncbi(reference)
+        self.validate_fasta(path)
+        self._prepare_genome_indexes(path, skip_update)
+
+    def _prepare_genome_indexes(self, path: Path, skip_update: bool) -> None:
+        """Keep valid indexes, rebuilding missing/stale ones only when permitted."""
+        missing = self._missing_genome_indexes(path)
+        if not missing:
+            return
+        if skip_update:
+            raise ReferenceSetupError(f"missing or stale genome indexes: {', '.join(missing)}")
+        self._index_genome(path)
+
+    def _prepare_mlst_references(
+        self, organisms: dict[str, list[str]], skip_update: bool
+    ) -> tuple[bool, list[str]]:
+        """Collect MLST failures/warnings and retain independent ExPEC requirements."""
+        errors = []
+        needs_expec = False
+        for organism, names in organisms.items():
+            try:
+                ref = self.organism2reference(organism)
+                needs_expec = needs_expec or ref == "escherichia_coli"
+                ref = self._prepare_mlst_profile(organism, ref, skip_update)
+                needs_expec = needs_expec or ref == "escherichia_coli"
+                self._validate_mlst_reference(ref, skip_update)
+            except MLSTUnavailableError as error:
+                self.logger.warning(
+                    f"Samples {', '.join(names)}, organism {organism}: {error}; skipping MLST"
+                )
+            except Exception as error:
+                self.db_access.session.rollback()
+                errors.append(f"Samples {', '.join(names)}, organism {organism}: {error}")
+        return needs_expec, errors
+
+    def _prepare_mlst_profile(self, organism: str, reference: str | None, skip_update: bool) -> str:
+        """Resolve a usable profile, distinguishing absent schemes from broken caches."""
+        if reference in self.db_access.profiles:
+            return reference
+        if skip_update:
+            if reference is None:
+                raise MLSTUnavailableError("no cached MLST scheme and downloads are disabled")
+            raise ReferenceSetupError("missing MLST profile; downloads are disabled")
+        try:
+            downloaded = self.add_pubmlst(organism)
+        except MLSTUnavailableError as error:
+            if reference is not None:
+                raise ReferenceSetupError(f"incomplete cached MLST resources; {error}") from error
+            raise
+        if not downloaded:
+            raise ReferenceSetupError("could not retrieve MLST resources")
+        self.create_new_profile_tables([downloaded])
+        return downloaded
+
+    def _validate_mlst_reference(self, reference: str, skip_update: bool) -> None:
+        """Check one profile's loci, profile file and BLAST indexes."""
+        loci = Path(self.folders.references) / reference
+        files = sorted(loci.glob("*.tfa"))
+        if not files:
+            raise ReferenceSetupError(f"no MLST loci in {loci}")
+        if not (Path(self.folders.profiles) / reference).is_file():
+            raise ReferenceSetupError(f"missing MLST profile file for {reference}")
+        for path in files:
+            self.validate_fasta(path)
+        self._prepare_blast_indexes(loci, ".tfa", skip_update)
+
+    def _prepare_typing_references(self, needs_expec: bool, skip_update: bool) -> list[str]:
+        """Collect resistance and optional ExPEC resource failures independently."""
+        targets = [(Path(self.folders.resistances), ".fsa")]
+        if needs_expec:
+            expec = Path(self.folders.expec)
+            targets.append((expec.parent, expec.suffix))
+        errors = []
+        for directory, suffix in targets:
+            try:
+                self._prepare_blast_reference(directory, suffix, skip_update)
+            except Exception as error:
+                errors.append(f"Typing resources {directory}: {error}")
+        return errors
+
+    def _prepare_blast_reference(self, directory: Path, suffix: str, skip_update: bool) -> None:
+        """Validate one shared FASTA directory and prepare its BLAST indexes."""
+        files = sorted(directory.glob(f"*{suffix}"))
+        if not files:
+            raise ReferenceSetupError(f"no reference sequences in {directory}")
+        for path in files:
+            self.validate_fasta(path)
+        self._prepare_blast_indexes(directory, suffix, skip_update)
+
+    def _prepare_blast_indexes(self, directory: Path, suffix: str, skip_update: bool):
+        if not skip_update:
+            self.index_db(str(directory), suffix)
+        for path in directory.glob(f"*{suffix}"):
+            for index in self._missing_blast_indexes(path):
+                raise ReferenceSetupError(f"missing or stale BLAST index {index}")
+
+    @staticmethod
+    def _missing_blast_indexes(path: Path) -> list[Path]:
+        indexes = [Path(f"{path.with_suffix('')}{suffix}") for suffix in (".nhr", ".nin", ".nsq")]
+        return [
+            index
+            for index in indexes
+            if not index.is_file()
+            or not index.stat().st_size
+            or index.stat().st_mtime < path.stat().st_mtime
+        ]
+
     def update_refs(self):
         """Updates all references. Order is important, since no object is updated twice"""
         self.db_access.acquire_ref_lock()
@@ -151,45 +313,21 @@ class Referencer:
             self.db_access.release_ref_lock()
 
     def index_db(self, full_dir, suffix):
-        """Check for indexation, makeblastdb job if not enough of them."""
-        reindexation = False
-        files = os.listdir(full_dir)
-        sufx_files = glob.glob(f"{full_dir}/*{suffix}")  # List of source files
-        for file in sufx_files:
-            subsuf = f"\\{suffix}$"
-            base = re.sub(subsuf, "", file)
-
-            bases = 0
-            newer = 0
-            for elem in files:
-                # Number of files with same base name (7)
-                if os.path.basename(base) == elem[: elem.rfind(".")]:
-                    bases = bases + 1
-                    # Number of index files fresher than source (6)
-                    if os.stat(file).st_mtime < os.stat(f"{full_dir}/{elem}").st_mtime:
-                        newer = newer + 1
-            # 7 for parse_seqids, 4 for not.
-            if not (bases == 7 or newer == 6) and not (bases == 4 and newer == 3):
-                reindexation = True
-                try:
-                    # Resistence files
-                    if ".fsa" in suffix:
-                        bash_cmd = self._singularity_exec(
-                            "blast",
-                            f"makeblastdb -in {full_dir}/{os.path.basename(file)} -dbtype nucl -out {os.path.basename(base)}",
-                        )
-                    # MLST locis
-                    else:
-                        bash_cmd = self._singularity_exec(
-                            "blast",
-                            f"makeblastdb -in {full_dir}/{os.path.basename(file)} -dbtype nucl -parse_seqids -out {os.path.basename(base)}",
-                        )
-                    proc = subprocess.Popen(bash_cmd.split(), cwd=full_dir, stdout=subprocess.PIPE)
-                    proc.communicate()
-                except Exception:
-                    self.logger.error(f"Unable to index requested target {file} in {full_dir}")
-        if reindexation:
-            self.logger.info(f"Re-indexed contents of {full_dir}")
+        """Rebuild missing/stale BLAST indexes and propagate indexing failures."""
+        for path in sorted(Path(full_dir).glob(f"*{suffix}")):
+            if not self._missing_blast_indexes(path):
+                continue
+            parse_ids = "" if suffix == ".fsa" else " -parse_seqids"
+            command = self._singularity_exec(
+                "blast",
+                f"makeblastdb -in {shlex.quote(str(path))} -dbtype nucl{parse_ids} "
+                f"-out {shlex.quote(path.stem)}",
+            )
+            self._run_index(command, full_dir)
+            if self._missing_blast_indexes(path):
+                raise ReferenceSetupError(
+                    f"Indexing did not produce usable BLAST indexes for {path}"
+                )
 
     def _parse_external_xml(
         self, url: str = "https://pubmlst.org/static/data/dbases.xml"
@@ -452,35 +590,152 @@ class Referencer:
                 f"Unable to find existing reference for {organism}, strain {normal_organism_name} has no reference match\nSource: {e}"
             )
 
-    def download_ncbi(self, reference):
-        """Checks available references, downloads from NCBI if not present"""
+    @staticmethod
+    def validate_fasta(path: Path) -> None:
+        """Reject error responses and malformed/empty nucleotide FASTA records."""
+        records = 0
+        length = 0
+        with open(path) as stream:
+            for number, line in enumerate(stream, 1):
+                line = line.strip()
+                if not line:
+                    continue
+                if line.startswith(">"):
+                    if not line[1:].strip() or (records and not length):
+                        raise ReferenceSetupError(
+                            f"{path}: empty FASTA header or sequence at line {number}"
+                        )
+                    records += 1
+                    length = 0
+                elif not records or not re.fullmatch(r"[ACGTRYSWKMBDHVNacgtryswkmbdhvn]+", line):
+                    raise ReferenceSetupError(
+                        f"{path}: invalid nucleotide FASTA at line {number}: {line[:160]}"
+                    )
+                else:
+                    length += len(line)
+        if not records or not length:
+            raise ReferenceSetupError(f"{path}: no non-empty FASTA sequences")
+
+    @staticmethod
+    def _missing_genome_indexes(path: Path) -> list[str]:
+        missing = []
+        for suffix in (".amb", ".ann", ".bwt", ".pac", ".sa", ".fai"):
+            index = Path(f"{path}{suffix}")
+            if (
+                not index.is_file()
+                or not index.stat().st_size
+                or index.stat().st_mtime < path.stat().st_mtime
+            ):
+                missing.append(str(index))
+        return missing
+
+    @staticmethod
+    def _run_index(command: str, directory: str):
         try:
-            DEVNULL = open(os.devnull, "wb")
+            subprocess.run(
+                shlex.split(command), cwd=directory, check=True, capture_output=True, text=True
+            )
+        except subprocess.CalledProcessError as error:
+            raise ReferenceSetupError(
+                f"Index command failed (exit {error.returncode}): {command}: "
+                f"{(error.stderr or error.stdout or '').strip()}"
+            ) from error
+
+    def _index_genome(self, path: Path):
+        for tool, command in (("bwa", "bwa index"), ("samtools", "samtools faidx")):
+            self._run_index(
+                self._singularity_exec(tool, f"{command} {shlex.quote(str(path))}"),
+                self.folders.genomes,
+            )
+        missing = self._missing_genome_indexes(path)
+        if missing:
+            raise ReferenceSetupError(
+                f"Indexing did not produce usable files: {', '.join(missing)}"
+            )
+
+    def _assembly_fasta_url(self, reference: str) -> str:
+        """Resolve the requested RefSeq/GenBank assembly, without substituting versions."""
+        if not re.fullmatch(r"GC[AF]_\d+(?:\.\d+)?", reference):
+            raise ReferenceSetupError(f"Invalid assembly accession {reference!r}")
+        with Entrez.esearch(
+            db="assembly", term=f"{reference}[Assembly Accession]", retmax=2, retmode="json"
+        ) as handle:
+            search = json.load(handle).get("esearchresult", {})
+        identifiers = search.get("idlist", [])
+        if int(search.get("count", 0)) != 1 or len(identifiers) != 1:
+            raise ReferenceSetupError(
+                f"Assembly accession {reference} did not resolve to exactly one NCBI Assembly record; "
+                "check the accession and specify its version"
+            )
+        identifier = str(identifiers[0])
+        with Entrez.esummary(db="assembly", id=identifier, retmode="json") as handle:
+            summary = json.load(handle).get("result", {}).get(identifier, {})
+        source = "refseq" if reference.startswith("GCF_") else "genbank"
+        accession = summary.get("synonym", {}).get(source) or summary.get("assemblyaccession", "")
+        matches = (
+            accession == reference if "." in reference else accession.split(".")[0] == reference
+        )
+        if not matches:
+            raise ReferenceSetupError(
+                f"NCBI Assembly returned {accession!r} instead of requested accession {reference}"
+            )
+        location = summary.get(f"ftppath_{source}", "")
+        if not location:
+            raise ReferenceSetupError(
+                f"No {source} genomic FASTA download is available for assembly {reference}"
+            )
+        parsed = urlsplit(location.rstrip("/"))
+        directory = parsed.path.rsplit("/", 1)[-1]
+        if (
+            parsed.scheme not in {"ftp", "https"}
+            or parsed.netloc != "ftp.ncbi.nlm.nih.gov"
+            or not parsed.path.startswith("/genomes/all/")
+            or parsed.query
+            or parsed.fragment
+            or not directory.startswith(f"{accession}_")
+        ):
+            raise ReferenceSetupError(
+                f"Unexpected NCBI Assembly download path for {reference}: {location}"
+            )
+        return f"https://ftp.ncbi.nlm.nih.gov{parsed.path}/{directory}_genomic.fna.gz"
+
+    def download_ncbi(self, reference):
+        """Fetch a nucleotide or assembly genome, validate and index before publishing."""
+        reference = "".join(reference.split())
+        if not re.fullmatch(r"[\w.-]+", reference) or reference in {".", ".."}:
+            raise ReferenceSetupError(f"Invalid reference identifier {reference!r}")
+        try:
             Entrez.email = "2@2.com"
-            record = Entrez.efetch(db="nucleotide", id=reference, rettype="fasta", retmod="text")
-            sequence = record.read()
-            output = f"{self.folders.genomes}/{reference}.fasta"
-            with open(output, "w") as f:
-                f.write(sequence)
-            bwaindex = self._singularity_exec("bwa", f"bwa index {output}")
-            proc = subprocess.Popen(
-                bwaindex.split(),
-                cwd=self.folders.genomes,
-                stdout=DEVNULL,
-                stderr=DEVNULL,
-            )
-            out, err = proc.communicate()
-            samindex = self._singularity_exec("samtools", f"samtools faidx {output}")
-            proc = subprocess.Popen(
-                samindex.split(),
-                cwd=self.folders.genomes,
-                stdout=DEVNULL,
-                stderr=DEVNULL,
-            )
-            out, err = proc.communicate()
+            with tempfile.TemporaryDirectory(
+                prefix=".genome-", dir=self.folders.genomes
+            ) as directory:
+                staged = Path(directory) / f"{reference}.fasta"
+                if reference.startswith(("GCF_", "GCA_")):
+                    url = self._assembly_fasta_url(reference)
+                    with (
+                        urllib.request.urlopen(url, timeout=60) as response,
+                        gzip.GzipFile(fileobj=response) as genome,
+                        staged.open("wb") as target,
+                    ):
+                        shutil.copyfileobj(genome, target)
+                else:
+                    with (
+                        Entrez.efetch(
+                            db="nucleotide", id=reference, rettype="fasta", retmode="text"
+                        ) as record,
+                        staged.open("w") as target,
+                    ):
+                        shutil.copyfileobj(record, target)
+                self.validate_fasta(staged)
+                self._index_genome(staged)
+                output = Path(self.folders.genomes) / staged.name
+                # Publish the FASTA last: a failed fetch/index never replaces a cached genome.
+                for suffix in (".amb", ".ann", ".bwt", ".pac", ".sa", ".fai"):
+                    Path(f"{staged}{suffix}").replace(f"{output}{suffix}")
+                staged.replace(output)
             self.logger.info(f"Downloaded reference {reference}")
-        except Exception:
-            self.logger.warning(f"Unable to download genome '{reference}' from NCBI")
+        except Exception as error:
+            raise ReferenceSetupError(f"Unable to prepare genome '{reference}': {error}") from error
 
     def add_pubmlst(self, organism: str):
         """Checks pubmlst for references of given organism and downloads them"""
@@ -491,7 +746,7 @@ class Referencer:
             organism = organism.lower().replace(".", " ")
             if organism.replace(" ", "_") in self.organisms and not self.force:
                 self.logger.info(f"Organism {organism} already stored in microSALT")
-                return
+                return organism.replace(" ", "_")
             db_query = self.query_pubmlst()
 
             # Doublecheck organism name is correct and unique
@@ -518,8 +773,9 @@ class Referencer:
                     f"Reference '{errorg}' resolved to {int(counter / 2)} organisms. Please be more stringent"
                 )
             elif counter < 1.0:
-                # add external
-                raise Exception(f"Unable to find requested organism '{errorg}' in pubMLST database")
+                raise MLSTUnavailableError(
+                    f"No pubMLST database is available for organism '{errorg}'"
+                )
             else:
                 truename = desc.lower().split(" ")
                 truename = f"{truename[0]}_{truename[1]}"
@@ -529,9 +785,10 @@ class Referencer:
                 self.refs = self.db_access.profiles
                 self.logger.info(f"Downloaded profile files for {truename}")
                 return truename
+        except MLSTUnavailableError:
+            raise
         except Exception as e:
-            self.logger.warning(e.args[0])
-        return None
+            raise ReferenceSetupError(f"Unable to prepare MLST resources for {errorg}: {e}") from e
 
     def query_pubmlst(self):
         """Returns a json object containing all organisms available via pubmlst.org"""
@@ -545,18 +802,19 @@ class Referencer:
             parsed_data = self.client.parse_url(url=subtype_href)
             db = parsed_data.get("db")
             if not db:
-                self.logger.warning(f"Could not extract database name from URL: {subtype_href}")
-                return None
+                raise ReferenceSetupError(
+                    f"Could not extract database name from URL: {subtype_href}"
+                )
 
             # First, check scheme 1
             scheme_query_1 = self.client.retrieve_scheme_info(db, 1)
             mlst = None
-            if "MLST" in scheme_query_1.get("description", ""):
+            if "MLST" in (scheme_query_1 or {}).get("description", ""):
                 mlst = f"{subtype_href}/schemes/1"
             else:
                 # If scheme 1 isn't MLST, list all schemes and find the one with 'description' == 'MLST'
                 record_query = self.client.list_schemes(db)
-                for scheme in record_query.get("schemes", []):
+                for scheme in (record_query or {}).get("schemes", []):
                     if scheme.get("description") == "MLST":
                         mlst = scheme.get("scheme")
                         break
@@ -568,8 +826,9 @@ class Referencer:
                 self.logger.warning(f"Could not find MLST data at {subtype_href}")
                 return None
         except Exception as e:
-            self.logger.warning(e)
-            return None
+            raise ReferenceSetupError(
+                f"Unable to look up MLST schemes at {subtype_href}: {e}"
+            ) from e
 
     def external_version(self, organism, subtype_href):
         """Returns the version (date) of the data available on pubMLST"""
@@ -582,12 +841,13 @@ class Referencer:
             db = parsed_data.get("db")
             scheme_id = parsed_data.get("scheme_id")
             if not db or not scheme_id:
-                self.logger.warning(
+                raise ReferenceSetupError(
                     f"Could not extract database name or scheme ID from MLST URL: {mlst_href}"
                 )
-                return None
 
             scheme_info = self.client.retrieve_scheme_info(db, scheme_id)
+            if scheme_info is None:
+                raise MLSTUnavailableError(f"MLST scheme is no longer available at {mlst_href}")
             last_updated = scheme_info.get("last_updated")
             if last_updated:
                 self.logger.debug(
@@ -599,19 +859,29 @@ class Referencer:
                     f"No 'last_updated' field found for db: {db}, scheme_id: {scheme_id}"
                 )
                 return None
+        except MLSTUnavailableError:
+            raise
         except Exception as e:
-            self.logger.warning(f"Could not determine pubMLST version for {organism}")
-            self.logger.warning(e)
-            return None
+            raise ReferenceSetupError(
+                f"Unable to determine pubMLST version for {organism}: {e}"
+            ) from e
 
     def download_pubmlst(self, organism, subtype_href, force=False):
-        """Downloads ST and loci for a given organism stored on pubMLST if it is more recent. Returns update date"""
+        """Download an available MLST scheme; return its version date when supplied."""
         organism = organism.lower().replace(" ", "_")
         try:
             # Pull version
             extver = self.external_version(organism, subtype_href)
+            if not extver:
+                self.logger.warning(
+                    f"No external MLST version date for {organism}; skipping version comparison"
+                )
             currver = self.db_access.read_version(f"profile_{organism}")
-            if int(extver.replace("-", "")) <= int(currver.replace("-", "")) and not force:
+            if (
+                extver
+                and int(extver.replace("-", "")) <= int(currver.replace("-", ""))
+                and not force
+            ):
                 self.logger.info(
                     f"Profile for {organism.replace('_', ' ').capitalize()} already at the latest version."
                 )
@@ -620,18 +890,16 @@ class Referencer:
             # Retrieve the MLST scheme URL
             mlst_href = self.get_mlst_scheme(subtype_href)
             if not mlst_href:
-                self.logger.warning(f"MLST scheme not found for URL: {subtype_href}")
-                return None
+                raise MLSTUnavailableError(f"No MLST scheme is available at {subtype_href}")
 
             # Parse the database name and scheme ID
             parsed_data = self.client.parse_url(url=mlst_href)
             db = parsed_data.get("db")
             scheme_id = parsed_data.get("scheme_id")
             if not db or not scheme_id:
-                self.logger.warning(
+                raise ReferenceSetupError(
                     f"Could not extract database name or scheme ID from MLST URL: {mlst_href}"
                 )
-                return None
 
             # Step 1: Download the profiles CSV
             st_target = f"{self.folders.profiles}/{organism}"
@@ -650,6 +918,8 @@ class Referencer:
 
             # Step 2: Fetch scheme information to get loci
             scheme_info = self.client.retrieve_scheme_info(db, scheme_id)
+            if scheme_info is None:
+                raise MLSTUnavailableError(f"MLST scheme is no longer available at {mlst_href}")
             loci_list = scheme_info.get("loci", [])
 
             # Step 3: Download loci FASTA files
@@ -669,9 +939,10 @@ class Referencer:
             self.index_db(output, ".tfa")
 
             return extver
+        except MLSTUnavailableError:
+            raise
         except Exception as e:
-            self.logger.error(f"Failed to download data for {organism}: {e}")
-            return None
+            raise ReferenceSetupError(f"Failed to download data for {organism}: {e}") from e
 
     def fetch_pubmlst(self, force=False):
         """Updates reference for data that is stored on pubMLST"""
@@ -689,12 +960,21 @@ class Referencer:
 
         for key, val in seqdef_url.items():
             internal_ver = self.db_access.read_version(f"profile_{key}")
-            external_ver = self.external_version(key, val)
+            try:
+                external_ver = self.external_version(key, val)
 
-            if (internal_ver < external_ver) or force:
-                self.logger.info(
-                    f"pubMLST reference for {key.replace('_', ' ').capitalize()} updated to {external_ver} from {internal_ver}"
-                )
-                self.download_pubmlst(key, val, force)
-                self.db_access.update_version(name=f"profile_{key}", version=external_ver)
-                self.db_access.refresh_profiletable(key)
+                if external_ver is None and not force:
+                    self.logger.warning(
+                        f"No external MLST version date for {key}; keeping cached resources"
+                    )
+                    continue
+                if force or (internal_ver < external_ver):
+                    self.logger.info(
+                        f"pubMLST reference for {key.replace('_', ' ').capitalize()} updated to {external_ver} from {internal_ver}"
+                    )
+                    self.download_pubmlst(key, val, force)
+                    if external_ver is not None:
+                        self.db_access.update_version(name=f"profile_{key}", version=external_ver)
+                    self.db_access.refresh_profiletable(key)
+            except MLSTUnavailableError as error:
+                self.logger.warning(f"{error}; keeping cached MLST resources for {key}")
