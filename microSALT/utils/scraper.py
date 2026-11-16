@@ -106,7 +106,8 @@ class Scraper:
         """Scrapes a project folder for information"""
         if project is None:
             project = self.name
-        self.db_pusher.delete_project(project)
+        if not self.qc_only:
+            self.db_pusher.delete_project(project)
         self.job_fallback.create_project(project)
 
         # Scrape order matters a lot!
@@ -138,9 +139,12 @@ class Scraper:
         """Scrapes a sample folder for information"""
         if sample is None:
             sample = self.name
-        self.db_pusher.delete_sample_results(sample)
+        if not self.qc_only:
+            self.db_pusher.delete_sample_results(sample)
         self.job_fallback.create_project(self.sample.get("CG_ID_project"))
-        self.job_fallback.create_sample()
+        existing_sample = self.db_pusher.get_sample_by_cg_id_sample(sample)
+        if not self.qc_only or existing_sample is None:
+            self.job_fallback.create_sample()
 
         # Scrape order matters a lot!
         self.sampledir = self.infolder

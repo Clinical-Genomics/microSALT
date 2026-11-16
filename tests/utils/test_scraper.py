@@ -4,6 +4,7 @@
 import glob
 import logging
 import shutil
+import uuid
 from pathlib import Path
 from typing import Generator
 from unittest.mock import patch
@@ -238,6 +239,98 @@ def test_scrape_sample_qc_only_skips_typing_for_unknown_organism(
         qc_scraper.scrape_sample()
 
     blast.assert_not_called()
+
+
+def test_scrape_sample_qc_only_preserves_existing_typing_results(
+    config: MicroSALTConfig,
+    logger: logging.Logger,
+    testdata: list[dict],
+    dbm: DB_Manipulator,
+    tmp_path: Path,
+) -> None:
+    """QC-only reruns refresh QC without removing or resetting prior typing results."""
+    sampleinfo = dict(testdata[0])
+    suffix = uuid.uuid4().hex[:8]
+    sampleinfo["CG_ID_project"] = f"QC{suffix}"
+    sampleinfo["CG_ID_sample"] = f"QC{suffix}A1"
+    input_dir = tmp_path / sampleinfo["CG_ID_sample"]
+    input_dir.mkdir()
+
+    setup_scraper = _make_scraper(config, logger, sampleinfo, input_dir)
+    setup_scraper.job_fallback.create_project(sampleinfo["CG_ID_project"])
+    setup_scraper.job_fallback.create_sample()
+    dbm.add_to_session(
+        dbm.add_seq_type(
+            CG_ID_sample=sampleinfo["CG_ID_sample"],
+            loci="arcC",
+            allele=3,
+            contig_name="NODE_1",
+            st_predictor=True,
+        )
+    )
+    dbm.add_to_session(
+        dbm.add_resistance(
+            CG_ID_sample=sampleinfo["CG_ID_sample"],
+            gene="blaOXA",
+            instance="OXA",
+            contig_name="NODE_1",
+        )
+    )
+    dbm.add_to_session(
+        dbm.add_expac(
+            CG_ID_sample=sampleinfo["CG_ID_sample"],
+            gene="virulence_gene",
+            instance="ExPEC",
+            contig_name="NODE_1",
+        )
+    )
+    dbm.commit_session()
+    dbm.update_sample(
+        {"CG_ID_sample": sampleinfo["CG_ID_sample"]}, {"ST": 42, "pubmlst_ST": 17}
+    )
+
+    qc_scraper = _make_scraper(config, logger, sampleinfo, input_dir, qc_only=True)
+    with (
+        patch.object(qc_scraper.db_pusher, "delete_sample_results") as delete_results,
+        patch.object(qc_scraper, "scrape_alignment"),
+        patch.object(qc_scraper, "scrape_trimmomatic"),
+        patch.object(qc_scraper, "scrape_quast"),
+        patch.object(qc_scraper, "scrape_reference"),
+    ):
+        qc_scraper.scrape_sample()
+
+    delete_results.assert_not_called()
+    saved_sample = dbm.get_sample_by_cg_id_sample(sampleinfo["CG_ID_sample"])
+    assert (saved_sample.ST, saved_sample.pubmlst_ST) == (42, 17)
+    assert [row.loci for row in saved_sample.seq_types] == ["arcC"]
+    assert [row.gene for row in saved_sample.resistances] == ["blaOXA"]
+    assert [row.gene for row in saved_sample.expacs] == ["virulence_gene"]
+
+
+def test_scrape_project_qc_only_does_not_delete_project_samples(
+    config: MicroSALTConfig,
+    logger: logging.Logger,
+    testdata: list[dict],
+    tmp_path: Path,
+) -> None:
+    """QC-only project runs process current samples without deleting other project members."""
+    sampleinfo = [dict(entry) for entry in testdata[:2]]
+    input_dir = tmp_path / "project"
+    input_dir.mkdir()
+    for entry in sampleinfo:
+        (input_dir / entry["CG_ID_sample"]).mkdir()
+
+    project_scraper = _make_scraper(config, logger, sampleinfo, input_dir, qc_only=True)
+    with (
+        patch.object(project_scraper.db_pusher, "delete_project") as delete_project,
+        patch.object(project_scraper.job_fallback, "create_project") as create_project,
+        patch.object(Scraper, "scrape_sample") as scrape_sample,
+    ):
+        project_scraper.scrape_project()
+
+    delete_project.assert_not_called()
+    create_project.assert_called_once_with(project_scraper.name)
+    assert scrape_sample.call_count == len(sampleinfo)
 
 
 def test_scrape_sample_default_runs_typing(
