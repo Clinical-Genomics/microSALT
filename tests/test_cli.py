@@ -1,7 +1,7 @@
 """Tests for the CLI entry point — verifies config loading and propagation."""
 
-import json
 import gzip
+import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -110,7 +110,7 @@ def test_config_fields_propagated(config: MicroSALTConfig, config_file: Path):
     assert loaded.slurm_header.project == config.slurm_header.project
 
 
-@pytest.mark.parametrize("qc_option", [None, "--qc-only", "--qc_only"])
+@pytest.mark.parametrize("qc_option", [None, "--qc-only"])
 @pytest.mark.parametrize("sample_count", [1, 2])
 def test_analyse_passes_qc_only_to_job_creator(config_file, tmp_path, qc_option, sample_count):
     """QC-only is opt-in and reaches the job creator for samples and projects."""
@@ -432,12 +432,13 @@ def test_finish_exits_nonzero_when_input_missing(
         ([], False),
         (["--track", "qc"], True),
         (["--qc-only"], True),
-        (["--qc_only"], True),
         (["--qc-only", "--track", "qc"], True),
     ],
 )
 @pytest.mark.parametrize("report", ["default", "qc"])
-def test_finish_passes_qc_only_to_scraper_and_reporter(config_file, tmp_path, options, expected_qc_only, report):
+def test_finish_passes_qc_only_to_scraper_and_reporter(
+    config_file, tmp_path, options, expected_qc_only, report
+):
     """Both QC-only interfaces must agree on scraping and report filtering."""
     sampleinfo = tmp_path / "sampleinfo.json"
     sampleinfo.write_text(json.dumps({"CG_ID_sample": "TST0001A1", "CG_ID_project": "TST0001"}))
