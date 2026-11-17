@@ -85,7 +85,7 @@ To run read/alignment QC without assembly, MLST, resistance or ExPEC analysis:
 microsalt --config /path/to/config.json analyse --qc-only --input /path/to/fastq sampleinfo.json
 ```
 
-`--qc_only` is also accepted. This applies to both single-sample and project runs.
+`--qc-only` is also accepted. This applies to both single-sample and project runs.
 The final job automatically uses `utils finish --track qc --report qc`, skipping
 typing/resistance scraping and generating only the QC report. A configured
 reference genome is still required for alignment. Without this flag, the full

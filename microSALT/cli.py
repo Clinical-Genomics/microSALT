@@ -14,7 +14,11 @@ import click
 
 from microSALT import __version__, logging_levels, setup_logger
 from microSALT.config import MicroSALTConfig, load_config
-from microSALT.exc.exceptions import AnalysisSetupError, JobCreationError, ProfileCreationError
+from microSALT.exc.exceptions import (
+    AnalysisSetupError,
+    JobCreationError,
+    ProfileCreationError,
+)
 from microSALT.store.database import (
     create_tables,
     get_scoped_session_registry,
@@ -22,11 +26,11 @@ from microSALT.store.database import (
 )
 from microSALT.store.db_manipulator import DB_Manipulator
 from microSALT.utils.job_creator import Job_Creator
-from microSALT.utils.validation import validate_sampleinfo
 from microSALT.utils.pubmlst.get_credentials import get_bigsdb_access_token
 from microSALT.utils.referencer import Referencer
 from microSALT.utils.reporter import Reporter
 from microSALT.utils.scraper import Scraper
+from microSALT.utils.validation import validate_sampleinfo
 
 default_sampleinfo = {
     "CG_ID_project": "XXX0000",
@@ -178,7 +182,6 @@ def setup(config: MicroSALTConfig):
 @click.option("--untrimmed", help="Use untrimmed input data", default=False, is_flag=True)
 @click.option(
     "--qc-only",
-    "--qc_only",
     help="Run only read/alignment QC and generate a QC report, without assembly or typing.",
     default=False,
     is_flag=True,
@@ -288,7 +291,6 @@ def refer(ctx):
 @click.option("--input", help="Full path to project folder", default="")
 @click.option(
     "--qc-only",
-    "--qc_only",
     help="Finalise read/alignment QC only, without assembly or typing outputs.",
     is_flag=True,
     default=False,
@@ -313,7 +315,9 @@ def refer(ctx):
 )
 @click.option("--output", help="Report output folder", default="")
 @pass_config
-def finish(config: MicroSALTConfig, sampleinfo_file, input, track, dry, email, report, output, qc_only):
+def finish(
+    config: MicroSALTConfig, sampleinfo_file, input, track, dry, email, report, output, qc_only
+):
     """Sequence analysis, typing and resistance identification"""
     qc_only = qc_only or track == "qc"
     pool = []
