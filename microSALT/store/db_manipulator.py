@@ -17,7 +17,7 @@ from sqlalchemy import inspect as sa_inspect
 
 from microSALT import __version__
 from microSALT.config import Folders, Threshold
-from microSALT.exc.exceptions import RefUpdateLockError
+from microSALT.exc.exceptions import RefUpdateLockError, ReferenceSetupError
 from microSALT.store.database import get_engine, get_session
 from microSALT.store.models import ProfileTable
 from microSALT.store.orm_models import (
@@ -446,6 +446,28 @@ class DB_Manipulator:
         except Exception as e:
             self.session.rollback()
             self.logger.error(f"Failed to bulk-insert profile data for {filename}: {e}")
+            raise ReferenceSetupError(f"Failed to import MLST profile {filename}: {e}") from e
+
+    def validate_profiletable(self, organism: str) -> None:
+        """Check that the database imported the profile file, allowing empty schemes."""
+        with open(f"{self.folders.profiles}/{organism}") as stream:
+            next(stream, None)
+            expected = sum(1 for line in stream if line.strip())
+        table_name = f"profile_{organism}"
+        if not sa_inspect(self.engine).has_table(table_name):
+            raise ReferenceSetupError(f"missing MLST profile table {table_name}")
+        table = Table(table_name, MetaData(), autoload_with=self.engine)
+        actual = self.session.query(table).count()
+        if actual != expected:
+            raise ReferenceSetupError(
+                f"MLST profile {organism}: file contains {expected} profiles "
+                f"but database contains {actual}; refresh the profile table"
+            )
+        if expected == 0:
+            self.logger.warning(
+                f"MLST scheme {organism} has no defined ST profiles; "
+                "allele typing can continue but cannot match a known ST"
+            )
 
     def read_columns(self, tablename: str):
         """Returns all records for a given ORM table"""

@@ -253,6 +253,7 @@ class Referencer:
             raise ReferenceSetupError(f"no MLST loci in {loci}")
         if not (Path(self.folders.profiles) / reference).is_file():
             raise ReferenceSetupError(f"missing MLST profile file for {reference}")
+        self.db_access.validate_profiletable(reference)
         for path in files:
             self.validate_fasta(path)
         self._prepare_blast_indexes(loci, ".tfa", skip_update)
@@ -973,8 +974,8 @@ class Referencer:
                         f"pubMLST reference for {key.replace('_', ' ').capitalize()} updated to {external_ver} from {internal_ver}"
                     )
                     self.download_pubmlst(key, val, force)
+                    self.db_access.refresh_profiletable(key)
                     if external_ver is not None:
                         self.db_access.update_version(name=f"profile_{key}", version=external_ver)
-                    self.db_access.refresh_profiletable(key)
             except MLSTUnavailableError as error:
                 self.logger.warning(f"{error}; keeping cached MLST resources for {key}")

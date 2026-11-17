@@ -7,6 +7,7 @@ import pytest
 
 from microSALT.exc.exceptions import MLSTUnavailableError, ReferenceSetupError
 from microSALT.utils.referencer import Referencer
+from sqlalchemy import Column, Integer, MetaData, Table
 
 
 @pytest.fixture
@@ -28,6 +29,12 @@ def mlst_reference_files(referencer, tmp_path):
     Path(referencer.folders.profiles).mkdir()
     (loci / "locus.tfa").write_text(">locus_1\nACGT\n")
     (Path(referencer.folders.profiles) / reference).write_text("ST\tlocus\n1\t1\n")
+    referencer.db_access.folders.profiles = referencer.folders.profiles
+    table = Table(f"profile_{reference}", MetaData(), Column("ST", Integer, primary_key=True), Column("locus", Integer))
+    table.drop(referencer.db_access.engine, checkfirst=True)
+    table.create(referencer.db_access.engine)
+    referencer.db_access.session.execute(table.insert(), [{"ST": 1, "locus": 1}])
+    referencer.db_access.session.commit()
     return reference
 
 
@@ -399,3 +406,22 @@ def test_prepare_references_orchestrates_resource_groups(referencer, qc_only):
         assert errors == ["genome error", "MLST error", "typing error"]
         mlst.assert_called_once_with({"Other": ["A1"]}, True)
         typing.assert_called_once_with(True, True)
+
+
+@pytest.mark.parametrize("skip_update", [False, True])
+def test_validate_mlst_reference_rejects_failed_import(referencer, mlst_reference_files, skip_update):
+    from sqlalchemy import text
+    referencer.db_access.session.execute(text(f"DELETE FROM profile_{mlst_reference_files}"))
+    referencer.db_access.session.commit()
+    with pytest.raises(ReferenceSetupError, match="file contains 1 profiles but database contains 0"):
+        referencer._validate_mlst_reference(mlst_reference_files, skip_update)
+
+
+def test_validate_mlst_reference_accepts_empty_scheme(referencer, mlst_reference_files, caplog):
+    from sqlalchemy import text
+    (Path(referencer.folders.profiles) / mlst_reference_files).write_text("ST\tlocus\n")
+    referencer.db_access.session.execute(text(f"DELETE FROM profile_{mlst_reference_files}"))
+    referencer.db_access.session.commit()
+    with patch.object(referencer, "_prepare_blast_indexes"):
+        referencer._validate_mlst_reference(mlst_reference_files, False)
+    assert "has no defined ST profiles" in caplog.text

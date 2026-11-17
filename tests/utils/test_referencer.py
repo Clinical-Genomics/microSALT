@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy import Column, Integer, MetaData, Table
 
 from microSALT.exc.exceptions import MLSTUnavailableError, ReferenceSetupError
 from microSALT.utils.pubmlst.exceptions import PubMLSTError
@@ -375,6 +376,11 @@ def test_full_analysis_without_published_mlst_scheme_warns_and_continues(referen
     resistance.mkdir()
     (resistance / "gene.fsa").write_text(">gene\nACGT\n")
     referencer.folders.resistances = str(resistance)
+    table = Table("profile_staphylococcus_aureus", MetaData(), Column("ST", Integer, primary_key=True), Column("locus", Integer))
+    table.drop(referencer.db_access.engine, checkfirst=True)
+    table.create(referencer.db_access.engine)
+    referencer.db_access.session.execute(table.insert(), [{"ST": 1, "locus": 1}])
+    referencer.db_access.session.commit()
     with (
         patch.object(
             referencer, "add_pubmlst", side_effect=MLSTUnavailableError("No published scheme")
@@ -395,6 +401,11 @@ def test_skip_update_without_cached_mlst_keeps_other_analyses(referencer, tmp_pa
     resistance.mkdir()
     (resistance / "gene.fsa").write_text(">gene\nACGT\n")
     referencer.folders.resistances = str(resistance)
+    table = Table("profile_staphylococcus_aureus", MetaData(), Column("ST", Integer, primary_key=True), Column("locus", Integer))
+    table.drop(referencer.db_access.engine, checkfirst=True)
+    table.create(referencer.db_access.engine)
+    referencer.db_access.session.execute(table.insert(), [{"ST": 1, "locus": 1}])
+    referencer.db_access.session.commit()
     with (
         patch.object(referencer, "add_pubmlst") as download,
         patch.object(referencer, "_prepare_blast_indexes"),
@@ -516,6 +527,11 @@ def test_full_analysis_accepts_valid_cached_typing_resources(referencer, tmp_pat
     referencer.folders.references = str(references)
     referencer.folders.profiles = str(profiles)
     referencer.folders.resistances = str(resistance)
+    table = Table("profile_staphylococcus_aureus", MetaData(), Column("ST", Integer, primary_key=True), Column("locus", Integer))
+    table.drop(referencer.db_access.engine, checkfirst=True)
+    table.create(referencer.db_access.engine)
+    referencer.db_access.session.execute(table.insert(), [{"ST": 1, "locus": 1}])
+    referencer.db_access.session.commit()
     with (
         patch.object(referencer.db_access, "profiles", {"staphylococcus_aureus": object()}),
         patch.object(referencer, "add_pubmlst") as download,
@@ -550,3 +566,23 @@ def test_missing_reference_is_an_error_with_skip_update(referencer):
         )
     assert "missing reference" in errors[0]
     download.assert_not_called()
+
+
+def test_scheduled_update_does_not_advance_version_after_failed_import(referencer):
+    database = "https://example.org/seqdef"
+    with (
+        patch.object(referencer, "organisms", ["staphylococcus_aureus"]),
+        patch.object(referencer, "query_pubmlst", return_value=[{"databases": [{"description": "Staphylococcus aureus seqdef", "href": database}]}]),
+        patch.object(referencer.db_access, "read_version", return_value="2020-01-01"),
+        patch.object(referencer, "external_version", return_value="2026-01-01"),
+        patch.object(referencer, "download_pubmlst"),
+        patch.object(referencer.db_access, "refresh_profiletable", side_effect=ReferenceSetupError("import failed")),
+        patch.object(referencer.db_access, "update_version") as version,
+        patch.object(referencer.db_access, "acquire_ref_lock") as acquire,
+        patch.object(referencer.db_access, "release_ref_lock") as release,
+        pytest.raises(ReferenceSetupError, match="import failed"),
+    ):
+        referencer.update_refs()
+    version.assert_not_called()
+    acquire.assert_called_once_with()
+    release.assert_called_once_with()
