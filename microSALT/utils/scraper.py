@@ -142,9 +142,7 @@ class Scraper:
         if not self.qc_only:
             self.db_pusher.delete_sample_results(sample)
         self.job_fallback.create_project(self.sample.get("CG_ID_project"))
-        existing_sample = self.db_pusher.get_sample_by_cg_id_sample(sample)
-        if not self.qc_only or existing_sample is None:
-            self.job_fallback.create_sample()
+        self.job_fallback.create_sample()
 
         # Scrape order matters a lot!
         self.sampledir = self.infolder

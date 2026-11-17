@@ -247,7 +247,7 @@ def test_scrape_sample_qc_only_preserves_existing_typing_results(
     dbm: DB_Manipulator,
     tmp_path: Path,
 ) -> None:
-    """QC-only reruns refresh QC without removing or resetting prior typing results."""
+    """Standalone QC-only finish refreshes metadata while preserving typing results."""
     sampleinfo = dict(testdata[0])
     suffix = uuid.uuid4().hex[:8]
     sampleinfo["CG_ID_project"] = f"QC{suffix}"
@@ -288,6 +288,15 @@ def test_scrape_sample_qc_only_preserves_existing_typing_results(
         {"CG_ID_sample": sampleinfo["CG_ID_sample"]}, {"ST": 42, "pubmlst_ST": 17}
     )
 
+    sampleinfo.update({
+        "organism": "Updated organism",
+        "Customer_ID_sample": "updated-customer-name",
+        "reference": "UPDATED_REFERENCE",
+        "date_libprep": "2026-11-01 12:00:00",
+        "date_sequencing": "2026-11-02 12:00:00",
+        "method_libprep": "updated-library-method",
+        "method_sequencing": "updated-sequencing-method",
+    })
     qc_scraper = _make_scraper(config, logger, sampleinfo, input_dir, qc_only=True)
     with (
         patch.object(qc_scraper.db_pusher, "delete_sample_results") as delete_results,
@@ -300,6 +309,13 @@ def test_scrape_sample_qc_only_preserves_existing_typing_results(
 
     delete_results.assert_not_called()
     saved_sample = dbm.get_sample_by_cg_id_sample(sampleinfo["CG_ID_sample"])
+    assert saved_sample.organism == sampleinfo["organism"]
+    assert saved_sample.Customer_ID_sample == sampleinfo["Customer_ID_sample"]
+    assert saved_sample.reference_genome == sampleinfo["reference"]
+    assert saved_sample.date_libprep.isoformat(sep=" ") == sampleinfo["date_libprep"]
+    assert saved_sample.date_sequencing.isoformat(sep=" ") == sampleinfo["date_sequencing"]
+    assert saved_sample.method_libprep == sampleinfo["method_libprep"]
+    assert saved_sample.method_sequencing == sampleinfo["method_sequencing"]
     assert (saved_sample.ST, saved_sample.pubmlst_ST) == (42, 17)
     assert [row.loci for row in saved_sample.seq_types] == ["arcC"]
     assert [row.gene for row in saved_sample.resistances] == ["blaOXA"]
