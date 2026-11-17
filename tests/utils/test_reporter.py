@@ -96,14 +96,18 @@ def test_reporter_sample_ids_follow_current_sample_info(reporter):
     assert reporter._sample_ids() == ["AAA1234A1", "AAA1234A2"]
 
 
-def test_gen_version_passes_current_sample_info_to_versioning(reporter):
+@pytest.mark.parametrize("qc_only", [False, True])
+def test_gen_version_fingerprints_the_rendered_roster(reporter, qc_only):
+    reporter.qc_only = qc_only
     with (
         patch.object(reporter.db_pusher, "read_report"),
         patch.object(reporter.db_pusher, "set_report") as set_report,
     ):
         reporter.gen_version(reporter.name)
 
-    set_report.assert_called_once_with(reporter.name, sampleinfo=reporter.sampleinfo)
+    set_report.assert_called_once_with(
+        reporter.name, sampleinfo=reporter.sampleinfo if qc_only else None
+    )
 
 
 @pytest.mark.parametrize("qc_only", [False, True])
@@ -194,3 +198,27 @@ def test_constructor(config, logger, unpack_db_json):
         name="MIC1234A1",
         output="/tmp/MLST",
     )
+
+
+@pytest.mark.parametrize("qc_only", [False, True])
+def test_version_changes_only_for_samples_in_rendered_report(reporter, qc_only):
+    dbm = reporter.db_pusher
+    project = f"ROSTER{int(qc_only)}"
+    samples = [f"{project}A1", f"{project}A2"]
+    dbm.add_to_session(dbm.add_project(CG_ID_project=project))
+    for sample_id in samples:
+        dbm.add_to_session(dbm.add_sample(CG_ID_sample=sample_id, CG_ID_project=project, ST=-1))
+    dbm.commit_session()
+    reporter.name = project
+    reporter.sampleinfo = {"CG_ID_project": project, "CG_ID_sample": samples[0]}
+    reporter.qc_only = qc_only
+
+    reporter.gen_version(project)
+    initial_version = dbm.read_report(project).version
+    dbm.update_sample({"CG_ID_sample": samples[1]}, {"ST": 42})
+    reporter.gen_version(project)
+    assert dbm.read_report(project).version == initial_version + int(not qc_only)
+
+    dbm.update_sample({"CG_ID_sample": samples[0]}, {"ST": 17})
+    reporter.gen_version(project)
+    assert dbm.read_report(project).version == initial_version + int(not qc_only) + 1

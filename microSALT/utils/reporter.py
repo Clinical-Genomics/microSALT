@@ -135,7 +135,9 @@ class Reporter:
 
     def gen_version(self, name):
         self.db_pusher.read_report(name)
-        self.db_pusher.set_report(name, sampleinfo=self.sampleinfo)
+        self.db_pusher.set_report(
+            name, sampleinfo=self.sampleinfo if self.qc_only else None
+        )
 
     def gen_STtracker(self, customer="all", silent=False):
         self.name = "Sequence Type Update"
