@@ -22,7 +22,7 @@ dependencies = [
     "sqlalchemy>=2.0",
     "alembic>=1.13",
     "requests-oauthlib>=1.3",
-    "werkzeug>=3.1.6",
+    "werkzeug>=3.1.9",
 ]
 
 [project.scripts]
@@ -44,10 +44,10 @@ include = ["microSALT*"]
 
 [dependency-groups]
 dev = [
-    "black>=26.3.1",
+    "black>=26.10.1",
     "flake8>=6.0",
     "gitlint>=0.19.1",
     "pytest>=9.0.3",
-    "pylint>=3.0",
+    "pylint>=4.0.9",
     "yamllint>=1.32",
 ]

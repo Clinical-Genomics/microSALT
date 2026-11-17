@@ -4,6 +4,7 @@ By: Isak Sylvin, @sylvinite"""
 #!/usr/bin/env python
 
 import hashlib
+import json
 import sys
 import warnings
 from collections import OrderedDict
@@ -16,7 +17,7 @@ from sqlalchemy import inspect as sa_inspect
 
 from microSALT import __version__
 from microSALT.config import Folders, Threshold
-from microSALT.exc.exceptions import RefUpdateLockError
+from microSALT.exc.exceptions import RefUpdateLockError, ReferenceSetupError
 from microSALT.store.database import get_engine, get_session
 from microSALT.store.models import ProfileTable
 from microSALT.store.orm_models import (
@@ -445,6 +446,28 @@ class DB_Manipulator:
         except Exception as e:
             self.session.rollback()
             self.logger.error(f"Failed to bulk-insert profile data for {filename}: {e}")
+            raise ReferenceSetupError(f"Failed to import MLST profile {filename}: {e}") from e
+
+    def validate_profiletable(self, organism: str) -> None:
+        """Check that the database imported the profile file, allowing empty schemes."""
+        with open(f"{self.folders.profiles}/{organism}") as stream:
+            next(stream, None)
+            expected = sum(1 for line in stream if line.strip())
+        table_name = f"profile_{organism}"
+        if not sa_inspect(self.engine).has_table(table_name):
+            raise ReferenceSetupError(f"missing MLST profile table {table_name}")
+        table = Table(table_name, MetaData(), autoload_with=self.engine)
+        actual = self.session.query(table).count()
+        if actual != expected:
+            raise ReferenceSetupError(
+                f"MLST profile {organism}: file contains {expected} profiles "
+                f"but database contains {actual}; refresh the profile table"
+            )
+        if expected == 0:
+            self.logger.warning(
+                f"MLST scheme {organism} has no defined ST profiles; "
+                "allele typing can continue but cannot match a known ST"
+            )
 
     def read_columns(self, tablename: str):
         """Returns all records for a given ORM table"""
@@ -496,49 +519,67 @@ class DB_Manipulator:
             prev_report = prev_reports[0]
         return prev_report
 
-    def set_report(self, name: str):
-        # Generate string
-        totalstring: list[str] = []
+    def set_report(self, name: str, sampleinfo: dict | list[dict] | None = None):
+        """Create a report version when its sample roster or relevant metadata changes."""
         dt = datetime.now()
         default_method = "Not in LIMS"
-        samples = (
-            self.session.query(Samples)
-            .filter(Samples.CG_ID_project == name)
-            .order_by(desc(Samples.CG_ID_sample))
-            .all()
-        )
-        for sample in samples:
-            if sample.date_libprep:
-                totalstring.append(
-                    str(datetime.timestamp(sample.date_libprep.replace(tzinfo=timezone.utc)))
-                )
-            else:
-                totalstring.append(
-                    str(datetime.timestamp(datetime.min.replace(tzinfo=timezone.utc)))
-                )
+        if sampleinfo is None:
+            samples = (
+                self.session.query(Samples)
+                .filter(Samples.CG_ID_project == name)
+                .order_by(desc(Samples.CG_ID_sample))
+                .all()
+            )
+            records = {sample.CG_ID_sample: {} for sample in samples}
+        else:
+            entries = sampleinfo if isinstance(sampleinfo, list) else [sampleinfo]
+            records = {
+                record["CG_ID_sample"]: record
+                for record in entries
+                if record.get("CG_ID_sample")
+            }
 
-            if sample.method_libprep:
-                totalstring.append(sample.method_libprep)
-            else:
-                totalstring.append(default_method)
+        fingerprint = []
+        for sample_id, info in sorted(records.items()):
+            sample = self.get_sample_by_cg_id_sample(sample_id)
+            date_libprep = sample.date_libprep if sample else None
+            date_sequencing = sample.date_sequencing if sample else None
+            fingerprint.append(
+                {
+                    "CG_ID_sample": sample_id,
+                    "organism": info.get("organism", sample.organism if sample else None),
+                    "reference": info.get(
+                        "reference", sample.reference_genome if sample else None
+                    ),
+                    "ST": sample.ST if sample else None,
+                    "pubmlst_ST": sample.pubmlst_ST if sample else None,
+                    "date_libprep": (
+                        datetime.timestamp(date_libprep.replace(tzinfo=timezone.utc))
+                        if date_libprep
+                        else datetime.timestamp(datetime.min.replace(tzinfo=timezone.utc))
+                    ),
+                    "method_libprep": (
+                        sample.method_libprep
+                        if sample and sample.method_libprep
+                        else default_method
+                    ),
+                    "date_sequencing": (
+                        datetime.timestamp(date_sequencing.replace(tzinfo=timezone.utc))
+                        if date_sequencing
+                        else datetime.timestamp(datetime.min.replace(tzinfo=timezone.utc))
+                    ),
+                    "method_sequencing": (
+                        sample.method_sequencing
+                        if sample and sample.method_sequencing
+                        else default_method
+                    ),
+                }
+            )
 
-            if sample.date_sequencing:
-                totalstring.append(
-                    str(datetime.timestamp(sample.date_sequencing.replace(tzinfo=timezone.utc)))
-                )
-            else:
-                totalstring.append(
-                    str(datetime.timestamp(datetime.min.replace(tzinfo=timezone.utc)))
-                )
-
-            if sample.method_sequencing:
-                totalstring.append(sample.method_sequencing)
-            else:
-                totalstring.append(default_method)
-
-        totalstring.append(__version__)
-        totalstring = "".join(totalstring).encode()
-        hashstring = hashlib.md5(totalstring).hexdigest()
+        fingerprint.append({"software_version": __version__})
+        hashstring = hashlib.md5(
+            json.dumps(fingerprint, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
 
         if prev_report := self.read_report(name):
             if "steps_aggregate" in dir(prev_report) and prev_report.steps_aggregate != hashstring:
