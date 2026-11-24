@@ -96,18 +96,11 @@ def test_reporter_sample_ids_follow_current_sample_info(reporter):
     assert reporter._sample_ids() == ["AAA1234A1", "AAA1234A2"]
 
 
-@pytest.mark.parametrize("qc_only", [False, True])
-def test_gen_version_fingerprints_the_rendered_roster(reporter, qc_only):
-    reporter.qc_only = qc_only
-    with (
-        patch.object(reporter.db_pusher, "read_report"),
-        patch.object(reporter.db_pusher, "set_report") as set_report,
-    ):
+def test_gen_version_allocates_project_version(reporter):
+    with patch.object(reporter.db_pusher, "set_report") as set_report:
         reporter.gen_version(reporter.name)
 
-    set_report.assert_called_once_with(
-        reporter.name, sampleinfo=reporter.sampleinfo if qc_only else None
-    )
+    set_report.assert_called_once_with(reporter.name)
 
 
 @pytest.mark.parametrize("qc_only", [False, True])
@@ -200,25 +193,67 @@ def test_constructor(config, logger, unpack_db_json):
     )
 
 
-@pytest.mark.parametrize("qc_only", [False, True])
-def test_version_changes_only_for_samples_in_rendered_report(reporter, qc_only):
+def test_project_report_versions_increment_for_qc_full_and_qc_again(reporter):
     dbm = reporter.db_pusher
-    project = f"ROSTER{int(qc_only)}"
-    samples = [f"{project}A1", f"{project}A2"]
+    project = "VERSIONTEST"
     dbm.add_to_session(dbm.add_project(CG_ID_project=project))
-    for sample_id in samples:
-        dbm.add_to_session(dbm.add_sample(CG_ID_sample=sample_id, CG_ID_project=project, ST=-1))
     dbm.commit_session()
     reporter.name = project
-    reporter.sampleinfo = {"CG_ID_project": project, "CG_ID_sample": samples[0]}
-    reporter.qc_only = qc_only
+    with (
+        patch.object(reporter, "create_subfolders"),
+        patch.object(reporter, "gen_qc"),
+        patch.object(reporter, "gen_typing"),
+        patch.object(reporter, "gen_json"),
+        patch.object(reporter, "gen_delivery"),
+        patch.object(reporter, "mail"),
+    ):
+        for expected, qc_only in enumerate((True, False, True), 1):
+            reporter.qc_only = qc_only
+            reporter.report("default")
+            assert dbm.read_report(project).version == expected
 
-    reporter.gen_version(project)
-    initial_version = dbm.read_report(project).version
-    dbm.update_sample({"CG_ID_sample": samples[1]}, {"ST": 42})
-    reporter.gen_version(project)
-    assert dbm.read_report(project).version == initial_version + int(not qc_only)
 
-    dbm.update_sample({"CG_ID_sample": samples[0]}, {"ST": 17})
-    reporter.gen_version(project)
-    assert dbm.read_report(project).version == initial_version + int(not qc_only) + 1
+def test_report_failure_still_consumes_version(reporter):
+    dbm = reporter.db_pusher
+    reporter.name = "VERSIONFAIL"
+    dbm.add_to_session(dbm.add_project(CG_ID_project=reporter.name))
+    dbm.commit_session()
+    with (
+        patch.object(reporter, "create_subfolders"),
+        patch.object(reporter, "gen_qc", side_effect=RuntimeError("render failed")),
+        pytest.raises(RuntimeError, match="render failed"),
+    ):
+        reporter.report("qc")
+    assert dbm.read_report(reporter.name).version == 1
+
+
+@pytest.mark.parametrize("report_type", ["default", "qc", "typing"])
+def test_project_html_reports_allocate_one_version(reporter, report_type):
+    with (
+        patch.object(reporter.db_pusher, "check_ref_lock"),
+        patch.object(reporter, "create_subfolders"),
+        patch.object(reporter, "gen_version") as gen_version,
+        patch.object(reporter, "gen_qc"),
+        patch.object(reporter, "gen_typing"),
+        patch.object(reporter, "gen_json"),
+        patch.object(reporter, "gen_delivery"),
+        patch.object(reporter, "mail"),
+    ):
+        reporter.report(report_type)
+    gen_version.assert_called_once_with(reporter.name)
+
+
+@pytest.mark.parametrize("report_type", ["json_dump", "motif_overview", "st_update"])
+def test_non_html_report_types_do_not_allocate_project_version(reporter, report_type):
+    with (
+        patch.object(reporter.db_pusher, "check_ref_lock"),
+        patch.object(reporter, "create_subfolders"),
+        patch.object(reporter, "gen_version") as gen_version,
+        patch.object(reporter, "gen_json"),
+        patch.object(reporter, "gen_delivery"),
+        patch.object(reporter, "gen_motif"),
+        patch.object(reporter, "gen_STtracker"),
+        patch.object(reporter, "mail"),
+    ):
+        reporter.report(report_type)
+    gen_version.assert_not_called()

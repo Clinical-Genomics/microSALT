@@ -3,8 +3,6 @@ By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 
-import hashlib
-import json
 import sys
 import warnings
 from collections import OrderedDict
@@ -15,7 +13,6 @@ from sqlalchemy import DateTime as SADateTime
 from sqlalchemy import MetaData, Table, and_, desc, or_, text
 from sqlalchemy import inspect as sa_inspect
 
-from microSALT import __version__
 from microSALT.config import Folders, Threshold
 from microSALT.exc.exceptions import RefUpdateLockError, ReferenceSetupError
 from microSALT.store.database import get_engine, get_session
@@ -519,89 +516,13 @@ class DB_Manipulator:
             prev_report = prev_reports[0]
         return prev_report
 
-    def set_report(self, name: str, sampleinfo: dict | list[dict] | None = None):
-        """Create a report version when its sample roster or relevant metadata changes."""
-        dt = datetime.now()
-        default_method = "Not in LIMS"
-        if sampleinfo is None:
-            samples = (
-                self.session.query(Samples)
-                .filter(Samples.CG_ID_project == name)
-                .order_by(desc(Samples.CG_ID_sample))
-                .all()
-            )
-            records = {sample.CG_ID_sample: {} for sample in samples}
-        else:
-            entries = sampleinfo if isinstance(sampleinfo, list) else [sampleinfo]
-            records = {
-                record["CG_ID_sample"]: record
-                for record in entries
-                if record.get("CG_ID_sample")
-            }
-
-        fingerprint = []
-        for sample_id, info in sorted(records.items()):
-            sample = self.get_sample_by_cg_id_sample(sample_id)
-            date_libprep = sample.date_libprep if sample else None
-            date_sequencing = sample.date_sequencing if sample else None
-            fingerprint.append(
-                {
-                    "CG_ID_sample": sample_id,
-                    "organism": info.get("organism", sample.organism if sample else None),
-                    "reference": info.get(
-                        "reference", sample.reference_genome if sample else None
-                    ),
-                    "ST": sample.ST if sample else None,
-                    "pubmlst_ST": sample.pubmlst_ST if sample else None,
-                    "date_libprep": (
-                        datetime.timestamp(date_libprep.replace(tzinfo=timezone.utc))
-                        if date_libprep
-                        else datetime.timestamp(datetime.min.replace(tzinfo=timezone.utc))
-                    ),
-                    "method_libprep": (
-                        sample.method_libprep
-                        if sample and sample.method_libprep
-                        else default_method
-                    ),
-                    "date_sequencing": (
-                        datetime.timestamp(date_sequencing.replace(tzinfo=timezone.utc))
-                        if date_sequencing
-                        else datetime.timestamp(datetime.min.replace(tzinfo=timezone.utc))
-                    ),
-                    "method_sequencing": (
-                        sample.method_sequencing
-                        if sample and sample.method_sequencing
-                        else default_method
-                    ),
-                }
-            )
-
-        fingerprint.append({"software_version": __version__})
-        hashstring = hashlib.md5(
-            json.dumps(fingerprint, sort_keys=True, separators=(",", ":")).encode()
-        ).hexdigest()
-
-        if prev_report := self.read_report(name):
-            if "steps_aggregate" in dir(prev_report) and prev_report.steps_aggregate != hashstring:
-                self.add_to_session(
-                    self.add_report(
-                        CG_ID_project=name,
-                        steps_aggregate=hashstring,
-                        date=dt,
-                        version=prev_report.version + 1,
-                    )
-                )
-                self.commit_session()
-        else:
-            self.add_to_session(
-                self.add_report(
-                    CG_ID_project=name,
-                    steps_aggregate=hashstring,
-                    date=dt,
-                    version=1,
-                )
-            )
-            self.commit_session()
+    def set_report(self, name: str):
+        """Allocate the next shared project report version."""
+        previous = self.read_report(name)
+        version = previous.version + 1 if previous else 1
+        # Do not silently skip a conflicting version allocated by another request.
+        self.session.add(self.add_report(CG_ID_project=name, date=datetime.now(), version=version))
+        self.commit_session()
 
     def set_novel_st(self, overwrite=False, sample=""):
         """Looks at each novel table. See if any record has a profile match in the profile table.

@@ -134,10 +134,7 @@ class Reporter:
                     copyfile(k, v)
 
     def gen_version(self, name):
-        self.db_pusher.read_report(name)
-        self.db_pusher.set_report(
-            name, sampleinfo=self.sampleinfo if self.qc_only else None
-        )
+        self.db_pusher.set_report(name)
 
     def gen_STtracker(self, customer="all", silent=False):
         self.name = "Sequence Type Update"

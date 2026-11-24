@@ -77,6 +77,11 @@ singularity pull docker://clinicalgenomics/microsalt-trimmomatic:latest
     `--report qc` on its own selects only the QC HTML from a full analysis;
     it does not mark the analysis as QC-only.
 
+Each project `default`, `qc`, or `typing` report request allocates the next shared
+project report version, even if the analysis data has not changed. The version is
+allocated before report generation, so a failed attempt can leave a version gap.
+JSON-only, motif-overview, and global ST-update reports do not allocate versions.
+
 ### QC-only analysis
 
 To run read/alignment QC without assembly, MLST, resistance or ExPEC analysis:

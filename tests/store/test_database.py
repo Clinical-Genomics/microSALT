@@ -238,59 +238,28 @@ def test_get_and_set_report(dbm):
     assert dbm.read_report("ADD1234").version != 1
 
 
-def test_set_report_versions_current_roster_and_sample_typing_state(dbm):
+def test_set_report_always_increments_and_preserves_legacy_versions(dbm):
     project_id = "VER1234"
-    sample_ids = ["VER1234A1", "VER1234A2"]
     dbm.session.query(Reports).filter(Reports.CG_ID_project == project_id).delete()
-    dbm.session.query(Samples).filter(Samples.CG_ID_sample.in_(sample_ids)).delete()
     dbm.session.query(Projects).filter(Projects.CG_ID_project == project_id).delete()
     dbm.add_to_session(dbm.add_project(CG_ID_project=project_id))
-    for sample_id in sample_ids:
-        dbm.add_to_session(
-            dbm.add_sample(
-                CG_ID_sample=sample_id,
-                CG_ID_project=project_id,
-                organism="staphylococcus_aureus",
-                reference_genome="NC_1",
-                ST=-1,
-                pubmlst_ST=-1,
-            )
-        )
     dbm.commit_session()
-    sampleinfo = [
-        {
-            "CG_ID_sample": sample_id,
-            "organism": "staphylococcus_aureus",
-            "reference": "NC_1",
-        }
-        for sample_id in sample_ids
-    ]
 
-    dbm.set_report(project_id, sampleinfo=sampleinfo)
-    assert dbm.read_report(project_id).version == 1
+    dbm.set_report(project_id)
+    first = dbm.read_report(project_id)
+    assert first.version == 1
+    assert first.date is not None
+    assert first.steps_aggregate is None
 
-    # Identical report inputs reuse the current version.
-    dbm.set_report(project_id, sampleinfo=sampleinfo)
-    assert dbm.read_report(project_id).version == 1
-
-    # The current sample-info roster, not all retained database samples, is versioned.
-    dbm.set_report(project_id, sampleinfo=sampleinfo[:1])
-    assert dbm.read_report(project_id).version == 2
-
-    sampleinfo[0]["organism"] = "escherichia_coli"
-    dbm.set_report(project_id, sampleinfo=sampleinfo[:1])
+    # Existing rows may contain fingerprints from older microSALT versions.
+    first.steps_aggregate = "legacy-fingerprint"
+    dbm.session.commit()
+    dbm.set_report(project_id)
+    dbm.set_report(project_id)
     assert dbm.read_report(project_id).version == 3
-
-    sampleinfo[0]["reference"] = "NC_2"
-    dbm.set_report(project_id, sampleinfo=sampleinfo[:1])
-    assert dbm.read_report(project_id).version == 4
-
-    dbm.update_sample({"CG_ID_sample": sample_ids[0]}, {"ST": 131, "pubmlst_ST": 131})
-    dbm.set_report(project_id, sampleinfo=sampleinfo[:1])
-    assert dbm.read_report(project_id).version == 5
+    assert first.steps_aggregate == "legacy-fingerprint"
 
     dbm.session.query(Reports).filter(Reports.CG_ID_project == project_id).delete()
-    dbm.session.query(Samples).filter(Samples.CG_ID_sample.in_(sample_ids)).delete()
     dbm.session.query(Projects).filter(Projects.CG_ID_project == project_id).delete()
     dbm.session.commit()
 
