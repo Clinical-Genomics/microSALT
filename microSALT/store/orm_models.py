@@ -138,13 +138,12 @@ class Versions(Base):
     version = Column(String(10))
 
 
-# Keeps and aggregate step string, makes a new version whenever one is not found
 class Reports(Base):
     __tablename__ = "reports"
     projects = relationship("Projects", back_populates="reports")
 
     CG_ID_project = Column(String(32), ForeignKey("projects.CG_ID_project"), primary_key=True)
-    steps_aggregate = Column(String(100))
+    steps_aggregate = Column(String(100))  # Legacy fingerprints in existing report rows
     date = Column(DateTime)
     version = Column(Integer, default=1, primary_key=True)
 

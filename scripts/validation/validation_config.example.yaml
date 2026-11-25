@@ -1,0 +1,53 @@
+release: rc5.1.0
+
+# microSALT binary and config of the environment under validation
+microsalt_bin: /home/proj/stage/bin/miniconda3/envs/S_microSALT/bin/microsalt
+microsalt_config: /home/proj/stage/bin/git/microSALT/configExample.json
+
+# Everything the validation produces (state.json, logs, fixtures, copied results, results.md)
+validation_root: /home/proj/stage/microbial/validation/rc5.1.0
+
+# Steps the runner does not perform; they are printed at `start submit` and listed in results.md
+manual_steps:
+  cg_integration: >-
+    Run `cg workflow microsalt run refinedpuma` in the cg environment and verify that jobs are
+    submitted and the reports are generated.
+
+# Standard set of validation data (Atlas). old_typing_report enables the typing comparison.
+cases:
+  - name: refinedpuma
+    project: MIC3557
+    sampleinfo: /home/proj/stage/microbial/queries/refinedpuma.json
+    fastq: /home/proj/stage/microbial/fastq/MIC3557
+    old_typing_report: /home/proj/stage/microbial/validation/rc5.1.0/old_reports/758869_Typing_old.html
+  - name: distinctbull
+    project: MIC4109
+    sampleinfo: /home/proj/stage/microbial/queries/distinctbull.json
+    fastq: /home/proj/stage/microbial/fastq/MIC4109
+    old_typing_report: /home/proj/stage/microbial/validation/rc5.1.0/old_reports/798937_Typing_old.html
+  - name: merrymink
+    project: ACC5551
+    sampleinfo: /home/proj/stage/microbial/queries/merrymink.json
+    fastq: /home/proj/stage/microbial/fastq/ACC5551
+    old_typing_report: /home/proj/stage/microbial/validation/rc5.1.0/old_reports/609108_Typing_old.html
+
+# Suites to run, in this order. `stability` is always on and is all a routine release needs.
+# `run_validation.py suites` lists what is available; the rest below are the 5.1.0 suites.
+suites:
+  stability: {} # cases: [..] to restrict
+  qc_only: {} # cases: [..] to restrict
+  qc_integrity:
+    case: distinctbull
+    refresh_field: priority # metadata refresh check
+    refresh_value: research
+  validation:
+    base_case: distinctbull
+    max_validation_seconds: 60
+  reference:
+    base_case: merrymink
+    project: VAL5100 # synthetic project the R-tests run under
+    assembly_accession: GCF_000013425.1 # S. aureus NCTC 8325; adapt to the base case organism
+    bogus_accession: GCF_000000000.0
+    organism_without_mlst: Mycoplasma genitalium # must have no pubMLST scheme
+  versioning:
+    case: refinedpuma

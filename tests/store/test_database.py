@@ -3,9 +3,9 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy import inspect as sa_inspect
 
-from microSALT.exc.exceptions import RefUpdateLockError
+from microSALT.exc.exceptions import RefUpdateLockError, ReferenceSetupError
 from microSALT.store.db_manipulator import DB_Manipulator, _resolve_orm_table
-from microSALT.store.orm_models import Reports, Samples, SystemLock, Versions
+from microSALT.store.orm_models import Projects, Reports, Samples, SystemLock, Versions
 
 
 def test_create_every_table(dbm):
@@ -238,6 +238,32 @@ def test_get_and_set_report(dbm):
     assert dbm.read_report("ADD1234").version != 1
 
 
+def test_set_report_always_increments_and_preserves_legacy_versions(dbm):
+    project_id = "VER1234"
+    dbm.session.query(Reports).filter(Reports.CG_ID_project == project_id).delete()
+    dbm.session.query(Projects).filter(Projects.CG_ID_project == project_id).delete()
+    dbm.add_to_session(dbm.add_project(CG_ID_project=project_id))
+    dbm.commit_session()
+
+    dbm.set_report(project_id)
+    first = dbm.read_report(project_id)
+    assert first.version == 1
+    assert first.date is not None
+    assert first.steps_aggregate is None
+
+    # Existing rows may contain fingerprints from older microSALT versions.
+    first.steps_aggregate = "legacy-fingerprint"
+    dbm.session.commit()
+    dbm.set_report(project_id)
+    dbm.set_report(project_id)
+    assert dbm.read_report(project_id).version == 3
+    assert first.steps_aggregate == "legacy-fingerprint"
+
+    dbm.session.query(Reports).filter(Reports.CG_ID_project == project_id).delete()
+    dbm.session.query(Projects).filter(Projects.CG_ID_project == project_id).delete()
+    dbm.session.commit()
+
+
 @patch("sys.exit")
 def test_purge_rec(sysexit, caplog, dbm):
     dbm.add_to_session(dbm.add_sample(CG_ID_sample="UPD1234A1"))
@@ -453,3 +479,23 @@ def test_update_version(profile_dbm: DB_Manipulator):
 
     # Then: the new version is reflected in the database.
     assert dbm.read_version(name) == new_version
+
+
+def test_profile_import_failure_raises_and_rolls_back(profile_dbm):
+    dbm = profile_dbm
+    table = dbm.profiles["staphylococcus_aureus"]
+    # Re-importing existing primary keys must fail visibly, preserving prior rows.
+    with pytest.raises(ReferenceSetupError, match="Failed to import MLST profile"):
+        dbm.populate_profiletable("staphylococcus_aureus", table)
+    assert dbm.session.query(table).count() == 2
+
+
+def test_empty_curated_profiles_still_allow_novel_typing(profile_dbm):
+    dbm = profile_dbm
+    table = dbm.profiles["staphylococcus_aureus"]
+    dbm.session.execute(table.delete())
+    dbm.session.commit()
+    dbm.add_to_session(dbm.add_sample(CG_ID_sample="MLS1234A1", CG_ID_project="MLS1234", organism="staphylococcus_aureus"))
+    dbm.commit_session()
+    st = dbm.read_st("MLS1234A1")
+    assert st <= -10

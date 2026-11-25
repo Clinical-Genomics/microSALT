@@ -7,31 +7,18 @@ When all tests done and successful and PR is approved by codeowners, follow thes
 3. Deploy master to stage:
    1. Log in to appropriate server `ssh <server.scilifelab.se>`
    2. `us`
-   3. Install microSALT using **one** of the following commands
-      1. If you have updated the `environment.yml`:
-         ```shell
-         sudo -iu hiseq.clinical
-         us
-         bash /home/proj/production/servers/resources/hasta.scilifelab.se/install-microsalt-stage.sh master
-         ```
-      2. Otherwise run:
-         ```shell
-         bash /home/proj/production/servers/resources/hasta.scilifelab.se/update-tool-stage.sh -e S_microSALT -t microSALT -b master
-         ```
+   3. Install microSALT:
+      ```shell
+      bash /home/proj/production/servers/resources/hasta.scilifelab.se/update-microsalt.sh -d stage -b master
+      ```
+      Add `-a` if the release includes an Alembic migration for the SQL database.
    4. Make sure that the installation was successful
 4. Deploy master to production:
    1. Log in to appropriate server `ssh <server.scilifelab.se>`
    2. `up`
-   3. Install microSALT using **one** of the following commands
-      1. If you have updated the `environment.yml`:
-         ```shell
-         sudo -iu hiseq.clinical
-         up
-         bash /home/proj/production/servers/resources/hasta.scilifelab.se/install-microsalt-prod.sh
-         ```
-      2. Otherwise run:
-         ```shell
-         bash /home/proj/production/servers/resources/hasta.scilifelab.se/update-tool-prod.sh -e P_microSALT -t microSALT -b master
-         ```
+   3. Install microSALT:
+      ```shell
+      bash /home/proj/production/servers/resources/hasta.scilifelab.se/update-microsalt.sh -d production -b master
+      ```
+      Add `-a` if the release includes an Alembic migration for the SQL database.
    4. Make sure that the installation was successful
-

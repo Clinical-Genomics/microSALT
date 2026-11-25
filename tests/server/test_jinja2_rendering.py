@@ -259,6 +259,16 @@ class TestPageRendering:
         html = alignment_page("AAA1234", threshold=config.threshold)
         assert "AAA1234A1" in html or "AAA1234A2" in html
 
+    def test_alignment_page_filters_samples_by_sample_info_ids(
+        self, populated_db, config
+    ):
+        """QC pages can limit the rendered project membership to the current sample-info."""
+        html = alignment_page(
+            "AAA1234", threshold=config.threshold, sample_ids=["AAA1234A2"]
+        )
+        assert "AAA1234A2" in html
+        assert "AAA1234A1" not in html
+
     def test_typing_page_renders_html(self, populated_db, config):
         """typing_page returns non-empty HTML string."""
         html = typing_page("AAA1234", "all", threshold=config.threshold, verified_organisms=config.regex.verified_organisms)

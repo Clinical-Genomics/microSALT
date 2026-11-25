@@ -3,7 +3,6 @@ By: Isak Sylvin, @sylvinite"""
 
 #!/usr/bin/env python
 
-import hashlib
 import sys
 import warnings
 from collections import OrderedDict
@@ -14,9 +13,8 @@ from sqlalchemy import DateTime as SADateTime
 from sqlalchemy import MetaData, Table, and_, desc, or_, text
 from sqlalchemy import inspect as sa_inspect
 
-from microSALT import __version__
 from microSALT.config import Folders, Threshold
-from microSALT.exc.exceptions import RefUpdateLockError
+from microSALT.exc.exceptions import RefUpdateLockError, ReferenceSetupError
 from microSALT.store.database import get_engine, get_session
 from microSALT.store.models import ProfileTable
 from microSALT.store.orm_models import (
@@ -445,6 +443,28 @@ class DB_Manipulator:
         except Exception as e:
             self.session.rollback()
             self.logger.error(f"Failed to bulk-insert profile data for {filename}: {e}")
+            raise ReferenceSetupError(f"Failed to import MLST profile {filename}: {e}") from e
+
+    def validate_profiletable(self, organism: str) -> None:
+        """Check that the database imported the profile file, allowing empty schemes."""
+        with open(f"{self.folders.profiles}/{organism}") as stream:
+            next(stream, None)
+            expected = sum(1 for line in stream if line.strip())
+        table_name = f"profile_{organism}"
+        if not sa_inspect(self.engine).has_table(table_name):
+            raise ReferenceSetupError(f"missing MLST profile table {table_name}")
+        table = Table(table_name, MetaData(), autoload_with=self.engine)
+        actual = self.session.query(table).count()
+        if actual != expected:
+            raise ReferenceSetupError(
+                f"MLST profile {organism}: file contains {expected} profiles "
+                f"but database contains {actual}; refresh the profile table"
+            )
+        if expected == 0:
+            self.logger.warning(
+                f"MLST scheme {organism} has no defined ST profiles; "
+                "allele typing can continue but cannot match a known ST"
+            )
 
     def read_columns(self, tablename: str):
         """Returns all records for a given ORM table"""
@@ -497,70 +517,12 @@ class DB_Manipulator:
         return prev_report
 
     def set_report(self, name: str):
-        # Generate string
-        totalstring: list[str] = []
-        dt = datetime.now()
-        default_method = "Not in LIMS"
-        samples = (
-            self.session.query(Samples)
-            .filter(Samples.CG_ID_project == name)
-            .order_by(desc(Samples.CG_ID_sample))
-            .all()
-        )
-        for sample in samples:
-            if sample.date_libprep:
-                totalstring.append(
-                    str(datetime.timestamp(sample.date_libprep.replace(tzinfo=timezone.utc)))
-                )
-            else:
-                totalstring.append(
-                    str(datetime.timestamp(datetime.min.replace(tzinfo=timezone.utc)))
-                )
-
-            if sample.method_libprep:
-                totalstring.append(sample.method_libprep)
-            else:
-                totalstring.append(default_method)
-
-            if sample.date_sequencing:
-                totalstring.append(
-                    str(datetime.timestamp(sample.date_sequencing.replace(tzinfo=timezone.utc)))
-                )
-            else:
-                totalstring.append(
-                    str(datetime.timestamp(datetime.min.replace(tzinfo=timezone.utc)))
-                )
-
-            if sample.method_sequencing:
-                totalstring.append(sample.method_sequencing)
-            else:
-                totalstring.append(default_method)
-
-        totalstring.append(__version__)
-        totalstring = "".join(totalstring).encode()
-        hashstring = hashlib.md5(totalstring).hexdigest()
-
-        if prev_report := self.read_report(name):
-            if "steps_aggregate" in dir(prev_report) and prev_report.steps_aggregate != hashstring:
-                self.add_to_session(
-                    self.add_report(
-                        CG_ID_project=name,
-                        steps_aggregate=hashstring,
-                        date=dt,
-                        version=prev_report.version + 1,
-                    )
-                )
-                self.commit_session()
-        else:
-            self.add_to_session(
-                self.add_report(
-                    CG_ID_project=name,
-                    steps_aggregate=hashstring,
-                    date=dt,
-                    version=1,
-                )
-            )
-            self.commit_session()
+        """Allocate the next shared project report version."""
+        previous = self.read_report(name)
+        version = previous.version + 1 if previous else 1
+        # Do not silently skip a conflicting version allocated by another request.
+        self.session.add(self.add_report(CG_ID_project=name, date=datetime.now(), version=version))
+        self.commit_session()
 
     def set_novel_st(self, overwrite=False, sample=""):
         """Looks at each novel table. See if any record has a profile match in the profile table.

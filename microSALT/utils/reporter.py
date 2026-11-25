@@ -25,6 +25,10 @@ from microSALT.server.views import (
 from microSALT.config import Folders, Threshold, Regex
 from microSALT.store.db_manipulator import DB_Manipulator
 
+# Outputs not produced by QC-only runs (no assembly, QUAST, typing or resistance analysis)
+TYPING_ASSEMBLY_DELIVERABLE_TAGS = frozenset({"microsalt-type", "assembly", "quast-results"})
+TYPING_ASSEMBLY_RESISTANCE_JSON_ANALYSES = ("blast_pubmlst", "quast_assembly", "blast_resfinder_resistence")
+
 
 class Reporter:
     def __init__(
@@ -37,8 +41,10 @@ class Reporter:
         name="",
         output="",
         collection=False,
+        qc_only: bool = False,
     ):
         self.folders = folders
+        self.qc_only = qc_only
         self.threshold = threshold
         self.regex = regex
         self.db_pusher = DB_Manipulator(log=log, folders=folders, threshold=threshold)
@@ -78,6 +84,15 @@ class Reporter:
         os.makedirs(f"{self.folders.reports}/json", exist_ok=True)
         os.makedirs(f"{self.folders.reports}/analysis", exist_ok=True)
 
+    def _sample_ids(self) -> list[str]:
+        """Return sample IDs from the sample-info records used for this report."""
+        records = (
+            self.sampleinfo if isinstance(self.sampleinfo, list) else [self.sampleinfo]
+        )
+        return [
+            sample_id for record in records if (sample_id := record.get("CG_ID_sample"))
+        ]
+
     def report(self, type="default", customer="all"):
         self.db_pusher.check_ref_lock()
         self.create_subfolders()
@@ -86,7 +101,8 @@ class Reporter:
             self.gen_version(self.name)
         if type in ["default", "typing", "qc", "st_update"]:
             if type == "default":
-                self.gen_typing()
+                if not self.qc_only:
+                    self.gen_typing()
                 self.gen_qc()
                 self.gen_json(silent=True)
                 self.gen_delivery()
@@ -94,6 +110,9 @@ class Reporter:
                 self.gen_typing()
             elif type == "qc":
                 self.gen_qc()
+                if self.qc_only:
+                    self.gen_json(silent=True)
+                    self.gen_delivery()
             elif type == "st_update":
                 self.gen_STtracker(customer)
         elif type in ["json_dump", "motif_overview"]:
@@ -115,7 +134,6 @@ class Reporter:
                     copyfile(k, v)
 
     def gen_version(self, name):
-        self.db_pusher.read_report(name)
         self.db_pusher.set_report(name)
 
     def gen_STtracker(self, customer="all", silent=False):
@@ -140,7 +158,11 @@ class Reporter:
             self.logger.error(f"Project {self.name} does not exist")
             sys.exit(-1)
         try:
-            content = alignment_page(self.name, threshold=self.threshold)
+            content = alignment_page(
+                self.name,
+                threshold=self.threshold,
+                sample_ids=self._sample_ids() if self.qc_only else None,
+            )
             outfile = f"{self.sample.get('Customer_ID_project')}_QC_{last_version}.html"
             local = f"{self.output}/{outfile}"
             output = f"{self.folders.reports}/analysis/{outfile}"
@@ -471,6 +493,11 @@ class Reporter:
                 }
             )
 
+        if self.qc_only:
+            deliv["files"] = [
+                f for f in deliv["files"] if f["tag"] not in TYPING_ASSEMBLY_DELIVERABLE_TAGS
+            ]
+
         with open(output, "w") as delivfile:
             documents = yaml.dump(deliv, delivfile)
 
@@ -489,7 +516,11 @@ class Reporter:
         local = f"{self.output}/{self.name}.json"
         output = f"{self.folders.reports}/json/{self.name}.json"
 
-        sample_info = gen_reportdata(self.name, threshold=self.threshold)
+        sample_info = gen_reportdata(
+            self.name,
+            threshold=self.threshold,
+            sample_ids=self._sample_ids() if self.qc_only else None,
+        )
         analyses = [
             "blast_pubmlst",
             "quast_assembly",
@@ -577,6 +608,10 @@ class Reporter:
                     and r.threshold == "Passed"
                 ):
                     report[s.CG_ID_sample]["blast_resfinder_resistence"].append(r.gene)
+
+            if self.qc_only:
+                for a in TYPING_ASSEMBLY_RESISTANCE_JSON_ANALYSES:
+                    report[s.CG_ID_sample].pop(a, None)
 
         # json.dumps(report) #Dumps the json directly
         try:
