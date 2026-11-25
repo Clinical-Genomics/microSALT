@@ -9,7 +9,6 @@ import re
 import shutil
 import sqlite3
 from pathlib import Path
-from types import SimpleNamespace
 
 from microSALT.utils.referencer import Referencer
 
@@ -123,10 +122,16 @@ class FixtureHelper:
 
     def mlst_reference(self, organism: str) -> str | None:
         """Reference folder name microSALT resolves an organism name to."""
-        stub = SimpleNamespace(
-            folders=self.ms.folders, logger=SimpleNamespace(warning=print)
+        referencer = Referencer(
+            log=None,
+            folders=self.ms.folders,
+            threshold=self.ms.threshold,
+            pubmlst=self.ms.pubmlst,
+            pasteur=self.ms.pasteur,
+            singularity=self.ms.singularity,
+            containers=self.ms.containers,
         )
-        return Referencer.organism2reference(stub, organism)
+        return referencer.organism2reference(organism)
 
     def synthetic_sample(
         self, base: Case, project: str, index: int, **overrides

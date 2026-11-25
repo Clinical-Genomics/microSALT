@@ -10,7 +10,7 @@ from core.suite import Suite, SuiteOptions
 
 class QcIntegrityOptions(SuiteOptions):
     case: str
-    refresh_field: str = "priority"  # not part of the report fingerprint
+    refresh_field: str = "priority"
     refresh_value: str = "research"
 
 
@@ -19,6 +19,7 @@ class QcIntegritySuite(Suite):
     title = "QC-only data integrity"
     requires = ("stability", "qc_only")
     Options = QcIntegrityOptions
+    options: QcIntegrityOptions
 
     LABELS = (
         (
@@ -44,6 +45,9 @@ class QcIntegritySuite(Suite):
         after = self.state.get_snapshot(
             f"qc_only/{case.name}/after_qc"
         ) or self.ctx.db.snapshot_project(case.project)
+        if before is None:
+            self.check("typing_unchanged", None, "Missing snapshot after the first full analysis")
+            return
         problems = diff_typing(before, after)
         self.check(
             "typing_unchanged",
@@ -57,8 +61,17 @@ class QcIntegritySuite(Suite):
 
         qc_run = self.state.run(f"resubmit/qc_only/{case.name}")
         full_run = self.state.run(f"submit/stability/{case.name}")
+        if qc_run is None or not qc_run.finishdir:
+            self.check("metadata_refreshed", None, "Missing QC-only finish directory")
+            return
+        if full_run is None or not full_run.finishdir:
+            self.check("full_report_retains_typing", None, "Missing full-analysis finish directory")
+            return
         modified, first = self.fixtures.modified_sampleinfo(
-            case, "refresh", **{field: value}
+            case,
+            "refresh",
+            index=0,
+            **{field: value},
         )
         sample_id = first["CG_ID_sample"]
         original = before["samples"][sample_id]["metadata"].get(field)

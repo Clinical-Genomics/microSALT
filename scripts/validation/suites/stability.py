@@ -20,6 +20,7 @@ class StabilitySuite(Suite):
     name = "stability"
     title = "Analysis stability"
     Options = StabilityOptions
+    options: StabilityOptions
 
     @property
     def cases(self):

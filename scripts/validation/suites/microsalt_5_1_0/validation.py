@@ -29,6 +29,7 @@ class ValidationSuite(Suite):
     name = "validation"
     title = "Validation before submission"
     Options = ValidationOptions
+    options: ValidationOptions
 
     def _fixtures(self) -> list[Fixture]:
         fx = self.fixtures

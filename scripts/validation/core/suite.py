@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
@@ -36,6 +36,9 @@ class SuiteOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+OptionsT = TypeVar("OptionsT", bound=SuiteOptions)
+
+
 class Suite:
     """One group of criteria. Subclasses override the phase methods they take part in.
 
@@ -53,7 +56,8 @@ class Suite:
         self.state = ctx.state
         self.runner = ctx.runner
         self.fixtures = ctx.fixtures
-        self.options = self.Options(**options)
+        parsed = self.Options(**options)
+        self.options: SuiteOptions = parsed
 
     # -- phases --------------------------------------------------------------------------------
 

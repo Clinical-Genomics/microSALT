@@ -37,6 +37,7 @@ class ReferenceSuite(Suite):
     name = "reference"
     title = "Reference handling"
     Options = ReferenceOptions
+    options: ReferenceOptions
 
     def _fixtures(self) -> dict[str, Fixture]:
         fx = self.fixtures
@@ -240,17 +241,21 @@ class ReferenceSuite(Suite):
                 / f"{opt.assembly_accession}.fasta"
             )
             sample = self.ctx.db.sample(f"{opt.project}A2")
+            reference_genome = (
+                str(sample.reference_genome)
+                if sample is not None and sample.reference_genome is not None
+                else None
+            )
             self.check(
                 "R2/downloaded",
-                fasta.exists()
-                and sample is not None
-                and sample.reference_genome == opt.assembly_accession,
-                f"{fasta} exists: {fasta.exists()}; reference_genome in db: {sample.reference_genome if sample else None}",
+                fasta.exists() and reference_genome == opt.assembly_accession,
+                f"{fasta} exists: {fasta.exists()}; reference_genome in db: {reference_genome}",
             )
         if self.run("resubmit", "R6b"):
             before = (self.get_snapshot("R6/st_before") or {}).get("ST")
             sample = self.ctx.db.sample(f"{opt.project}A6")
-            after = sample.ST if sample else None
+            after_value = sample.ST if sample is not None else None
+            after = after_value if isinstance(after_value, int) else None
             self.check(
                 "R6/result",
                 before not in (None, -1) and after == -1,

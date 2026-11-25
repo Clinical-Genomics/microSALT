@@ -38,7 +38,7 @@ suites:
   qc_only: {} # cases: [..] to restrict
   qc_integrity:
     case: distinctbull
-    refresh_field: priority # not part of the report fingerprint
+    refresh_field: priority # metadata refresh check
     refresh_value: research
   validation:
     base_case: distinctbull
@@ -51,5 +51,3 @@ suites:
     organism_without_mlst: Mycoplasma genitalium # must have no pubMLST scheme
   versioning:
     case: refinedpuma
-    version_field: method_libprep # part of the report fingerprint
-    version_value: "validation:5.1.0"

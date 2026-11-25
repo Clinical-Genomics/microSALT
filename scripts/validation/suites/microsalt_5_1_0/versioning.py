@@ -1,7 +1,11 @@
-"""Report versioning follows the rendered roster and fingerprinted metadata; gen_reportdata
-filters by sample id."""
+"""Validate the shared project report sequence introduced in microSALT 5.1.0."""
 
+import hashlib
+import json
+import re
 from pathlib import Path
+
+from bs4 import BeautifulSoup
 
 from core.report import detail, table, yn
 from core.suite import Suite, SuiteOptions
@@ -9,128 +13,188 @@ from core.suite import Suite, SuiteOptions
 
 class VersioningOptions(SuiteOptions):
     case: str
-    version_field: str = "method_libprep"  # part of the report fingerprint
-    version_value: str = "validation"
+
+
+def html_version(path: Path) -> tuple[int, int | None] | None:
+    """Extract the current and replaced versions from a rendered report."""
+    if not path.is_file():
+        return None
+    text = BeautifulSoup(path.read_text(encoding="utf-8"), "html.parser").get_text(" ")
+    match = re.search(
+        r"\bVersion\s+(\d+)\s*,.*?(?:Ersätter\s+version\s+(\d+))?", text, re.I
+    )
+    if not match:
+        return None
+    previous = re.search(r"Ersätter\s+version\s+(\d+)", text, re.I)
+    return int(match.group(1)), int(previous.group(1)) if previous else None
+
+
+def file_hash(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 class VersioningSuite(Suite):
     name = "versioning"
     title = "Report versioning"
-    requires = ("stability",)
+    requires = ("stability", "qc_only")
     Options = VersioningOptions
+    options: VersioningOptions
 
     LABELS = (
+        ("default_first", "First default report allocates one shared version"),
         (
-            "repeat_no_new_version",
-            "Repeated finish without changes gives no new version",
+            "default_repeat",
+            "Unchanged default report allocates the next shared version",
         ),
-        ("metadata_new_version", "Changed sample metadata gives new version"),
+        ("qc_only", "QC-only report uses the next shared project version"),
+        ("typing", "Typing-only report uses the next shared project version"),
+        ("qc", "QC-only report type uses the next shared project version"),
+        ("json_dump", "JSON-only report does not allocate a version"),
         (
-            "qc_same_roster_no_new_version",
-            "QC-only report over same samples/metadata gives no new version",
+            "previous_reports_preserved",
+            "Previous report rows and generated HTML remain unchanged",
         ),
-        ("subset_new_version", "Changed set of included samples gives new version"),
-        (
-            "gen_reportdata_filter",
-            "gen_reportdata with sample_ids returns only those samples",
-        ),
-        (
-            "gen_reportdata_all",
-            "gen_reportdata without filter returns all project samples",
-        ),
+        ("gen_reportdata_filter", "Sample-ID filter returns only the selected samples"),
+        ("gen_reportdata_all", "Unfiltered report data contains all project samples"),
     )
 
     def finish(self) -> None:
         case = self.cfg.case(self.options.case)
-        field, value = self.options.version_field, self.options.version_value
         db = self.ctx.db
-        print(f"== Report versioning: {case.name} ==")
-        full_dir = Path(self.state.run(f"submit/stability/{case.name}").finishdir)
+        full_run = self.state.run(f"submit/stability/{case.name}")
         qc_run = self.state.run(f"resubmit/qc_only/{case.name}")
+        if not full_run or not full_run.finishdir or not qc_run or not qc_run.finishdir:
+            for key, _ in self.LABELS:
+                self.check(
+                    key,
+                    None,
+                    "Missing full or QC-only analysis; cannot run version checks",
+                )
+            return
+        full_dir, qc_dir = Path(full_run.finishdir), Path(qc_run.finishdir)
+        with case.sampleinfo.open() as stream:
+            info = json.load(stream)
+        sample = info[0] if isinstance(info, list) else info
+        customer = sample["Customer_ID_project"]
+        initial = db.report_versions(case.project)
         history = []
+        preserved_files = {}
+        print(f"== Report versioning: {case.name} ==")
 
-        def versions(label: str) -> int:
-            count = len(db.report_versions(case.project))
-            history.append((label, count))
-            return count
-
-        def finish(
-            label: str, sampleinfo: Path, finishdir: Path, qc_only=False, note=""
-        ) -> int:
-            self.finish_run(
-                f"{case.name}/{label}",
+        def run_step(key, folder, report, expected_types, qc_only=False):
+            before = db.report_versions(case.project)
+            prior = before[-1]["version"] if before else 0
+            expected = prior + 1 if expected_types else prior
+            # A pre-existing path must not be mistaken for output from this invocation.
+            paths = [
+                folder / f"{customer}_{kind}_{expected}.html" for kind in expected_types
+            ]
+            existed = [str(path) for path in paths if path.exists()]
+            record, _ = self.finish_run(
+                f"{case.name}/{key}",
                 case.name,
-                sampleinfo,
-                finishdir,
+                case.sampleinfo,
+                folder,
+                report=report,
                 qc_only=qc_only,
-                note=note,
             )
-            return versions(label)
-
-        versions("start")
-        v1 = finish("full_1", case.sampleinfo, full_dir)
-        v2 = finish("full_2", case.sampleinfo, full_dir)
-        self.check(
-            "repeat_no_new_version",
-            v2 == v1,
-            f"versions after first finish {v1}, after repeat {v2}",
-        )
-
-        modified, first = self.fixtures.modified_sampleinfo(
-            case, "version", **{field: value}
-        )
-        v3 = finish(
-            "full_metadata",
-            modified,
-            full_dir,
-            note=f"{field} of {first['CG_ID_sample']} set to {value!r}",
-        )
-        self.check(
-            "metadata_new_version",
-            v3 == v2 + 1,
-            f"versions {v2} -> {v3} after changing {field}",
-        )
-        v4 = finish(
-            "full_restore",
-            case.sampleinfo,
-            full_dir,
-            note="original sample info restored",
-        )
-
-        if qc_run:
-            qc_dir = Path(qc_run.finishdir)
-            v5 = finish("qc_same_roster", case.sampleinfo, qc_dir, qc_only=True)
+            after = db.report_versions(case.project)
+            versions = [item["version"] for item in after]
+            expected_versions = [item["version"] for item in before]
+            if expected_types:
+                expected_versions.append(expected)
+            problems = []
+            if not record.ok:
+                problems.append(f"finish exited {record.exit_code}; see {record.log}")
+            if versions != expected_versions:
+                problems.append(
+                    f"versions {expected_versions} expected, got {versions}"
+                )
+            if after[: len(before)] != before:
+                problems.append("previous database report records changed")
+            if existed:
+                problems.append(f"output already existed before finish: {existed}")
+            for path in paths:
+                parsed = html_version(path)
+                if parsed != (expected, prior or None):
+                    problems.append(
+                        f"{path.name}: expected version/previous {(expected, prior or None)}, got {parsed}"
+                    )
+                if path.is_file():
+                    preserved_files[str(path)] = file_hash(path)
+            if not expected_types:
+                json_path = folder / f"{case.project}.json"
+                if not json_path.is_file():
+                    problems.append(f"JSON output missing: {json_path}")
             self.check(
-                "qc_same_roster_no_new_version",
-                v5 == v4,
-                f"versions {v4} -> {v5} for a QC-only report over the same samples and metadata",
+                key,
+                not problems,
+                (
+                    "; ".join(problems)
+                    if problems
+                    else f"versions {prior} -> {expected}; report={report}; files: {[p.name for p in paths]}"
+                ),
             )
-            subset, ids = self.fixtures.subset_sampleinfo(case)
-            v6 = finish("qc_subset", subset, qc_dir, qc_only=True, note=f"only {ids}")
-            self.check(
-                "subset_new_version",
-                v6 == v5 + 1,
-                f"versions {v5} -> {v6} for a QC-only report over {ids}",
+            history.append(
+                {
+                    "step": key,
+                    "before": prior,
+                    "after": versions[-1] if versions else 0,
+                    "exit_code": record.exit_code,
+                    "files": [str(path) for path in paths],
+                }
             )
-            finish("qc_restore", case.sampleinfo, qc_dir, qc_only=True)
-        else:
-            for key in ("qc_same_roster_no_new_version", "subset_new_version"):
-                self.check(key, None, "qc_only suite not run for this case")
-        self.snapshot("history", {"steps": history})
+
+        run_step("default_first", full_dir, "default", ("Typing", "QC"))
+        run_step("default_repeat", full_dir, "default", ("Typing", "QC"))
+        run_step("qc_only", qc_dir, "default", ("QC",), qc_only=True)
+        run_step("typing", full_dir, "typing", ("Typing",))
+        run_step("qc", full_dir, "qc", ("QC",))
+        run_step("json_dump", full_dir, "json_dump", ())
+        final = db.report_versions(case.project)
+        changed = [
+            path
+            for path, digest in preserved_files.items()
+            if not Path(path).is_file() or file_hash(Path(path)) != digest
+        ]
+        preserved = final[: len(initial)] == initial and not changed
+        self.check(
+            "previous_reports_preserved",
+            preserved,
+            f"initial DB rows: {len(initial)}; changed or missing HTML: {changed}",
+        )
+        self.snapshot(
+            "history",
+            {
+                "steps": history,
+                "initial_reports": initial,
+                "final_reports": final,
+                "html_sha256": preserved_files,
+            },
+        )
 
         all_ids = db.report_sample_ids(case.project, None)
-        subset_ids = db.report_sample_ids(case.project, all_ids[:1])
+        expected_ids = db.project_sample_ids(case.project)
+        selected = expected_ids[:1]
+        subset_ids = db.report_sample_ids(case.project, selected)
         self.check(
             "gen_reportdata_filter",
-            subset_ids == all_ids[:1],
-            f"sample_ids={all_ids[:1]} -> {subset_ids}",
+            bool(selected) and subset_ids == selected,
+            f"sample_ids={selected} -> {subset_ids}",
         )
-        expected = db.project_sample_ids(case.project)
         self.check(
             "gen_reportdata_all",
-            all_ids == expected,
-            f"{len(all_ids)} of {len(expected)} project samples returned without filter",
+            bool(expected_ids) and all_ids == expected_ids,
+            f"expected {expected_ids}; returned {all_ids}",
         )
+
+    def result(self) -> str:
+        checks = [self.get_check(key) for key, _ in self.LABELS]
+        if any(check and check["passed"] is False for check in checks):
+            return "FAIL"
+        if any(not check or check["passed"] is None for check in checks):
+            return "INCOMPLETE"
+        return "PASS"
 
     def render(self) -> list[str]:
         lines = table(
@@ -149,7 +213,10 @@ class VersioningSuite(Suite):
         if history:
             lines += [
                 "",
-                f"Report version count for {self.options.case} after each step: "
-                + ", ".join(f"{label}={count}" for label, count in history["steps"]),
+                "Versions by step: "
+                + ", ".join(
+                    f"{step['step']}: {step['before']} → {step['after']}"
+                    for step in history["steps"]
+                ),
             ]
         return lines

@@ -32,6 +32,7 @@ class QcOnlySuite(Suite):
     title = "QC-only analysis"
     requires = ("stability",)
     Options = QcOnlyOptions
+    options: QcOnlyOptions
 
     @property
     def cases(self):
@@ -78,6 +79,9 @@ class QcOnlySuite(Suite):
         for case in self.cases:
             print(f"== QC-only finish: {case.name} ==")
             qc_run = self.run("resubmit", case.name)
+            if qc_run is None or not qc_run.finishdir:
+                self.check(f"{case.name}/finish_ok", None, "Missing QC-only resubmit run or finish directory")
+                continue
             finishdir = Path(qc_run.finishdir)
             record, _ = self.finish_run(
                 case.name, case.name, case.sampleinfo, finishdir, qc_only=True
