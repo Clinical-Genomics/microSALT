@@ -1,6 +1,7 @@
 """Run the microSALT CLI and record what happened."""
 
 import shlex
+import re
 import subprocess
 import time
 from dataclasses import dataclass
@@ -125,7 +126,12 @@ class MicrosaltRunner:
             exit_code=result.exit_code,
             log=str(result.log),
             finishdir=str(finishdir) if finishdir else None,
-            slurm_ids=self._slurm_ids(finishdir, job_name),
+            slurm_ids=list(
+                dict.fromkeys(
+                    self._slurm_ids(finishdir, job_name)
+                    + submitted_job_ids(result.output)
+                )
+            ),
             note=note,
         )
         self.state.add_run(record)
@@ -172,3 +178,15 @@ def setup_errors(output: str) -> list[str]:
     if "Analysis setup failed" not in output:
         return []
     return [line[2:].strip() for line in output.splitlines() if line.startswith("- ")]
+
+
+def submitted_job_ids(output: str) -> list[str]:
+    """Recover partial SLURM submissions reported in a job-creation exception.
+
+    Normal successful submissions are read from the run's slurm_ids.yaml. If submission fails
+    partway through, microSALT reports accepted IDs in its error text and may not write that file.
+    """
+    ids = []
+    for match in re.finditer(r"Already submitted job IDs:\s*([0-9, ]+)", output):
+        ids.extend(re.findall(r"\d+", match.group(1)))
+    return list(dict.fromkeys(ids))

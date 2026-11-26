@@ -15,7 +15,11 @@ from .suite import PHASES, Context, Suite
 
 class Orchestrator:
     def __init__(
-        self, cfg: ValidationConfig, state: State, registry: dict[str, type[Suite]]
+        self,
+        cfg: ValidationConfig,
+        state: State,
+        registry: dict[str, type[Suite]],
+        broken: dict[str, str] | None = None,
     ):
         self.cfg = cfg
         self.state = state
@@ -23,8 +27,14 @@ class Orchestrator:
         self.suites: list[Suite] = []
         for name, options in cfg.suites.items():
             if name not in registry:
+                hint = ""
+                if broken:
+                    hint = "\nSuite modules that failed to import:\n" + "\n".join(
+                        f"  {module}: {error}"
+                        for module, error in sorted(broken.items())
+                    )
                 raise SystemExit(
-                    f"unknown suite {name!r}; available: {', '.join(sorted(registry))}"
+                    f"unknown suite {name!r}; available: {', '.join(sorted(registry))}{hint}"
                 )
             missing = [dep for dep in registry[name].requires if dep not in cfg.suites]
             if missing:

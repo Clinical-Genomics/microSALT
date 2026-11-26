@@ -29,9 +29,8 @@ suites/
 
 ## Prerequisites
 
-- The release branch is installed on stage
-    (`bash /home/proj/production/servers/resources/hasta.scilifelab.se/update-microsalt.sh -d stage -b <branch>`,
-    add `-a` if the release includes an Alembic migration).
+- The release branch is installed on stage, as `hiseq.clinical`:
+    `bash /home/proj/stage/servers/resources/hasta.scilifelab.se/update-microsalt.sh [-d] -e stage -b <branch>`
 - Sample info files and FASTQ folders for every case exist on stage.
 - Old typing reports to compare against are copied somewhere readable.
 - A copy of `validation_config.example.yaml` adjusted to the release.
@@ -40,7 +39,7 @@ Run everything with the python of the microSALT environment, since the checks im
 microSALT package to read the database:
 
 ```shell
-PY=/home/proj/stage/bin/miniconda3/envs/S_microSALT/bin/python
+PY=/home/proj/stage/bin/miniconda3/envs/S_microsalt/bin/python
 $PY scripts/validation/run_validation.py suites                      # list available suites
 $PY scripts/validation/run_validation.py -c validation_config.yaml <command>
 ```

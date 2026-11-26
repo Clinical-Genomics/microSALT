@@ -1,7 +1,7 @@
 release: rc5.1.0
 
 # microSALT binary and config of the environment under validation
-microsalt_bin: /home/proj/stage/bin/miniconda3/envs/S_microSALT/bin/microsalt
+microsalt_bin: /home/proj/stage/bin/miniconda3/envs/S_microsalt/bin/microsalt
 microsalt_config: /home/proj/stage/bin/git/microSALT/configExample.json
 
 # Everything the validation produces (state.json, logs, fixtures, copied results, results.md)

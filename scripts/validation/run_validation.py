@@ -15,16 +15,53 @@ with the python of the microSALT environment so the microSALT package is importa
 """
 
 import argparse
+import importlib
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+
+def preflight() -> None:
+    """Fail clearly if a stale site-packages directory shadows the installed package."""
+    try:
+        microsalt = importlib.import_module("microSALT")
+    except ImportError as error:
+        sys.exit(f"microSALT environment check failed with {sys.executable}: {error}")
+    spec = getattr(microsalt, "__spec__", None)
+    if spec is None or spec.origin is None:
+        locations = list(getattr(microsalt, "__path__", []))
+        sys.exit(
+            "microSALT environment check failed: resolved to a namespace package "
+            f"(no __init__.py) at {locations}. Move the stale directory out of site-packages "
+            f"and reinstall microSALT in {sys.executable}."
+        )
+    if not hasattr(microsalt, "__version__"):
+        sys.exit(
+            f"microSALT environment check failed: {spec.origin} has no __version__"
+        )
+
+
+preflight()
+
 from core.config import load_validation_config  # noqa: E402
 from core.orchestrator import Orchestrator  # noqa: E402
 from core.state import State  # noqa: E402
 from core.suite import PHASES  # noqa: E402
-from suites import REGISTRY  # noqa: E402
+from suites import BROKEN, REGISTRY  # noqa: E402
+
+
+def list_suites() -> int:
+    for name, suite in sorted(REGISTRY.items()):
+        print(
+            f"{name:<14} {suite.title}  (requires: {', '.join(suite.requires) or '-'}; module {suite.__module__})"
+        )
+    if BROKEN:
+        print("\nSuite modules that failed to import:")
+        for module, error in sorted(BROKEN.items()):
+            print(f"  {module}: {error}")
+        return 1
+    return 0
 
 
 def main(argv=None) -> int:
@@ -61,17 +98,13 @@ def main(argv=None) -> int:
 
     args = parser.parse_args(argv)
     if args.command == "suites":
-        for name, suite in sorted(REGISTRY.items()):
-            print(
-                f"{name:<14} {suite.title}  (requires: {', '.join(suite.requires) or '-'}; module {suite.__module__})"
-            )
-        return 0
+        return list_suites()
     if not args.config:
         parser.error("-c/--config is required")
 
     cfg = load_validation_config(args.config)
     state = State(cfg.state_path)
-    orchestrator = Orchestrator(cfg, state, REGISTRY)
+    orchestrator = Orchestrator(cfg, state, REGISTRY, BROKEN)
     print(f"validation root: {cfg.validation_root}; suites: {', '.join(cfg.suites)}")
 
     if args.command == "start":

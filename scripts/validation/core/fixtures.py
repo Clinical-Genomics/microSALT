@@ -91,19 +91,31 @@ class FixtureHelper:
             data["database"]["SQLALCHEMY_DATABASE_URI"] = db_uri
         return self.write_json(root / "microsalt_config.json", data)
 
-    def scratch_sqlite(self, root: Path) -> tuple[Path, str] | None:
-        """Copy of the sqlite database, or None when the configured database is not sqlite."""
-        uri = self.ms.database.SQLALCHEMY_DATABASE_URI
-        if not uri.startswith("sqlite:///"):
-            return None
-        scratch = root / "microsalt_scratch.db"
-        shutil.copyfile(Path(uri.removeprefix("sqlite:///")), scratch)
-        return scratch, f"sqlite:///{scratch}"
+    def empty_profile_sqlite(self, root: Path, scheme: str) -> tuple[Path, str] | None:
+        """Create an isolated SQLite DB with the selected MLST profile table empty.
 
-    @staticmethod
-    def sqlite_execute(path: Path, statement: str) -> None:
-        with sqlite3.connect(path) as conn:
-            conn.execute(statement)
+        This works even when stage uses MySQL: R7 tests the profile import guard, not the
+        production DB engine, so a scratch database avoids modifying shared reference data.
+        """
+        scratch = root / "microsalt_scratch.db"
+        profile_path = Path(self.ms.folders.profiles) / scheme
+        if not profile_path.is_file():
+            return None
+        with profile_path.open() as stream:
+            columns = stream.readline().rstrip().split("\t")[:8]
+        if not columns or "ST" not in columns:
+            return None
+
+        def quote(identifier: str) -> str:
+            return '"' + identifier.replace('"', '""') + '"'
+
+        definitions = ", ".join(
+            f"{quote(column)} INTEGER" + (" PRIMARY KEY" if column == "ST" else "")
+            for column in columns
+        )
+        with sqlite3.connect(scratch) as conn:
+            conn.execute(f'CREATE TABLE "profile_{scheme}" ({definitions})')
+        return scratch, f"sqlite:///{scratch}"
 
     def mates(self, sample_dir: Path) -> tuple[Path, Path]:
         """First forward FASTQ and its mate, according to the configured file pattern."""

@@ -2,6 +2,7 @@
 
 from microSALT.store.database import get_session, initialize_database
 from microSALT.store.orm_models import (
+    Expacs,
     Projects,
     Reports,
     Resistances,
@@ -70,6 +71,9 @@ class Database:
         return {
             "projects": self.session.query(Projects).count(),
             "samples": self.session.query(Samples).count(),
+            "seq_types": self.session.query(Seq_types).count(),
+            "resistances": self.session.query(Resistances).count(),
+            "expacs": self.session.query(Expacs).count(),
             "reports": self.session.query(Reports).count(),
         }
 

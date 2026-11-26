@@ -6,8 +6,6 @@ from pathlib import Path
 
 import yaml
 
-from microSALT.utils.reporter import TYPING_ASSEMBLY_DELIVERABLE_TAGS
-
 from core.db import diff_qc
 from core.report import detail, table, yn
 from core.state import RunRecord
@@ -76,11 +74,18 @@ class QcOnlySuite(Suite):
         )
 
     def finish(self) -> None:
+        # Imported here so listing suites does not pull in the reporter/views stack.
+        from microSALT.utils.reporter import TYPING_ASSEMBLY_DELIVERABLE_TAGS
+
         for case in self.cases:
             print(f"== QC-only finish: {case.name} ==")
             qc_run = self.run("resubmit", case.name)
             if qc_run is None or not qc_run.finishdir:
-                self.check(f"{case.name}/finish_ok", None, "Missing QC-only resubmit run or finish directory")
+                self.check(
+                    f"{case.name}/finish_ok",
+                    None,
+                    "Missing QC-only resubmit run or finish directory",
+                )
                 continue
             finishdir = Path(qc_run.finishdir)
             record, _ = self.finish_run(

@@ -79,12 +79,25 @@ class VersioningSuite(Suite):
         initial = db.report_versions(case.project)
         history = []
         preserved_files = {}
+        reports_dir = Path(self.cfg.microsalt.folders.reports) / "analysis"
+        prior_html = {}
+        for directory in (reports_dir, full_dir, qc_dir):
+            if directory.is_dir():
+                for path in directory.glob(f"{customer}_*.html"):
+                    if "_Typing_" in path.name or "_QC_" in path.name:
+                        prior_html[str(path)] = file_hash(path)
         print(f"== Report versioning: {case.name} ==")
 
         def run_step(key, folder, report, expected_types, qc_only=False):
             before = db.report_versions(case.project)
             prior = before[-1]["version"] if before else 0
             expected = prior + 1 if expected_types else prior
+            json_path = folder / f"{case.project}.json"
+            json_mtime_before = (
+                json_path.stat().st_mtime_ns
+                if not expected_types and json_path.exists()
+                else None
+            )
             # A pre-existing path must not be mistaken for output from this invocation.
             paths = [
                 folder / f"{customer}_{kind}_{expected}.html" for kind in expected_types
@@ -123,9 +136,15 @@ class VersioningSuite(Suite):
                 if path.is_file():
                     preserved_files[str(path)] = file_hash(path)
             if not expected_types:
-                json_path = folder / f"{case.project}.json"
                 if not json_path.is_file():
                     problems.append(f"JSON output missing: {json_path}")
+                elif (
+                    json_mtime_before is not None
+                    and json_path.stat().st_mtime_ns == json_mtime_before
+                ):
+                    problems.append(
+                        f"JSON output was not refreshed by this invocation: {json_path}"
+                    )
             self.check(
                 key,
                 not problems,
@@ -152,16 +171,18 @@ class VersioningSuite(Suite):
         run_step("qc", full_dir, "qc", ("QC",))
         run_step("json_dump", full_dir, "json_dump", ())
         final = db.report_versions(case.project)
+        tracked_html = {**prior_html, **preserved_files}
         changed = [
             path
-            for path, digest in preserved_files.items()
+            for path, digest in tracked_html.items()
             if not Path(path).is_file() or file_hash(Path(path)) != digest
         ]
         preserved = final[: len(initial)] == initial and not changed
         self.check(
             "previous_reports_preserved",
             preserved,
-            f"initial DB rows: {len(initial)}; changed or missing HTML: {changed}",
+            f"initial DB rows: {len(initial)}; HTML files checked: {len(tracked_html)}; "
+            f"changed or missing HTML: {changed}",
         )
         self.snapshot(
             "history",
@@ -169,6 +190,7 @@ class VersioningSuite(Suite):
                 "steps": history,
                 "initial_reports": initial,
                 "final_reports": final,
+                "prior_html_sha256": prior_html,
                 "html_sha256": preserved_files,
             },
         )

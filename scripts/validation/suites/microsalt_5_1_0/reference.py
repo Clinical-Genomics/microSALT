@@ -134,7 +134,7 @@ class ReferenceSuite(Suite):
         sample, fastq = fx.synthetic_sample(base, opt.project, 7)
         sampleinfo = fx.write_json(root / "sampleinfo.json", sample)
         scheme = fx.mlst_reference(fx.load_sampleinfo(base)[0]["organism"])
-        scratch = fx.scratch_sqlite(root)
+        scratch = fx.empty_profile_sqlite(root, scheme) if scheme else None
         if scratch is None or scheme is None:
             out["R7"] = Fixture(
                 "R7",
@@ -146,11 +146,10 @@ class ReferenceSuite(Suite):
                 note=f"needs a sqlite database and a known MLST scheme (scheme={scheme})",
             )
         else:
-            path, uri = scratch
-            fx.sqlite_execute(path, f"DELETE FROM profile_{scheme}")
+            _, uri = scratch
             out["R7"] = Fixture(
                 "R7",
-                f"Empty profile_{scheme} in a scratch copy of the database, run with --skip_update",
+                f"Empty profile_{scheme} in an isolated scratch SQLite database, run with --skip_update",
                 "error",
                 sampleinfo,
                 fastq,

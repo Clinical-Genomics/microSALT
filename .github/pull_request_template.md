@@ -16,9 +16,9 @@
 
 <!-- If the update is a hot-fix, it is sufficient to rely on the development testing along with the Travis self-test automatically applied to the PR. -->
 
-- `bash /home/proj/production/servers/resources/hasta.scilifelab.se/update-microsalt.sh -d stage -b BRANCHNAME`
+- As `hiseq.clinical`: `bash /home/proj/stage/servers/resources/hasta.scilifelab.se/update-microsalt.sh -e stage -b BRANCHNAME`
 - `us`
-- `conda activate S_microSALT`
+- `conda activate S_microsalt`
 - `microSALT analyse --input /path/to/fastq/ SAMPLEINFO_FILE`
 
 ### Test results
