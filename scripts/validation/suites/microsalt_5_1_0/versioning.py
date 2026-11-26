@@ -8,7 +8,8 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 
 from core.report import detail, table, yn
-from core.suite import Suite, SuiteOptions
+from core.slurm import run_complete
+from core.suite import RetryAction, Suite, SuiteOptions
 
 
 class VersioningOptions(SuiteOptions):
@@ -57,6 +58,26 @@ class VersioningSuite(Suite):
         ("gen_reportdata_filter", "Sample-ID filter returns only the selected samples"),
         ("gen_reportdata_all", "Unfiltered report data contains all project samples"),
     )
+
+    def retry_actions(self) -> list[RetryAction]:
+        return [
+            RetryAction(
+                "finish/versioning",
+                f"Repeat report-versioning sequence: {self.options.case}",
+                "finish",
+            )
+        ]
+
+    def retry(self, action_id: str) -> None:
+        case = self.options.case
+        for run_id in (f"submit/stability/{case}", f"resubmit/qc_only/{case}"):
+            record = self.state.run(run_id)
+            if not record or not run_complete(record):
+                raise ValueError(
+                    f"{run_id} must complete before retrying report versioning"
+                )
+        self.state.invalidate_checks("versioning/", "Retry in progress")
+        self.finish()
 
     def finish(self) -> None:
         case = self.cfg.case(self.options.case)

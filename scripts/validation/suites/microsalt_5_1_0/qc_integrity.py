@@ -5,7 +5,8 @@ from pathlib import Path
 
 from core.db import diff_typing
 from core.report import detail, table, yn
-from core.suite import Suite, SuiteOptions
+from core.slurm import run_complete
+from core.suite import RetryAction, Suite, SuiteOptions
 
 
 class QcIntegrityOptions(SuiteOptions):
@@ -37,6 +38,34 @@ class QcIntegritySuite(Suite):
         ),
     )
 
+    def retry_actions(self) -> list[RetryAction]:
+        return [
+            RetryAction(
+                "finish/qc_integrity",
+                f"Repeat QC integrity sequence: {self.options.case}",
+                "finish",
+            )
+        ]
+
+    def retry(self, action_id: str) -> None:
+        case = self.options.case
+        for run_id in (f"submit/stability/{case}", f"resubmit/qc_only/{case}"):
+            record = self.state.run(run_id)
+            if not record or not run_complete(record):
+                raise ValueError(f"{run_id} must complete before retrying QC integrity")
+        qc_finish = self.state.run(f"finish/qc_only/{case}")
+        if (
+            not qc_finish
+            or not qc_finish.ok
+            or not self.state.get_snapshot(f"qc_only/{case}/after_qc")
+        ):
+            raise ValueError(
+                f"QC finish for {case} must succeed before retrying QC integrity"
+            )
+        self.state.invalidate_checks("qc_integrity/", "Retry in progress")
+        with self.fixtures.retry_fixtures():
+            self.finish()
+
     def finish(self) -> None:
         case = self.cfg.case(self.options.case)
         field, value = self.options.refresh_field, self.options.refresh_value
@@ -46,7 +75,11 @@ class QcIntegritySuite(Suite):
             f"qc_only/{case.name}/after_qc"
         ) or self.ctx.db.snapshot_project(case.project)
         if before is None:
-            self.check("typing_unchanged", None, "Missing snapshot after the first full analysis")
+            self.check(
+                "typing_unchanged",
+                None,
+                "Missing snapshot after the first full analysis",
+            )
             return
         problems = diff_typing(before, after)
         self.check(
@@ -65,7 +98,11 @@ class QcIntegritySuite(Suite):
             self.check("metadata_refreshed", None, "Missing QC-only finish directory")
             return
         if full_run is None or not full_run.finishdir:
-            self.check("full_report_retains_typing", None, "Missing full-analysis finish directory")
+            self.check(
+                "full_report_retains_typing",
+                None,
+                "Missing full-analysis finish directory",
+            )
             return
         modified, first = self.fixtures.modified_sampleinfo(
             case,

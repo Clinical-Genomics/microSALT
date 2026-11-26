@@ -36,6 +36,16 @@ class SuiteOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+@dataclass(frozen=True)
+class RetryAction:
+    """One independently retryable action exposed by an enabled suite."""
+
+    id: str
+    description: str
+    phase: str
+    run_id: str | None = None
+
+
 OptionsT = TypeVar("OptionsT", bound=SuiteOptions)
 
 
@@ -76,6 +86,13 @@ class Suite:
     def render(self) -> list[str]:
         """Markdown lines for this suite's Results subsection."""
         return []
+
+    def retry_actions(self) -> list[RetryAction]:
+        """Actions available for the configured cases in this suite."""
+        return []
+
+    def retry(self, action_id: str) -> None:
+        raise ValueError(f"Suite {self.name} does not support retrying {action_id}")
 
     # -- helpers -------------------------------------------------------------------------------
 
@@ -132,12 +149,12 @@ class Suite:
         )
 
     def result(self) -> str:
-        """PASS/FAIL/- over every decided check of the suite."""
-        checks = [
-            c
-            for c in self.state.checks(f"{self.name}/").values()
-            if c["passed"] is not None
-        ]
+        """Do not report PASS while an existing check is pending or unavailable."""
+        checks = list(self.state.checks(f"{self.name}/").values())
         if not checks:
             return "-"
-        return "PASS" if all(c["passed"] for c in checks) else "FAIL"
+        if any(c["passed"] is False for c in checks):
+            return "FAIL"
+        if any(c["passed"] is None for c in checks):
+            return "INCOMPLETE"
+        return "PASS"

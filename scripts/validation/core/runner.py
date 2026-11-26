@@ -33,7 +33,13 @@ class MicrosaltRunner:
         self.state = state
 
     def _log_path(self, run_id: str) -> Path:
-        return self.cfg.log_dir / (run_id.replace("/", "__") + ".log")
+        stem = run_id.replace("/", "__")
+        path = self.cfg.log_dir / f"{stem}.log"
+        attempt = 2
+        while path.exists():
+            path = self.cfg.log_dir / f"{stem}__attempt_{attempt}.log"
+            attempt += 1
+        return path
 
     def run(
         self, run_id: str, args: list[str], config_path: Path | None = None
@@ -187,6 +193,8 @@ def submitted_job_ids(output: str) -> list[str]:
     partway through, microSALT reports accepted IDs in its error text and may not write that file.
     """
     ids = []
-    for match in re.finditer(r"Already submitted job IDs:\s*([0-9, ]+)", output):
+    for match in re.finditer(
+        r"Already submitted (?:analysis )?job IDs:\s*([0-9, ]+)", output
+    ):
         ids.extend(re.findall(r"\d+", match.group(1)))
     return list(dict.fromkeys(ids))

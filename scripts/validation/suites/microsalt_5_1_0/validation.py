@@ -6,7 +6,7 @@ from pathlib import Path
 
 from core.report import detail, table, yn
 from core.runner import setup_errors
-from core.suite import Suite, SuiteOptions
+from core.suite import RetryAction, Suite, SuiteOptions
 
 
 @dataclass
@@ -31,7 +31,7 @@ class ValidationSuite(Suite):
     Options = ValidationOptions
     options: ValidationOptions
 
-    def _fixtures(self) -> list[Fixture]:
+    def _fixtures(self, selected: set[str] | None = None) -> list[Fixture]:
         fx = self.fixtures
         base = self.cfg.case(self.options.base_case)
         samples = fx.load_sampleinfo(base)
@@ -39,166 +39,145 @@ class ValidationSuite(Suite):
         reference = fx.reference_of(base)
         out = []
 
-        root = fx.fresh("V1")
-        path, _ = fx.modified_sampleinfo(base, "V1", organism=None)
-        out.append(
-            Fixture("V1", f"Remove 'organism' from sample {first}", path, base.fastq)
-        )
-
-        root = fx.fresh("V2")
-        farm = fx.fastq_farm(root, base)
-        fwd, _ = fx.mates(farm / first)
-        fwd.rename(fwd.parent / "badname_R1.fastq.gz")
-        out.append(
-            Fixture(
-                "V2",
-                f"Rename {fwd.name} of {first} to badname_R1.fastq.gz",
-                fx.write_json(root / "sampleinfo.json", samples),
-                farm,
+        if selected is None or "V1" in selected:
+            root = fx.fresh("V1")
+            path, _ = fx.modified_sampleinfo(base, "V1", organism=None)
+            out.append(
+                Fixture(
+                    "V1", f"Remove 'organism' from sample {first}", path, base.fastq
+                )
             )
-        )
 
-        root = fx.fresh("V3")
-        farm = fx.fastq_farm(root, base)
-        _, rev = fx.mates(farm / first)
-        rev.unlink()
-        out.append(
-            Fixture(
-                "V3",
-                f"Remove mate {rev.name} of {first}",
-                fx.write_json(root / "sampleinfo.json", samples),
-                farm,
+        if selected is None or "V2" in selected:
+            root = fx.fresh("V2")
+            farm = fx.fastq_farm(root, base)
+            fwd, _ = fx.mates(farm / first)
+            fwd.rename(fwd.parent / "badname_R1.fastq.gz")
+            out.append(
+                Fixture(
+                    "V2",
+                    f"Rename {fwd.name} of {first} to badname_R1.fastq.gz",
+                    fx.write_json(root / "sampleinfo.json", samples),
+                    farm,
+                )
             )
-        )
 
-        root = fx.fresh("V4")
-        farm = fx.fastq_farm(root, base)
-        fwd, _ = fx.mates(farm / first)
-        fwd.unlink()
-        fwd.touch()
-        fwd.chmod(0)
-        out.append(
-            Fixture(
-                "V4",
-                f"Make {fwd.name} of {first} unreadable (chmod 000)",
-                fx.write_json(root / "sampleinfo.json", samples),
-                farm,
+        if selected is None or "V3" in selected:
+            root = fx.fresh("V3")
+            farm = fx.fastq_farm(root, base)
+            _, rev = fx.mates(farm / first)
+            rev.unlink()
+            out.append(
+                Fixture(
+                    "V3",
+                    f"Remove mate {rev.name} of {first}",
+                    fx.write_json(root / "sampleinfo.json", samples),
+                    farm,
+                )
             )
-        )
 
-        root = fx.fresh("V5")
-        genomes = fx.genomes_farm(root)
-        for item in genomes.glob(f"{reference}.fasta*"):
-            item.unlink()
-        out.append(
-            Fixture(
-                "V5",
-                f"Remove {reference}.fasta and its indexes, run with --skip_update",
-                fx.write_json(root / "sampleinfo.json", samples),
-                base.fastq,
-                config_path=fx.alt_config(root, genomes=genomes),
-                skip_update=True,
+        if selected is None or "V4" in selected:
+            root = fx.fresh("V4")
+            farm = fx.fastq_farm(root, base)
+            fwd, _ = fx.mates(farm / first)
+            fwd.unlink()
+            fwd.touch()
+            fwd.chmod(0)
+            out.append(
+                Fixture(
+                    "V4",
+                    f"Make {fwd.name} of {first} unreadable (chmod 000)",
+                    fx.write_json(root / "sampleinfo.json", samples),
+                    farm,
+                )
             )
-        )
 
-        root = fx.fresh("V6")
-        genomes = fx.genomes_farm(root)
-        fasta = genomes / f"{reference}.fasta"
-        fasta.unlink(missing_ok=True)
-        fasta.write_text("<html><body>Error 500</body></html>\n")
-        out.append(
-            Fixture(
-                "V6",
-                f"Replace {reference}.fasta with an HTML error page",
-                fx.write_json(root / "sampleinfo.json", samples),
-                base.fastq,
-                config_path=fx.alt_config(root, genomes=genomes),
-                skip_update=True,
+        if selected is None or "V5" in selected:
+            root = fx.fresh("V5")
+            genomes = fx.genomes_farm(root)
+            for item in genomes.glob(f"{reference}.fasta*"):
+                item.unlink()
+            out.append(
+                Fixture(
+                    "V5",
+                    f"Remove {reference}.fasta and its indexes, run with --skip_update",
+                    fx.write_json(root / "sampleinfo.json", samples),
+                    base.fastq,
+                    config_path=fx.alt_config(root, genomes=genomes),
+                    skip_update=True,
+                )
             )
-        )
 
-        root = fx.fresh("V7")
-        genomes = fx.genomes_farm(root)
-        (genomes / f"{reference}.fasta.bwt").unlink(missing_ok=True)
-        out.append(
-            Fixture(
-                "V7",
-                f"Remove {reference}.fasta.bwt, run with --skip_update",
-                fx.write_json(root / "sampleinfo.json", samples),
-                base.fastq,
-                config_path=fx.alt_config(root, genomes=genomes),
-                skip_update=True,
+        if selected is None or "V6" in selected:
+            root = fx.fresh("V6")
+            genomes = fx.genomes_farm(root)
+            fasta = genomes / f"{reference}.fasta"
+            fasta.unlink(missing_ok=True)
+            fasta.write_text("<html><body>Error 500</body></html>\n")
+            out.append(
+                Fixture(
+                    "V6",
+                    f"Replace {reference}.fasta with an HTML error page",
+                    fx.write_json(root / "sampleinfo.json", samples),
+                    base.fastq,
+                    config_path=fx.alt_config(root, genomes=genomes),
+                    skip_update=True,
+                )
             )
-        )
 
-        root = fx.fresh("V8")
-        data = fx.load_sampleinfo(base)
-        del data[0]["organism"]
-        farm = fx.fastq_farm(root, base)
-        fwd, _ = fx.mates(farm / first)
-        fwd.rename(fwd.parent / "badname_R1.fastq.gz")
-        genomes = fx.genomes_farm(root)
-        for item in genomes.glob(f"{reference}.fasta*"):
-            item.unlink()
-        out.append(
-            Fixture(
-                "V8",
-                "Combine V1, V2 and V5",
-                fx.write_json(root / "sampleinfo.json", data),
-                farm,
-                config_path=fx.alt_config(root, genomes=genomes),
-                skip_update=True,
-                min_errors=3,
+        if selected is None or "V7" in selected:
+            root = fx.fresh("V7")
+            genomes = fx.genomes_farm(root)
+            (genomes / f"{reference}.fasta.bwt").unlink(missing_ok=True)
+            out.append(
+                Fixture(
+                    "V7",
+                    f"Remove {reference}.fasta.bwt, run with --skip_update",
+                    fx.write_json(root / "sampleinfo.json", samples),
+                    base.fastq,
+                    config_path=fx.alt_config(root, genomes=genomes),
+                    skip_update=True,
+                )
             )
-        )
+
+        if selected is None or "V8" in selected:
+            root = fx.fresh("V8")
+            data = fx.load_sampleinfo(base)
+            del data[0]["organism"]
+            farm = fx.fastq_farm(root, base)
+            fwd, _ = fx.mates(farm / first)
+            fwd.rename(fwd.parent / "badname_R1.fastq.gz")
+            genomes = fx.genomes_farm(root)
+            for item in genomes.glob(f"{reference}.fasta*"):
+                item.unlink()
+            out.append(
+                Fixture(
+                    "V8",
+                    "Combine V1, V2 and V5",
+                    fx.write_json(root / "sampleinfo.json", data),
+                    farm,
+                    config_path=fx.alt_config(root, genomes=genomes),
+                    skip_update=True,
+                    min_errors=3,
+                )
+            )
         return out
 
     def submit(self) -> None:
         print("== Validation before submission (V tests) ==")
-        base = self.cfg.case(self.options.base_case)
         descriptions = {}
         for fx in self._fixtures():
             descriptions[fx.id] = fx.description
-            before = self.ctx.db.row_counts()
-            record, result = self.analyse(
-                "submit",
-                fx.id,
-                base.name,
-                fx.sampleinfo,
-                fx.fastq,
-                base.project,
-                skip_update=fx.skip_update,
-                config_path=fx.config_path,
-                note=fx.description,
-            )
-            errors = setup_errors(result.output)
-            self.check(
-                f"{fx.id}/error_raised",
-                not record.ok and bool(errors),
-                f"exit {record.exit_code}; {len(errors)} error(s): "
-                + " | ".join(errors[:4]),
-            )
-            self.check(
-                f"{fx.id}/no_jobs",
-                not record.slurm_ids,
-                f"slurm ids: {record.slurm_ids or 'none'}; finishdir: {record.finishdir or 'none'}",
-            )
-            after = self.ctx.db.row_counts()
-            self.check(
-                f"{fx.id}/no_db_rows",
-                before == after,
-                f"before {before}, after {after}",
-            )
-            if fx.min_errors > 1:
-                self.check(
-                    f"{fx.id}/all_errors_listed",
-                    len(errors) >= fx.min_errors,
-                    f"expected >= {fx.min_errors} errors in one message, got {len(errors)}",
-                )
+            self._submit_fixture(fx)
 
         descriptions["V9"] = (
             "Unmodified sample info, --dry (validation only, no submission)"
         )
+        self._submit_v9(descriptions["V9"])
+        self.snapshot("descriptions", descriptions)
+
+    def _submit_v9(self, description: str) -> None:
+        base = self.cfg.case(self.options.base_case)
         record, _ = self.analyse(
             "submit",
             "V9",
@@ -207,7 +186,7 @@ class ValidationSuite(Suite):
             base.fastq,
             base.project,
             dry=True,
-            note=descriptions["V9"],
+            note=description,
         )
         self.check(
             "V9/accepted",
@@ -219,7 +198,73 @@ class ValidationSuite(Suite):
             record.duration_s < self.options.max_validation_seconds,
             f"{record.duration_s}s for validation + job script creation (no FASTQ decompression)",
         )
-        self.snapshot("descriptions", descriptions)
+
+    def _submit_fixture(self, fx: Fixture) -> None:
+        base = self.cfg.case(self.options.base_case)
+        before = self.ctx.db.row_counts()
+        record, result = self.analyse(
+            "submit",
+            fx.id,
+            base.name,
+            fx.sampleinfo,
+            fx.fastq,
+            base.project,
+            skip_update=fx.skip_update,
+            config_path=fx.config_path,
+            note=fx.description,
+        )
+        errors = setup_errors(result.output)
+        self.check(
+            f"{fx.id}/error_raised",
+            not record.ok and bool(errors),
+            f"exit {record.exit_code}; {len(errors)} error(s): "
+            + " | ".join(errors[:4]),
+        )
+        self.check(
+            f"{fx.id}/no_jobs",
+            not record.slurm_ids,
+            f"slurm ids: {record.slurm_ids or 'none'}; finishdir: {record.finishdir or 'none'}",
+        )
+        after = self.ctx.db.row_counts()
+        self.check(
+            f"{fx.id}/no_db_rows",
+            before == after,
+            f"before {before}, after {after}",
+        )
+        if fx.min_errors > 1:
+            self.check(
+                f"{fx.id}/all_errors_listed",
+                len(errors) >= fx.min_errors,
+                f"expected >= {fx.min_errors} errors in one message, got {len(errors)}",
+            )
+
+    def retry_actions(self) -> list[RetryAction]:
+        return [
+            RetryAction(
+                f"submit/validation/V{number}",
+                f"Input validation V{number}",
+                "submit",
+                self.run_id("submit", f"V{number}"),
+            )
+            for number in range(1, 10)
+        ]
+
+    def retry(self, action_id: str) -> None:
+        test_id = action_id.split("/")[-1]
+        with self.fixtures.retry_fixtures():
+            self.state.invalidate_checks(f"validation/{test_id}/", "Retry in progress")
+            descriptions = self.get_snapshot("descriptions") or {}
+            if test_id == "V9":
+                description = (
+                    "Unmodified sample info, --dry (validation only, no submission)"
+                )
+                descriptions[test_id] = description
+                self._submit_v9(description)
+            else:
+                fx = self._fixtures({test_id})[0]
+                descriptions[test_id] = fx.description
+                self._submit_fixture(fx)
+            self.snapshot("descriptions", descriptions)
 
     def render(self) -> list[str]:
         descriptions = self.get_snapshot("descriptions") or {}

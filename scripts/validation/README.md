@@ -61,8 +61,35 @@ other phases are no-ops.
 `start resubmit` and `start finish` refuse to run while submitted runs of earlier phases are not
 complete; pass `--force` to override.
 
-Every command and check is appended to `<validation_root>/state.json`; command output goes to
-`<validation_root>/logs/`. Re-running a phase overwrites the records of that phase.
+The latest command and check results are recorded in `<validation_root>/state.json`, with earlier
+attempts kept in history; command output goes to separate files under `<validation_root>/logs/`.
+Re-running a whole phase still repeats all of its analyses; use `retry` to select one instead.
+
+## Retrying a test
+
+Use the same YAML config and validation root as the original run:
+
+```shell
+$PY scripts/validation/run_validation.py -c validation_config.yaml retry
+# Or list the enabled actions, then select one by ID:
+$PY scripts/validation/run_validation.py -c validation_config.yaml retry --list
+$PY scripts/validation/run_validation.py -c validation_config.yaml retry --test submit/reference/R5
+```
+
+The menu is built from enabled suites and their configured cases. Select a number or `q` to
+cancel, then type `yes` to confirm. `--test` skips the menu selection, not the confirmation.
+Previous attempts and checks are retained in `state.json` (`run_history` and `check_history`),
+logs use new attempt filenames, and modified fixtures are generated under a new
+`fixtures/retries/attempt-*/` directory. The latest result is used for the report. Before retrying,
+the runner requires all previously recorded SLURM jobs to have terminal states in `sacct`,
+including jobs from partially failed submissions. A missing or unknown state blocks the retry.
+
+The R6 test and the QC-integrity and report-versioning checks are sequences; they cannot always
+be repeated safely as individual steps. The menu presents those checks at their safe granularity.
+For example, after a QC finish has run, restarting the upstream QC analysis requires a new
+validation rather than silently reusing stale downstream evidence. After retrying a reference
+analysis, wait for its jobs, then select `finish/reference` to refresh completion checks before
+collecting the report. A retry can modify the stage database and consume report versions.
 
 ## Writing a suite for a new release
 

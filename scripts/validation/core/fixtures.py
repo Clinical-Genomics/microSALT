@@ -8,6 +8,8 @@ import os
 import re
 import shutil
 import sqlite3
+import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 
 from microSALT.utils.referencer import Referencer
@@ -20,9 +22,21 @@ class FixtureHelper:
         self.cfg = cfg
         self.ms = cfg.microsalt
         self.pattern = self.ms.regex.file_pattern
+        self._retry_dir: Path | None = None
+
+    @contextmanager
+    def retry_fixtures(self):
+        """Put retry fixtures in a new directory without touching earlier attempts."""
+        parent = self.cfg.fixture_dir / "retries"
+        parent.mkdir(parents=True, exist_ok=True)
+        self._retry_dir = Path(tempfile.mkdtemp(prefix="attempt-", dir=parent))
+        try:
+            yield
+        finally:
+            self._retry_dir = None
 
     def fresh(self, label: str) -> Path:
-        path = self.cfg.fixture_dir / label
+        path = (self._retry_dir or self.cfg.fixture_dir) / label
         if path.exists():
             shutil.rmtree(path)
         path.mkdir(parents=True)
@@ -50,7 +64,10 @@ class FixtureHelper:
                 data[index].pop(key, None)
             else:
                 data[index][key] = value
-        path = self.write_json(self.cfg.fixture_dir / f"{case.name}_{label}.json", data)
+        path = self.write_json(
+            (self._retry_dir or self.cfg.fixture_dir) / f"{case.name}_{label}.json",
+            data,
+        )
         return path, data[index]
 
     def subset_sampleinfo(self, case: Case, count: int = 1) -> tuple[Path, list[str]]:

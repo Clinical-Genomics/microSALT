@@ -7,7 +7,7 @@ from pathlib import Path
 from core.report import detail, table, yn
 from core.runner import setup_errors
 from core.slurm import run_complete, run_status
-from core.suite import Suite, SuiteOptions
+from core.suite import RetryAction, Suite, SuiteOptions
 
 from .qc_only import runfiles
 
@@ -39,7 +39,7 @@ class ReferenceSuite(Suite):
     Options = ReferenceOptions
     options: ReferenceOptions
 
-    def _fixtures(self) -> dict[str, Fixture]:
+    def _fixtures(self, selected: set[str] | None = None) -> dict[str, Fixture]:
         fx = self.fixtures
         opt = self.options
         base = self.cfg.case(opt.base_case)
@@ -55,6 +55,8 @@ class ReferenceSuite(Suite):
             skip_update=False,
             **overrides,
         ):
+            if selected is not None and test_id not in selected:
+                return None
             root = fx.fresh(test_id)
             sample, fastq = fx.synthetic_sample(base, opt.project, index, **overrides)
             out[test_id] = Fixture(
@@ -91,23 +93,24 @@ class ReferenceSuite(Suite):
             reference=opt.bogus_accession,
         )
 
-        root = fx.fresh("R4")
-        genomes = fx.genomes_farm(root)
-        corrupt = genomes / f"{opt.assembly_accession}.fasta"
-        corrupt.unlink(missing_ok=True)
-        corrupt.write_text(">truncated\nACGT\n>empty\n")
-        sample, fastq = fx.synthetic_sample(
-            base, opt.project, 4, reference=opt.assembly_accession
-        )
-        out["R4"] = Fixture(
-            "R4",
-            f"Corrupt cached download of {opt.assembly_accession} (empty record)",
-            "error",
-            fx.write_json(root / "sampleinfo.json", sample),
-            fastq,
-            sample["CG_ID_sample"],
-            config_path=fx.alt_config(root, genomes=genomes),
-        )
+        if selected is None or "R4" in selected:
+            root = fx.fresh("R4")
+            genomes = fx.genomes_farm(root)
+            corrupt = genomes / f"{opt.assembly_accession}.fasta"
+            corrupt.unlink(missing_ok=True)
+            corrupt.write_text(">truncated\nACGT\n>empty\n")
+            sample, fastq = fx.synthetic_sample(
+                base, opt.project, 4, reference=opt.assembly_accession
+            )
+            out["R4"] = Fixture(
+                "R4",
+                f"Corrupt cached download of {opt.assembly_accession} (empty record)",
+                "error",
+                fx.write_json(root / "sampleinfo.json", sample),
+                fastq,
+                sample["CG_ID_sample"],
+                config_path=fx.alt_config(root, genomes=genomes),
+            )
 
         add(
             "R5",
@@ -130,33 +133,37 @@ class ReferenceSuite(Suite):
             organism=opt.organism_without_mlst,
         )
 
-        root = fx.fresh("R7")
-        sample, fastq = fx.synthetic_sample(base, opt.project, 7)
-        sampleinfo = fx.write_json(root / "sampleinfo.json", sample)
-        scheme = fx.mlst_reference(fx.load_sampleinfo(base)[0]["organism"])
-        scratch = fx.empty_profile_sqlite(root, scheme) if scheme else None
-        if scratch is None or scheme is None:
-            out["R7"] = Fixture(
-                "R7",
-                "Empty MLST profile table",
-                "skip",
-                sampleinfo,
-                fastq,
-                sample["CG_ID_sample"],
-                note=f"needs a sqlite database and a known MLST scheme (scheme={scheme})",
-            )
-        else:
-            _, uri = scratch
-            out["R7"] = Fixture(
-                "R7",
-                f"Empty profile_{scheme} in an isolated scratch SQLite database, run with --skip_update",
-                "error",
-                sampleinfo,
-                fastq,
-                sample["CG_ID_sample"],
-                config_path=fx.alt_config(root, db_uri=uri),
-                skip_update=True,
-            )
+        if selected is None or "R7" in selected:
+            root = fx.fresh("R7")
+            sample, fastq = fx.synthetic_sample(base, opt.project, 7)
+            sampleinfo = fx.write_json(root / "sampleinfo.json", sample)
+            scheme = fx.mlst_reference(fx.load_sampleinfo(base)[0]["organism"])
+            scratch = fx.empty_profile_sqlite(root, scheme) if scheme else None
+            if scratch is None or scheme is None:
+                out["R7"] = Fixture(
+                    "R7",
+                    "Empty MLST profile table",
+                    "skip",
+                    sampleinfo,
+                    fastq,
+                    sample["CG_ID_sample"],
+                    note=(
+                        "requires a known MLST scheme and a readable profile file with an ST column; "
+                        f"scheme={scheme}, profiles folder={self.cfg.microsalt.folders.profiles}"
+                    ),
+                )
+            else:
+                _, uri = scratch
+                out["R7"] = Fixture(
+                    "R7",
+                    f"Empty profile_{scheme} in an isolated scratch SQLite database, run with --skip_update",
+                    "error",
+                    sampleinfo,
+                    fastq,
+                    sample["CG_ID_sample"],
+                    config_path=fx.alt_config(root, db_uri=uri),
+                    skip_update=True,
+                )
         return out
 
     def _run(self, phase: str, fx: Fixture):
@@ -177,50 +184,110 @@ class ReferenceSuite(Suite):
         print("== Reference handling (R tests) ==")
         fixtures = self._fixtures()
         descriptions = {k: v.description for k, v in fixtures.items()}
-        descriptions["R8"] = "Unreachable resource during reference setup"
         self.snapshot("descriptions", descriptions)
         for test_id in ("R1", "R2", "R3", "R4", "R5", "R6a", "R7"):
-            fx = fixtures[test_id]
-            if fx.expect == "skip":
-                self.check(f"{test_id}/result", None, f"skipped: {fx.note}")
-                continue
-            record, result = self._run("submit", fx)
-            errors = setup_errors(result.output)
-            if fx.expect == "error":
-                self.check(
-                    f"{test_id}/result",
-                    not record.ok and not record.slurm_ids,
-                    f"exit {record.exit_code}; " + " | ".join(errors[:3]),
-                )
-            else:
-                self.check(
-                    f"{test_id}/result",
-                    record.ok and bool(record.slurm_ids),
-                    f"exit {record.exit_code}; slurm ids {record.slurm_ids}",
-                )
-            if test_id == "R5" and record.ok:
-                content = "".join(p.read_text() for p in runfiles(record.finishdir))
-                self.check(
-                    "R5/mlst_skipped",
-                    "skipping MLST" in result.output
-                    and "blast_search/mlst" not in content
-                    and "blast_search/resistance" in content,
-                    "MLST warning logged; runfile has resistance but no MLST blast section",
-                )
-        self.check(
-            "R8/result",
-            None,
-            "Not reproduced on stage. Covered by unit tests for Referencer error handling in PR #280 "
-            "(an unreachable resource raises ReferenceSetupError, not MLSTUnavailableError).",
-        )
+            self._submit_fixture(fixtures[test_id])
+
+    def _submit_fixture(self, fx: Fixture) -> None:
+        test_id = fx.id
+        if fx.expect == "skip":
+            self.check(f"{test_id}/result", None, f"skipped: {fx.note}")
+            return
+        record, result = self._run("submit", fx)
+        errors = setup_errors(result.output)
+        if fx.expect == "error":
+            self.check(
+                f"{test_id}/result",
+                not record.ok and not record.slurm_ids,
+                f"exit {record.exit_code}; " + " | ".join(errors[:3]),
+            )
+        else:
+            self.check(
+                f"{test_id}/result",
+                record.ok and bool(record.slurm_ids),
+                f"exit {record.exit_code}; slurm ids {record.slurm_ids}; log: {record.log}",
+            )
+        if test_id == "R5" and record.ok:
+            content = "".join(p.read_text() for p in runfiles(record.finishdir))
+            self.check(
+                "R5/mlst_skipped",
+                "skipping MLST" in result.output
+                and "blast_search/mlst" not in content
+                and "blast_search/resistance" in content,
+                "MLST warning logged; runfile has resistance but no MLST blast section",
+            )
 
     def resubmit(self) -> None:
         if self.run("submit", "R6a") is None:
             return
-        fx = self._fixtures()["R6b"]
+        fx = self._fixtures({"R6b"})["R6b"]
         sample = self.ctx.db.sample(fx.job_name)
         self.snapshot("R6/st_before", {"ST": sample.ST if sample else None})
         self._run("resubmit", fx)
+
+    def retry_actions(self) -> list[RetryAction]:
+        actions = [
+            RetryAction(
+                f"submit/reference/{test_id}",
+                f"Reference handling {test_id}",
+                "submit",
+                self.run_id("submit", test_id),
+            )
+            for test_id in ("R1", "R2", "R3", "R4", "R5", "R6a", "R7")
+        ]
+        actions.append(
+            RetryAction(
+                "resubmit/reference/R6b",
+                "R6b: rerun without MLST",
+                "resubmit",
+                self.run_id("resubmit", "R6b"),
+            )
+        )
+        actions.append(
+            RetryAction(
+                "finish/reference",
+                "Recheck reference completion and R6 results",
+                "finish",
+            )
+        )
+        return actions
+
+    def retry(self, action_id: str) -> None:
+        if action_id == "finish/reference":
+            self.finish()
+            return
+        phase, _, test_id = action_id.split("/")
+        if test_id == "R6b":
+            first = self.run("submit", "R6a")
+            if not first or not run_complete(first):
+                raise ValueError("R6a must complete before R6b can be retried")
+            if (
+                self.run("resubmit", "R6b")
+                and self.get_snapshot("R6/st_before") is None
+            ):
+                raise ValueError(
+                    "The original R6 sequence type snapshot is missing; start a new validation"
+                )
+        if test_id == "R6a" and self.run("resubmit", "R6b"):
+            raise ValueError(
+                "R6b has already run; start a new validation to repeat the complete R6 sequence"
+            )
+        with self.fixtures.retry_fixtures():
+            fx = self._fixtures({test_id})[test_id]
+            descriptions = self.get_snapshot("descriptions") or {}
+            descriptions[test_id] = fx.description
+            self.snapshot("descriptions", descriptions)
+            self.state.invalidate_checks(
+                f"reference/{'R6' if test_id == 'R6b' else test_id}/",
+                "Retry in progress; result needs rechecking",
+            )
+            if test_id == "R6b":
+                if self.get_snapshot("R6/st_before") is None:
+                    sample = self.ctx.db.sample(fx.job_name)
+                    self.snapshot("R6/st_before", {"ST": sample.ST if sample else None})
+                self._run(phase, fx)
+            else:
+                self._submit_fixture(fx)
 
     def finish(self) -> None:
         print("== Reference handling: completion ==")
@@ -261,6 +328,29 @@ class ReferenceSuite(Suite):
                 f"ST before {before}, after re-run without MLST scheme {after}",
             )
 
+    def result(self) -> str:
+        required = (
+            "R1/result",
+            "R1/completed",
+            "R2/result",
+            "R2/completed",
+            "R2/downloaded",
+            "R3/result",
+            "R4/result",
+            "R5/result",
+            "R5/mlst_skipped",
+            "R5/completed",
+            "R6a/result",
+            "R6/result",
+            "R7/result",
+        )
+        checks = [self.get_check(key) for key in required]
+        if any(check and check["passed"] is False for check in checks):
+            return "FAIL"
+        if any(not check or check["passed"] is None for check in checks):
+            return "INCOMPLETE"
+        return "PASS"
+
     def render(self) -> list[str]:
         descriptions = self.get_snapshot("descriptions") or {}
         rows = []
@@ -274,7 +364,6 @@ class ReferenceSuite(Suite):
             ("R5", "completed", None),
             ("R6", "result", None),
             ("R7", "result", None),
-            ("R8", "result", None),
         ):
             check = self.get_check(f"{test_id}/{key}")
             comment = detail(check)

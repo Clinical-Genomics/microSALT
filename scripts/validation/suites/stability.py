@@ -7,7 +7,7 @@ from pathlib import Path
 
 from core.report import detail, table, yn
 from core.slurm import run_complete, run_status
-from core.suite import Suite, SuiteOptions
+from core.suite import RetryAction, Suite, SuiteOptions
 
 COMPARE_SCRIPT = Path(__file__).resolve().parents[2] / "compare_typing_reports.py"
 
@@ -38,6 +38,30 @@ class StabilitySuite(Suite):
                 case.fastq,
                 case.project,
             )
+
+    def retry_actions(self) -> list[RetryAction]:
+        return [
+            RetryAction(
+                f"submit/stability/{case.name}",
+                f"Full analysis: {case.name}",
+                "submit",
+                self.run_id("submit", case.name),
+            )
+            for case in self.cases
+        ]
+
+    def retry(self, action_id: str) -> None:
+        name = action_id.split("/")[-1]
+        case = next(case for case in self.cases if case.name == name)
+        if self.state.run(f"resubmit/qc_only/{name}"):
+            raise ValueError(
+                f"QC analysis already started for {name}; start a new validation to repeat the complete sequence"
+            )
+        self.state.invalidate_checks(
+            f"stability/{name}/",
+            "Full analysis retried; collect results after completion",
+        )
+        self.analyse("submit", name, name, case.sampleinfo, case.fastq, case.project)
 
     def collect(self) -> None:
         compare_dir = self.cfg.validation_root / "compare"

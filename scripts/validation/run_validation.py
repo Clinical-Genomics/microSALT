@@ -84,6 +84,14 @@ def main(argv=None) -> int:
     sub.add_parser("status", help="show completion of submitted runs")
     sub.add_parser("suites", help="list available suites")
 
+    retry = sub.add_parser("retry", help="interactively retry one configured test")
+    retry.add_argument(
+        "--list", action="store_true", help="list configured retryable tests"
+    )
+    retry.add_argument(
+        "--test", help="select a test by its ID; confirmation is still required"
+    )
+
     collect = sub.add_parser("collect", help="gather results and write results.md")
     collect.add_argument(
         "--no-copy",
@@ -111,6 +119,49 @@ def main(argv=None) -> int:
         orchestrator.start(args.phase, force=args.force)
     elif args.command == "status":
         orchestrator.status()
+    elif args.command == "retry":
+        options = orchestrator.retry_options()
+        if not options:
+            print("No retryable tests are enabled in this config.")
+            return 1
+        if args.list or not args.test:
+            for index, (_, action) in enumerate(options, 1):
+                print(f"{index:2}. {action.id:<35} {action.description}")
+        if args.list:
+            return 0
+        try:
+            selected = (
+                args.test or input("Select a test number (or q to cancel): ").strip()
+            )
+            if selected.lower() in {"q", "quit", ""}:
+                print("Cancelled; nothing was run.")
+                return 0
+            if selected.isdigit() and 1 <= int(selected) <= len(options):
+                selected = options[int(selected) - 1][1].id
+            matching = [action for _, action in options if action.id == selected]
+            if not matching:
+                print(f"Unknown test {selected!r}; use retry --list.", file=sys.stderr)
+                return 2
+            action = matching[0]
+            previous = state.run(action.run_id) if action.run_id else None
+            print(f"Selected: {action.id} — {action.description}")
+            if previous:
+                print(
+                    f"Previous attempt: exit {previous.exit_code}, jobs {previous.slurm_ids or 'none'}, log {previous.log}"
+                )
+            print(
+                "This may submit SLURM jobs and update the database or create report versions."
+            )
+            if input("Retry this test? Type yes to confirm: ").strip().lower() != "yes":
+                print("Cancelled; nothing was run.")
+                return 0
+            orchestrator.retry(action.id)
+        except (EOFError, KeyboardInterrupt):
+            print("\nCancelled; nothing was run.")
+            return 1
+        except ValueError as error:
+            print(f"Cannot retry: {error}", file=sys.stderr)
+            return 1
     else:
         output = (
             Path(args.output) if args.output else cfg.validation_root / "results.md"

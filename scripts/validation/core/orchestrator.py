@@ -8,7 +8,7 @@ from .config import ValidationConfig
 from .fixtures import FixtureHelper
 from .report import render_report
 from .runner import MicrosaltRunner
-from .slurm import run_complete, run_status
+from .slurm import TERMINAL, job_states, run_complete, run_status
 from .state import State
 from .suite import PHASES, Context, Suite
 
@@ -77,6 +77,39 @@ class Orchestrator:
         width = max(len(r[0]) for r in rows)
         for run_id, status, finishdir in rows:
             print(f"{run_id:<{width}}  {status:<18}  {finishdir}")
+
+    def retry_options(self):
+        return [
+            (suite, action) for suite in self.suites for action in suite.retry_actions()
+        ]
+
+    def retry(self, action_id: str) -> None:
+        options = {action.id: (suite, action) for suite, action in self.retry_options()}
+        if action_id not in options:
+            raise ValueError(
+                f"{action_id!r} is not a retryable test in the configured suites"
+            )
+        suite, action = options[action_id]
+
+        # Never submit a duplicate while an earlier job may still be running. Include IDs from
+        # failed/partially submitted commands; do not trust only run_complete.out or exit codes.
+        records = [record for record in self.state.runs() if record.slurm_ids]
+        all_ids = list(
+            dict.fromkeys(job for record in records for job in record.slurm_ids)
+        )
+        states = job_states(all_ids)
+        unresolved = [
+            job
+            for job in all_ids
+            if states.get(job, "UNKNOWN").rstrip("+") not in TERMINAL
+        ]
+        if unresolved:
+            raise ValueError(
+                "Cannot retry while recorded SLURM jobs are running or their status is unknown: "
+                + ", ".join(f"{job}={states.get(job, 'UNKNOWN')}" for job in unresolved)
+                + ". Wait for them to finish and ensure sacct is available."
+            )
+        suite.retry(action.id)
 
     def collect(self, copy_results: bool, output: Path) -> None:
         for suite in self.suites:
