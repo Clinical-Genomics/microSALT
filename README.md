@@ -177,12 +177,12 @@ Any definitions will work, as long as they retain the same formatting.
 
 ### ExPEC virulence genes
 
-The ExPEC virulence gene FASTA used for *Escherichia coli* samples is **not**
-bundled with microSALT. Provide it yourself and point `folders.expec` in the
-configuration file to the FASTA file (e.g. `/path/to/references/expec/ExPEC.fsa`).
-microSALT builds BLAST indexes next to the file, so its directory must be
-writable. The setting is required, but the file is only read when an
-*E. coli* sample is analysed.
+The ExPEC virulence gene definitions used for *Escherichia coli* samples are
+**not** bundled with microSALT. Provide them yourself and point `folders.expec`
+in the configuration file to a directory containing the `.fsa` file(s), the same
+way `folders.resistances` works. microSALT builds BLAST indexes in that
+directory, so it must be writable. The setting is required, but the directory is
+only read when an *E. coli* sample is analysed.
 
 ## Requirements
 

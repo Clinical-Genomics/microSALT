@@ -262,8 +262,7 @@ class Referencer:
         """Collect resistance and optional ExPEC resource failures independently."""
         targets = [(Path(self.folders.resistances), ".fsa")]
         if needs_expec:
-            expec = Path(self.folders.expec)
-            targets.append((expec.parent, expec.suffix))
+            targets.append((Path(self.folders.expec), ".fsa"))
         errors = []
         for directory, suffix in targets:
             try:
@@ -309,8 +308,7 @@ class Referencer:
             self.fetch_resistances(self.force)
 
             # Reindexes
-            expec = Path(self.folders.expec)
-            self._prepare_blast_reference(expec.parent, expec.suffix, skip_update=False)
+            self._prepare_blast_reference(Path(self.folders.expec), ".fsa", skip_update=False)
         finally:
             self.db_access.release_ref_lock()
 

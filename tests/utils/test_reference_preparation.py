@@ -365,12 +365,12 @@ def test_prepare_typing_references_selects_targets_and_collects_all_failures(
     referencer, tmp_path, needs_expec, skip_update
 ):
     resistance = tmp_path / "resistance"
-    expec = tmp_path / "expec" / "ExPEC.fsa"
+    expec = tmp_path / "expec"
     referencer.folders.resistances = str(resistance)
     referencer.folders.expec = str(expec)
     expected = [call(resistance, ".fsa", skip_update)]
     if needs_expec:
-        expected.append(call(expec.parent, ".fsa", skip_update))
+        expected.append(call(expec, ".fsa", skip_update))
     with patch.object(
         referencer, "_prepare_blast_reference", side_effect=ReferenceSetupError("invalid resource")
     ) as prepare:
@@ -379,7 +379,7 @@ def test_prepare_typing_references_selects_targets_and_collects_all_failures(
     assert len(errors) == len(expected)
     assert str(resistance) in errors[0]
     if needs_expec:
-        assert str(expec.parent) in errors[1]
+        assert str(expec) in errors[1]
 
 
 @pytest.mark.parametrize("qc_only", [False, True])

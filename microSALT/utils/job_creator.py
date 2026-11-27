@@ -861,8 +861,7 @@ class Job_Creator:
             )
         self.blast_subset("resistance", f"{self.folders.resistances}/*.fsa")
         if reforganism == "escherichia_coli":
-            ss = f"{os.path.dirname(self.folders.expec)}/*{os.path.splitext(self.folders.expec)[1]}"
-            self.blast_subset("expec", ss)
+            self.blast_subset("expec", f"{self.folders.expec}/*.fsa")
 
     def snp_job(self):
         """Writes a SNP calling job for a set of samples"""

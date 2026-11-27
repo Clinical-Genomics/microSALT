@@ -34,12 +34,23 @@ def config(tmp_path_factory: pytest.TempPathFactory) -> MicroSALTConfig:
     resistances = base / "references" / "resistances"
     genomes = base / "references" / "genomes"
     credentials = base / "credentials"
-    expec = base / "references" / "expec" / "ExPEC.fsa"
+    expec = base / "references" / "expec"
 
-    for d in (results, reports, seqdata, profiles, references, resistances, genomes, credentials):
+    for d in (
+        results,
+        reports,
+        seqdata,
+        profiles,
+        references,
+        resistances,
+        genomes,
+        credentials,
+        expec,
+    ):
         d.mkdir(parents=True, exist_ok=True)
-    expec.parent.mkdir(parents=True, exist_ok=True)
-    expec.write_text(">VFG000840_(hlyA)_hemolysin_toxin_protein\nATGACAGTAAATAAAATAAAGAAC\n")
+    (expec / "ExPEC.fsa").write_text(
+        ">VFG000840_(hlyA)_hemolysin_toxin_protein\nATGACAGTAAATAAAATAAAGAAC\n"
+    )
 
     db_path = base / "microsalt.db"
 

@@ -276,10 +276,7 @@ class Scraper:
         if type == "resistance":
             return self.folders.resistances, "fsa"
         elif type == "expec":
-            return (
-                os.path.dirname(self.folders.expec),
-                os.path.basename(self.folders.expec).rsplit(".", 1)[1],
-            )
+            return self.folders.expec, "fsa"
         else:  # seq_type
             return f"{self.folders.references}/{organism}", "tfa"
 
