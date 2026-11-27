@@ -39,7 +39,7 @@ where = ["."]
 include = ["microSALT*"]
 
 [tool.setuptools.package-data]
-"microSALT" = ["unique_references/*", "artwork/*"]
+"microSALT" = ["artwork/*"]
 "microSALT.server" = ["templates/*"]
 
 [dependency-groups]

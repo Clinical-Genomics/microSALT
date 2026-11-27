@@ -36,8 +36,6 @@ def config_file(config: MicroSALTConfig, tmp_path: Path) -> Path:
 @pytest.fixture
 def setup_config(tmp_path: Path) -> MicroSALTConfig:
     """Fresh MicroSALTConfig whose directories do not yet exist — used to test `setup`."""
-    from importlib.resources import files as resource_files
-
     base = tmp_path / "microsalt"
     base.mkdir()
     cfg = MicroSALTConfig(
@@ -59,6 +57,7 @@ def setup_config(tmp_path: Path) -> MicroSALTConfig:
             resistances=str(base / "resistances"),
             genomes=str(base / "genomes"),
             credentials=str(base / "credentials"),
+            expec=str(base / "expec" / "ExPEC.fsa"),
         ),
         database=Database(SQLALCHEMY_DATABASE_URI=f"sqlite:///{base / 'microsalt.db'}"),
         threshold=Threshold(),
@@ -67,7 +66,6 @@ def setup_config(tmp_path: Path) -> MicroSALTConfig:
         singularity=Singularity(),
         containers=Containers(),
     )
-    cfg.folders.expec = str(resource_files("microSALT").joinpath("unique_references", "ExPEC.fsa"))
     return cfg
 
 

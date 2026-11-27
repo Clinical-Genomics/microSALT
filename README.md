@@ -175,6 +175,15 @@ used, as long as they retain the same format.
 microSALT will automatically download & use the resistance genes of [ResFinder](https://bitbucket.org/genomicepidemiology/resfinder).
 Any definitions will work, as long as they retain the same formatting.
 
+### ExPEC virulence genes
+
+The ExPEC virulence gene FASTA used for *Escherichia coli* samples is **not**
+bundled with microSALT. Provide it yourself and point `folders.expec` in the
+configuration file to the FASTA file (e.g. `/path/to/references/expec/ExPEC.fsa`).
+microSALT builds BLAST indexes next to the file, so its directory must be
+writable. The setting is required, but the file is only read when an
+*E. coli* sample is analysed.
+
 ## Requirements
 
 ### Hardware

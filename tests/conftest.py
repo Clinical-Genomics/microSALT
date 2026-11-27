@@ -1,7 +1,6 @@
 import json
 import logging
 import pathlib
-from importlib.resources import files as resource_files
 
 import pytest
 
@@ -35,9 +34,12 @@ def config(tmp_path_factory: pytest.TempPathFactory) -> MicroSALTConfig:
     resistances = base / "references" / "resistances"
     genomes = base / "references" / "genomes"
     credentials = base / "credentials"
+    expec = base / "references" / "expec" / "ExPEC.fsa"
 
     for d in (results, reports, seqdata, profiles, references, resistances, genomes, credentials):
         d.mkdir(parents=True, exist_ok=True)
+    expec.parent.mkdir(parents=True, exist_ok=True)
+    expec.write_text(">VFG000840_(hlyA)_hemolysin_toxin_protein\nATGACAGTAAATAAAATAAAGAAC\n")
 
     db_path = base / "microsalt.db"
 
@@ -64,6 +66,7 @@ def config(tmp_path_factory: pytest.TempPathFactory) -> MicroSALTConfig:
             resistances=str(resistances),
             genomes=str(genomes),
             credentials=str(credentials),
+            expec=str(expec),
         ),
         database=Database(
             SQLALCHEMY_DATABASE_URI=f"sqlite:///{db_path}",
@@ -76,7 +79,6 @@ def config(tmp_path_factory: pytest.TempPathFactory) -> MicroSALTConfig:
         singularity=Singularity(),
         containers=Containers(),
     )
-    cfg.folders.expec = str(resource_files("microSALT").joinpath("unique_references", "ExPEC.fsa"))
     cfg.config_path = str(base / "config.json")
 
     setup_logger(logging_level="INFO")

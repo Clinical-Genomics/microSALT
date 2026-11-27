@@ -52,13 +52,20 @@ def test_folders_fields():
     assert cfg.folders.resistances
     assert cfg.folders.genomes
     assert cfg.folders.credentials
-
-
-def test_expec_path_injected():
-    """The expec path is derived from package data and injected by load_config."""
-    cfg = load_config(CONFIGEXAMPLE)
     assert cfg.folders.expec
-    assert "ExPEC.fsa" in cfg.folders.expec
+
+
+def test_expec_is_required(tmp_path):
+    """folders.expec must be supplied by the config file; it is no longer bundled."""
+    import json
+
+    with open(CONFIGEXAMPLE) as f:
+        data = json.load(f)
+    del data["folders"]["expec"]
+    bad_config = tmp_path / "no_expec.json"
+    bad_config.write_text(json.dumps(data))
+    with pytest.raises(ValidationError, match="expec"):
+        load_config(str(bad_config))
 
 
 def test_config_path_injected():

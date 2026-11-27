@@ -1,5 +1,4 @@
 import json
-from importlib.resources import files as resource_files
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -29,7 +28,7 @@ class Folders(BaseModel):
     resistances: str
     genomes: str
     credentials: str
-    expec: str = ""  # filled in after construction
+    expec: str
 
 
 class Database(BaseModel):
@@ -114,17 +113,10 @@ def _strip_comments(obj):
 
 
 def load_config(path: str) -> MicroSALTConfig:
-    """Parse and validate a microSALT JSON config file.
-
-    The expec reference path is derived from the package data and injected
-    after parsing, so it does not need to be present in the JSON file.
-    """
+    """Parse and validate a microSALT JSON config file."""
     with open(path) as f:
         data = json.load(f)
     data = _strip_comments(data)
     config = MicroSALTConfig(**data)
-    config.folders.expec = str(
-        resource_files("microSALT").joinpath("unique_references", "ExPEC.fsa")
-    )
     config.config_path = str(Path(path).resolve())
     return config

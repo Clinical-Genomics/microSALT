@@ -309,7 +309,8 @@ class Referencer:
             self.fetch_resistances(self.force)
 
             # Reindexes
-            self.index_db(os.path.dirname(self.folders.expec), ".fsa")
+            expec = Path(self.folders.expec)
+            self._prepare_blast_reference(expec.parent, expec.suffix, skip_update=False)
         finally:
             self.db_access.release_ref_lock()
 
